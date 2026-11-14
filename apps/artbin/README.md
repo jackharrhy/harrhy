@@ -46,6 +46,12 @@ role scope and the mapped local administrator record. Protected-resource metadat
 advertises the central issuer and full required scopes. `@harrhy/identity` verifies
 tokens; local sessions, user records and authorization remain in this app.
 
+`app/operations/catalog.ts` publishes the MCP tool schemas. Every input has an
+object root, including the folder-management and import unions; their branch and
+confirmation constraints remain intact. The workspace check validates the complete
+catalog with the MCP SDK and checks those unions against both published schemas
+and operation validators.
+
 ## Support login
 
 Artbin contains a separate, disabled-by-default support login adapter. The

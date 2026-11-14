@@ -365,7 +365,11 @@ export const mcpOperations = new Map(
 export const mcpTools = Object.values(operationCatalog).map((operation) => ({
   name: operation.mcpName,
   description: operation.description,
-  inputSchema: z.toJSONSchema(operation.input, { target: "draft-7" }),
+  inputSchema: {
+    // The folder/import unions contain only objects; MCP also requires the root type.
+    type: "object",
+    ...z.toJSONSchema(operation.input, { target: "draft-7" }),
+  },
   outputSchema: z.toJSONSchema(operation.output, { target: "draft-7" }),
   annotations: operation.annotations,
 }));
