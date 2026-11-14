@@ -7,6 +7,8 @@
   ],
   "type": "module",
   "scripts": {
+    "atlas:check": "npm run tooling:check && npm run check --workspace @harrhy/atlas",
+    "atlas:dev": "npm run dev --workspace @harrhy/atlas",
     "auth:real:init": "node apps/auth/local-real/init.mjs",
     "auth:real:up": "docker compose --env-file apps/auth/.local-real/compose.env -f apps/auth/local-real/compose.yml up -d --wait",
     "auth:real:seed": "node apps/auth/local-real/seed.mjs",

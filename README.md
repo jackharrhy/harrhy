@@ -14,6 +14,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | Workspace | What it runs | Guide |
 | --- | --- | --- |
 | [`@harrhy/8mb`](apps/8mb/) | Browser video compression and opt-in aggregate diagnostics | [README](apps/8mb/README.md) |
+| [`@harrhy/atlas`](apps/atlas/) | Private agent-owned Markdown spaces | [README](apps/atlas/README.md) |
 | [`@harrhy/auth`](apps/auth/) | Jack Auth browser login, consent, directory, and access management | [README](apps/auth/README.md) |
 | [`@harrhy/artbin-app`](apps/artbin/) | Game asset archive, uploads, previews, and API | [README](apps/artbin/README.md) |
 | [`@harrhy/artbin`](apps/artbin-cli/) | Game asset command-line client | [README](apps/artbin-cli/README.md) |
