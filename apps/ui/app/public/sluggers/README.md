@@ -26,10 +26,10 @@ npm run check --workspace @harrhy/ui-app
 
 Reference: `jackharrhy/sluggers-super-draft` at `3c6013531c304c82f1a6bf741c833479b9621416`, inspected in this task worktree's ignored `tmp/sluggers-super-draft`, not another agent's clone. Original React Router 7 / React 19 code is reference, not a Remix 3 implementation template.
 
-- Original `app/app.css`: blue league field, white ink, NewCezanne UI, Rodin statistical numerals and expressive display lettering. Local theme retains those roles, original blue-600 canvas and stationary 7rem dotted field, with opaque white score sheets and clearer control/focus treatment. The dots are source-derived identity, not a new dashboard texture; no background animation.
+- Original `app/app.css`: blue league field, white ink, NewCezanne UI, Rodin statistical numerals and expressive display lettering. Local theme retains those roles, original blue-600 canvas and stationary 7rem dotted field, with compact translucent blue-gray tables, white identity text, green/red result figures and yellow score/focus accents; no opaque white score sheets. The dots are source-derived identity, not a new dashboard texture; no background animation.
 - `app/routes/home.tsx`: PopHappiness league masthead; local masthead uses that family rather than approximating with a system face.
 - `app/components/StandingsTable.tsx`: conference/team identity, W/L, win-loss difference, run differential and weekly results. Local fixture uses the same core standings metrics. Its Rodin numeric/identity role is retained; match scores use Cezanne as in original `routes/match.tsx`. ITC Bolt was an archive kitchen-sink specimen, not the product's general heading face.
-- `app/components/Lineup.tsx`: captain, batting order and nine defensive locations; local ordered rows expose all nine without drag dependence.
+- `app/components/Lineup.tsx`: captain, batting order and nine defensive locations; compact local ordered rows expose all nine without drag dependence. A pale diamond with live text markers echoes the original field geometry without copying character portraits or team logos.
 - `app/utils/matches.server.ts`: `freezeMatchLineups` on transition into live play. Frozen fixture appearances never follow editor mutations.
 
 No legacy React hooks, dnd-kit, tracker source or production data were ported. Nintendo/team artwork remains unprovenanced and absent; character names and team identity text are explicit placeholders, not invented licensed portraits.

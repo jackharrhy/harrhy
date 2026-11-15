@@ -255,8 +255,8 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
           sluggersTheme,
           themeRoot,
           css({
-            borderRadius: "16px",
-            padding: "24px",
+            borderRadius: "8px",
+            padding: "20px",
             minWidth: 0,
             overflowWrap: "anywhere",
             color: "#fff",
@@ -265,6 +265,22 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
             backgroundSize: "112px 112px",
             backgroundPosition: "0 0, 56px 56px",
             "& *": { boxSizing: "border-box" },
+            "& ::selection": { background: "#fff1a1", color: "#173866" },
+            "& [role=region]": {
+              background: "rgb(106 130 174 / 0.3)",
+              borderRadius: "8px",
+              scrollbarColor: "#93add5 #294578",
+            },
+            "& table": { minWidth: "480px" },
+            "& thead th": { fontSize: "12px", color: "#d6e3fa" },
+            "& th[scope=rowgroup]": {
+              background: "rgb(106 130 174 / 0.3)",
+              color: "#e5edff",
+              fontSize: "12px",
+            },
+            "& th[scope=row]": {
+              fontFamily: "SluggersRodin, system-ui, sans-serif",
+            },
             "@media(max-width: 600px)": {
               padding: "16px 10px",
               "--hui-control-height": "44px",
@@ -316,9 +332,9 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
             </div>
             <div
               mix={css({
-                background: "#fff",
-                color: "#17243b",
-                padding: "12px 16px",
+                background: "rgb(106 130 174 / 0.3)",
+                color: "#fff",
+                padding: "8px 12px",
                 borderRadius: "8px",
               })}
             >
@@ -414,7 +430,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                                           css({
                                             border: 0,
                                             background: "transparent",
-                                            color: row.color,
+                                            color: "#fff",
                                             padding: 0,
                                             font: "inherit",
                                             textAlign: "left",
@@ -436,9 +452,12 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                                       </button>
                                       <div
                                         mix={css({
-                                          color: "#526079",
+                                          color: "#d6e3fa",
                                           fontSize: "12px",
-                                          marginTop: "4px",
+                                          display: "inline",
+                                          marginLeft: "8px",
+                                          fontFamily:
+                                            "SluggersCezanne, system-ui, sans-serif",
                                         })}
                                       >
                                         {row.manager}
@@ -450,7 +469,23 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                                       row.wins - row.losses,
                                       row.rd,
                                     ].map((value, i) => (
-                                      <TableCell mix={number}>
+                                      <TableCell
+                                        mix={[
+                                          number,
+                                          css({
+                                            color:
+                                              i === 0
+                                                ? "#a6f0c2"
+                                                : i === 1
+                                                  ? "#ffc1c6"
+                                                  : value > 0
+                                                    ? "#a6f0c2"
+                                                    : value < 0
+                                                      ? "#ffc1c6"
+                                                      : "#d6e3fa",
+                                          }),
+                                        ]}
+                                      >
                                         {i > 1 && value > 0 ? "+" : ""}
                                         {value}
                                       </TableCell>
@@ -520,9 +555,9 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                 </Inline>
                 <div
                   mix={css({
-                    background: "#edf2f8",
+                    background: "rgb(106 130 174 / 0.3)",
                     borderRadius: "10px",
-                    padding: "24px 16px",
+                    padding: "16px",
                     textAlign: "center",
                   })}
                 >
@@ -545,6 +580,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                     <strong
                       mix={css({
                         fontFamily: "SluggersCezanne, sans-serif",
+                        color: "#fff1a1",
                         fontSize: "36px",
                         fontVariantNumeric: "tabular-nums",
                       })}
@@ -606,7 +642,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                         <span
                           mix={css({
                             padding: "8px 10px",
-                            background: "#edf2f8",
+                            background: "rgb(106 130 174 / 0.3)",
                             borderRadius: "6px",
                           })}
                         >
@@ -687,79 +723,142 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                     <Notice role="alert">{error}</Notice>
                   </div>
                 ) : null}
-                <ol
-                  aria-label="Batting order"
-                  mix={css({
-                    listStyle: "none",
-                    padding: 0,
-                    margin: 0,
-                    display: "grid",
-                    gap: "8px",
-                  })}
-                >
-                  {slots.map((slot, i) => (
-                    <li
-                      key={slot.character}
-                      data-character={slot.character}
+                <div mix={columns}>
+                  <ol
+                    aria-label="Batting order"
+                    mix={css({
+                      listStyle: "none",
+                      padding: 0,
+                      margin: 0,
+                      display: "grid",
+                      gap: "8px",
+                    })}
+                  >
+                    {slots.map((slot, i) => (
+                      <li
+                        key={slot.character}
+                        data-character={slot.character}
+                        mix={css({
+                          display: "grid",
+                          gridTemplateColumns:
+                            "36px minmax(100px,1fr) 96px auto",
+                          alignItems: "center",
+                          gap: "12px",
+                          padding: "8px 12px",
+                          background: "rgb(106 130 174 / 0.3)",
+                          borderRadius: "8px",
+                          "@media(max-width:600px)": {
+                            gridTemplateColumns: "28px minmax(0,1fr) 90px",
+                            gap: "8px",
+                          },
+                        })}
+                      >
+                        <strong mix={number}>{i + 1}</strong>
+                        <span>
+                          {slot.character}
+                          {captain === slot.character ? (
+                            <span mix={quiet}> · Captain</span>
+                          ) : null}
+                        </span>
+                        <Select
+                          aria-label={`${slot.character} defense`}
+                          key={`${slot.character}-${resetKey}`}
+                          defaultValue={slot.position}
+                          disabled={readonly || busy}
+                          options={fieldOptions}
+                          onValueChange={(value) => {
+                            slot.position = value;
+                            dirty();
+                          }}
+                        />
+                        <div
+                          mix={css({
+                            display: "flex",
+                            gap: "6px",
+                            "@media(max-width:600px)": { gridColumn: "2 / -1" },
+                          })}
+                        >
+                          <Button
+                            data-direction="-1"
+                            aria-label={`Move ${slot.character} up`}
+                            disabled={i === 0 || readonly || busy}
+                            mix={on("click", () => move(i, -1))}
+                          >
+                            Up
+                          </Button>
+                          <Button
+                            data-direction="1"
+                            aria-label={`Move ${slot.character} down`}
+                            disabled={i === 8 || readonly || busy}
+                            mix={on("click", () => move(i, 1))}
+                          >
+                            Down
+                          </Button>
+                        </div>
+                      </li>
+                    ))}
+                  </ol>
+                  <section
+                    aria-label="Defensive field"
+                    mix={css({ textAlign: "center" })}
+                  >
+                    <Heading level={4}>Defensive field</Heading>
+                    <p mix={quiet}>
+                      Text markers · no original character artwork
+                    </p>
+                    <div
                       mix={css({
-                        display: "grid",
-                        gridTemplateColumns: "36px minmax(100px,1fr) 96px auto",
-                        alignItems: "center",
-                        gap: "12px",
-                        padding: "12px",
-                        background: "#edf2f8",
-                        borderRadius: "8px",
-                        "@media(max-width:600px)": {
-                          gridTemplateColumns: "28px minmax(0,1fr) 90px",
-                          gap: "8px",
+                        position: "relative",
+                        width: "100%",
+                        maxWidth: "360px",
+                        aspectRatio: "1",
+                        margin: "12px auto",
+                        "&::before": {
+                          content: "''",
+                          position: "absolute",
+                          inset: "22%",
+                          background: "rgb(196 215 247 / 0.22)",
+                          border: "1px solid rgb(196 215 247 / 0.3)",
+                          transform: "rotate(45deg)",
                         },
                       })}
                     >
-                      <strong mix={number}>{i + 1}</strong>
-                      <span>
-                        {slot.character}
-                        {captain === slot.character ? (
-                          <span mix={quiet}> · Captain</span>
-                        ) : null}
-                      </span>
-                      <Select
-                        aria-label={`${slot.character} defense`}
-                        key={`${slot.character}-${resetKey}`}
-                        defaultValue={slot.position}
-                        disabled={readonly || busy}
-                        options={fieldOptions}
-                        onValueChange={(value) => {
-                          slot.position = value;
-                          dirty();
-                        }}
-                      />
-                      <div
-                        mix={css({
-                          display: "flex",
-                          gap: "6px",
-                          "@media(max-width:600px)": { gridColumn: "2 / -1" },
-                        })}
-                      >
-                        <Button
-                          data-direction="-1"
-                          aria-label={`Move ${slot.character} up`}
-                          disabled={i === 0 || readonly || busy}
-                          mix={on("click", () => move(i, -1))}
-                        >
-                          Up
-                        </Button>
-                        <Button
-                          data-direction="1"
-                          aria-label={`Move ${slot.character} down`}
-                          disabled={i === 8 || readonly || busy}
-                          mix={on("click", () => move(i, 1))}
-                        >
-                          Down
-                        </Button>
-                      </div>
-                    </li>
-                  ))}
-                </ol>
+                      {slots.map((slot) => {
+                        const point: Record<string, [number, number]> = {
+                          P: [50, 52],
+                          C: [50, 90],
+                          "1B": [78, 70],
+                          "2B": [69, 36],
+                          "3B": [22, 70],
+                          SS: [31, 36],
+                          LF: [15, 17],
+                          CF: [50, 8],
+                          RF: [85, 17],
+                        };
+                        const [x, y] = point[slot.position] ?? [50, 50];
+                        return (
+                          <div
+                            style={{ left: `${x}%`, top: `${y}%` }}
+                            mix={css({
+                              position: "absolute",
+                              transform: "translate(-50%, -50%)",
+                              width: "30%",
+                              fontSize: "12px",
+                              lineHeight: "1.4",
+                            })}
+                          >
+                            <strong
+                              mix={css({ display: "block", color: "#fff1a1" })}
+                            >
+                              {slot.position}
+                            </strong>
+                            <span>{slot.character}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+                </div>
                 <p mix={quiet}>
                   Nine different characters, one captain and each defensive
                   position exactly once. Keyboard: Tab to Up or Down, then
