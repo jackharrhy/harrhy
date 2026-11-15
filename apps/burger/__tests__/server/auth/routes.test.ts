@@ -259,7 +259,7 @@ test("GET /auth/me without session returns 401", async () => {
   expect(res.status).toBe(401);
 });
 
-test("POST /auth/logout deletes the session", async () => {
+test("POST /auth/logout deletes the session, clears its cookie and redirects home", async () => {
   const db = new Database(":memory:");
   runMigrations(db);
   db.run(
@@ -278,7 +278,10 @@ test("POST /auth/logout deletes the session", async () => {
       headers: { Cookie: "burger_session=sess1" },
     }),
   );
-  expect(res.status).toBe(204);
+  expect(res.status).toBe(303);
+  expect(res.headers.get("location")).toBe("/");
+  expect(res.headers.get("set-cookie")).toContain("burger_session=;");
+  expect(res.headers.get("set-cookie")).toContain("Max-Age=0");
   const remaining = db.query("SELECT COUNT(*) as c FROM sessions").get() as any;
   expect(remaining.c).toBe(0);
 });

@@ -222,10 +222,10 @@ export const authRoutes = ({
     .post("/auth/logout", ({ headers }) => {
       const sessionId = parseSessionCookie(headers.cookie);
       if (sessionId) deleteSession(db, sessionId);
-      const responseHeaders = new Headers();
+      const responseHeaders = new Headers({ Location: "/" });
       responseHeaders.append(
         "Set-Cookie",
         getClearSessionCookie(config.isProduction),
       );
-      return new Response("", { status: 204, headers: responseHeaders });
+      return new Response("", { status: 303, headers: responseHeaders });
     });

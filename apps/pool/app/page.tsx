@@ -45,7 +45,7 @@ export function PoolPage(handle: Handle<{ nonce?: string }>) {
                 Enter the hall
               </button>
             </div>
-            <a id="sign-in" href="/auth/login" hidden>
+            <a id="sign-in" href="/auth/login" data-rmx-document hidden>
               Sign in
             </a>
           </form>
