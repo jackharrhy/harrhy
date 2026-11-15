@@ -176,9 +176,12 @@ for (const generation of ["legacy", "modern"] as const) {
 
 test("awaits Standard Schema validation and projects its transformed structured output", async () => {
   const output = s.object({
-    length: s.number().transform((value) => value + 1, s.number()),
+    length: s.number().transform((value) => String(value + 1), s.string()),
   });
   const declared = defineTool({ name: "async", input: s.object({}), output });
+  assert.deepEqual(declared.descriptor.outputSchema?.properties, {
+    length: { type: "string" },
+  });
   const asynchronous = {
     ...declared,
     input: {
@@ -195,5 +198,5 @@ test("awaits Standard Schema validation and projects its transformed structured 
     () => ({ content: [], structuredContent: { length: 1 } }),
     validation,
   );
-  assert.deepEqual((await execute({})).structuredContent, { length: 2 });
+  assert.deepEqual((await execute({})).structuredContent, { length: "2" });
 });

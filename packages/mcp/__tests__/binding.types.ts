@@ -6,7 +6,7 @@ const tool = defineTool({
   input: s.object({
     value: s.string().transform((value) => value.length, s.number()),
   }),
-  output: s.object({ length: s.number() }),
+  output: s.object({ length: s.number().transform(String, s.string()) }),
 });
 const validation = {
   invalidInput: () => ({ content: [], isError: true }),
@@ -25,7 +25,7 @@ bindTool(
 );
 bindTool(
   tool,
-  // @ts-expect-error Output remains inferred through definition and binding.
+  // @ts-expect-error The handler returns the output schema's input, before its string transform.
   () => ({ content: [], structuredContent: { length: "wrong" } }),
   validation,
 );
