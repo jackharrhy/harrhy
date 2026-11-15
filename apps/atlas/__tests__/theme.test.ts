@@ -31,6 +31,9 @@ test("SSR themes persist through native forms without changing scoped content", 
     assert.match(html, new RegExp(`data-theme="${theme}"`));
     assert.match(html, /name="q" value="observation"/);
     assert.match(html, /Example research/);
+    assert.match(html, /popover="auto"/);
+    assert.match(html, /popovertarget="settings"/);
+    assert.match(html, /aria-label="Settings"/);
     assert.match(html, /aria-current="page"[^>]*[^]*?Wonder/);
     assert.doesNotMatch(html, /role="tab"|<script/);
     assert.equal(html.includes('href="/fonts.css"'), theme === "brutalist");
@@ -41,9 +44,19 @@ test("SSR themes persist through native forms without changing scoped content", 
     );
     assert.match(await next.text(), new RegExp(`data-theme="${theme}"`));
   }
+  const initial = await router.fetch("http://localhost/");
+  assert.match(await initial.text(), /data-theme="brutalist"/);
+  assert.equal(initial.headers.get("set-cookie"), null);
+  const clean = await router.fetch("http://localhost/?theme=clean");
+  const override = await router.fetch(
+    new Request("http://localhost/?theme=tactile", {
+      headers: { Cookie: clean.headers.get("set-cookie")!.split(";")[0]! },
+    }),
+  );
+  assert.match(await override.text(), /data-theme="tactile"/);
   const invalid = await router.fetch("http://localhost/?theme=arbitrary");
   assert.equal(invalid.headers.get("set-cookie"), null);
-  assert.match(await invalid.text(), /data-theme="clean"/);
+  assert.match(await invalid.text(), /data-theme="brutalist"/);
   for (const resource of [
     "/fonts.css",
     "/fonts/fraunces-variable.woff2",

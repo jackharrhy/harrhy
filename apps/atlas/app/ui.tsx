@@ -65,16 +65,23 @@ const documentStyles = css({
     lineHeight: 1.6,
     tabSize: 2,
   },
-  "& table": {
-    display: "block",
-    maxWidth: "100%",
+  "& .atlas-table": {
+    width: "min(76rem, calc(100vw - 2.5rem))",
+    marginInline: "calc((100% - min(76rem, 100vw - 2.5rem)) / 2)",
     overflowX: "auto",
+    marginBlock: "1.5rem",
+  },
+  "& table": {
+    width: "max-content",
+    minWidth: "100%",
     overflowWrap: "normal",
     borderCollapse: "collapse",
   },
   "& th, & td": {
+    minWidth: "8rem",
+    maxWidth: "32rem",
     padding: ".35rem .75rem .35rem 0",
-    textAlign: "left",
+    verticalAlign: "top",
     borderBottom: "1px solid var(--hui-border)",
   },
   "& input, & button": {
@@ -100,23 +107,17 @@ const skipStyles = css({
 const headerStyles = css({
   maxWidth: "76rem",
   margin: "0 auto",
-  padding: "1rem 1.25rem 0",
-  "& .preferences": {
-    display: "flex",
-    justifyContent: "flex-end",
-    alignItems: "center",
-    gap: ".6rem",
-    flexWrap: "wrap",
-    fontSize: ".8rem",
-    marginBottom: "1rem",
-  },
-  "& select": { width: "auto", fontSize: ".8rem" },
+  padding: ".25rem 1.25rem",
+  display: "flex",
+  alignItems: "flex-start",
+  gap: ".75rem",
+  borderBottom: "1px solid var(--hui-border)",
   "& nav": {
+    flex: 1,
+    minWidth: 0,
     display: "flex",
     flexWrap: "wrap",
-    gap: ".25rem 1.25rem",
-    borderBottom: "1px solid var(--hui-border)",
-    paddingBottom: ".75rem",
+    gap: "0 1rem",
   },
   "& nav a": {
     minHeight: "2.75rem",
@@ -124,14 +125,31 @@ const headerStyles = css({
     alignItems: "center",
     textDecoration: "none",
     borderBottom: "2px solid transparent",
-    fontSize: ".9rem",
+    fontSize: ".8rem",
   },
   '& nav a[aria-current="page"]': {
-    color: "var(--hui-ink)",
     fontWeight: "700",
     borderBottomColor: "var(--hui-ink)",
   },
   "& nav a:hover": { textDecoration: "underline" },
+});
+const settingsStyles = css({
+  position: "fixed",
+  inset: "3.5rem 1.25rem auto auto",
+  margin: 0,
+  maxWidth: "calc(100vw - 2.5rem)",
+  padding: "1rem",
+  color: "var(--hui-ink)",
+  background: "var(--hui-surface)",
+  border: "1px solid var(--hui-control-border)",
+  borderRadius: "var(--hui-panel-radius)",
+  "& form": {
+    display: "flex",
+    alignItems: "center",
+    gap: ".6rem",
+    flexWrap: "wrap",
+    fontSize: ".8rem",
+  },
 });
 export interface DocumentOptions {
   stale?: boolean;
@@ -167,34 +185,6 @@ export function document(
           Skip to content
         </a>
         <header mix={headerStyles}>
-          <form
-            className="preferences"
-            action={options.url.pathname}
-            method="get"
-          >
-            {[...options.url.searchParams]
-              .filter(([key]) => key !== "theme")
-              .map(([key, value]) => (
-                <input type="hidden" name={key} value={value} />
-              ))}
-            <label htmlFor="theme">Theme</label>
-            <select
-              id="theme"
-              name="theme"
-              mix={[
-                controlStyles,
-                focusStyles,
-                css({ width: "auto", minWidth: "8rem", fontSize: ".8rem" }),
-              ]}
-            >
-              {themes.map((theme) => (
-                <option value={theme.id} selected={theme.id === options.theme}>
-                  {theme.name}
-                </option>
-              ))}
-            </select>
-            <Button type="submit">Apply</Button>
-          </form>
           <nav aria-label="Agent spaces">
             <a href="/" aria-current={!active ? "page" : undefined}>
               All spaces
@@ -209,6 +199,54 @@ export function document(
               </a>
             ))}
           </nav>
+          <Button
+            type="button"
+            aria-label="Settings"
+            popoverTarget="settings"
+            mix={css({
+              width: "2.75rem",
+              minWidth: "2.75rem",
+              height: "2.75rem",
+              padding: 0,
+              fontSize: "1.25rem",
+            })}
+          >
+            <span aria-hidden="true">⚙</span>
+          </Button>
+          <div
+            id="settings"
+            popover="auto"
+            aria-label="Settings"
+            mix={settingsStyles}
+          >
+            <form action={options.url.pathname} method="get">
+              {[...options.url.searchParams]
+                .filter(([key]) => key !== "theme")
+                .map(([key, value]) => (
+                  <input type="hidden" name={key} value={value} />
+                ))}
+              <label htmlFor="theme">Theme</label>
+              <select
+                id="theme"
+                name="theme"
+                mix={[
+                  controlStyles,
+                  focusStyles,
+                  css({ width: "auto", minWidth: "8rem", fontSize: ".8rem" }),
+                ]}
+              >
+                {themes.map((theme) => (
+                  <option
+                    value={theme.id}
+                    selected={theme.id === options.theme}
+                  >
+                    {theme.name}
+                  </option>
+                ))}
+              </select>
+              <Button type="submit">Apply</Button>
+            </form>
+          </div>
         </header>
         <main id="main" tabIndex={-1}>
           {options.stale && (
