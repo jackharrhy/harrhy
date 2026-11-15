@@ -36,7 +36,7 @@ export async function requestTheme(request: Request) {
     ? selected
     : valid(saved)
       ? saved
-      : "clean";
+      : "brutalist";
   return {
     theme,
     cookie: valid(selected)
