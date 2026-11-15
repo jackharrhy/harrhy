@@ -18,6 +18,7 @@ import { displayStyles, themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { themes } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
 import { RadioScene } from "./radio/scene.tsx";
+import { SluggersScene } from "./sluggers/scene.tsx";
 
 const shell = css({
   minHeight: "100vh",
@@ -95,6 +96,14 @@ export const Scenes = clientEntry(
                 Radio
               </a>
               <a
+                href={`/?view=scenes&scene=sluggers&theme=${theme}`}
+                aria-current={
+                  handle.props.scene === "sluggers" ? "page" : undefined
+                }
+              >
+                Sluggers
+              </a>
+              <a
                 href={`/?view=scenes&scene=forms&theme=${theme}`}
                 aria-current={
                   handle.props.scene === "forms" ? "page" : undefined
@@ -114,6 +123,8 @@ export const Scenes = clientEntry(
           </nav>
           {handle.props.scene === "radio" ? (
             <RadioScene theme={theme} />
+          ) : handle.props.scene === "sluggers" ? (
+            <SluggersScene theme={theme} />
           ) : handle.props.scene === "forms" ? (
             <>
               <div mix={grid}>

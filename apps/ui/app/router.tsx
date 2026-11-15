@@ -9,7 +9,13 @@ import { Explorer, stories } from "./public/explorer.tsx";
 
 import { defaultHosts } from "./hosts.ts";
 export { defaultHosts } from "./hosts.ts";
-export function createApp(hosts: readonly string[] = defaultHosts) {
+export function createApp(
+  hosts: readonly string[] = defaultHosts,
+  options: { sluggersPrivateFonts?: boolean } = {},
+) {
+  const sluggersPrivateFonts =
+    options.sluggersPrivateFonts ??
+    process.env.HARRHY_UI_SLUGGERS_PRIVATE_FONTS === "1";
   const assets = createAssets();
   const router = createRouter();
   router.get(
@@ -47,6 +53,11 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
           {url.searchParams.get("scene") === "radio" && (
             <link rel="stylesheet" href="/assets/ui/radio/fonts.css" />
           )}
+          {url.searchParams.get("view") === "scenes" &&
+            url.searchParams.get("scene") === "sluggers" &&
+            sluggersPrivateFonts && (
+              <link rel="stylesheet" href="/assets/ui/sluggers/fonts.css" />
+            )}
           <ImportMap value={entry.importMap} />
           {entry.preloads.map((href) => (
             <link rel="modulepreload" href={href} />
@@ -60,9 +71,11 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
               scene={
                 url.searchParams.get("scene") === "radio"
                   ? "radio"
-                  : url.searchParams.get("scene") === "themes"
-                    ? "themes"
-                    : "forms"
+                  : url.searchParams.get("scene") === "sluggers"
+                    ? "sluggers"
+                    : url.searchParams.get("scene") === "themes"
+                      ? "themes"
+                      : "forms"
               }
             />
           ) : (
