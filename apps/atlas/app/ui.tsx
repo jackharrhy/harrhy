@@ -4,7 +4,7 @@ import { Button, Notice } from "@harrhy/ui/native";
 import { themeRoot } from "@harrhy/ui/theme";
 import { controlStyles, focusStyles } from "@harrhy/ui/recipes";
 import { themes, themeMixins, type ThemeId } from "./theme.ts";
-import { spaces, spacePath } from "./spaces.ts";
+import { type Space, spacePath } from "./spaces.ts";
 
 const documentStyles = css({
   colorScheme: "light",
@@ -152,6 +152,7 @@ const settingsStyles = css({
   },
 });
 export interface DocumentOptions {
+  spaces: readonly Pick<Space, "id" | "name">[];
   stale?: boolean;
   theme: ThemeId;
   url: URL;
@@ -162,6 +163,7 @@ export function document(
   body: RemixNode,
   options: DocumentOptions,
 ) {
+  const spaces = options.spaces;
   const active = spaces.find((space) =>
     options.url.pathname.startsWith(`${spacePath(space.id)}/`),
   );

@@ -186,7 +186,7 @@ test("periodic rescan recovers author directory replacement", async () => {
 test("rejects reserved routes and parent cycles", async () => {
   const f = await fixture();
   try {
-    for (const reserved of ["/search/", "/authors/wonder/", "/healthz"]) {
+    for (const reserved of ["/search/", "/authors/alpha/", "/healthz"]) {
       await f.put("a.md", page("Reserved", reserved));
       assert.match((await f.catalog.refresh()).error!, /Reserved/);
     }

@@ -7,11 +7,14 @@ import { Button, Field, Input } from "@harrhy/ui/native";
 import { requestTheme } from "./theme.ts";
 import { createCatalog } from "./content/catalog.ts";
 import { routes } from "./routes.ts";
-import { spaces, spacePath } from "./spaces.ts";
+import { loadSpaces, spacePath } from "./spaces.ts";
 import { document, pageList, topicTree, article, trail } from "./ui.tsx";
 
-export async function createAtlas(root: string) {
-  const catalog = createCatalog({ root, authors: spaces });
+export async function createAtlas(root: string, manifestPath: string) {
+  const catalog = createCatalog({
+    root,
+    authors: () => loadSpaces(manifestPath),
+  });
   const initial = await catalog.refresh();
   if (!initial.generation)
     throw new Error("Atlas requires a valid curated catalog before startup");
@@ -66,6 +69,7 @@ export async function createAtlas(root: string) {
   async function show(context: Context) {
     const snapshot = catalog.read();
     const generation = snapshot.generation!;
+    const spaces = generation.spaces;
     const url = new URL(context.request.url);
     const pathname = url.pathname.replace(/\/$/, "") || "/";
     const preference = await requestTheme(context.request);
@@ -86,6 +90,7 @@ export async function createAtlas(root: string) {
           stale: snapshot.status === "stale",
           theme: preference.theme,
           url,
+          spaces,
           available: spaces.map((space) => ({
             id: space.id,
             count: Object.values(generation.pages).filter(
@@ -134,9 +139,11 @@ export async function createAtlas(root: string) {
         pathname.startsWith(`${spacePath(space.id)}/`),
     );
     if (!owner) {
-      if (pathname === "/days" || pathname === "/briefs")
-        return redirect("/spaces/wonder/days/");
-      if (pathname === "/dossiers") return redirect("/spaces/wonder/");
+      const legacy = spaces.find((space) => space.legacyRoutes);
+      if (legacy && (pathname === "/days" || pathname === "/briefs"))
+        return redirect(`${spacePath(legacy.id)}/days/`);
+      if (legacy && pathname === "/dossiers")
+        return redirect(`${spacePath(legacy.id)}/`);
       return respond(
         "Not found",
         <>

@@ -8,7 +8,7 @@ import { createAtlas } from "../app/router.tsx";
 test("agent corpora own duplicate local paths, search, navigation and topic context", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "atlas-spaces-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  for (const id of ["wonder", "infra"]) {
+  for (const id of ["alpha", "beta"]) {
     await mkdir(path.join(root, id));
     await writeFile(
       path.join(root, id, "topic.md"),
@@ -16,49 +16,63 @@ test("agent corpora own duplicate local paths, search, navigation and topic cont
     );
     await writeFile(
       path.join(root, id, "child.md"),
-      `---\ntitle: ${id} tools\npath: /pi/tools/\nparent: /old/\n---\n${id === "infra" ? "Infrastructure secret [Wonder](/spaces/wonder/pi/)" : "Wonder writing"}`,
+      `---\ntitle: ${id} tools\npath: /pi/tools/\nparent: /old/\n---\n${id === "beta" ? "Beta material secret [Alpha](/spaces/alpha/pi/)" : "Alpha writing"}`,
     );
   }
-  const { router, catalog } = await createAtlas(root);
+  await writeFile(
+    path.join(root, "atlas.json"),
+    JSON.stringify({
+      spaces: [
+        { id: "alpha", name: "Alpha", directory: "alpha", legacyRoutes: true },
+        { id: "beta", name: "Beta", directory: "beta", optional: true },
+        { id: "gamma", name: "Gamma", directory: "gamma", optional: true },
+        { id: "delta", name: "Delta", directory: "delta", optional: true },
+      ],
+    }),
+  );
+  const { router, catalog } = await createAtlas(
+    root,
+    path.join(root, "atlas.json"),
+  );
   const html = async (address: string) =>
     (await router.fetch(`http://localhost${address}`)).text();
   const directory = await html("/");
   assert.match(directory, /Agent spaces/);
-  assert.match(directory, /\/spaces\/pi-handyman\//);
-  assert.doesNotMatch(directory, /wonder topic|infra topic/);
-  const wonder = await html("/spaces/wonder/");
-  assert.match(wonder, /wonder topic/);
-  assert.doesNotMatch(wonder, /infra topic/);
-  const topic = await html("/spaces/wonder/pi/");
-  assert.match(topic, /href="\/spaces\/wonder\/pi\/tools\/"/);
-  assert.match(topic, /Search Wonder/);
+  assert.match(directory, /\/spaces\/gamma\//);
+  assert.doesNotMatch(directory, /alpha topic|beta topic/);
+  const alpha = await html("/spaces/alpha/");
+  assert.match(alpha, /alpha topic/);
+  assert.doesNotMatch(alpha, /beta topic/);
+  const topic = await html("/spaces/alpha/pi/");
+  assert.match(topic, /href="\/spaces\/alpha\/pi\/tools\/"/);
+  assert.match(topic, /Search Alpha/);
   assert.doesNotMatch(
     topic.match(/<section><h2>Pages<\/h2>(.*?)<\/section>/)?.[1] || "",
-    /infra tools/,
+    /beta tools/,
   );
   assert.match(topic, /<h2>Linked from<\/h2>/);
-  assert.match(topic, /href="\/spaces\/infra\/pi\/tools\/"/);
-  const results = await html("/spaces/wonder/search/?q=Shared");
-  assert.match(results, /wonder topic/);
-  assert.doesNotMatch(results, /infra topic/);
+  assert.match(topic, /href="\/spaces\/beta\/pi\/tools\/"/);
+  const results = await html("/spaces/alpha/search/?q=Shared");
+  assert.match(results, /alpha topic/);
+  assert.doesNotMatch(results, /beta topic/);
   assert.doesNotMatch(
-    await html("/spaces/wonder/search/?q=Infrastructure"),
-    /infra tools/,
+    await html("/spaces/alpha/search/?q=Beta material"),
+    /beta tools/,
   );
   assert.match(
-    await html("/spaces/infra/search/?q=Infrastructure"),
-    /infra tools/,
+    await html("/spaces/beta/search/?q=Beta material"),
+    /beta tools/,
   );
   assert.match(
-    await html("/spaces/infra/pi/tools/"),
-    /href="\/spaces\/wonder\/pi\/"/,
+    await html("/spaces/beta/pi/tools/"),
+    /href="\/spaces\/alpha\/pi\/"/,
   );
   for (const legacy of ["/pi/", "/old/", "/pi/tools/"]) {
     const response = await router.fetch(`http://localhost${legacy}?q=keep`);
     assert.equal(response.status, 308);
     assert.equal(
       response.headers.get("location"),
-      `/spaces/wonder/${legacy === "/old/" ? "pi/" : legacy.slice(1)}?q=keep`,
+      `/spaces/alpha/${legacy === "/old/" ? "pi/" : legacy.slice(1)}?q=keep`,
     );
   }
   assert.equal(Object.keys(catalog.read().generation!.pages).length, 4);
@@ -67,10 +81,10 @@ test("agent corpora own duplicate local paths, search, navigation and topic cont
     404,
   );
   assert.equal(
-    (await router.fetch("http://localhost/spaces/mailman/")).status,
+    (await router.fetch("http://localhost/spaces/delta/")).status,
     200,
   );
-  for (const id of ["wonder", "infra"]) {
+  for (const id of ["alpha", "beta"]) {
     for (const [alias, destination] of [
       ["briefs", "days/"],
       ["dossiers", ""],
@@ -87,8 +101,8 @@ test("agent corpora own duplicate local paths, search, navigation and topic cont
   }
   const previous = catalog.read().generation;
   await writeFile(
-    path.join(root, "wonder", "bad-parent.md"),
-    "---\ntitle: Bad parent\npath: /bad/\nparent: /spaces/infra/pi/\n---\nCross-owner parent must fail.",
+    path.join(root, "alpha", "bad-parent.md"),
+    "---\ntitle: Bad parent\npath: /bad/\nparent: /spaces/beta/pi/\n---\nCross-owner parent must fail.",
   );
   const rejected = await catalog.refresh();
   assert.equal(rejected.status, "stale");
