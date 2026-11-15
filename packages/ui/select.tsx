@@ -1,4 +1,10 @@
-import { css, type Handle, type Props } from "remix/component";
+import {
+  css,
+  on,
+  type Handle,
+  type Props,
+  type RemixNode,
+} from "remix/component";
 import * as select from "@remix-run/ui/select";
 import * as popover from "@remix-run/ui/popover";
 import { Field, mergeIds } from "./components.tsx";
@@ -53,10 +59,7 @@ export function Select(handle: Handle<SelectProps>) {
           onValueChange={onValueChange}
         />
         <popover.Context>
-          <div
-            data-part="select-popover"
-            mix={[surfaceStyles, select.popover()]}
-          >
+          <SelectSurface>
             <div aria-labelledby={triggerId} mix={[listStyles, select.list()]}>
               {options.map((option) => (
                 <div
@@ -80,12 +83,40 @@ export function Select(handle: Handle<SelectProps>) {
                 </div>
               ))}
             </div>
-          </div>
+          </SelectSurface>
         </popover.Context>
         <input mix={select.hiddenInput()} />
       </select.Context>
     );
   };
+}
+function SelectSurface(handle: Handle<{ children?: RemixNode }>) {
+  const context = handle.context.get(popover.Context);
+  return () => (
+    <div
+      data-part="select-popover"
+      mix={[
+        surfaceStyles,
+        // The upstream selected-row overlay is useful on desktop, but covers
+        // narrow header labels on touch screens. Keep its anchor/viewport logic.
+        on("beforetoggle", (event) => {
+          if (
+            event.newState === "open" &&
+            matchMedia("(max-width: 600px), (pointer: coarse)").matches &&
+            context.anchor
+          ) {
+            context.anchor = {
+              target: context.anchor.target,
+              options: { placement: "bottom-end", offset: 6 },
+            };
+          }
+        }),
+        select.popover(),
+      ]}
+    >
+      {handle.props.children}
+    </div>
+  );
 }
 function SelectTrigger(handle: Handle<Omit<SelectProps, "options">>) {
   const context = handle.context.get(select.Context);
@@ -138,6 +169,9 @@ const triggerStyles = css({
   cursor: "pointer",
 });
 const surfaceStyles = css({
+  boxSizing: "border-box",
+  maxWidth: "calc(100dvw - 2rem)",
+  "@media (max-width: 600px), (pointer: coarse)": { width: "10rem" },
   padding: "0",
   margin: "0",
   color: "var(--hui-ink)",
@@ -178,6 +212,8 @@ const optionStyles = css({
   padding: "var(--hui-control-padding)",
   borderRadius: "var(--hui-option-radius)",
   cursor: "pointer",
+  "& span": { minWidth: 0, overflowWrap: "anywhere" },
+  "@media (max-width: 600px), (pointer: coarse)": { minHeight: "40px" },
   "& svg": { visibility: "hidden", flexShrink: 0 },
   '&[aria-selected="true"]': {
     background: "var(--hui-selected-surface)",

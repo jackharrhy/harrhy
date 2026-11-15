@@ -279,3 +279,43 @@ it("separates selected, highlighted and disabled options and keeps global theme 
     /Radio/,
   );
 });
+
+it("keeps the mobile theme picker below its trigger, touch-sized and inside the viewport", async (t) => {
+  const app = createApp();
+  t.after(() => app.close());
+  const page = await t.serve(await createTestServer(app.fetch));
+  for (const width of [320, 393]) {
+    await page.setViewportSize({ width, height: 873 });
+    await page.goto("/?view=scenes");
+    await page.waitForFunction(
+      () => document.documentElement.dataset.uiReady === "true",
+    );
+    const trigger = page.getByRole("button", { name: "Theme", exact: true });
+    await trigger.click();
+    const list = page.getByRole("listbox");
+    await list.waitFor();
+    const popup = await page
+      .locator("[data-part=select-popover]:visible")
+      .boundingBox();
+    const button = await trigger.boundingBox();
+    assert.ok(popup && button);
+    assert.equal(popup.y >= button.y + button.height + 4, true);
+    assert.equal(popup.x >= 16 && popup.x + popup.width <= width - 16, true);
+    assert.equal(popup.width >= 160, true);
+    assert.equal(
+      await page
+        .getByRole("option", { name: "Artbin", exact: true })
+        .evaluate((node) => node.getBoundingClientRect().height >= 40),
+      true,
+    );
+    await page.getByRole("option", { name: "Artbin", exact: true }).click();
+    await page.waitForURL(
+      (url) => url.searchParams.get("theme") === "brutalist",
+    );
+    assert.equal(await list.isVisible(), false);
+    assert.equal(
+      await trigger.evaluate((node) => node === document.activeElement),
+      true,
+    );
+  }
+});
