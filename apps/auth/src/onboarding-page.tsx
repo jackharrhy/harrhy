@@ -170,18 +170,24 @@ function OnboardingPage(
             ) : null}
           </>
         ) : null}
-        <h2>Recent reviews</h2>
-        {recent.length ? (
-          <ul>
-            {recent.map((item) => (
-              <li>
-                <a href={`/manage/onboarding/${item.id}`}>{item.body.name}</a> —{" "}
-                {states[item.state] || "Administrator review required"}
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p>No identities have been reviewed.</p>
+        {!row && (
+          <>
+            <h2>Recent reviews</h2>
+            {recent.length ? (
+              <ul>
+                {recent.map((item) => (
+                  <li>
+                    <a href={`/manage/onboarding/${item.id}`}>
+                      {item.body.name}
+                    </a>{" "}
+                    — {states[item.state] || "Administrator review required"}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p>No identities have been reviewed.</p>
+            )}
+          </>
         )}
       </Document>
     );

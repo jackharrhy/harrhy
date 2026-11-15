@@ -28,6 +28,11 @@ type Inventory = {
   observedAt: string | null;
   rows: { account: Account | null; mapping: Mapping | null; state: string }[];
 };
+type CreationHistory = {
+  id: string;
+  state: string;
+  body: { review: { username: string } };
+};
 type Review = {
   id: string;
   actor: string;
@@ -43,6 +48,33 @@ type Review = {
 const accountHeadingStyles = css({
   flexWrap: "wrap",
   "& .actions": { flexWrap: "wrap", marginTop: 0 },
+});
+const accountFilterStyles = css({
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) auto auto",
+  alignItems: "end",
+  maxWidth: "none",
+  gap: "16px",
+  "& a": { paddingBottom: "12px" },
+  "@media (max-width: 640px)": {
+    gridTemplateColumns: "1fr 1fr",
+    "& label": { gridColumn: "1 / -1" },
+  },
+});
+const accountListRowStyles = css({
+  paddingBlock: "16px",
+  "& > div": {
+    gridColumn: "1 / -1",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
+    alignItems: "center",
+    width: "100%",
+    gap: "12px",
+  },
+  "& h2, & p": { margin: 0 },
+  "@media (max-width: 640px)": {
+    "& > div": { gridTemplateColumns: "1fr", gap: "4px" },
+  },
 });
 const base = (item: Instance | Mapping) =>
   `/manage/media/${item.service}/${item.instance}`;
@@ -65,6 +97,8 @@ function ConnectedAccountsPage(
     reviews: Review[];
     actions: ServiceAction[];
     context: Context;
+    creations: CreationHistory[];
+    screen: { nativeId?: string; mode?: string; q?: string; state?: string };
   }>,
 ) {
   return () => {
@@ -75,103 +109,183 @@ function ConnectedAccountsPage(
       people,
       reviews,
       actions,
+      creations,
       context,
+      screen,
     } = handle.props;
+    const selectedRow = inventory?.rows.find(
+      (row) =>
+        (row.account?.nativeId ?? row.mapping?.nativeId) === screen.nativeId,
+    );
+    const rows =
+      inventory?.rows.filter((row) =>
+        screen.nativeId
+          ? (row.account?.nativeId ?? row.mapping?.nativeId) === screen.nativeId
+          : (!screen.q ||
+              (row.account?.name || "Missing native account")
+                .toLowerCase()
+                .includes(screen.q.toLowerCase())) &&
+            (!screen.state || row.state === screen.state),
+      ) || [];
+    const detailUrl = (id: string) =>
+      `${base(selected!)}/accounts/${encodeURIComponent(id)}`;
     return (
       <Document {...context} title="Service accounts" active="services">
+        <nav aria-label="Breadcrumb">
+          <a href="/manage/services">Services</a> /{" "}
+          <a href="/manage/media">Service accounts</a>
+          {selected && (
+            <>
+              {" "}
+              / <a href={base(selected)}>{selected.name}</a>
+            </>
+          )}
+          {selectedRow && screen.mode !== "detail" && (
+            <>
+              {" "}
+              /{" "}
+              <a href={detailUrl(screen.nativeId!)}>
+                {selectedRow.account?.name || "Missing native account"}
+              </a>
+            </>
+          )}
+        </nav>
         <div class="page-heading" mix={accountHeadingStyles}>
-          <div>
-            <h1>Service accounts</h1>
-            <p class="muted">
-              See accounts in your services and link them to people in Auth.
-            </p>
-          </div>
-          <div class="actions">
-            <a class="button primary" href="/manage/media/provisioning">
-              Create service account
-            </a>
-            <a class="button" href="/manage/services">
-              Services
-            </a>
-          </div>
+          <h1>
+            {!selected
+              ? "Service accounts"
+              : selectedRow
+                ? `${screen.mode === "link" ? "Link " : screen.mode === "action" ? "Change " : ""}${selectedRow.account?.name || "Missing native account"}`
+                : `${selected.name} users`}
+          </h1>
+          {selected &&
+            !screen.nativeId &&
+            ["jellyfin", "seerr"].includes(selected.service) && (
+              <a
+                class="button primary"
+                href={`/manage/media/provisioning?service=${selected.service}&instance=${selected.instance}`}
+              >
+                {selected.service === "seerr"
+                  ? "Import account"
+                  : "Create account"}
+              </a>
+            )}
         </div>
-        <p class="muted">
-          Available actions depend on each service’s integration.
-        </p>
-        {instances.length === 0 ? (
-          <p>
-            No service account connections are configured. Ask the operator to
-            connect a read-only account list.
-          </p>
-        ) : (
-          <nav aria-label="Service instances">
-            {instances.map((item) => (
-              <div class="settings-row">
-                <div>
-                  <h2>
-                    <a
-                      href={base(item)}
-                      aria-current={
-                        selected?.service === item.service &&
-                        selected.instance === item.instance
-                          ? "page"
-                          : undefined
-                      }
-                    >
-                      {item.name}
+        {!selected && screen.mode !== "history" && (
+          <p class="muted">Choose a service to view its accounts.</p>
+        )}
+        {!selected && screen.mode !== "history" && (
+          <>
+            {instances.length === 0 ? (
+              <p>
+                No service account connections are configured. Ask the operator
+                to connect a read-only account list.
+              </p>
+            ) : (
+              <nav aria-label="Service instances">
+                {instances.map((item) => (
+                  <div class="settings-row">
+                    <div>
+                      <h2>
+                        <a href={base(item)}>{item.name}</a>
+                      </h2>
+                      <p class="muted">{item.service}</p>
+                    </div>
+                    <a class="text-link" href={base(item)}>
+                      View accounts
                     </a>
-                  </h2>
-                  <p class="muted">{item.instance}</p>
-                </div>
-                <a class="text-link" href={base(item)}>
-                  View accounts
-                </a>
-              </div>
-            ))}
-          </nav>
+                  </div>
+                ))}
+              </nav>
+            )}
+          </>
         )}
         {!selected && (
+          <a
+            href={
+              screen.mode === "history"
+                ? "/manage/media"
+                : "/manage/media/history"
+            }
+          >
+            {screen.mode === "history" ? "Back to services" : "Review history"}
+          </a>
+        )}
+        {screen.mode === "history" && (
           <section>
-            <h2>Your recent account changes</h2>
-            {actions.length === 0 ? (
-              <p>No account changes reviewed yet.</p>
-            ) : (
-              <ul>
-                {actions.map((action) => (
-                  <li>
-                    <a href={`/manage/media/actions/${action.id}`}>
-                      {action.body.mapping.service} /{" "}
-                      {action.body.mapping.instance} ·{" "}
-                      {action.body.mapping.nativeId} · {action.body.action}
-                    </a>{" "}
-                    · {action.state}
-                  </li>
-                ))}
-              </ul>
-            )}
-            <h2>Recent identity reviews</h2>
-            {reviews.length === 0 ? (
-              <p>No identity links have been reviewed.</p>
-            ) : (
-              <ul>
-                {reviews.map((review) => (
-                  <li>
-                    <a href={`/manage/media/reviews/${review.id}`}>
-                      {review.body.reason}
-                    </a>{" "}
-                    · {review.state} ·{" "}
-                    <time dateTime={review.created_at}>
-                      {review.created_at}
-                    </time>
-                  </li>
-                ))}
-              </ul>
-            )}
+            <h2>Review history</h2>
+            {reviews.map((review) => (
+              <p>
+                <a href={`/manage/media/reviews/${review.id}`}>
+                  {review.body.account.name} · {review.state}
+                </a>
+              </p>
+            ))}
+            {creations.map((action) => (
+              <p>
+                <a href={`/manage/media/provisioning/${action.id}`}>
+                  {action.body.review.username} · {action.state}
+                </a>
+              </p>
+            ))}
+            {actions.map((action) => (
+              <p>
+                <a href={`/manage/media/actions/${action.id}`}>
+                  {action.body.action} · {action.state}
+                </a>
+              </p>
+            ))}
           </section>
+        )}
+        {selected && (
+          <p>
+            <a
+              href={
+                screen.nativeId && screen.mode !== "detail"
+                  ? detailUrl(screen.nativeId)
+                  : "/manage/media"
+              }
+            >
+              {screen.nativeId && screen.mode !== "detail"
+                ? "Back to account"
+                : "Back to services"}
+            </a>
+            {screen.nativeId && screen.mode === "detail" && (
+              <>
+                {" "}
+                · <a href={base(selected)}>Back to users</a>
+              </>
+            )}
+          </p>
         )}
         {selected && inventory && (
           <>
-            <h2>{selected.name}</h2>
+            {!screen.nativeId && (
+              <form
+                method="get"
+                action={base(selected)}
+                class="form-stack"
+                mix={accountFilterStyles}
+              >
+                <label>
+                  Find account
+                  <input name="q" value={screen.q || ""} maxLength={200} />
+                </label>
+                <label>
+                  Status
+                  <select name="state">
+                    <option value="">All accounts</option>
+                    {Object.entries(labels).map(([value, label]) => (
+                      <option value={value} selected={screen.state === value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button>Filter</button>
+                <a href={base(selected)}>Reset filters</a>
+              </form>
+            )}
             <p class="muted">
               {inventory.observedAt ? (
                 <>
@@ -182,7 +296,15 @@ function ConnectedAccountsPage(
                   .{" "}
                 </>
               ) : null}
-              <a href={base(selected)}>Check again</a>
+              <a
+                href={
+                  screen.nativeId
+                    ? `${detailUrl(screen.nativeId)}${screen.mode !== "detail" ? `/${screen.mode}` : ""}`
+                    : base(selected)
+                }
+              >
+                Check again
+              </a>
             </p>
             {inventory.state !== "available" ? (
               <p role="status">
@@ -192,13 +314,34 @@ function ConnectedAccountsPage(
                 Ask the operator to update the service connection before linking
                 or changing accounts.
               </p>
-            ) : inventory.rows.length === 0 ? (
-              <p>No native accounts or saved mappings in this instance.</p>
+            ) : rows.length === 0 ? (
+              <p>
+                {inventory.rows.length
+                  ? "No accounts match these filters. Try another name or reset the filters."
+                  : "No native accounts or saved mappings in this instance."}
+              </p>
             ) : (
-              inventory.rows.map((row) => (
-                <section class="settings-row">
+              rows.map((row) => (
+                <section
+                  class="settings-row"
+                  mix={!screen.nativeId ? accountListRowStyles : undefined}
+                >
                   <div>
-                    <h3>{row.account?.name || "Missing native account"}</h3>
+                    {screen.mode !== "detail" && (
+                      <h2>
+                        {screen.nativeId ? (
+                          row.account?.name || "Missing native account"
+                        ) : (
+                          <a
+                            href={detailUrl(
+                              (row.account?.nativeId ?? row.mapping?.nativeId)!,
+                            )}
+                          >
+                            {row.account?.name || "Missing native account"}
+                          </a>
+                        )}
+                      </h2>
+                    )}
                     <p>{labels[row.state] || row.state}</p>
                     {row.account && (
                       <p class="muted">
@@ -208,131 +351,182 @@ function ConnectedAccountsPage(
                         · {row.account.disabled ? "Disabled" : "Enabled"}
                       </p>
                     )}
-                    <details>
-                      <summary>Exact identity identifiers</summary>
-                      <p>
-                        Native ID:{" "}
-                        <code>
-                          {row.account?.nativeId || row.mapping?.nativeId}
-                        </code>
-                      </p>
-                      {row.mapping && (
-                        <>
-                          <p>
-                            Issuer: <code>{row.mapping.issuer}</code>
-                          </p>
-                          <p>
-                            Auth subject: <code>{row.mapping.subject}</code>
-                          </p>
-                        </>
-                      )}
-                    </details>
-                  </div>
-                  <div>
-                    {row.state === "native-only" && row.account ? (
-                      <form
-                        method="post"
-                        action={`${base(selected)}/preview`}
-                        class="form-stack"
-                      >
-                        <input type="hidden" name="csrf" value={context.csrf} />
-                        <input
-                          type="hidden"
-                          name="nativeId"
-                          value={row.account.nativeId}
-                        />
-                        <label>
-                          Existing Auth identity
-                          <select name="subject" required>
-                            <option value="">Choose an exact identity</option>
-                            {people
-                              .filter((person) => person.active)
-                              .map((person) => (
-                                <option value={person.subject}>
-                                  {person.name} · {person.subject}
-                                </option>
-                              ))}
-                          </select>
-                        </label>
-                        <label>
-                          Reason
-                          <textarea
-                            name="reason"
-                            required
-                            maxLength={500}
-                            rows={2}
-                          ></textarea>
-                        </label>
-                        <button>Review identity link</button>
-                        <p class="muted">
-                          Accounts stay unchanged until you explicitly review a
-                          link.
+                    {screen.mode === "detail" && (
+                      <details>
+                        <summary>Exact identity identifiers</summary>
+                        <p>
+                          Native ID:{" "}
+                          <code>
+                            {row.account?.nativeId || row.mapping?.nativeId}
+                          </code>
                         </p>
-                      </form>
-                    ) : row.mapping &&
-                      row.account &&
-                      !row.account.administrator &&
-                      ["linked", "auth-inactive", "native-disabled"].includes(
-                        row.state,
-                      ) &&
-                      ["jellyfin", "seerr"].includes(selected.service) ? (
-                      <form
-                        method="post"
-                        action="/manage/media/actions/preview"
-                        class="form-stack"
-                      >
-                        <input type="hidden" name="csrf" value={context.csrf} />
-                        {(
-                          [
-                            "service",
-                            "instance",
-                            "nativeId",
-                            "issuer",
-                            "subject",
-                          ] as const
-                        ).map((key) => (
-                          <input
-                            type="hidden"
-                            name={key}
-                            value={row.mapping![key]}
-                          />
-                        ))}
-                        <input
-                          type="hidden"
-                          name="operation"
-                          value={
-                            selected.service === "seerr"
-                              ? "remove-account-and-requests"
-                              : "disable"
-                          }
-                        />
-                        <label>
-                          Reason
-                          <textarea
-                            name="reason"
-                            required
-                            maxLength={500}
-                            rows={2}
-                          ></textarea>
-                        </label>
-                        <button>
-                          {selected.service === "seerr"
-                            ? "Review account and request removal"
-                            : "Review native account disable"}
-                        </button>
-                        <p class="muted">
-                          Separate from Auth access and session revocation.
-                          Review reads the live native account; writes require
-                          separately configured operator capability.
-                        </p>
-                      </form>
-                    ) : (
-                      <p class="muted">
-                        No automatic repair, reassignment or deletion. Review
-                        native accounts, eligibility and sessions independently.
-                      </p>
+                        {row.mapping && (
+                          <>
+                            <p>
+                              Issuer: <code>{row.mapping.issuer}</code>
+                            </p>
+                            <p>
+                              Auth subject: <code>{row.mapping.subject}</code>
+                            </p>
+                          </>
+                        )}
+                      </details>
                     )}
                   </div>
+                  {screen.nativeId && (
+                    <div>
+                      {screen.mode === "detail" ? (
+                        <>
+                          <p>
+                            {row.mapping
+                              ? `Linked Auth identity: ${people.find((person) => person.issuer === row.mapping!.issuer && person.subject === row.mapping!.subject)?.name || "Unavailable"}`
+                              : "No Auth identity linked."}
+                          </p>
+                          {row.state === "native-only" && row.account ? (
+                            <a
+                              class="button primary"
+                              href={`${detailUrl(screen.nativeId)}/link`}
+                            >
+                              Link Auth identity
+                            </a>
+                          ) : row.mapping &&
+                            row.account &&
+                            !row.account.administrator &&
+                            [
+                              "linked",
+                              "auth-inactive",
+                              "native-disabled",
+                            ].includes(row.state) &&
+                            ["jellyfin", "seerr"].includes(selected.service) ? (
+                            <a
+                              class="button"
+                              href={`${detailUrl(screen.nativeId)}/action`}
+                            >
+                              {selected.service === "seerr"
+                                ? "Remove account and requests"
+                                : "Disable account"}
+                            </a>
+                          ) : (
+                            <p>No automatic changes are available.</p>
+                          )}
+                        </>
+                      ) : screen.mode === "link" &&
+                        row.state === "native-only" &&
+                        row.account ? (
+                        <form
+                          method="post"
+                          action={`${base(selected)}/preview`}
+                          class="form-stack"
+                        >
+                          <input
+                            type="hidden"
+                            name="csrf"
+                            value={context.csrf}
+                          />
+                          <input
+                            type="hidden"
+                            name="nativeId"
+                            value={row.account.nativeId}
+                          />
+                          <label>
+                            Existing Auth identity
+                            <select name="subject" required>
+                              <option value="">Choose an exact identity</option>
+                              {people
+                                .filter((person) => person.active)
+                                .map((person) => (
+                                  <option value={person.subject}>
+                                    {person.name} · {person.subject}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+                          <label>
+                            Reason
+                            <textarea
+                              name="reason"
+                              required
+                              maxLength={500}
+                              rows={2}
+                            ></textarea>
+                          </label>
+                          <button>Review identity link</button>
+                          <p class="muted">
+                            Accounts stay unchanged until you explicitly review
+                            a link.
+                          </p>
+                        </form>
+                      ) : screen.mode === "action" &&
+                        row.mapping &&
+                        row.account &&
+                        !row.account.administrator &&
+                        ["linked", "auth-inactive", "native-disabled"].includes(
+                          row.state,
+                        ) &&
+                        ["jellyfin", "seerr"].includes(selected.service) ? (
+                        <form
+                          method="post"
+                          action="/manage/media/actions/preview"
+                          class="form-stack"
+                        >
+                          <input
+                            type="hidden"
+                            name="csrf"
+                            value={context.csrf}
+                          />
+                          {(
+                            [
+                              "service",
+                              "instance",
+                              "nativeId",
+                              "issuer",
+                              "subject",
+                            ] as const
+                          ).map((key) => (
+                            <input
+                              type="hidden"
+                              name={key}
+                              value={row.mapping![key]}
+                            />
+                          ))}
+                          <input
+                            type="hidden"
+                            name="operation"
+                            value={
+                              selected.service === "seerr"
+                                ? "remove-account-and-requests"
+                                : "disable"
+                            }
+                          />
+                          <label>
+                            Reason
+                            <textarea
+                              name="reason"
+                              required
+                              maxLength={500}
+                              rows={2}
+                            ></textarea>
+                          </label>
+                          <button>
+                            {selected.service === "seerr"
+                              ? "Review account and request removal"
+                              : "Review native account disable"}
+                          </button>
+                          <p class="muted">
+                            Separate from Auth access and session revocation.
+                            Review reads the live native account; writes require
+                            separately configured operator capability.
+                          </p>
+                        </form>
+                      ) : (
+                        <p class="muted">
+                          No automatic repair, reassignment or deletion. Review
+                          native accounts, eligibility and sessions
+                          independently.
+                        </p>
+                      )}
+                    </div>
+                  )}
                 </section>
               ))
             )}
@@ -404,8 +598,11 @@ function AccountLinkReviewPage(
             <button class="primary">Record reviewed identity link</button>
           </form>
         )}
-        <a class="text-link" href={base(mapping)}>
-          Return to native inventory
+        <a
+          class="text-link"
+          href={`${base(mapping)}/accounts/${encodeURIComponent(mapping.nativeId)}`}
+        >
+          Back to account
         </a>
       </Document>
     );
@@ -420,9 +617,13 @@ export const renderConnectedAccounts = (
   nonce: string,
   reviews: Review[] = [],
   actions: ServiceAction[] = [],
+  screen: { nativeId?: string; mode?: string; q?: string; state?: string } = {},
+  creations: CreationHistory[] = [],
 ) =>
   renderToString(
     <ConnectedAccountsPage
+      creations={creations}
+      screen={screen}
       instances={instances}
       selected={selected}
       inventory={inventory}
@@ -567,8 +768,11 @@ function AccountActionPage(
             )}
           </section>
         )}
-        <a class="text-link" href={base(mapping)}>
-          Return to native inventory
+        <a
+          class="text-link"
+          href={`${base(mapping)}/accounts/${encodeURIComponent(mapping.nativeId)}`}
+        >
+          Back to account
         </a>
       </Document>
     );

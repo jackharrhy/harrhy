@@ -35,38 +35,45 @@ function ProvisioningPage(
       selected,
       people,
       libraries,
-      actions,
       context,
     } = handle.props;
     return (
       <Document {...context} title="Create native account" active="services">
-        <h1>Create native account</h1>
-        <p>
-          Create a new Jellyfin account for an existing active Auth identity.
-          Existing native accounts are never replaced or matched by name.
-        </p>
-        <form
-          method="get"
-          action="/manage/media/provisioning"
-          class="form-stack"
-        >
-          <label>
-            Jellyfin instance
-            <select name="instance" required aria-label="Jellyfin instance">
-              <option value="">Choose an instance</option>
-              {instances.map((item) => (
-                <option
-                  value={item.instance}
-                  selected={item.instance === selected?.instance}
+        <nav aria-label="Breadcrumb">
+          <a href="/manage/media">Service accounts</a>
+          {selected && (
+            <>
+              {" "}
+              /{" "}
+              <a
+                href={`/manage/media/${selected.service}/${selected.instance}`}
+              >
+                {selected.name} users
+              </a>
+            </>
+          )}
+        </nav>
+        <h1>
+          {selected?.service === "seerr"
+            ? "Import account into Seerr"
+            : selected
+              ? "Create Jellyfin account"
+              : "Choose a service"}
+        </h1>
+        {!selected && (
+          <nav aria-label="Creation service">
+            {instances.map((item) => (
+              <p>
+                <a
+                  href={`/manage/media/provisioning?service=${item.service}&instance=${item.instance}`}
                 >
                   {item.name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button>Load available libraries</button>
-        </form>
-        {selected && (
+                </a>
+              </p>
+            ))}
+          </nav>
+        )}
+        {selected?.service === "jellyfin" && (
           <section>
             <h2>{selected.name}</h2>
             {libraries.length === 0 ? (
@@ -140,84 +147,73 @@ function ProvisioningPage(
             )}
           </section>
         )}
-        <section>
-          <h2>Import one Jellyfin account into Seerr</h2>
-          <p>
-            Requires a separately confirmed exact-ID Jellyfin mapping and an
-            active Auth identity. No existing Seerr account is changed or
-            automatically linked.
-          </p>
-          {seerrInstances.length && sourceMappings.length ? (
-            <form
-              method="post"
-              action="/manage/media/provisioning/seerr-preview"
-              class="form-stack"
-            >
-              <input type="hidden" name="csrf" value={context.csrf} />
-              <label>
-                Seerr instance
-                <select name="instance" required aria-label="Seerr instance">
-                  <option value="">Choose an instance</option>
-                  {seerrInstances.map((item) => (
-                    <option value={item.instance}>{item.name}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Confirmed Jellyfin mapping
-                <select
-                  name="sourceMapping"
-                  required
-                  aria-label="Confirmed Jellyfin mapping"
-                >
-                  <option value="">
-                    Choose exact native ID and Auth subject
-                  </option>
-                  {sourceMappings.map((item) => (
-                    <option
-                      value={JSON.stringify([
-                        item.instance,
-                        item.nativeId,
-                        item.issuer,
-                        item.subject,
-                      ])}
-                    >
-                      {item.instance} · {item.nativeId} · {item.subject}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Import reason
-                <textarea name="reason" required maxLength={500} />
-              </label>
-              <button>Review Seerr exact-ID import</button>
-            </form>
-          ) : (
+        {selected?.service === "seerr" && (
+          <section>
+            <h2>Import one Jellyfin account into Seerr</h2>
             <p>
-              Configure a Seerr instance and confirm an explicit Jellyfin
-              mapping before importing.
+              Requires a separately confirmed exact-ID Jellyfin mapping and an
+              active Auth identity. No existing Seerr account is changed or
+              automatically linked.
             </p>
-          )}
-        </section>
-        <section>
-          <h2>Your creation reviews</h2>
-          {actions.length ? (
-            <ul>
-              {actions.map((action) => (
-                <li>
-                  <a href={`/manage/media/provisioning/${action.id}`}>
-                    {action.body.review.username} · {action.state}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>No creation reviews yet.</p>
-          )}
-        </section>
-        <a class="text-link" href="/manage/media">
-          Return to media identities
+            {seerrInstances.length && sourceMappings.length ? (
+              <form
+                method="post"
+                action="/manage/media/provisioning/seerr-preview"
+                class="form-stack"
+              >
+                <input type="hidden" name="csrf" value={context.csrf} />
+                <input
+                  type="hidden"
+                  name="instance"
+                  value={selected.instance}
+                />
+                <label>
+                  Confirmed Jellyfin mapping
+                  <select
+                    name="sourceMapping"
+                    required
+                    aria-label="Confirmed Jellyfin mapping"
+                  >
+                    <option value="">
+                      Choose exact native ID and Auth subject
+                    </option>
+                    {sourceMappings.map((item) => (
+                      <option
+                        value={JSON.stringify([
+                          item.instance,
+                          item.nativeId,
+                          item.issuer,
+                          item.subject,
+                        ])}
+                      >
+                        {item.instance} · {item.nativeId} · {item.subject}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  Import reason
+                  <textarea name="reason" required maxLength={500} />
+                </label>
+                <button>Review Seerr exact-ID import</button>
+              </form>
+            ) : (
+              <p>
+                Configure a Seerr instance and confirm an explicit Jellyfin
+                mapping before importing.
+              </p>
+            )}
+          </section>
+        )}
+        <a
+          class="text-link"
+          href={
+            selected
+              ? `/manage/media/${selected.service}/${selected.instance}`
+              : "/manage/media"
+          }
+        >
+          Back to users
         </a>
       </Document>
     );

@@ -89,11 +89,46 @@ try {
   await page
     .getByRole("link", { name: "Service accounts", exact: true })
     .click();
+  assert.equal(await page.locator("main form").count(), 0);
+  assert.equal(
+    await page.getByText("Morgan Native", { exact: true }).count(),
+    0,
+  );
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    await capture(page, `media-entry-${width}`);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page
     .getByRole("link", { name: "Synthetic Jellyfin", exact: true })
     .click();
+  assert.equal(await page.locator('main form[method="post"]').count(), 0);
+  await page.getByLabel("Find account", { exact: true }).fill("Morgan");
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.reload();
   assert.equal(
-    await page.getByText("Not linked to Auth", { exact: true }).count(),
+    await page.getByLabel("Find account", { exact: true }).inputValue(),
+    "Morgan",
+  );
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Morgan Native", exact: true })
+      .count(),
+    1,
+  );
+  await page
+    .getByLabel("Find account", { exact: true })
+    .fill("no-matching-user");
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page
+    .getByText("No accounts match these filters.", { exact: false })
+    .waitFor();
+  await page.getByRole("link", { name: "Reset filters", exact: true }).click();
+  assert.equal(
+    await page
+      .locator("section")
+      .getByText("Not linked to Auth", { exact: true })
+      .count(),
     2,
   );
   await capture(page, "media-desktop");
@@ -107,6 +142,37 @@ try {
     await capture(page, `media-${width}`);
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("link", { name: "Morgan Native", exact: true }).click();
+  const detailAddress = page.url();
+  await page.reload();
+  assert.equal(page.url(), detailAddress);
+  assert.equal(await page.locator('main form[method="post"]').count(), 0);
+  assert.equal(
+    await page.getByText("Casey Requests", { exact: true }).count(),
+    0,
+  );
+  assert.equal(
+    (await context.request.get(`${detailAddress}-missing`)).status(),
+    404,
+  );
+  await page.goBack();
+  await page.getByRole("link", { name: "Morgan Native", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await page.waitForURL(detailAddress);
+  assert.equal(page.url(), detailAddress);
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await capture(page, `media-detail-${width}`);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page
+    .getByRole("link", { name: "Link Auth identity", exact: true })
+    .click();
   const mediaForm = page
     .locator("section")
     .filter({
@@ -146,11 +212,11 @@ try {
     .getByRole("heading", { name: "Identity link recorded", exact: true })
     .waitFor();
   await page
-    .getByRole("link", { name: "Return to native inventory", exact: true })
+    .getByRole("link", { name: "Back to account", exact: true })
     .click();
   assert.equal(
     await page.getByText("Not linked to Auth", { exact: true }).count(),
-    1,
+    0,
   );
   assert.equal(await page.getByText("Linked", { exact: true }).count(), 1);
   assert.equal(fixture.writes, 0);
@@ -158,6 +224,9 @@ try {
     JSON.parse(await readFile(`${directory}/media-snapshot.json`, "utf8")),
     fixture.nativeSnapshot,
   );
+  await page
+    .getByRole("link", { name: "Disable account", exact: true })
+    .click();
   const nativeActionForm = page
     .locator("section")
     .filter({
@@ -203,14 +272,14 @@ try {
     form: { csrf: nativeCsrf, confirmed: "true" },
   });
   assert.equal(fixture.nativeWrites, 1);
-  await page.goto(origin + "/manage/media");
-  await page.getByRole("link", { name: /jellyfin.*disable/ }).click();
+  await page.goto(origin + "/manage/media/history");
+  await page.getByRole("link", { name: /^disable/ }).click();
   await page
     .getByRole("status")
     .filter({ hasText: "Action status: disabled" })
     .waitFor();
   await page
-    .getByRole("link", { name: "Return to native inventory", exact: true })
+    .getByRole("link", { name: "Back to account", exact: true })
     .click();
   await writeFile(
     `${directory}/media-snapshot.json`,
@@ -234,10 +303,10 @@ try {
     `${directory}/media-snapshot.json`,
     JSON.stringify(fixture.nativeSnapshot),
   );
-  await page.goto(origin + "/manage/media");
+  await page.goto(origin + "/manage/media/history");
   await page
     .getByRole("link", {
-      name: "Verified synthetic exact IDs; preserve the other native-only account.",
+      name: "Morgan Native · complete",
       exact: true,
     })
     .click();
@@ -245,6 +314,10 @@ try {
     .getByRole("heading", { name: "Identity link recorded", exact: true })
     .waitFor();
   await page.goto(origin + "/manage/media/seerr/synthetic-server");
+  await page.getByRole("link", { name: "Casey Requests", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Link Auth identity", exact: true })
+    .click();
   const seerrForm = page
     .locator("section")
     .filter({
@@ -263,7 +336,10 @@ try {
     .getByRole("button", { name: "Record reviewed identity link", exact: true })
     .click();
   await page
-    .getByRole("link", { name: "Return to native inventory", exact: true })
+    .getByRole("link", { name: "Back to account", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "Remove account and requests", exact: true })
     .click();
   const seerrActionForm = page
     .locator("section")
@@ -595,27 +671,12 @@ try {
     ),
   );
   await recipientContext.close();
-  await page.goto(origin + "/manage/media");
-  await page
-    .getByRole("link", {
-      name: "Create service account",
-      exact: true,
-    })
-    .click();
+  await page.goto(origin + "/manage/media/jellyfin/synthetic-server");
+  await page.getByRole("link", { name: "Create account", exact: true }).click();
   await capture(page, "media-provisioning-initial");
-  assert.equal(
-    await page
-      .getByRole("heading", { name: "Create native account", exact: true })
-      .count(),
-    1,
-    await page.locator("main").innerText(),
-  );
   await page
-    .getByLabel("Jellyfin instance", { exact: true })
-    .selectOption("synthetic-server");
-  await page
-    .getByRole("button", { name: "Load available libraries", exact: true })
-    .click();
+    .getByRole("heading", { name: "Create Jellyfin account", exact: true })
+    .waitFor();
   await page
     .getByLabel("Existing Auth identity", { exact: true })
     .selectOption(fixture.users.at(-1).id);
@@ -694,6 +755,12 @@ try {
     JSON.stringify(fixture.nativeSnapshot),
   );
   await page.goto(origin + "/manage/media/jellyfin/synthetic-server");
+  await page
+    .getByRole("link", { name: "synthetic-recipient", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "Link Auth identity", exact: true })
+    .click();
   const createdMappingForm = page
     .locator("section")
     .filter({
@@ -719,10 +786,10 @@ try {
   await page
     .getByRole("heading", { name: "Identity link recorded", exact: true })
     .waitFor();
-  await page.goto(origin + "/manage/media/provisioning");
-  await page
-    .getByLabel("Seerr instance", { exact: true })
-    .selectOption("synthetic-server");
+  await page.goto(
+    origin +
+      "/manage/media/provisioning?service=seerr&instance=synthetic-server",
+  );
   await page
     .getByLabel("Confirmed Jellyfin mapping", { exact: true })
     .selectOption(

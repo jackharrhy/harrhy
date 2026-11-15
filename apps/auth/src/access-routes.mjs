@@ -247,14 +247,17 @@ export function createAccessRoutes({
       ) {
         const instances = mediaInventory
           .instances()
-          .filter((item) => item.service === "jellyfin");
+          .filter((item) => ["jellyfin", "seerr"].includes(item.service));
+        const service = url.searchParams.get("service") || "jellyfin";
         const instance = url.searchParams.get("instance");
-        const selected = instances.find((item) => item.instance === instance);
-        if (instance && !selected)
-          throw fail(404, "Jellyfin instance not found.");
-        const libraries = selected
-          ? await access.provisioning.libraries(selected)
-          : [];
+        const selected = instances.find(
+          (item) => item.instance === instance && item.service === service,
+        );
+        if (instance && !selected) throw fail(404, "Media instance not found.");
+        const libraries =
+          selected?.service === "jellyfin"
+            ? await access.provisioning.libraries(selected)
+            : [];
         const identities = (await people()).map((user) => ({
           subject: user.id,
           name: user.human?.profile?.displayName || user.userName || user.id,
@@ -350,7 +353,10 @@ export function createAccessRoutes({
           active: user.state === "USER_STATE_ACTIVE",
         }));
       const instances = mediaInventory.instances();
-      if (request.method === "GET" && url.pathname === "/manage/media") {
+      if (
+        request.method === "GET" &&
+        ["/manage/media", "/manage/media/history"].includes(url.pathname)
+      ) {
         await sendRemix((nonce) =>
           renderConnectedAccounts(
             instances,
@@ -361,6 +367,10 @@ export function createAccessRoutes({
             nonce,
             access.media.reviews(),
             access.mediaActions
+              .list()
+              .filter((action) => action.actor === session.userId),
+            { mode: url.pathname.endsWith("/history") ? "history" : undefined },
+            access.provisioning
               .list()
               .filter((action) => action.actor === session.userId),
           ),
@@ -400,7 +410,7 @@ export function createAccessRoutes({
         return true;
       }
       const target = url.pathname.match(
-        /^\/manage\/media\/([a-z][a-z0-9-]{0,99})\/([A-Za-z0-9-]{1,100})(\/preview)?$/,
+        /^\/manage\/media\/([a-z][a-z0-9-]{0,99})\/([A-Za-z0-9-]{1,100})(\/preview|\/accounts\/([^/]+)(?:\/(link|action))?)?$/,
       );
       const selected =
         target &&
@@ -413,12 +423,33 @@ export function createAccessRoutes({
         selected.instance,
       );
       const current = await identities();
-      if (request.method === "GET" && !target[3]) {
+      if (request.method === "GET" && target[3] !== "/preview") {
         const result = accountDiscrepancies({
           snapshot: inventory,
           mappings: access.media.mappings(),
           people: current,
         });
+        let nativeId;
+        try {
+          nativeId = target[4] ? decodeURIComponent(target[4]) : undefined;
+        } catch {
+          throw fail(400, "Invalid native account identifier.");
+        }
+        if (
+          nativeId &&
+          result.state === "available" &&
+          !result.rows.some(
+            (row) =>
+              (row.account?.nativeId ?? row.mapping?.nativeId) === nativeId,
+          )
+        )
+          throw fail(404, "Native account not found.");
+        const screen = {
+          nativeId,
+          mode: nativeId ? target[5] || "detail" : undefined,
+          q: (url.searchParams.get("q") || "").slice(0, 200),
+          state: url.searchParams.get("state") || "",
+        };
         await sendRemix((nonce) =>
           renderConnectedAccounts(
             instances,
@@ -427,6 +458,9 @@ export function createAccessRoutes({
             current,
             context,
             nonce,
+            [],
+            [],
+            screen,
           ),
         );
         return true;
