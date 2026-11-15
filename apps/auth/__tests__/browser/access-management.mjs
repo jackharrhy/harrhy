@@ -10,6 +10,8 @@ import { chromium } from "playwright";
 import { readFileSync } from "node:fs";
 import { createAccessStore } from "../../src/access-store.mjs";
 
+const preview = process.env.AUTH_MANAGEMENT_PREVIEW === "1";
+const previewOrigin = "https://media-mogul.pi.jackharrhy.dev";
 const directory = await mkdtemp(`${tmpdir()}/auth-management-`);
 const applications = JSON.parse(
   readFileSync(new URL("../../config/applications.json", import.meta.url)),
@@ -521,7 +523,9 @@ const provider = createServer(async (request, response) => {
 });
 await new Promise((resolve) => provider.listen(0, "127.0.0.1", resolve));
 const reservation = createServer();
-await new Promise((resolve) => reservation.listen(0, "127.0.0.1", resolve));
+await new Promise((resolve) =>
+  reservation.listen(preview ? 19067 : 0, "127.0.0.1", resolve),
+);
 const port = reservation.address().port;
 await new Promise((resolve) => reservation.close(resolve));
 execFileSync(
@@ -570,10 +574,14 @@ const proxy = createHttpsServer(
   },
 );
 await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
-const origin = `https://127.0.0.1:${proxy.address().port}`;
+const origin = preview
+  ? previewOrigin
+  : `https://127.0.0.1:${proxy.address().port}`;
 const server = spawn(process.execPath, ["src/server.mjs"], {
   env: {
-    ...process.env,
+    PATH: process.env.PATH,
+    HOME: directory,
+    LISTEN_HOST: "127.0.0.1",
     PORT: String(port),
     PUBLIC_ORIGIN: origin,
     ZITADEL_API_URL: `http://127.0.0.1:${provider.address().port}`,
@@ -613,6 +621,20 @@ async function capture(page, name) {
 }
 try {
   await once(server.stdout, "data");
+  if (preview) {
+    console.log(`Synthetic management preview ready: ${origin}`);
+    await new Promise((resolve) => {
+      const finish = () => {
+        clearTimeout(timer);
+        process.off("SIGTERM", finish);
+        process.off("SIGINT", finish);
+        resolve();
+      };
+      const timer = setTimeout(finish, 55 * 60 * 1000);
+      process.once("SIGTERM", finish);
+      process.once("SIGINT", finish);
+    });
+  } else {
   browser = await chromium.launch();
   const context = await browser.newContext({
     ignoreHTTPSErrors: true,
@@ -1391,6 +1413,7 @@ try {
   assert(!logs.includes("SyntaxError"), "Server syntax failure");
   await memberContext.close();
   await context.close();
+  }
 } finally {
   await browser?.close();
   server.kill();
