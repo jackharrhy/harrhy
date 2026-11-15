@@ -399,7 +399,10 @@ async function handleBrowser(request, routeAction, routePhase) {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     // HTML forms need a same-origin referrer so browsers send their real Origin.
-    "Referrer-Policy": "same-origin",
+    "Referrer-Policy":
+      url.pathname === "/invitation" && url.searchParams.size
+        ? "no-referrer"
+        : "same-origin",
     "Content-Security-Policy": contentSecurityPolicy(undefined, {
       scripts: url.pathname === "/login",
     }),

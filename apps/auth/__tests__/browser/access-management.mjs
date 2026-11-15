@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
+import { createServer as createHttpsServer } from "node:https";
+import { execFileSync } from "node:child_process";
 import { mkdtemp, writeFile, readFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
@@ -72,6 +74,9 @@ for (const [id, role] of [
 }
 let writes = 0;
 let identityWrites = 0;
+let invitationLink;
+const recipientEffects = [];
+let recipientPassword;
 const sessions = new Map();
 const store = createAccessStore({
   filename: `${directory}/access.sqlite`,
@@ -129,7 +134,38 @@ const provider = createServer(async (request, response) => {
       ? null
       : request.url.match(/^\/v2\/sessions\/([^/]+)$/);
   const userPath = request.url.match(/^\/management\/v1\/users\/([^/]+)$/);
-  if (request.url === "/v2/users/new" && request.method === "POST") {
+  const identityPath = request.url.match(/^\/v2\/users\/([^/]+)(.*)$/);
+  if (identityPath && identityPath[1] !== "new") {
+    const user = users.find((item) => item.id === identityPath[1]);
+    assert(user, "Only the explicitly created identity may be accessed");
+    const action = identityPath[2];
+    if (!action) result = { user: { ...user, userId: user.id } };
+    else if (action === "/invite_code") {
+      assert.equal(request.method, "POST");
+      invitationLink = data.sendCode.urlTemplate
+        .replace("{{.UserID}}", user.id)
+        .replace("{{.Code}}", "synthetic-invitation-proof")
+        .replace("{{.OrgID}}", "org");
+      recipientEffects.push("send");
+      result = {};
+    } else if (action === "/invite_code/verify") {
+      assert.equal(data.verificationCode, "synthetic-invitation-proof");
+      recipientEffects.push("verify");
+      result = {};
+    } else if (action === "/password_reset") {
+      assert.deepEqual(recipientEffects, ["send", "verify"]);
+      assert.deepEqual(data, { returnCode: {} });
+      recipientEffects.push("reset");
+      result = { verificationCode: "synthetic-password-proof" };
+    } else if (action === "/password") {
+      assert.equal(data.verificationCode, "synthetic-password-proof");
+      recipientPassword = data.newPassword.password;
+      recipientEffects.push("password");
+      result = {};
+    } else assert.fail(`Unexpected identity endpoint: ${action}`);
+  } else if (request.url === "/management/v1/policies/password/complexity") {
+    result = { policy: { minLength: 12 } };
+  } else if (request.url === "/v2/users/new" && request.method === "POST") {
     assert.equal(data.human.password, undefined);
     assert.deepEqual(data.human.email.returnCode, {});
     assert.equal(data.organizationId, "org");
@@ -149,7 +185,13 @@ const provider = createServer(async (request, response) => {
     const user = users.find(
       (candidate) => candidate.userName === data.checks.user.loginName,
     );
-    if (!user || data.checks.password.password !== "fixture-password") {
+    if (
+      !user ||
+      data.checks.password.password !==
+        (user.userName === "new-person"
+          ? recipientPassword
+          : "fixture-password")
+    ) {
       response.writeHead(401);
       response.end("{}");
       return;
@@ -253,7 +295,53 @@ const reservation = createServer();
 await new Promise((resolve) => reservation.listen(0, "127.0.0.1", resolve));
 const port = reservation.address().port;
 await new Promise((resolve) => reservation.close(resolve));
-const origin = `http://127.0.0.1:${port}`;
+execFileSync(
+  "openssl",
+  [
+    "req",
+    "-x509",
+    "-newkey",
+    "rsa:2048",
+    "-nodes",
+    "-days",
+    "1",
+    "-subj",
+    "/CN=localhost",
+    "-keyout",
+    `${directory}/tls.key`,
+    "-out",
+    `${directory}/tls.crt`,
+  ],
+  { stdio: "ignore" },
+);
+const proxy = createHttpsServer(
+  {
+    key: await readFile(`${directory}/tls.key`),
+    cert: await readFile(`${directory}/tls.crt`),
+  },
+  (incoming, outgoing) => {
+    const upstream = httpRequest(
+      {
+        hostname: "127.0.0.1",
+        port,
+        path: incoming.url,
+        method: incoming.method,
+        headers: incoming.headers,
+      },
+      (reply) => {
+        outgoing.writeHead(reply.statusCode, reply.headers);
+        reply.pipe(outgoing);
+      },
+    );
+    upstream.on("error", () => {
+      outgoing.writeHead(502);
+      outgoing.end();
+    });
+    incoming.pipe(upstream);
+  },
+);
+await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+const origin = `https://127.0.0.1:${proxy.address().port}`;
 const server = spawn(process.execPath, ["src/server.mjs"], {
   env: {
     ...process.env,
@@ -297,6 +385,7 @@ try {
   await once(server.stdout, "data");
   browser = await chromium.launch();
   const context = await browser.newContext({
+    ignoreHTTPSErrors: true,
     viewport: { width: 1440, height: 1000 },
   });
   const page = await context.newPage();
@@ -630,7 +719,70 @@ try {
     403,
   );
   assert.equal(identityWrites, 1);
-  const memberContext = await browser.newContext();
+  const reviewUrl = page.url();
+  await page
+    .getByLabel("Retype the exact invitation recipient")
+    .fill("synthetic@example.invalid");
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Send invitation", exact: true })
+    .click();
+  await page
+    .getByText("Invitation requested; recipient setup pending", { exact: true })
+    .waitFor();
+  assert.deepEqual(recipientEffects, ["send"]);
+  const recipientContext = await browser.newContext({
+    ignoreHTTPSErrors: true,
+  });
+  const recipient = await recipientContext.newPage();
+  const invitationRedirect = await recipientContext.request.get(
+    invitationLink,
+    {
+      maxRedirects: 0,
+    },
+  );
+  assert.equal(invitationRedirect.status(), 303);
+  assert.equal(invitationRedirect.headers()["referrer-policy"], "no-referrer");
+  const recipientReferrers = [];
+  recipient.on("request", (request) => {
+    recipientReferrers.push(request.headers().referer || "");
+  });
+  await recipient.goto(invitationLink);
+  await recipient.waitForURL(origin + "/invitation");
+  assert.deepEqual(recipientEffects, ["send"]);
+  await recipient
+    .locator('input[name="password"]')
+    .fill("Synthetic-passphrase-42");
+  await recipient
+    .locator('input[name="confirmation"]')
+    .fill("Synthetic-passphrase-42");
+  await recipient
+    .getByRole("button", { name: "Finish account setup", exact: true })
+    .click();
+  await recipient.getByText("Account ready", { exact: true }).waitFor();
+  assert.deepEqual(recipientEffects, ["send", "verify", "reset", "password"]);
+  await page.goto(reviewUrl);
+  await page.getByText("Recipient password set", { exact: true }).waitFor();
+  await recipient.goto(origin + "/login");
+  await recipient.getByLabel("Username or email").fill("new-person");
+  await recipient
+    .getByLabel("Password", { exact: true })
+    .fill("Synthetic-passphrase-42");
+  await recipient.getByRole("button", { name: "Sign in", exact: true }).click();
+  await recipient.waitForURL(origin + "/");
+  assert.equal(
+    grants.filter((grant) => grant.userId === users.at(-1).id).length,
+    0,
+  );
+  assert(!logs.includes("synthetic-invitation-proof"));
+  assert(!logs.includes("Synthetic-passphrase-42"));
+  assert(
+    recipientReferrers.every(
+      (value) => !value.includes("synthetic-invitation-proof"),
+    ),
+  );
+  await recipientContext.close();
+  const memberContext = await browser.newContext({ ignoreHTTPSErrors: true });
   const memberPage = await memberContext.newPage();
   await memberPage.goto(origin + "/login");
   await memberPage.getByLabel("Username or email").fill("member");
@@ -674,7 +826,7 @@ try {
   assert.equal(forged.status(), 403);
   assert.deepEqual(errors, []);
   console.log(
-    "PASS access UI Chromium: compact login, directory, explicit admin membership, groups preview/apply, native v2 write, overlapping role preservation, sessions, member denial, forged Origin, mobile layout.",
+    "PASS access UI Chromium: HTTPS reviewed creation, separate invitation, recipient proof/password and normal sign-in without grants; compact login, directory, groups preview/apply, role preservation, sessions, member denial, forged Origin, mobile layout.",
   );
   assert(!logs.includes("SyntaxError"), "Server syntax failure");
   await memberContext.close();
@@ -683,6 +835,7 @@ try {
   await browser?.close();
   server.kill();
   await once(server, "exit");
+  await new Promise((resolve) => proxy.close(resolve));
   await new Promise((resolve) => provider.close(resolve));
   await rm(directory, { recursive: true, force: true });
 }
