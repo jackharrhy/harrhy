@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./native": "./src/native.ts"
   },
   "scripts": {
     "typecheck": "tsrs --noEmit",
@@ -12,6 +13,7 @@
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
+    "@modelcontextprotocol/server": "2.4.0",
     "@harrhy/request-body": "0.1.0",
     "@harrhy/json-schema": "0.1.0",
     "@harrhy/logger": "0.1.0",
