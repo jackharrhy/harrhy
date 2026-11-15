@@ -44,12 +44,12 @@ function parseTarget(value: unknown): JellyfinTarget | SeerrTarget {
     };
   throw fail();
 }
-function parseBody(value: unknown): CreationBody {
+function assertCreationBody(value: unknown): asserts value is CreationBody {
   const body = record(value);
   const target = parseTarget(body.target);
-  const reason = text(body.reason);
+  text(body.reason);
   const review = record(body.review);
-  const username = text(review.username);
+  displayText(review.username);
   if (review.mapping !== "separate-exact-id-review") throw fail();
   if (target.service === "jellyfin") {
     if (
@@ -60,21 +60,12 @@ function parseBody(value: unknown): CreationBody {
       review.folders.length > 100
     )
       throw fail();
-    const folders = review.folders.map((entry: unknown) => {
+    for (const entry of review.folders) {
       const folder = record(entry);
-      return { id: text(folder.id), name: text(folder.name) };
-    });
-    return {
-      target,
-      reason,
-      review: {
-        username,
-        folders,
-        profile: review.profile,
-        nativePassword: review.nativePassword,
-        mapping: review.mapping,
-      },
-    };
+      text(folder.id);
+      displayText(folder.name);
+    }
+    return;
   }
   if (
     review.profile !== "exact-jellyfin-import-v1" ||
@@ -84,28 +75,21 @@ function parseBody(value: unknown): CreationBody {
     review.jellyfinNativeId !== target.sourceNativeId
   )
     throw fail();
-  return {
-    target,
-    reason,
-    review: {
-      username,
-      jellyfinNativeId: text(review.jellyfinNativeId),
-      profile: review.profile,
-      permissions: review.permissions,
-      permissionMeaning: review.permissionMeaning,
-      userType: review.userType,
-      mapping: review.mapping,
-    },
-  };
+}
+function displayText(value: unknown) {
+  if (typeof value !== "string" || !value.length || value.length > 500)
+    throw fail();
 }
 function decodeCreation(value: unknown): Creation {
   const row = record(value);
+  const body: unknown = JSON.parse(textBody(row.body));
+  assertCreationBody(body);
   const base = {
     ...row,
     id: text(row.id),
     actor: text(row.actor),
     created_at: text(row.created_at),
-    body: parseBody(JSON.parse(textBody(row.body))),
+    body,
   };
   if (!Number.isFinite(Date.parse(base.created_at))) throw fail();
   if (row.state === "created")
@@ -230,14 +214,10 @@ export function createMediaProvisioningLedger(
     list: () =>
       db
         .prepare(
-          "SELECT id FROM media_provisioning ORDER BY created_at DESC, rowid DESC LIMIT 100",
+          "SELECT * FROM media_provisioning ORDER BY created_at DESC, rowid DESC LIMIT 100",
         )
         .all()
-        .map(({ id }) => {
-          const action = get(text(id));
-          if (!action) throw fail();
-          return action;
-        }),
+        .map(decodeCreation),
     events: (id: string) =>
       db
         .prepare(

@@ -43,14 +43,13 @@ export function createMediaProvisioningAdapters(instances: Instance[] = []) {
     service: "seerr";
     instance: string;
   }): SeerrProvisioning;
-  function resolve(target: {
-    service: "jellyfin" | "seerr";
-    instance: string;
-  }) {
+  function resolve(target: { service: string; instance: string }) {
     const adapter =
       target.service === "jellyfin"
         ? jellyfin.get(target.instance)
-        : seerr.get(target.instance);
+        : target.service === "seerr"
+          ? seerr.get(target.instance)
+          : undefined;
     if (!adapter)
       throw Object.assign(
         new Error(

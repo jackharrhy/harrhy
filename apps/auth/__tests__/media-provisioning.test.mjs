@@ -190,6 +190,14 @@ test("Seerr import requires a fresh exact source mapping and blocks duplicate na
     db.prepare("UPDATE media_provisioning SET body=? WHERE id=?").run(
       JSON.stringify({
         ...review.body,
+        review: { ...review.body.review, username: " " },
+      }),
+      review.id,
+    );
+    assert.equal(ledger.get(review.id).body.review.username, " ");
+    db.prepare("UPDATE media_provisioning SET body=? WHERE id=?").run(
+      JSON.stringify({
+        ...review.body,
         review: {
           ...review.body.review,
           jellyfinNativeId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
@@ -236,6 +244,22 @@ test("persisted provisioning rejects crossed service reviews and impossible rece
     const update = db.prepare(
       "UPDATE media_provisioning SET state=?,native_id=?,body=? WHERE id=?",
     );
+    const extendedReview = {
+      ...action.body.review,
+      unexpected: "must-not-be-silently-normalized",
+      folders: action.body.review.folders.map((folder) => ({
+        ...folder,
+        name: " ",
+        unexpected: true,
+      })),
+    };
+    update.run(
+      "review",
+      null,
+      JSON.stringify({ ...action.body, review: extendedReview }),
+      action.id,
+    );
+    assert.deepEqual(ledger.get(action.id).body.review, extendedReview);
     for (const [state, nativeId, storedBody] of [
       ["created", null, body],
       ["native-id-recorded", "receipt", body],

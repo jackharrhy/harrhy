@@ -34,6 +34,13 @@ test("provisioning is default closed and uses only explicit Jellyfin write capab
       },
     ]),
   );
+  const withSeerr = createMediaProvisioningAdapters([
+    { ...config, service: "seerr" },
+  ]);
+  assert.throws(
+    () => withSeerr({ service: "unsupported", instance: config.instance }),
+    { status: 503 },
+  );
   assert.throws(() => createMediaProvisioningAdapters([config, config]));
   assert.throws(() =>
     createMediaProvisioningAdapters([{ ...config, service: "navidrome" }]),

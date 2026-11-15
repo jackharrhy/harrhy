@@ -1,4 +1,8 @@
-import type { Creation, Folder } from "./media-contracts.ts";
+import {
+  isJellyfinCreation,
+  type Creation,
+  type Folder,
+} from "./media-contracts.ts";
 import { type Handle } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { Document, type DocumentProps } from "./document.tsx";
@@ -224,7 +228,8 @@ function ProvisioningReviewPage(
 ) {
   return () => {
     const { action, context } = handle.props;
-    const { target, review, reason } = action.body;
+    const body = action.body;
+    const { target, review, reason } = body;
     return (
       <Document {...context} title="Review native creation" active="services">
         <h1>Review native creation</h1>
@@ -261,14 +266,15 @@ function ProvisioningReviewPage(
             </>
           )}
         </dl>
-        {target.service === "seerr" ? (
+        {!isJellyfinCreation(body) ? (
           <section>
             <h2>Seerr request and auto-approve · 160</h2>
             <p>
               Import only the exact Jellyfin account from{" "}
-              {target.sourceInstance}: <code>{target.sourceNativeId}</code>. Its
-              existence is checked through Seerr’s own configured Jellyfin
-              server; existing Seerr associations are rejected.
+              {body.target.sourceInstance}:{" "}
+              <code>{body.target.sourceNativeId}</code>. Its existence is
+              checked through Seerr’s own configured Jellyfin server; existing
+              Seerr associations are rejected.
             </p>
             <p>
               Native permission 160 means REQUEST (32) and AUTO_APPROVE (128).
@@ -289,10 +295,7 @@ function ProvisioningReviewPage(
           <>
             <h2>Selected-library playback</h2>
             <ul>
-              {(review.profile === "selected-library-playback-v1"
-                ? review.folders
-                : []
-              ).map((folder) => (
+              {body.review.folders.map((folder) => (
                 <li>
                   {folder.name} · {folder.id}
                 </li>
