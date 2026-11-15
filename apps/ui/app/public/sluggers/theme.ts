@@ -3,7 +3,7 @@ import { css } from "remix/component";
 
 export const sluggersTheme = themeStyles(
   composeTheme(cleanTheme, {
-    canvas: "#16418a",
+    canvas: "oklch(48.197% 0.17551 261.35)",
     surface: "#ffffff",
     elevated: "#ffffff",
     ink: "#17243b",
@@ -46,6 +46,7 @@ export const number = css({
   fontFamily: "SluggersRodin, system-ui, sans-serif",
   fontVariantNumeric: "tabular-nums",
   textAlign: "right",
+  whiteSpace: "nowrap",
 });
 export const heading = css({
   margin: "0 0 16px",

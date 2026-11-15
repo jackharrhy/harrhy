@@ -25,6 +25,7 @@ import {
   positions,
   initialLineup,
   frozenAppearances,
+  frozenHomeAppearances,
   lineupError,
   stat,
   innings,
@@ -74,6 +75,8 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
   let lineupTeamIndex = 0;
   let empty = false;
   let matchState = "incomplete";
+  let matchDay = 2;
+  let statsSide = "away";
   let slots = initialLineup();
   let captain = "Mario";
   let readonly = false;
@@ -173,6 +176,8 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
   }
   function scoresTable(pitching = false) {
     const incomplete = matchState === "incomplete";
+    const appearances =
+      statsSide === "away" ? frozenAppearances : frozenHomeAppearances;
     return (
       <TableContainer
         role="region"
@@ -197,7 +202,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {(pitching ? frozenAppearances.slice(0, 2) : frozenAppearances).map(
+            {(pitching ? appearances.slice(0, 2) : appearances).map(
               (slot, i) => (
                 <TableRow>
                   <TableHead scope="row" mix={cellName}>
@@ -243,7 +248,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
         data-sluggers
         data-league-id={league.id}
         data-season-id={league.seasonId}
-        data-match-id={`${league.id}-match-${view === "match" ? "2" : "3"}`}
+        data-match-id={`${league.id}-match-${view === "match" ? matchDay : 3}`}
         mix={[
           sluggersTheme,
           themeRoot,
@@ -253,8 +258,16 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
             minWidth: 0,
             overflowWrap: "anywhere",
             color: "#fff",
+            backgroundImage:
+              "radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%), radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%)",
+            backgroundSize: "112px 112px",
+            backgroundPosition: "0 0, 56px 56px",
             "& *": { boxSizing: "border-box" },
-            "@media(max-width: 600px)": { padding: "16px 10px" },
+            "@media(max-width: 600px)": {
+              padding: "16px 10px",
+              "--hui-control-height": "44px",
+              "--hui-button-height": "44px",
+            },
           }),
           ref((node) => {
             root = node;
@@ -263,7 +276,11 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
       >
         <Stack mix={css({ gap: "20px" })}>
           <Inline>
-            <Badge>Synthetic league preview</Badge>
+            <Badge
+              mix={css({ "--hui-muted": "#ffffff", "--hui-border": "#a9c5f4" })}
+            >
+              Synthetic league preview
+            </Badge>
             <span mix={css({ color: "#fff", fontSize: "13px" })}>
               No accounts, uploads or backend · reload resets changes
             </span>
@@ -295,7 +312,14 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                 {league.name} / {league.season}
               </p>
             </div>
-            <div mix={sheet}>
+            <div
+              mix={css({
+                background: "#fff",
+                color: "#17243b",
+                padding: "12px 16px",
+                borderRadius: "8px",
+              })}
+            >
               <Field id="sluggers-league" label="League">
                 <Select
                   key="league"
@@ -408,7 +432,15 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                                       >
                                         {row.name}
                                       </button>
-                                      <div mix={quiet}>{row.manager}</div>
+                                      <div
+                                        mix={css({
+                                          color: "#526079",
+                                          fontSize: "12px",
+                                          marginTop: "4px",
+                                        })}
+                                      >
+                                        {row.manager}
+                                      </div>
                                     </TableHead>
                                     {[
                                       row.wins,
@@ -444,6 +476,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                     <Button
                       mix={on("click", () => {
                         matchState = "scheduled";
+                        matchDay = 3;
                         changeView("match");
                       })}
                     >
@@ -462,7 +495,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
               <Stack mix={css({ gap: "20px" })}>
                 <Inline>
                   <Heading level={3} mix={heading}>
-                    Match day 2
+                    Match day {matchDay}
                   </Heading>
                   <Field id="sluggers-result" label="Result scenario">
                     <Select
@@ -534,7 +567,23 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                         ? "Incomplete capture: the sample tracker stopped early. Missing statistics stay unknown, not zero."
                         : "Complete sample capture. Result and evidence completeness are separate states."}
                     </Notice>
-                    <Heading level={4}>Frozen match appearances</Heading>
+                    <Field id="sluggers-stats-side" label="Statistics team">
+                      <Select
+                        defaultValue={statsSide}
+                        options={[
+                          { value: "away", label: `${team.name} · Away` },
+                          { value: "home", label: `${opponent.name} · Home` },
+                        ]}
+                        onValueChange={(value) => {
+                          statsSide = value;
+                          update();
+                        }}
+                      />
+                    </Field>
+                    <Heading level={4}>
+                      {statsSide === "away" ? team.name : opponent.name} ·
+                      frozen match appearances
+                    </Heading>
                     <p mix={quiet}>
                       Recorded at match start. Editing the team lineup does not
                       change these appearances.
@@ -546,7 +595,10 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                         gap: "8px",
                       })}
                     >
-                      {frozenAppearances.map((s, i) => (
+                      {(statsSide === "away"
+                        ? frozenAppearances
+                        : frozenHomeAppearances
+                      ).map((s, i) => (
                         <span
                           mix={css({
                             padding: "8px 10px",

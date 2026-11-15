@@ -119,6 +119,17 @@ export function initialLineup(): Slot[] {
   }));
 }
 export const frozenAppearances = initialLineup();
+export const frozenHomeAppearances: readonly Slot[] = [
+  "Wario",
+  "Waluigi",
+  "Bowser",
+  "Koopa Troopa",
+  "Toad",
+  "Toadette",
+  "Magikoopa",
+  "Petey Piranha",
+  "King Boo",
+].map((character, i) => ({ character, position: positions[i]! }));
 export function lineupError(slots: Slot[], captain: string): string | null {
   if (slots.length !== 9 || new Set(slots.map((s) => s.character)).size !== 9)
     return "Choose nine different characters.";
