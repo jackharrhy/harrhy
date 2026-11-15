@@ -43,26 +43,26 @@ async function signature(value: string, secret: string) {
 export function centralAuth(
   env: Bindings,
 ): { config: IdentityConfig; origin: string; ownerSubject: string } | null {
-  if (!env.TEA_AUTH_ISSUER) return null;
+  if (!env.HARRHY_AUTH_ISSUER) return null;
   const origin = env.TEA_EDITOR_ORIGIN;
   if (
-    !env.TEA_AUTH_CLIENT_ID ||
-    !env.TEA_AUTH_PROJECT_ID ||
-    !env.TEA_AUTH_ORGANIZATION_ID ||
-    !env.TEA_AUTH_OWNER_SUBJECT ||
+    !env.HARRHY_AUTH_CLIENT_ID ||
+    !env.HARRHY_AUTH_PROJECT_ID ||
+    !env.HARRHY_AUTH_ORGANIZATION_ID ||
+    !env.HARRHY_AUTH_OWNER_SUBJECT ||
     !origin ||
     new URL(origin).origin !== origin
   )
     throw new Error("CMS Edge Central Auth is incomplete");
   return {
     config: {
-      issuer: env.TEA_AUTH_ISSUER,
-      clientId: env.TEA_AUTH_CLIENT_ID,
-      projectId: env.TEA_AUTH_PROJECT_ID,
-      organizationId: env.TEA_AUTH_ORGANIZATION_ID,
+      issuer: env.HARRHY_AUTH_ISSUER,
+      clientId: env.HARRHY_AUTH_CLIENT_ID,
+      projectId: env.HARRHY_AUTH_PROJECT_ID,
+      organizationId: env.HARRHY_AUTH_ORGANIZATION_ID,
     },
     origin,
-    ownerSubject: env.TEA_AUTH_OWNER_SUBJECT,
+    ownerSubject: env.HARRHY_AUTH_OWNER_SUBJECT,
   };
 }
 

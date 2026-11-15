@@ -10,11 +10,11 @@ it("requires a preview signing secret only when Central mode exposes preview lin
   const env = {
     TEA_SESSION_SECRET: "session-secret",
     TEA_EDITOR_ORIGIN: "https://cms.example.test",
-    TEA_AUTH_ISSUER: "https://auth.example.test",
-    TEA_AUTH_CLIENT_ID: "client",
-    TEA_AUTH_PROJECT_ID: "project",
-    TEA_AUTH_ORGANIZATION_ID: "org",
-    TEA_AUTH_OWNER_SUBJECT: "owner",
+    HARRHY_AUTH_ISSUER: "https://auth.example.test",
+    HARRHY_AUTH_CLIENT_ID: "client",
+    HARRHY_AUTH_PROJECT_ID: "project",
+    HARRHY_AUTH_ORGANIZATION_ID: "org",
+    HARRHY_AUTH_OWNER_SUBJECT: "owner",
   } as Bindings;
   const config = { siteName: "CMS", collections: [] };
   createEdgeRouter(env, config);
@@ -188,11 +188,11 @@ it("routes Central editor login and rejects the prototype password session", asy
     TEA_SESSION_SECRET: "session-secret",
     TEA_PREVIEW_SECRET: "preview-secret",
     TEA_EDITOR_ORIGIN: "https://cms.example.test",
-    TEA_AUTH_ISSUER: "https://auth.example.test",
-    TEA_AUTH_CLIENT_ID: "client",
-    TEA_AUTH_PROJECT_ID: "project",
-    TEA_AUTH_ORGANIZATION_ID: "org",
-    TEA_AUTH_OWNER_SUBJECT: "owner",
+    HARRHY_AUTH_ISSUER: "https://auth.example.test",
+    HARRHY_AUTH_CLIENT_ID: "client",
+    HARRHY_AUTH_PROJECT_ID: "project",
+    HARRHY_AUTH_ORGANIZATION_ID: "org",
+    HARRHY_AUTH_OWNER_SUBJECT: "owner",
   } as unknown as Bindings;
   const app = createEdgeRouter(env, { siteName: "CMS", collections: [] });
   const oldCookie = await sessionCookie(

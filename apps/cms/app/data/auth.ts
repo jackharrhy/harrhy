@@ -23,8 +23,8 @@ export function createAuthStore(
   sqlite: DatabaseSync,
   central = false,
 ): AuthStore {
-  const ownerSubject = central ? process.env.TEA_AUTH_OWNER_SUBJECT : undefined;
-  const issuer = process.env.TEA_AUTH_ISSUER;
+  const ownerSubject = central ? process.env.HARRHY_AUTH_OWNER_SUBJECT : undefined;
+  const issuer = process.env.HARRHY_AUTH_ISSUER;
   const attempts = new Map<string, { count: number; until: number }>();
   let checking = 0;
 

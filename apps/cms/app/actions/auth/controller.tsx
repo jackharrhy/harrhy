@@ -91,7 +91,7 @@ export function createAuthController(
 ) {
   const central = centralAuth(
     site.origin,
-    process.env[`TEA_AUTH_${site.id.toUpperCase()}_CLIENT_ID`],
+    process.env[`HARRHY_AUTH_${site.id.toUpperCase()}_CLIENT_ID`],
   );
   const transactionCookie = `tea-${site.id}-oauth`;
   return createController(routes.auth, {

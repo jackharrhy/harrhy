@@ -19,15 +19,15 @@ const roleClaims = (roles: string[]) => ({
 
 it("binds one-use owner login to the host/client, preserves local links, and limits operator tickets and MCP", async () => {
   const values = {
-    TEA_AUTH_ISSUER: "https://issuer.example.test",
-    TEA_AUTH_PROJECT_ID: "cms-project",
-    TEA_AUTH_ORGANIZATION_ID: "cms-org",
-    TEA_AUTH_OWNER_SUBJECT: "reviewed-owner",
-    TEA_AUTH_OPERATOR_CLIENT_ID: "operator-client",
-    TEA_AUTH_ANDREW_CLIENT_ID: "andrew-client",
-    TEA_AUTH_LUKE_CLIENT_ID: "luke-client",
-    TEA_AUTH_INTROSPECTION_CLIENT_ID: "resource-client",
-    TEA_AUTH_INTROSPECTION_SECRET: "fixture-secret",
+    HARRHY_AUTH_ISSUER: "https://issuer.example.test",
+    HARRHY_AUTH_PROJECT_ID: "cms-project",
+    HARRHY_AUTH_ORGANIZATION_ID: "cms-org",
+    HARRHY_AUTH_OWNER_SUBJECT: "reviewed-owner",
+    HARRHY_AUTH_OPERATOR_CLIENT_ID: "operator-client",
+    HARRHY_AUTH_ANDREW_CLIENT_ID: "andrew-client",
+    HARRHY_AUTH_LUKE_CLIENT_ID: "luke-client",
+    HARRHY_AUTH_INTROSPECTION_CLIENT_ID: "resource-client",
+    HARRHY_AUTH_INTROSPECTION_SECRET: "fixture-secret",
     TEA_MCP_TOKEN: "legacy-must-not-work",
   };
   const previous = Object.fromEntries(
@@ -54,14 +54,14 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
     .run(
       "owner@example.test",
       "unused",
-      values.TEA_AUTH_OWNER_SUBJECT,
-      values.TEA_AUTH_ISSUER,
+      values.HARRHY_AUTH_OWNER_SUBJECT,
+      values.HARRHY_AUTH_ISSUER,
     );
   operator.sqlite
     .prepare(
       "INSERT INTO users(email,password_hash,auth_subject,auth_issuer) VALUES(?,?,?,?)",
     )
-    .run("other@example.test", "unused", "other-admin", values.TEA_AUTH_ISSUER);
+    .run("other@example.test", "unused", "other-admin", values.HARRHY_AUTH_ISSUER);
   for (const site of sites) {
     const { sqlite } = await openDatabase(join(site.dataDir, "tea.db"));
     sqlite
@@ -72,7 +72,7 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
         "owner@example.test",
         "unused",
         "other-admin",
-        values.TEA_AUTH_ISSUER,
+        values.HARRHY_AUTH_ISSUER,
       );
     sqlite.close();
   }
@@ -104,12 +104,12 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
     const url = String(input);
     if (url.endsWith("openid-configuration"))
       return Response.json({
-        issuer: values.TEA_AUTH_ISSUER,
-        authorization_endpoint: values.TEA_AUTH_ISSUER + "/authorize",
-        token_endpoint: values.TEA_AUTH_ISSUER + "/token",
-        userinfo_endpoint: values.TEA_AUTH_ISSUER + "/userinfo",
-        jwks_uri: values.TEA_AUTH_ISSUER + "/keys",
-        introspection_endpoint: values.TEA_AUTH_ISSUER + "/introspect",
+        issuer: values.HARRHY_AUTH_ISSUER,
+        authorization_endpoint: values.HARRHY_AUTH_ISSUER + "/authorize",
+        token_endpoint: values.HARRHY_AUTH_ISSUER + "/token",
+        userinfo_endpoint: values.HARRHY_AUTH_ISSUER + "/userinfo",
+        jwks_uri: values.HARRHY_AUTH_ISSUER + "/keys",
+        introspection_endpoint: values.HARRHY_AUTH_ISSUER + "/introspect",
       });
     if (url.endsWith("/keys")) return Response.json({ keys: [jwk] });
     if (url.endsWith("/token")) {
@@ -132,7 +132,7 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
         azp: record.query.get("client_id"),
       })
         .setProtectedHeader({ alg: "RS256", kid: "fixture-key" })
-        .setIssuer(record.issuer ?? values.TEA_AUTH_ISSUER)
+        .setIssuer(record.issuer ?? values.HARRHY_AUTH_ISSUER)
         .setSubject(record.subject)
         .setAudience(record.query.get("client_id")!)
         .setIssuedAt()
@@ -170,17 +170,17 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
         iss:
           token === "wrong-issuer"
             ? "https://wrong-issuer.example.test"
-            : values.TEA_AUTH_ISSUER,
+            : values.HARRHY_AUTH_ISSUER,
         ...(token === "acted"
-          ? { act: { iss: values.TEA_AUTH_ISSUER, sub: "other-admin" } }
+          ? { act: { iss: values.HARRHY_AUTH_ISSUER, sub: "other-admin" } }
           : {}),
         sub:
           token === "other-admin"
             ? "other-admin"
-            : values.TEA_AUTH_OWNER_SUBJECT,
+            : values.HARRHY_AUTH_OWNER_SUBJECT,
         client_id: "delegated-client",
         jack_auth_principal_type: token === "service" ? "service" : "user",
-        aud: [values.TEA_AUTH_PROJECT_ID],
+        aud: [values.HARRHY_AUTH_PROJECT_ID],
         exp: Math.floor(Date.now() / 1000) + 300,
         scope:
           "openid urn:zitadel:iam:org:project:id:cms-project:aud urn:zitadel:iam:org:projects:roles urn:zitadel:iam:org:project:role:admin",
@@ -194,7 +194,7 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
   let next = 0;
   const begin = async (
     host = "operator",
-    subject = values.TEA_AUTH_OWNER_SUBJECT,
+    subject = values.HARRHY_AUTH_OWNER_SUBJECT,
     roles = ["admin"],
     tokenIssuer?: string,
   ) => {
@@ -232,14 +232,14 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
     assert.equal(exchanges, count);
     for (const [subject, roles] of [
       ["other-admin", ["admin"]],
-      [values.TEA_AUTH_OWNER_SUBJECT, ["member"]],
+      [values.HARRHY_AUTH_OWNER_SUBJECT, ["member"]],
     ] as const) {
       const denied = await begin("operator", subject, [...roles]);
       assert.equal((await get(denied.callback, denied.cookie)).status, 403);
     }
     const wrongIssuer = await begin(
       "operator",
-      values.TEA_AUTH_OWNER_SUBJECT,
+      values.HARRHY_AUTH_OWNER_SUBJECT,
       ["admin"],
       "https://wrong-issuer.example.test",
     );
@@ -330,7 +330,7 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
         .prepare("UPDATE users SET auth_issuer=? WHERE id=1")
         .run(issuer);
       assert.equal(
-        operator.auth.bySubject(values.TEA_AUTH_OWNER_SUBJECT),
+        operator.auth.bySubject(values.HARRHY_AUTH_OWNER_SUBJECT),
         null,
       );
       assert.equal(operator.resolveSiteSession("andrew", editor.id), null);
@@ -341,10 +341,10 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
     }
     operator.sqlite
       .prepare("UPDATE users SET auth_issuer=? WHERE id=1")
-      .run(values.TEA_AUTH_ISSUER);
+      .run(values.HARRHY_AUTH_ISSUER);
     operator.auth.revoke(sessionCookie.split("=")[1]);
     assert.equal(operator.resolveSiteSession("andrew", editor.id), null);
-    delete process.env.TEA_AUTH_OWNER_SUBJECT;
+    delete process.env.HARRHY_AUTH_OWNER_SUBJECT;
     assert.throws(
       () => centralAuth("https://operator.example.test", "operator-client"),
       /incomplete/,

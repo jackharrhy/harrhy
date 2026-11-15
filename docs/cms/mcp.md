@@ -7,8 +7,8 @@ Without `TEA_MCP_TOKEN`, the endpoint returns 404. Set a long random token throu
 In Auth mode, the shared token is ignored. Each site publishes
 `/.well-known/oauth-protected-resource/tea/mcp`; the resource is the site's
 `/tea/mcp` URL. A human token must have the CMS project audience, admin grant,
-and admin role scope. The immutable subject must match `TEA_AUTH_OWNER_SUBJECT`
-under `TEA_AUTH_ISSUER`; service and acted tokens are rejected. The initial Central
+and admin role scope. The immutable subject must match `HARRHY_AUTH_OWNER_SUBJECT`
+under `HARRHY_AUTH_ISSUER`; service and acted tokens are rejected. The initial Central
 Auth registry release is owner-only, not project-wide admission. The app introspects every request using its dedicated
 resource credentials. Browser cookies and service tokens do not grant MCP
 access. The tools remain read-only. The SDK owns negotiation and request/stream lifetime;

@@ -7,9 +7,9 @@ This Remix 3 Cloudflare Worker app serves a CMS editor and content API backed by
 Bind D1 as `DB` and R2 as `MEDIA`. Set `TEA_ADMIN_PASSWORD`, `TEA_SESSION_SECRET`, and `TEA_PREVIEW_SECRET` in ignored `.dev.vars` locally or as Worker secrets when deployed. Apply `db/schema.sql` to D1 before using the editor. `cloudflare.config.ts` has a placeholder D1 identifier; replace it with a real resource before deployment. Hostnames, account IDs, and production secrets belong in the infrastructure repo.
 
 For Central Auth instead of the prototype editor password, set
-`TEA_EDITOR_ORIGIN`, `TEA_AUTH_ISSUER`, `TEA_AUTH_CLIENT_ID`,
-`TEA_AUTH_PROJECT_ID`, `TEA_AUTH_ORGANIZATION_ID`, and a reviewed immutable
-`TEA_AUTH_OWNER_SUBJECT`. The exact public PKCE callback is
+`TEA_EDITOR_ORIGIN`, `HARRHY_AUTH_ISSUER`, `HARRHY_AUTH_CLIENT_ID`,
+`HARRHY_AUTH_PROJECT_ID`, `HARRHY_AUTH_ORGANIZATION_ID`, and a reviewed immutable
+`HARRHY_AUTH_OWNER_SUBJECT`. The exact public PKCE callback is
 `<TEA_EDITOR_ORIGIN>/tea/auth/callback`. A project admin grant and exact owner
 subject are both required; password sessions become invalid. The signed local
 session expires after one hour. `TEA_SESSION_SECRET` remains necessary for the
@@ -18,7 +18,7 @@ signatures still require `TEA_PREVIEW_SECRET`; the sample Worker has no preview
 links and needs no such secret in Central mode. The secret never authorizes the
 preview API in Central mode. That API requires an
 introspected human project-admin token and the dedicated
-`TEA_AUTH_INTROSPECTION_CLIENT_ID` and `TEA_AUTH_INTROSPECTION_SECRET`
+`HARRHY_AUTH_INTROSPECTION_CLIENT_ID` and `HARRHY_AUTH_INTROSPECTION_SECRET`
 resource credentials. This prototype has no production origin or Auth client
 yet, so it is not part of a live cutover.
 

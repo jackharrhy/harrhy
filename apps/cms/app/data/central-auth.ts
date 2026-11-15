@@ -30,11 +30,11 @@ export function centralAuth(
   origin: string,
   clientId: string | undefined,
 ): CentralAuth | null {
-  const issuer = process.env.TEA_AUTH_ISSUER;
+  const issuer = process.env.HARRHY_AUTH_ISSUER;
   if (!issuer) return null;
-  const projectId = process.env.TEA_AUTH_PROJECT_ID;
-  const organizationId = process.env.TEA_AUTH_ORGANIZATION_ID;
-  const ownerSubject = process.env.TEA_AUTH_OWNER_SUBJECT;
+  const projectId = process.env.HARRHY_AUTH_PROJECT_ID;
+  const organizationId = process.env.HARRHY_AUTH_ORGANIZATION_ID;
+  const ownerSubject = process.env.HARRHY_AUTH_OWNER_SUBJECT;
   if (!clientId || !projectId || !organizationId || !ownerSubject)
     throw new Error("CMS Auth is incomplete");
   return {

@@ -47,10 +47,10 @@ it("reserves login attempts before asynchronous password checks", async () => {
 });
 
 it("links only the reviewed owner subject and rejects legacy or other linked sessions in central mode", async () => {
-  const previous = process.env.TEA_AUTH_OWNER_SUBJECT;
-  const previousIssuer = process.env.TEA_AUTH_ISSUER;
-  process.env.TEA_AUTH_ISSUER = "https://issuer.example.test";
-  process.env.TEA_AUTH_OWNER_SUBJECT = "reviewed-subject";
+  const previous = process.env.HARRHY_AUTH_OWNER_SUBJECT;
+  const previousIssuer = process.env.HARRHY_AUTH_ISSUER;
+  process.env.HARRHY_AUTH_ISSUER = "https://issuer.example.test";
+  process.env.HARRHY_AUTH_OWNER_SUBJECT = "reviewed-subject";
   const { sqlite } = await openDatabase(":memory:");
   try {
     sqlite
@@ -61,7 +61,7 @@ it("links only the reviewed owner subject and rejects legacy or other linked ses
         "editor@test.local",
         "unused",
         "reviewed-subject",
-        process.env.TEA_AUTH_ISSUER,
+        process.env.HARRHY_AUTH_ISSUER,
       );
     sqlite
       .prepare(
@@ -71,7 +71,7 @@ it("links only the reviewed owner subject and rejects legacy or other linked ses
         "other@test.local",
         "unused",
         "other-subject",
-        process.env.TEA_AUTH_ISSUER,
+        process.env.HARRHY_AUTH_ISSUER,
       );
     const otherSession = createAuthStore(sqlite).createSession(
       2,
@@ -101,7 +101,7 @@ it("links only the reviewed owner subject and rejects legacy or other linked ses
     }
     sqlite
       .prepare("UPDATE sessions SET auth_issuer=? WHERE id=?")
-      .run(process.env.TEA_AUTH_ISSUER!, session.id);
+      .run(process.env.HARRHY_AUTH_ISSUER!, session.id);
     for (const issuer of [null, "https://other-issuer.example.test"]) {
       sqlite
         .prepare("UPDATE users SET auth_issuer=? WHERE id=?")
@@ -114,16 +114,16 @@ it("links only the reviewed owner subject and rejects legacy or other linked ses
     }
     sqlite
       .prepare("UPDATE users SET auth_issuer=? WHERE id=?")
-      .run(process.env.TEA_AUTH_ISSUER!, user.id);
+      .run(process.env.HARRHY_AUTH_ISSUER!, user.id);
     sqlite
       .prepare("UPDATE users SET auth_subject=NULL WHERE id=?")
       .run(user.id);
     assert.equal(central.resolve(session.id), null);
   } finally {
     sqlite.close();
-    if (previous === undefined) delete process.env.TEA_AUTH_OWNER_SUBJECT;
-    else process.env.TEA_AUTH_OWNER_SUBJECT = previous;
-    if (previousIssuer === undefined) delete process.env.TEA_AUTH_ISSUER;
-    else process.env.TEA_AUTH_ISSUER = previousIssuer;
+    if (previous === undefined) delete process.env.HARRHY_AUTH_OWNER_SUBJECT;
+    else process.env.HARRHY_AUTH_OWNER_SUBJECT = previous;
+    if (previousIssuer === undefined) delete process.env.HARRHY_AUTH_ISSUER;
+    else process.env.HARRHY_AUTH_ISSUER = previousIssuer;
   }
 });

@@ -65,11 +65,11 @@ export function createTeaRouter(
   });
   const auth = createAuthStore(
     database.sqlite,
-    Boolean(process.env.TEA_AUTH_ISSUER),
+    Boolean(process.env.HARRHY_AUTH_ISSUER),
   );
   const central = centralAuth(
     site.origin,
-    process.env[`TEA_AUTH_${site.id.toUpperCase()}_CLIENT_ID`],
+    process.env[`HARRHY_AUTH_${site.id.toUpperCase()}_CLIENT_ID`],
   );
   const router = createRouter<AppContext>({
     middleware: [
@@ -137,8 +137,8 @@ export function createTeaRouter(
                 headers: { "WWW-Authenticate": challenge },
               });
             if (
-              !process.env.TEA_AUTH_INTROSPECTION_CLIENT_ID ||
-              !process.env.TEA_AUTH_INTROSPECTION_SECRET
+              !process.env.HARRHY_AUTH_INTROSPECTION_CLIENT_ID ||
+              !process.env.HARRHY_AUTH_INTROSPECTION_SECRET
             )
               return new Response("CMS Auth resource is unavailable", {
                 status: 503,
@@ -147,8 +147,8 @@ export function createTeaRouter(
               const principal = await createIdentityClient(
                 central.config,
               ).introspect(authorization.slice(7), {
-                clientId: process.env.TEA_AUTH_INTROSPECTION_CLIENT_ID,
-                clientSecret: process.env.TEA_AUTH_INTROSPECTION_SECRET,
+                clientId: process.env.HARRHY_AUTH_INTROSPECTION_CLIENT_ID,
+                clientSecret: process.env.HARRHY_AUTH_INTROSPECTION_SECRET,
               });
               if (
                 principal.principalType !== "user" ||

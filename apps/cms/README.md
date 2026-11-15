@@ -50,10 +50,10 @@ has a reviewed Auth subject link and live browser/editor acceptance.
 The first Auth cutover can link only the operator: the existing one-use,
 site-bound tickets still let the operator enter both editors. Direct site
 login stays unavailable until each editor has an explicit reviewed link. Set
-`TEA_AUTH_ISSUER`, `TEA_AUTH_PROJECT_ID`,
-`TEA_AUTH_ORGANIZATION_ID`, `TEA_AUTH_OWNER_SUBJECT`, and the three public client IDs
-`TEA_AUTH_OPERATOR_CLIENT_ID`, `TEA_AUTH_ANDREW_CLIENT_ID`, and
-`TEA_AUTH_LUKE_CLIENT_ID` together to enable Auth mode. The exact callbacks
+`HARRHY_AUTH_ISSUER`, `HARRHY_AUTH_PROJECT_ID`,
+`HARRHY_AUTH_ORGANIZATION_ID`, `HARRHY_AUTH_OWNER_SUBJECT`, and the three public client IDs
+`HARRHY_AUTH_OPERATOR_CLIENT_ID`, `HARRHY_AUTH_ANDREW_CLIENT_ID`, and
+`HARRHY_AUTH_LUKE_CLIENT_ID` together to enable Auth mode. The exact callbacks
 are `/auth/callback` on the operator host and `/tea/auth/callback` on each site
 host. Initial Auth mode admits only the reviewed owner's immutable issuer and subject.
 The app requires an existing local user row with reviewed `auth_issuer` and
@@ -74,8 +74,8 @@ bound to the browser cookie and exact host/client callback. A restart invalidate
 pending sign-ins. Log out clears the local session.
 
 Auth mode also replaces the shared read-only `TEA_MCP_TOKEN` with a human
-CMS-admin resource token for the pinned owner (no acted or service tokens). Configure `TEA_AUTH_INTROSPECTION_CLIENT_ID` and
-`TEA_AUTH_INTROSPECTION_SECRET` for that endpoint; the site resource metadata
+CMS-admin resource token for the pinned owner (no acted or service tokens). Configure `HARRHY_AUTH_INTROSPECTION_CLIENT_ID` and
+`HARRHY_AUTH_INTROSPECTION_SECRET` for that endpoint; the site resource metadata
 is at `/.well-known/oauth-protected-resource/tea/mcp`. Production identity
 links, provider grants, secrets and rollout belong to the Auth and Infra
 owners, not this repository.

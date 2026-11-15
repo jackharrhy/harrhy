@@ -45,11 +45,11 @@ it("requires an exact reviewed subject for a Central editor session and rejects 
     TEA_ADMIN_PASSWORD: "unused",
     TEA_SESSION_SECRET: "test-session-secret",
     TEA_EDITOR_ORIGIN: "https://cms.example.test",
-    TEA_AUTH_ISSUER: "https://auth.example.test",
-    TEA_AUTH_CLIENT_ID: "client",
-    TEA_AUTH_PROJECT_ID: "project",
-    TEA_AUTH_ORGANIZATION_ID: "org",
-    TEA_AUTH_OWNER_SUBJECT: "reviewed-owner",
+    HARRHY_AUTH_ISSUER: "https://auth.example.test",
+    HARRHY_AUTH_CLIENT_ID: "client",
+    HARRHY_AUTH_PROJECT_ID: "project",
+    HARRHY_AUTH_ORGANIZATION_ID: "org",
+    HARRHY_AUTH_OWNER_SUBJECT: "reviewed-owner",
   } as Bindings;
   requireSecrets(env, false, true, false);
   assert.throws(() => requireSecrets(env, false, true), /preview secrets/);
@@ -74,7 +74,7 @@ it("requires an exact reviewed subject for a Central editor session and rejects 
     ),
     true,
   );
-  const changed = { ...env, TEA_AUTH_OWNER_SUBJECT: "another-owner" };
+  const changed = { ...env, HARRHY_AUTH_OWNER_SUBJECT: "another-owner" };
   assert.equal(
     await isEditor(
       new Request(request, { headers: { Cookie: centralCookie } }),
