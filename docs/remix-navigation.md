@@ -4,7 +4,7 @@ Remix's `run()` intercepts eligible same-origin links and forms, even without an
 
 ## Shared convention
 
-Use the existing Remix `data-rmx-document` attribute on Auth entry links and session-changing forms. No routing wrapper, click handler, React `reloadDocument` prop, or extra component is needed.
+Use the existing Remix `data-rmx-document` attribute on Auth entry links and session-changing forms. This includes protected destinations used as login entry points, such as Letters to Steve's `/steve`, whose guard redirects to Auth. No routing wrapper, click handler, React `reloadDocument` prop, or extra component is needed.
 
 ```tsx
 <a href={routes.auth.login.href()} data-rmx-document>Sign in</a>
@@ -23,6 +23,8 @@ Use the existing Remix `data-rmx-document` attribute on Auth entry links and ses
 
 Put the attribute on the actual anchor or form, not its container or submit button. Keep the original method, action, hidden fields, CSRF checks, return URL, and OAuth state/PKCE transaction handling. Do not replace forms with GET links or use `fetch()` for a route whose response is a document redirect.
 
+After successful HTML sign-out, return a redirect to a public document (normally `303 Location: /`). A `204` response does not unload the old authenticated UI or its open resources, even with the native attribute. Preserve intentional API logout contracts separately: Pool's CSRF-protected logout fetch already reloads the document after success.
+
 Ordinary internal page links and forms should retain Remix navigation. Direct cross-origin links, native `download` anchors, and new-tab targets already bypass interception; do not mark every link or disable navigation globally. A same-origin download endpoint that redirects elsewhere should expose native download/document intent, rather than depend on a frame fetch. Do not prefetch Auth/session-changing entry routes.
 
 The installed `@remix-run/component` README's **Navigation → Links and Forms** section and `dist/runtime/navigation.js` are the API reference. Sergio's monorepo uses the same native attribute on Auth forms; no separate outlink package is required.
@@ -40,7 +42,7 @@ Build Radio, then run `npm run test:auth-navigation --workspace @harrhy/radio`. 
 
 ## Cross-app audit
 
-Source inspected at `760c3a8` for the Radio fix:
+Initial source audit against `760c3a8`, with app-scoped prevention fixes:
 
 <!-- prettier-ignore -->
 | Consumer | Finding |
@@ -50,8 +52,8 @@ Source inspected at `760c3a8` for the Radio fix:
 | Artbin | Auth entry uses its existing `document` prop, forwarded to the native attribute, with an SSR assertion. Download controls use `download` or a new-tab target. Ordinary `/login` is an internal rendered page, not the OAuth initiator. |
 | CMS/operator, Worldview | Inspected Auth entry controls already opt into document navigation. |
 | Ref, Auth, 4orm, CMS-edge, Rotund | Inspected sign-in/session documents do not start the Remix navigation runtime; these controls currently navigate natively. Recheck the convention if adding hydration. |
-| Burger | Starts `run()`; `/auth/login` anchor and `/auth/logout` form need the same convention in an app-scoped follow-up. |
-| Pool | Starts `run()`; `/auth/login` anchor needs the convention in an app-scoped follow-up. Its explicit logout fetch already reloads the document after its JSON/API operation; do not blindly replace that API behavior. |
-| Letters to Steve | Starts `run()`; the inbox sign-out form needs the session-boundary convention in an app-scoped follow-up. |
+| Burger | Native Auth anchor and logout form; logout now returns `303` instead of `204` so the old game document and socket are discarded. Its production browser smoke verifies the cross-origin login redirect and real synthetic-session logout, cookie clearing, and authoritative player removal before closing the browser context. |
+| Pool | Native Auth entry anchor, covered by its production browser smoke through a mock cross-origin Auth redirect. Its explicit CSRF-protected logout fetch and document reload remain unchanged. |
+| Letters to Steve | Native public `steve login` anchors and inbox logout form. Host browser tests use the real router and an in-memory database to verify the guarded `/steve` redirect chain and actual sign-out session revocation, while ordinary public navigation stays client-side. |
 
-This Radio change does not publish or deploy those follow-up apps, Auth, Ref, or CMS.
+Radio was delivered separately. Follow-up source checks and image publication for Burger, Pool, and Letters to Steve do not establish production runtime acceptance; Infra owns hosting, recovery, and deployment proof. Neither change requires an Auth, Ref, or CMS rollout.

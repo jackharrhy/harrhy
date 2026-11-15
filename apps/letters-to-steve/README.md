@@ -8,7 +8,7 @@ Letters to Steve is a correspondence site. Readers submit private letters with o
 
 From the Tea root, run `npm ci`, copy `apps/letters-to-steve/.env.example` to `apps/letters-to-steve/.env`, set `STEVE_ADMIN_PASSWORD`, then run `npm run letters-to-steve:dev`. Open <http://localhost:44110>. Alternatively, `docker compose up --build letters-to-steve` serves <http://letters.localhost> with an isolated data volume and a local development password. Set `STEVE_ADMIN_PASSWORD` before starting Compose to choose your own. The admin username is `steve`; its route is `/steve`.
 
-Run `npm run letters-to-steve:check` for Tea formatting, lint, typecheck, and server tests. `npm run db:status --workspace @harrhy/letters-to-steve` reports migrations; `db:migrate` applies them. The server also applies committed migrations on startup. The editor enhances a working text-only form, so the public flow works without browser JavaScript.
+Run `npm run letters-to-steve:check` for Harrhy formatting, lint, typecheck, server tests, and Auth navigation browser tests. Install Playwright Chromium first with `npx playwright install --only-shell chromium`. Run `npm run test:auth-navigation --workspace @harrhy/letters-to-steve` independently to exercise the actual router, browser entry, protected-login redirect chain, and sign-out session revocation with isolated loopback Auth and a disposable in-memory database. `npm run db:status --workspace @harrhy/letters-to-steve` reports migrations; `db:migrate` applies them. The server also applies committed migrations on startup. The editor enhances a working text-only form, so the public flow works without browser JavaScript.
 
 Remix 3.2 applies a fresh CSP nonce to each HTML response and the editor's authored import map and browser entry. HTML is private/no-store; the stylesheet, fonts, uploads, and editor requests stay same-origin. The text-only form remains usable when browser JavaScript is unavailable.
 
@@ -26,7 +26,10 @@ The recipient can read letters, compose and publish replies, and manage the
 inbox; only the administrator can change whether the public site is open.
 A successful login
 creates a one-hour opaque session in the existing SQLite database; sign-out
-deletes it. Jack Auth mode never accepts the old Basic credential. Production
+deletes it. The public `steve login` links and inbox sign-out form use Remix's
+native `data-rmx-document` attribute: `/steve` can redirect through `/auth/login`
+to another origin, and sign-out must replace the old document. Ordinary public
+links keep client navigation; see the [shared convention](../../docs/remix-navigation.md). Jack Auth mode never accepts the old Basic credential. Production
 uses Jack Auth; keep legacy Basic credentials only in protected rollback
 material until Infra retires them. Letter, issue, and attachment IDs stay the
 same.

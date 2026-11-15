@@ -12,6 +12,8 @@ From the Tea root, install with `npm ci`. Bun 1.4.4 is required for the authorit
 
 `@harrhy/pool`, `@harrhy/pool-simulation`, and `@harrhy/pool-protocol` hold shared rules, movement, and the versioned wire contract. The Bun app owns admission, match authority, persistence, account/owner policy, browser UI, and deployment lifecycle. The client may predict and render but cannot decide turns or results. `scripts/recordings.ts` lists, exports, and compares recordings without modifying the database.
 
+The sign-in link uses `data-rmx-document` for native OAuth redirect navigation. The production browser smoke checks a hydrated click with mocked account availability and a redirect to a disposable cross-origin destination, without contacting an issuer. Account sign-out intentionally remains a same-origin POST fetch with its CSRF header followed by a reload.
+
 The Remix canvas ref owns each client instance. Its abort signal closes the WebSocket, timers, input listeners, audio, prediction engine, and Three scene when the canvas unmounts. UI lookups and owner controls stay inside `#pool-root`; a new mount creates a new instance. The production browser smoke checks a navigation away and back, including socket closure and one remounted canvas.
 
 The private pre-update hook in `server/pre-update.ts` must succeed before a live restart. Unfinished matches, including disconnected seats, block admission drain. Never expose its loopback port through a proxy or restart over a blocked receipt. Production routing, secrets, backups, and cutover belong to Infra and are outside this workspace.

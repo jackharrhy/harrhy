@@ -78,6 +78,14 @@ for (const stream of [server.stdout, server.stderr])
 let browser: Awaited<ReturnType<typeof chromium.launch>> | undefined;
 const contexts: BrowserContext[] = [];
 let stopError: Error | undefined;
+const mockAuth = Bun.serve({
+  hostname: "127.0.0.1",
+  port: 0,
+  fetch: () =>
+    new Response("<h1>Mock auth destination</h1>", {
+      headers: { "content-type": "text/html" },
+    }),
+});
 try {
   await waitFor(async () => {
     if (server.exitCode !== null)
@@ -128,6 +136,35 @@ try {
     ],
   });
   const browserErrors: string[] = [];
+  const guest = await browser.newContext();
+  contexts.push(guest);
+  const loginPage = await guest.newPage();
+  const authorizationURL = new URL("/authorize", mockAuth.url).href;
+  await loginPage.route(`${origin}/auth/login`, (route) =>
+    route.fulfill({ status: 302, headers: { location: authorizationURL } }),
+  );
+  await loginPage.goto(origin);
+  await loginPage.waitForFunction(
+    () =>
+      window.document.getElementById("burger-status")?.textContent ===
+      "Sign in to play.",
+  );
+  const loginRequest = loginPage.waitForRequest(`${origin}/auth/login`);
+  await loginPage.getByRole("link", { name: "Sign in to play" }).click();
+  const login = await loginRequest;
+  assert.equal(login.method(), "GET");
+  assert.equal(
+    login.isNavigationRequest(),
+    true,
+    "login is a document request after hydration",
+  );
+  assert.equal(login.resourceType(), "document");
+  await loginPage.waitForURL(authorizationURL);
+  await loginPage
+    .getByRole("heading", { name: "Mock auth destination" })
+    .waitFor();
+  await guest.close();
+
   async function player(sessionId: string) {
     const context = await browser!.newContext();
     contexts.push(context);
@@ -314,16 +351,82 @@ try {
       .length,
     2,
   );
-  await member.context.close();
+  await admin.page.waitForFunction(
+    (id) => window.context?.network.idMap.has(id),
+    member.id,
+  );
+  const memberDocument = await member.page.evaluate(
+    () => performance.timeOrigin,
+  );
+  const [logout, logoutResponse] = await Promise.all([
+    member.page.waitForRequest(`${origin}/auth/logout`),
+    member.page.waitForResponse(`${origin}/auth/logout`),
+    member.page.getByRole("button", { name: "Sign out" }).click(),
+  ]);
+  assert.equal(logout.method(), "POST");
+  assert.equal(
+    logout.isNavigationRequest(),
+    true,
+    "logout is a native form submission after hydration",
+  );
+  assert.equal(logout.resourceType(), "document");
+  assert.equal(logout.headers()["origin"], origin);
+  assert.match(
+    logout.headers()["content-type"] ?? "",
+    /application\/x-www-form-urlencoded/,
+  );
+  assert.equal(logoutResponse.status(), 303);
+  assert.equal(logoutResponse.headers()["location"], "/");
+  assert.equal(
+    await member.page.evaluate(() => typeof window.context),
+    "undefined",
+    "logout discards authenticated game state",
+  );
+  assert.notEqual(
+    await member.page.evaluate(() => performance.timeOrigin),
+    memberDocument,
+    "logout replaces the authenticated document",
+  );
+  await member.page.waitForFunction(
+    () =>
+      window.document.getElementById("burger-status")?.textContent ===
+      "Sign in to play.",
+  );
+  await member.page.getByRole("link", { name: "Sign in to play" }).waitFor();
+  assert.equal(member.page.url(), `${origin}/`);
+  assert.equal(await member.page.locator("canvas").count(), 0);
+  assert.equal(
+    await member.page.getByRole("toolbar", { name: "Burger tools" }).count(),
+    0,
+  );
+  assert.equal(
+    (await member.context.request.get(`${origin}/auth/me`)).status(),
+    401,
+  );
+  assert.equal(
+    (await member.context.cookies(origin)).some(
+      (cookie) => cookie.name === "burger_session",
+    ),
+    false,
+  );
+  // Server-side player removal runs from the socket close handler. Observe it
+  // before closing this context, rather than relying on browser navigation events.
   await admin.page.waitForFunction(
     (id) => !window.context?.network.idMap.has(id),
     member.id,
   );
+  assert.equal(
+    member.sockets.filter((socket) => new URL(socket.url()).pathname === "/ws")
+      .length,
+    1,
+  );
+  await member.context.close();
   assert.deepEqual(browserErrors, []);
   console.log(
-    "Burger browser smoke passed: Remix/Pixi mount, assets, two sessions, atlas admin edit/member denial, movement, navigation and disconnect.",
+    "Burger browser smoke passed: native auth navigation, Remix/Pixi mount, assets, two sessions, atlas admin edit/member denial, movement, navigation and disconnect.",
   );
 } finally {
+  await mockAuth.stop(true);
   if (server.exitCode === null) {
     server.kill("SIGTERM");
     const exited = new Promise<void>((done) =>
