@@ -11,6 +11,7 @@ import {
   renderItemInspector,
 } from "./inspector.ts";
 import { boardImages } from "./board-images.ts";
+import { wheelNavigation } from "./board-navigation.ts";
 
 const app = document.querySelector<HTMLElement>("#board-app");
 if (!app) throw new Error("Board root is missing");
@@ -62,6 +63,27 @@ let heartbeatTimer = 0;
 let lastHeard = 0;
 let selectedId: string | null = null;
 let spaceHeld = false;
+let scrollMode: "zoom" | "pan" = "zoom";
+try {
+  if (localStorage.getItem("ref-scroll-mode") === "pan") scrollMode = "pan";
+} catch {
+  // Restricted browsers may disable storage.
+}
+const scrollModeButton = required<HTMLButtonElement>("#scroll-mode");
+function updateScrollMode() {
+  scrollModeButton.textContent = `Scroll: ${scrollMode === "pan" ? "Pan" : "Zoom"}`;
+  scrollModeButton.setAttribute("aria-pressed", String(scrollMode === "pan"));
+}
+updateScrollMode();
+scrollModeButton.addEventListener("click", () => {
+  scrollMode = scrollMode === "zoom" ? "pan" : "zoom";
+  updateScrollMode();
+  try {
+    localStorage.setItem("ref-scroll-mode", scrollMode);
+  } catch {
+    // The current tab still retains the preference.
+  }
+});
 let drag: Drag | null = null;
 let offsetX = 0;
 let offsetY = 0;
@@ -616,7 +638,13 @@ function placeItem(width: number, height: number, point?: Point): Point {
 function handlePointerDown(event: PointerEvent) {
   if (event.button !== 0 && event.button !== 1) return;
   const target = event.target as HTMLElement;
-  if (target.closest("a, button, input, summary, video")) return;
+  if (
+    target.closest(
+      "a, button, input, textarea, select, summary, video, [contenteditable]",
+    )
+  )
+    return;
+  viewport.focus({ preventScroll: true });
   const element = target.closest<HTMLElement>(".board-item");
   const item = element ? items.get(element.dataset.itemId!) : null;
   const start = screenPoint(event);
@@ -919,18 +947,27 @@ viewport.addEventListener("pointercancel", handlePointerUp);
 viewport.addEventListener(
   "wheel",
   (event) => {
+    if (
+      event.target instanceof Element &&
+      event.target.closest(
+        "a, button, input, textarea, select, summary, video, [contenteditable]",
+      )
+    )
+      return;
     event.preventDefault();
-    const unit =
-      event.deltaMode === 1
-        ? 16
-        : event.deltaMode === 2
-          ? viewport.clientHeight
-          : 1;
-    if (event.ctrlKey) {
-      zoomAt(Math.exp(-event.deltaY * unit * 0.01), screenPoint(event));
+    const navigation = wheelNavigation(
+      event,
+      {
+        width: viewport.clientWidth,
+        height: viewport.clientHeight,
+      },
+      scrollMode,
+    );
+    if (navigation.kind === "zoom") {
+      zoomAt(navigation.factor, screenPoint(event));
     } else {
-      offsetX -= event.deltaX * unit;
-      offsetY -= event.deltaY * unit;
+      offsetX -= navigation.x;
+      offsetY -= navigation.y;
       applyView();
     }
   },
@@ -973,18 +1010,17 @@ document.addEventListener("paste", (event) => {
     void addLink(url);
   }
 });
-document.addEventListener("keydown", (event) => {
-  if (
-    event.target instanceof HTMLInputElement ||
-    event.target instanceof HTMLSelectElement
-  )
-    return;
+viewport.addEventListener("keydown", (event) => {
+  if (event.target !== viewport) return;
   if (event.code === "Space") {
     event.preventDefault();
     spaceHeld = true;
   }
   if (event.key === "Delete" || event.key === "Backspace") removeSelected();
   if (event.key === "Escape") select(null);
+});
+viewport.addEventListener("focusout", () => {
+  spaceHeld = false;
 });
 document.addEventListener("keyup", (event) => {
   if (event.code === "Space") spaceHeld = false;
