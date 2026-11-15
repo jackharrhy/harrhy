@@ -426,7 +426,7 @@ services:
       context: .
       dockerfile: apps/maps-collaboration/Dockerfile
     environment:
-      CELLD_VAR_TEA_MAPS_REALTIME_TICKET_SECRET: ${MAPS_REALTIME_TICKET_SECRET:-tea-maps-local-realtime-ticket-secret-change-me}
+      CELLD_VAR_HARRHY_MAPS_REALTIME_TICKET_SECRET: ${MAPS_REALTIME_TICKET_SECRET:-tea-maps-local-realtime-ticket-secret-change-me}
     ports:
       - "127.0.0.1:8787:44100"
     volumes:
@@ -444,16 +444,16 @@ services:
       context: .
       dockerfile: apps/maps-service/Dockerfile
     environment:
-      TEA_MAPS_URL: http://localhost:8790
-      TEA_MAPS_COLLABORATION_URL: http://maps-collaboration:44100
-      TEA_MAPS_REALTIME_TICKET_SECRET: ${MAPS_REALTIME_TICKET_SECRET:-tea-maps-local-realtime-ticket-secret-change-me}
+      HARRHY_MAPS_URL: http://localhost:8790
+      HARRHY_MAPS_COLLABORATION_URL: http://maps-collaboration:44100
+      HARRHY_MAPS_REALTIME_TICKET_SECRET: ${MAPS_REALTIME_TICKET_SECRET:-tea-maps-local-realtime-ticket-secret-change-me}
       AUTH_ISSUER: ${AUTH_ISSUER:-https://auth.jackharrhy.dev}
       AUTH_CLIENT_ID: ${MAPS_AUTH_CLIENT_ID:-}
       AUTH_PROJECT_ID: ${AUTH_MAPS_PROJECT_ID:-}
       AUTH_ORGANIZATION_ID: ${AUTH_ORGANIZATION_ID:-}
       AUTH_INTROSPECTION_CLIENT_ID: ${MAPS_AUTH_INTROSPECTION_CLIENT_ID:-}
       AUTH_INTROSPECTION_SECRET: ${MAPS_AUTH_INTROSPECTION_SECRET:-}
-      TEA_MAPS_ARTBIN_URL: ${TEA_MAPS_ARTBIN_URL:-}
+      HARRHY_MAPS_ARTBIN_URL: ${HARRHY_MAPS_ARTBIN_URL:-}
       AUTH_ARTBIN_PROJECT_ID: ${AUTH_ARTBIN_PROJECT_ID:-}
       AUTH_ARTBIN_CLIENT_ID: ${AUTH_ARTBIN_CLIENT_ID:-}
       AUTH_ARTBIN_CLIENT_SECRET: ${AUTH_ARTBIN_CLIENT_SECRET:-}
@@ -474,7 +474,7 @@ services:
       context: .
       dockerfile: apps/maps-compiler/Dockerfile
     environment:
-      TEA_MAPS_COMPILER_HOST: 0.0.0.0
+      HARRHY_MAPS_COMPILER_HOST: 0.0.0.0
       ERICW_QBSP: /opt/ericw-tools/qbsp
       ERICW_VIS: /opt/ericw-tools/vis
       ERICW_LIGHT: /opt/ericw-tools/light

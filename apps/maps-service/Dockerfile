@@ -21,7 +21,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 ENV NODE_ENV=production
 ENV HOST=0.0.0.0
 ENV PORT=8792
-ENV TEA_MAPS_DATA_ROOT=/app/data
+ENV HARRHY_MAPS_DATA_ROOT=/app/data
 
 WORKDIR /app/apps/maps-service
 COPY --from=build --chown=node:node /app /app

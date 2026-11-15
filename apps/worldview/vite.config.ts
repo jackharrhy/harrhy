@@ -3,7 +3,7 @@ import { fileURLToPath } from "node:url";
 import { localFixturesPlugin } from "./scripts/local-fixtures.ts";
 
 const localRoot =
-  process.env.TEA_MAPS_LOCAL_FIXTURE_ROOT ??
+  process.env.HARRHY_MAPS_LOCAL_FIXTURE_ROOT ??
   fileURLToPath(new URL("./local", import.meta.url));
 
 export default defineConfig({

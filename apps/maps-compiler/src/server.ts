@@ -2,8 +2,8 @@ import { createServer } from "node:http";
 import { createRequestListener } from "remix/node-fetch-server";
 import { createCompilerApp } from "./app.js";
 
-const host = process.env.TEA_MAPS_COMPILER_HOST ?? "127.0.0.1";
-const port = Number(process.env.TEA_MAPS_COMPILER_PORT ?? 8788);
+const host = process.env.HARRHY_MAPS_COMPILER_HOST ?? "127.0.0.1";
+const port = Number(process.env.HARRHY_MAPS_COMPILER_PORT ?? 8788);
 const app = createCompilerApp();
 const server = createServer(
   { maxHeaderSize: 16 * 1024 },

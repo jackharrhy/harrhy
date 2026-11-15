@@ -104,20 +104,20 @@ function environment(name: string, fallback?: string): string {
 
 export function configuredCompilerEndpoints(values: NodeJS.ProcessEnv) {
   return {
-    ...(values.TEA_MAPS_QUAKE_COMPILER_URL
-      ? { quake: values.TEA_MAPS_QUAKE_COMPILER_URL }
+    ...(values.HARRHY_MAPS_QUAKE_COMPILER_URL
+      ? { quake: values.HARRHY_MAPS_QUAKE_COMPILER_URL }
       : {}),
-    ...(values.TEA_MAPS_GOLDSRC_COMPILER_URL
-      ? { goldsrc: values.TEA_MAPS_GOLDSRC_COMPILER_URL }
+    ...(values.HARRHY_MAPS_GOLDSRC_COMPILER_URL
+      ? { goldsrc: values.HARRHY_MAPS_GOLDSRC_COMPILER_URL }
       : {}),
-    ...(values.TEA_MAPS_GOWER_COMPILER_URL
-      ? { gower: values.TEA_MAPS_GOWER_COMPILER_URL }
+    ...(values.HARRHY_MAPS_GOWER_COMPILER_URL
+      ? { gower: values.HARRHY_MAPS_GOWER_COMPILER_URL }
       : {}),
   };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  const dataRoot = environment("TEA_MAPS_DATA_ROOT", "./data/maps");
+  const dataRoot = environment("HARRHY_MAPS_DATA_ROOT", "./data/maps");
   mkdirSync(dataRoot, { recursive: true });
   const database = new MapsDatabase(join(dataRoot, "maps.db"));
   const blobs = new FileBlobStore(join(dataRoot, "blobs"));
@@ -132,45 +132,45 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     database,
     blobs,
     additionalPublicOrigins: (
-      process.env.TEA_MAPS_ADDITIONAL_PUBLIC_ORIGINS ?? ""
+      process.env.HARRHY_MAPS_ADDITIONAL_PUBLIC_ORIGINS ?? ""
     )
       .split(",")
       .map((value) => value.trim())
       .filter(Boolean),
     oauth: {
       ...identity,
-      publicUrl: environment("TEA_MAPS_URL", "http://localhost:8790"),
+      publicUrl: environment("HARRHY_MAPS_URL", "http://localhost:8790"),
     },
     ...(process.env.AUTH_INTROSPECTION_SECRET
       ? {
           mcpAuth: {
             ...identity,
-            publicUrl: environment("TEA_MAPS_URL", "http://localhost:8790"),
+            publicUrl: environment("HARRHY_MAPS_URL", "http://localhost:8790"),
             introspectionClientId: environment("AUTH_INTROSPECTION_CLIENT_ID"),
             introspectionSecret: process.env.AUTH_INTROSPECTION_SECRET,
           },
         }
       : {}),
-    ...(process.env.TEA_MAPS_STATIC_ROOT
-      ? { staticRoot: process.env.TEA_MAPS_STATIC_ROOT }
+    ...(process.env.HARRHY_MAPS_STATIC_ROOT
+      ? { staticRoot: process.env.HARRHY_MAPS_STATIC_ROOT }
       : {}),
     realtimeTicketSecret: environment(
-      "TEA_MAPS_REALTIME_TICKET_SECRET",
+      "HARRHY_MAPS_REALTIME_TICKET_SECRET",
       "tea-maps-local-realtime-ticket-secret-change-me",
     ),
     maps: new MapCellClient(
-      environment("TEA_MAPS_COLLABORATION_URL", "http://127.0.0.1:8787"),
+      environment("HARRHY_MAPS_COLLABORATION_URL", "http://127.0.0.1:8787"),
       environment(
-        "TEA_MAPS_REALTIME_TICKET_SECRET",
+        "HARRHY_MAPS_REALTIME_TICKET_SECRET",
         "tea-maps-local-realtime-ticket-secret-change-me",
       ),
     ),
-    ...(process.env.TEA_MAPS_ARTBIN_URL &&
+    ...(process.env.HARRHY_MAPS_ARTBIN_URL &&
     process.env.AUTH_ARTBIN_CLIENT_ID &&
     process.env.AUTH_ARTBIN_CLIENT_SECRET
       ? {
           artbin: new ArtbinClient({
-            url: process.env.TEA_MAPS_ARTBIN_URL,
+            url: process.env.HARRHY_MAPS_ARTBIN_URL,
             issuer: environment("AUTH_ISSUER", "https://auth.jackharrhy.dev"),
             projectId: environment("AUTH_ARTBIN_PROJECT_ID", ""),
             clientId: process.env.AUTH_ARTBIN_CLIENT_ID,

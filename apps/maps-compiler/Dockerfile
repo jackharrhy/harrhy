@@ -17,8 +17,8 @@ FROM platformatic/node-caged:26-slim
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production
-ENV TEA_MAPS_COMPILER_HOST=0.0.0.0
-ENV TEA_MAPS_COMPILER_PORT=8788
+ENV HARRHY_MAPS_COMPILER_HOST=0.0.0.0
+ENV HARRHY_MAPS_COMPILER_PORT=8788
 WORKDIR /app/apps/maps-compiler
 COPY --from=build /app /app
 USER node
