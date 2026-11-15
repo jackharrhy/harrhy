@@ -3,6 +3,8 @@ import { chmodSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 import { createMediaIdentityLedger } from "./media-identities.mjs";
 import { createIdentityOnboardingLedger } from "./identity-onboarding.mjs";
+import { createMediaServiceActions } from "./media-service-actions.mjs";
+import { createMediaLifecycle } from "./media-lifecycle.mjs";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const active = (value) => value?.state === "USER_GRANT_STATE_ACTIVE";
@@ -20,6 +22,7 @@ export function createAccessStore({
   services,
   native,
   onIssued = async () => {},
+  mediaLifecycle = createMediaLifecycle(),
 }) {
   const db = new DatabaseSync(filename);
   if (filename !== ":memory:") chmodSync(filename, 0o600);
@@ -31,6 +34,10 @@ export function createAccessStore({
     "UPDATE operations SET state='unknown' WHERE state='applying'",
   ).run();
   const media = createMediaIdentityLedger(db);
+  const mediaActions = createMediaServiceActions(db, {
+    mappings: media.mappings,
+    lifecycle: mediaLifecycle,
+  });
   const onboarding = createIdentityOnboardingLedger(db);
   const nativeDomains = services
     .filter((service) => service.eligibility)
@@ -356,6 +363,7 @@ export function createAccessStore({
   return {
     close: () => db.close(),
     media,
+    mediaActions,
     onboarding,
     initialized: () => Boolean(readModel()),
     read: () => {

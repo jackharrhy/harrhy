@@ -57,7 +57,7 @@ export function createMediaServiceActions(db, { mappings, lifecycle }) {
       )
     )
       throw fail("An explicitly confirmed exact-ID mapping is required.");
-    if (exact.service !== "jellyfin")
+    if (!["jellyfin", "seerr"].includes(exact.service))
       throw fail("This service requires manual offboarding.");
     return exact;
   };
@@ -75,14 +75,28 @@ export function createMediaServiceActions(db, { mappings, lifecycle }) {
           "SELECT * FROM media_service_action_events WHERE action_id=? ORDER BY rowid",
         )
         .all(id),
-    async preview({ actor, reason, mapping, now = Date.now() }) {
+    async preview({
+      actor,
+      reason,
+      mapping,
+      operation = "disable",
+      now = Date.now(),
+    }) {
       required(actor);
       required(reason);
       const exact = exactMapping(mapping);
+      if (
+        !(
+          (exact.service === "jellyfin" && operation === "disable") ||
+          (exact.service === "seerr" &&
+            operation === "remove-account-and-requests")
+        )
+      )
+        throw fail("Select a supported explicit service operation.");
       const review = await lifecycle(exact).inspect(exact.nativeId);
       const id = randomUUID();
       const body = {
-        action: "disable",
+        action: operation,
         mapping: exact,
         reason,
         review,
@@ -101,20 +115,32 @@ export function createMediaServiceActions(db, { mappings, lifecycle }) {
       }
       return get(id);
     },
-    async confirm({ id, actor, now = Date.now() }) {
+    async confirm({ id, actor, destructiveConfirmation, now = Date.now() }) {
       const action = owned(id, actor);
       if (action.state !== "review") return action;
       const age = now - Date.parse(action.created_at);
       if (age < 0 || age > 300000) throw fail("Service action review expired.");
       const mapping = exactMapping(action.body.mapping);
       const adapter = lifecycle(mapping);
-      const result = await adapter.disable(action.body.review, () => {
+      const destructive = action.body.action === "remove-account-and-requests";
+      if (
+        destructive &&
+        destructiveConfirmation !==
+          `REMOVE ${mapping.nativeId} AND ${action.body.review.requestCount} REQUESTS`
+      )
+        throw fail(
+          "Confirm the exact account and reviewed request count. Concurrent requests may also be removed.",
+        );
+      const perform = destructive
+        ? adapter.removeAccountAndRequests
+        : adapter.disable;
+      const result = await perform(action.body.review, () => {
         // Reserve all overlapping reviews atomically, before crossing the write boundary.
         db.exec("BEGIN IMMEDIATE");
         try {
           const others = db
             .prepare(
-              "SELECT id,body FROM media_service_actions WHERE state IN ('effect-unknown','disabled','already-disabled','recovered-disabled')",
+              "SELECT id,body FROM media_service_actions WHERE state IN ('effect-unknown','disabled','already-disabled','recovered-disabled','removed')",
             )
             .all();
           if (
@@ -148,6 +174,8 @@ export function createMediaServiceActions(db, { mappings, lifecycle }) {
         transition(id, actor, "review", "already-disabled", now);
       else if (result.state === "disabled")
         transition(id, actor, "effect-unknown", "disabled", now);
+      else if (result.state === "removed" && destructive)
+        transition(id, actor, "effect-unknown", "removed", now);
       else if (result.state !== "effect-unknown")
         throw fail("Unsupported native action result.");
       return get(id);
@@ -155,6 +183,10 @@ export function createMediaServiceActions(db, { mappings, lifecycle }) {
     async recover({ id, actor, now = Date.now() }) {
       const action = owned(id, actor);
       if (action.state !== "effect-unknown") return action;
+      if (action.body.action !== "disable")
+        throw fail(
+          "Account removal may be partial. Manual investigation required; no destructive write will be retried.",
+        );
       const mapping = exactMapping(action.body.mapping);
       const observed = await lifecycle(mapping).inspect(mapping.nativeId);
       if (!isDeepStrictEqual(observed.before, action.body.review.after))

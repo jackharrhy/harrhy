@@ -8,6 +8,7 @@ import { createNativeAccess } from "./native-access.mjs";
 import { createAccessStore } from "./access-store.mjs";
 import { createAccessRoutes } from "./access-routes.mjs";
 import { createMediaInventory } from "./media-inventory.mjs";
+import { createMediaLifecycle } from "./media-lifecycle.mjs";
 import { createInvitationRoute } from "./invitation-routes.mjs";
 import { createAccountRoutes } from "./account-routes.mjs";
 import { createOAuthBrowserRoutes } from "./oauth-browser-routes.mjs";
@@ -122,6 +123,11 @@ const accessStore = createAccessStore({
   applications,
   services,
   native: nativeAccess,
+  mediaLifecycle: createMediaLifecycle(
+    process.env.AUTH_MEDIA_WRITES_FILE
+      ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_WRITES_FILE, "utf8"))
+      : [],
+  ),
   onIssued: async ({ after }) => {
     const radio = applications.find((app) => app.id === "radio");
     if (after.projectId !== radio?.projectId || !radioEnrollment) return;

@@ -116,3 +116,60 @@ test("unmapped, unsupported, expired and different-actor requests cannot mutate"
   );
   assert.equal(f.writes(), 0);
 });
+
+test("Seerr removal requires explicit impact confirmation and never replays unknown partial deletion", async (t) => {
+  const db = new DatabaseSync(":memory:");
+  t.after(() => db.close());
+  const exact = { ...mapping, service: "seerr", nativeId: "7" };
+  let writes = 0;
+  const ledger = createMediaServiceActions(db, {
+    mappings: () => [exact],
+    lifecycle: () => ({
+      inspect: async () => ({ nativeId: "7", requestCount: 3 }),
+      removeAccountAndRequests: async (_, claim) => {
+        await claim();
+        writes++;
+        return { state: "effect-unknown" };
+      },
+    }),
+  });
+  await assert.rejects(
+    preview(ledger, { mapping: exact }),
+    /explicit service operation/,
+  );
+  const row = await preview(ledger, {
+    mapping: exact,
+    operation: "remove-account-and-requests",
+  });
+  const overlapping = await preview(ledger, {
+    mapping: exact,
+    operation: "remove-account-and-requests",
+  });
+  await assert.rejects(confirm(ledger, row.id), /exact account/);
+  await assert.rejects(
+    confirm(ledger, row.id, {
+      destructiveConfirmation: "REMOVE 7 AND 2 REQUESTS",
+    }),
+    /exact account/,
+  );
+  assert.equal(writes, 0);
+  const confirmation = { destructiveConfirmation: "REMOVE 7 AND 3 REQUESTS" };
+  assert.equal(
+    (await confirm(ledger, row.id, confirmation)).state,
+    "effect-unknown",
+  );
+  await confirm(ledger, row.id, confirmation);
+  await assert.rejects(
+    confirm(ledger, overlapping.id, confirmation),
+    /already has a claimed action/,
+  );
+  await assert.rejects(
+    ledger.recover({ id: row.id, actor: "operator" }),
+    /partial/,
+  );
+  assert.equal(writes, 1);
+  assert.deepEqual(
+    ledger.events(row.id).map((event) => event.state),
+    ["review", "effect-unknown"],
+  );
+});
