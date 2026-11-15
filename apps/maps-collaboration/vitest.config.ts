@@ -7,7 +7,7 @@ export default defineConfig({
       wrangler: { configPath: "./wrangler.jsonc" },
       miniflare: {
         bindings: {
-          TEA_MAPS_REALTIME_TICKET_SECRET:
+          HARRHY_MAPS_REALTIME_TICKET_SECRET:
             "test-maps-realtime-ticket-secret-0001",
         },
       },

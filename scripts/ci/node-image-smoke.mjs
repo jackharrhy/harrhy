@@ -108,7 +108,7 @@ assert.ok(
 const config = configs[app];
 if (process.argv[4] === "gower") {
   assert.equal(app, "maps-compiler");
-  config.env = ["TEA_MAPS_GAME_PROFILE=gower"];
+  config.env = ["HARRHY_MAPS_GAME_PROFILE=gower"];
 }
 const docker = (...args) => {
   const output = execFileSync("docker", args, {

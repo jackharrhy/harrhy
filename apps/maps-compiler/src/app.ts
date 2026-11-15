@@ -31,21 +31,21 @@ export function createCompilerApp(
   environment: NodeJS.ProcessEnv = process.env,
 ) {
   const maxRequestBytes = Number(
-    environment.TEA_MAPS_COMPILER_MAX_REQUEST_BYTES ?? 96 * 1024 * 1024,
+    environment.HARRHY_MAPS_COMPILER_MAX_REQUEST_BYTES ?? 96 * 1024 * 1024,
   );
   const maxConcurrent = Number(
-    environment.TEA_MAPS_COMPILER_MAX_CONCURRENT ?? 2,
+    environment.HARRHY_MAPS_COMPILER_MAX_CONCURRENT ?? 2,
   );
   const maxMapBytes = Number(
-    environment.TEA_MAPS_COMPILER_MAX_MAP_BYTES ?? 2 * 1024 * 1024,
+    environment.HARRHY_MAPS_COMPILER_MAX_MAP_BYTES ?? 2 * 1024 * 1024,
   );
-  const maxAssets = Number(environment.TEA_MAPS_COMPILER_MAX_ASSETS ?? 16);
+  const maxAssets = Number(environment.HARRHY_MAPS_COMPILER_MAX_ASSETS ?? 16);
   const maxAssetBase64Bytes = Number(
-    environment.TEA_MAPS_COMPILER_MAX_ASSET_BASE64_BYTES ?? 32 * 1024 * 1024,
+    environment.HARRHY_MAPS_COMPILER_MAX_ASSET_BASE64_BYTES ?? 32 * 1024 * 1024,
   );
   const allowedOrigins = new Set(
     (
-      environment.TEA_MAPS_COMPILER_ORIGINS ??
+      environment.HARRHY_MAPS_COMPILER_ORIGINS ??
       "http://127.0.0.1:8790,http://localhost:8790"
     )
       .split(",")
@@ -53,7 +53,7 @@ export function createCompilerApp(
       .filter(Boolean),
   );
   const gameProfile = parseCompilerGameProfile(
-    environment.TEA_MAPS_GAME_PROFILE,
+    environment.HARRHY_MAPS_GAME_PROFILE,
   );
   const ericwTarget = {
     quake: "quake",
@@ -63,7 +63,7 @@ export function createCompilerApp(
   const config: NativeCompilerConfig = {
     toolchain:
       gameProfile === "quake2"
-        ? { kind: "q2tool", executable: environment.TEA_MAPS_Q2TOOL ?? "" }
+        ? { kind: "q2tool", executable: environment.HARRHY_MAPS_Q2TOOL ?? "" }
         : {
             kind: "ericw",
             target: ericwTarget[gameProfile],
@@ -71,28 +71,31 @@ export function createCompilerApp(
             vis: environment.ERICW_VIS ?? "",
             light: environment.ERICW_LIGHT ?? "",
           },
-    ...(environment.TEA_MAPS_GAME_DIR
-      ? { gameDirectory: environment.TEA_MAPS_GAME_DIR }
+    ...(environment.HARRHY_MAPS_GAME_DIR
+      ? { gameDirectory: environment.HARRHY_MAPS_GAME_DIR }
       : {}),
-    maxThreads: Math.max(1, Number(environment.TEA_MAPS_COMPILER_THREADS ?? 2)),
+    maxThreads: Math.max(
+      1,
+      Number(environment.HARRHY_MAPS_COMPILER_THREADS ?? 2),
+    ),
     timeoutMilliseconds: Math.max(
       1000,
-      Number(environment.TEA_MAPS_COMPILER_TIMEOUT_MS ?? 5 * 60 * 1000),
+      Number(environment.HARRHY_MAPS_COMPILER_TIMEOUT_MS ?? 5 * 60 * 1000),
     ),
     maxLogBytes: Math.max(
       1024,
-      Number(environment.TEA_MAPS_COMPILER_MAX_LOG_BYTES ?? 512 * 1024),
+      Number(environment.HARRHY_MAPS_COMPILER_MAX_LOG_BYTES ?? 512 * 1024),
     ),
     maxArtifactBytes: Math.max(
       1024,
       Number(
-        environment.TEA_MAPS_COMPILER_MAX_ARTIFACT_BYTES ?? 64 * 1024 * 1024,
+        environment.HARRHY_MAPS_COMPILER_MAX_ARTIFACT_BYTES ?? 64 * 1024 * 1024,
       ),
     ),
   };
   const launchProfile = configuredLaunchProfile(environment);
   const buildHistory = new BoundedBuildHistory(
-    Math.max(1, Number(environment.TEA_MAPS_COMPILER_HISTORY ?? 20)),
+    Math.max(1, Number(environment.HARRHY_MAPS_COMPILER_HISTORY ?? 20)),
   );
   let activeCompiles = 0;
 
@@ -106,7 +109,7 @@ export function createCompilerApp(
         );
   const configurationError = () =>
     config.toolchain.kind === "q2tool"
-      ? "TEA_MAPS_Q2TOOL must be configured for the quake2 profile"
+      ? "HARRHY_MAPS_Q2TOOL must be configured for the quake2 profile"
       : "ERICW_QBSP, ERICW_VIS, and ERICW_LIGHT must be configured";
 
   const router = createRouter();

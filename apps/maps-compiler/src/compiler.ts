@@ -35,7 +35,7 @@ export function parseCompilerGameProfile(
   if (value === undefined || value.trim() === "") return "quake";
   const parsed = MapsGameProfileSchema.safeParse(value);
   if (parsed.success) return parsed.data;
-  throw new Error("TEA_MAPS_GAME_PROFILE is not a supported game");
+  throw new Error("HARRHY_MAPS_GAME_PROFILE is not a supported game");
 }
 
 type NativeCompilerToolchain =
@@ -388,7 +388,7 @@ export async function compileNativeMap(
     request.assets?.length
   ) {
     throw new Error(
-      "Quake II project assets cannot be combined with TEA_MAPS_GAME_DIR; use one game tree for this build",
+      "Quake II project assets cannot be combined with HARRHY_MAPS_GAME_DIR; use one game tree for this build",
     );
   }
   const workingDirectory = await mkdtemp(join(tmpdir(), "tea-maps-compile-"));

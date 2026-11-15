@@ -15,9 +15,9 @@ const assetReportPath = process.argv
   ?.slice("--asset-report=".length);
 if (assetReportPath && !testCorpusAll)
   throw new Error("--asset-report requires --corpus-all");
-if (testCorpus && !process.env.TEA_MAPS_LOCAL_FIXTURE_ROOT)
+if (testCorpus && !process.env.HARRHY_MAPS_LOCAL_FIXTURE_ROOT)
   throw new Error(
-    "Set TEA_MAPS_LOCAL_FIXTURE_ROOT to the existing local fixture directory",
+    "Set HARRHY_MAPS_LOCAL_FIXTURE_ROOT to the existing local fixture directory",
   );
 const port = await new Promise((resolve, reject) => {
   const server = createServer();
@@ -43,7 +43,7 @@ const server = spawn(
     cwd: teaRoot,
     detached: true,
     stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, TEA_MAPS_DEV_PORT: String(port) },
+    env: { ...process.env, HARRHY_MAPS_DEV_PORT: String(port) },
   },
 );
 let serverLogs = "";

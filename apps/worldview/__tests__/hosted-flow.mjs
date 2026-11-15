@@ -215,7 +215,7 @@ try {
   );
   await command(process.execPath, ["scripts/build.mjs", "--dev"], mapsRoot);
   const secrets = join(state, "collaboration.env");
-  await writeFile(secrets, `TEA_MAPS_REALTIME_TICKET_SECRET=${secret}\n`);
+  await writeFile(secrets, `HARRHY_MAPS_REALTIME_TICKET_SECRET=${secret}\n`);
   const collaboration = start(
     "collaboration",
     join(teaRoot, "node_modules/.bin/wrangler"),
@@ -245,10 +245,10 @@ try {
       ...process.env,
       HOST: "127.0.0.1",
       PORT: String(servicePort),
-      TEA_MAPS_DATA_ROOT: join(state, "service"),
-      TEA_MAPS_URL: mapsOrigin,
-      TEA_MAPS_COLLABORATION_URL: collaborationOrigin,
-      TEA_MAPS_REALTIME_TICKET_SECRET: secret,
+      HARRHY_MAPS_DATA_ROOT: join(state, "service"),
+      HARRHY_MAPS_URL: mapsOrigin,
+      HARRHY_MAPS_COLLABORATION_URL: collaborationOrigin,
+      HARRHY_MAPS_REALTIME_TICKET_SECRET: secret,
       NODE_EXTRA_CA_CERTS: certPath,
       AUTH_ISSUER: identityOrigin,
       AUTH_CLIENT_ID: identitySettings.clientId,
@@ -256,7 +256,7 @@ try {
       AUTH_ORGANIZATION_ID: identitySettings.organizationId,
       AUTH_INTROSPECTION_CLIENT_ID: "maps-smoke-server",
       AUTH_INTROSPECTION_SECRET: "maps-smoke-secret",
-      TEA_MAPS_QUAKE_COMPILER_URL: compilerOrigin,
+      HARRHY_MAPS_QUAKE_COMPILER_URL: compilerOrigin,
     },
   );
   await ready(service, `${serviceOrigin}/health`);

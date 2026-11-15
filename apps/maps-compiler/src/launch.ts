@@ -34,36 +34,36 @@ const LaunchArgumentsSchema = z.array(z.string().max(4_096)).max(256);
 export function configuredLaunchProfile(
   environment: NodeJS.ProcessEnv,
 ): NativeLaunchConfig | null {
-  const executable = environment.TEA_MAPS_LAUNCH_EXECUTABLE?.trim();
+  const executable = environment.HARRHY_MAPS_LAUNCH_EXECUTABLE?.trim();
   const workingDirectory =
-    environment.TEA_MAPS_LAUNCH_WORKING_DIRECTORY?.trim();
-  const mapDirectory = environment.TEA_MAPS_LAUNCH_MAP_DIRECTORY?.trim();
+    environment.HARRHY_MAPS_LAUNCH_WORKING_DIRECTORY?.trim();
+  const mapDirectory = environment.HARRHY_MAPS_LAUNCH_MAP_DIRECTORY?.trim();
   if (!executable || !workingDirectory || !mapDirectory) return null;
   if (![executable, workingDirectory, mapDirectory].every(isAbsolute)) {
     throw new Error(
       "Configured launch executable and directories must be absolute paths",
     );
   }
-  const rawArguments = environment.TEA_MAPS_LAUNCH_ARGS_JSON ?? "[]";
+  const rawArguments = environment.HARRHY_MAPS_LAUNCH_ARGS_JSON ?? "[]";
   let rawArgumentsValue: unknown;
   try {
     rawArgumentsValue = JSON.parse(rawArguments);
   } catch {
     throw new Error(
-      "TEA_MAPS_LAUNCH_ARGS_JSON must be a JSON array of strings",
+      "HARRHY_MAPS_LAUNCH_ARGS_JSON must be a JSON array of strings",
     );
   }
   const argumentsValue = LaunchArgumentsSchema.safeParse(rawArgumentsValue);
   if (!argumentsValue.success) {
     throw new Error(
-      "TEA_MAPS_LAUNCH_ARGS_JSON must be a JSON array of strings",
+      "HARRHY_MAPS_LAUNCH_ARGS_JSON must be a JSON array of strings",
     );
   }
   return {
     profileId:
-      environment.TEA_MAPS_LAUNCH_PROFILE_ID?.trim() || "default-launch",
-    label: environment.TEA_MAPS_LAUNCH_PROFILE_LABEL?.trim() || "Local game",
-    game: parseCompilerGameProfile(environment.TEA_MAPS_GAME_PROFILE),
+      environment.HARRHY_MAPS_LAUNCH_PROFILE_ID?.trim() || "default-launch",
+    label: environment.HARRHY_MAPS_LAUNCH_PROFILE_LABEL?.trim() || "Local game",
+    game: parseCompilerGameProfile(environment.HARRHY_MAPS_GAME_PROFILE),
     executable,
     arguments: argumentsValue.data,
     workingDirectory,
