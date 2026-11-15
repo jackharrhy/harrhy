@@ -14,25 +14,8 @@ import type { MapProject } from "./editor-project.ts";
 
 export type JsonObject = Readonly<Record<string, unknown>>;
 
-export interface WebMcpTool {
-  readonly name: string;
-  readonly description: string;
-  readonly inputSchema: JsonObject;
-  readonly annotations: Readonly<{
-    readOnlyHint: boolean;
-    idempotentHint?: boolean;
-    destructiveHint?: boolean;
-    openWorldHint: false;
-  }>;
-  execute(input: unknown): JsonObject | Promise<JsonObject>;
-}
-
-export interface WebMcpModelContext {
-  registerTool(
-    tool: WebMcpTool,
-    options: { readonly signal: AbortSignal },
-  ): void | Promise<void>;
-}
+export type { WebMcpTool } from "@harrhy/webmcp";
+import type { WebMcpTool } from "@harrhy/webmcp";
 
 export interface EditorState {
   readonly session: EditorSession;
@@ -51,18 +34,20 @@ export interface EditorState {
 
 export interface EditorActions {
   prepareEdit(): void;
-  history(action: "undo" | "redo"): Promise<void>;
+  history(action: "undo" | "redo", signal: AbortSignal): Promise<void>;
   openProjectMap(
     path: string,
     discardUnsavedChanges: boolean,
     expectedDocumentId: string,
     expectedRevision: number,
+    signal: AbortSignal,
   ): Promise<void>;
   replaceMapSource(
     source: string,
     name: string,
     expectedDocumentId: string,
     expectedRevision: number,
+    signal: AbortSignal,
   ): Promise<void>;
   setTool(tool: string): void;
   status(message: string): void;
@@ -74,15 +59,12 @@ export const pagination = {
 };
 const readOnly = {
   readOnlyHint: true,
-  idempotentHint: true,
-  openWorldHint: false,
 } as const;
 export const changesView = {
   readOnlyHint: false,
-  destructiveHint: false,
-  openWorldHint: false,
+  consequentialHint: false,
 } as const;
-export const destructive = { ...changesView, destructiveHint: true } as const;
+export const destructive = { ...changesView, consequentialHint: true } as const;
 export const expectedDocument = {
   expectedDocumentId: DocumentIdSchema,
   expectedRevision: z.number().int().nonnegative(),
@@ -99,7 +81,10 @@ export function tool<Schema extends z.ZodType>(
     readonly name: string;
     readonly description: string;
     readonly annotations?: WebMcpTool["annotations"];
-    execute(input: z.output<Schema>): JsonObject | Promise<JsonObject>;
+    execute(
+      input: z.output<Schema>,
+      context: { readonly signal: AbortSignal },
+    ): JsonObject | Promise<JsonObject>;
   },
 ): WebMcpTool {
   return {
@@ -107,14 +92,15 @@ export function tool<Schema extends z.ZodType>(
     description: definition.description,
     inputSchema: z.toJSONSchema(schema) as JsonObject,
     annotations: definition.annotations ?? readOnly,
-    execute(input) {
+    execute(input, context) {
+      context.signal.throwIfAborted();
       const parsed = schema.safeParse(input);
       if (!parsed.success) {
         const issue = parsed.error.issues[0]!;
         const path = issue.path.length ? ` at ${issue.path.join(".")}` : "";
         throw new Error(`Tool input is invalid${path}: ${issue.message}`);
       }
-      return definition.execute(parsed.data);
+      return definition.execute(parsed.data, context);
     },
   };
 }

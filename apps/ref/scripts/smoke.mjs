@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import { chromium } from "@playwright/test";
+import {
+  installWebMcpTestHost,
+  checkWebMcpBrowser,
+  checkWebMcpRemoval,
+} from "../__tests__/webmcp-browser.mjs";
 
 const base = process.env.REF_SMOKE_URL ?? "http://localhost:8788";
 if (!["localhost", "127.0.0.1", "::1"].includes(new URL(base).hostname)) {
@@ -12,6 +17,7 @@ try {
     viewport: { width: 1440, height: 900 },
   });
   const page = await context.newPage();
+  await installWebMcpTestHost(page);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript(() => {
@@ -124,6 +130,7 @@ try {
     await second.locator(".board-item").getAttribute("data-item-id"),
     itemId,
   );
+  await checkWebMcpBrowser(page, second, itemId);
   await page.locator(".board-item img[src]").waitFor();
   const mediaPath = await page
     .locator(".board-item img")
@@ -152,6 +159,11 @@ try {
   );
   assert.equal((await anonymous.request.get(mediaUrl)).status(), 404);
 
+  assert.equal(
+    await page.locator("#scroll-mode").getAttribute("aria-pressed"),
+    "false",
+  );
+  await page.locator("#scroll-mode").click();
   const viewBeforePan = await page
     .locator("#world")
     .evaluate((element) => element.style.transform);
@@ -163,21 +175,79 @@ try {
     viewBeforePan,
   );
   assert.equal(await page.locator("#zoom-label").textContent(), zoomBeforePan);
-  await page.locator("#viewport").evaluate((element) => {
-    element.dispatchEvent(
-      new WheelEvent("wheel", {
-        bubbles: true,
-        cancelable: true,
-        ctrlKey: true,
-        deltaY: -25,
-        clientX: 800,
-        clientY: 500,
-      }),
-    );
+  await page.locator("#scroll-mode").click();
+  const documentScroll = await page.evaluate(() => ({
+    x: scrollX,
+    y: scrollY,
+  }));
+  const anchorBefore = await page.locator("#world").evaluate((element) => {
+    const matrix = new DOMMatrix(getComputedStyle(element).transform);
+    const rect = document.querySelector("#viewport").getBoundingClientRect();
+    return {
+      x: (800 - rect.left - matrix.e) / matrix.a,
+      y: (700 - rect.top - matrix.f) / matrix.d,
+    };
   });
+  await page.mouse.move(800, 700);
+  await page.mouse.wheel(0, 100);
   await page.waitForFunction(
     (before) => document.querySelector("#zoom-label")?.textContent !== before,
     zoomBeforePan,
+  );
+
+  const anchorAfter = await page.locator("#world").evaluate((element) => {
+    const matrix = new DOMMatrix(getComputedStyle(element).transform);
+    const rect = document.querySelector("#viewport").getBoundingClientRect();
+    return {
+      x: (800 - rect.left - matrix.e) / matrix.a,
+      y: (700 - rect.top - matrix.f) / matrix.d,
+    };
+  });
+  assert.ok(Math.abs(anchorBefore.x - anchorAfter.x) < 0.01);
+  assert.ok(Math.abs(anchorBefore.y - anchorAfter.y) < 0.01);
+  assert.deepEqual(
+    await page.evaluate(() => ({ x: scrollX, y: scrollY })),
+    documentScroll,
+  );
+  // Browser zoom/scroll and control keys remain native outside the canvas.
+  for (const selector of ["#link-url", "#zoom-in"]) {
+    assert.equal(
+      await page.locator(selector).evaluate((element) => {
+        const wheel = new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          deltaY: 100,
+        });
+        element.dispatchEvent(wheel);
+        const key = new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          code: "Space",
+          key: " ",
+        });
+        element.dispatchEvent(key);
+        return wheel.defaultPrevented || key.defaultPrevented;
+      }),
+      false,
+    );
+  }
+  assert.equal(
+    await page.locator("#viewport").evaluate((element) => {
+      element.focus();
+      const key = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        code: "Space",
+        key: " ",
+      });
+      element.dispatchEvent(key);
+      element.dispatchEvent(
+        new KeyboardEvent("keyup", { bubbles: true, code: "Space" }),
+      );
+      return key.defaultPrevented;
+    }),
+    true,
   );
 
   const before = await second
@@ -259,6 +329,7 @@ try {
     (await page.locator(".board-title-menu summary").textContent())?.trim(),
     "Renamed board",
   );
+  await checkWebMcpRemoval(page, second);
   await page.locator(`[data-item-id="${itemId}"]`).click();
   await page.getByRole("button", { name: "Remove image" }).click();
   await page
@@ -268,7 +339,26 @@ try {
     .locator(`[data-item-id="${itemId}"]`)
     .waitFor({ state: "detached" });
   assert.equal((await context.request.get(mediaUrl)).status(), 404);
+  await page.evaluate(() => {
+    window.refTestBeforeLogoutContext =
+      window.refTestBrowserTools.get("ref_board_context");
+  });
   await page.evaluate(async () => fetch("/logout", { method: "POST" }));
+  await page.waitForFunction(() => window.refTestBrowserTools.size === 0);
+  assert.equal(
+    await page.evaluate(async () => {
+      try {
+        await window.refTestBeforeLogoutContext.execute(
+          { offset: 0 },
+          { signal: new AbortController().signal },
+        );
+        return false;
+      } catch {
+        return true;
+      }
+    }),
+    true,
+  );
   await page.locator("#connection.offline").waitFor({ timeout: 5_000 });
   assert.equal(
     (

@@ -678,7 +678,7 @@ describe("native Remix router", () => {
     assert.match(html, /Media and files/);
     assert.match(html, /UploadControl/);
     assert.match(html, /LuckyButton/);
-    assert.match(html, /role="progressbar"/);
+    assert.match(html, /<progress[^>]*aria-label=/);
     assert.match(html, /aria-label="Example import jobs"/);
   });
 

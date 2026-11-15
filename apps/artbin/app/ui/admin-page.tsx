@@ -15,7 +15,7 @@ const layoutStyle = css({
   marginInline: "auto",
   minHeight: "calc(100dvh - 48px)",
   background: theme.color.background,
-  fontFamily: "Arial, Helvetica, sans-serif",
+  fontFamily: theme.font.body,
   "@media (max-width: 767px)": { gridTemplateColumns: "1fr" },
 });
 const sidebarStyle = css({
@@ -63,6 +63,7 @@ const navStyle = css({
 const contentStyle = css({
   minWidth: 0,
   padding: "2rem 2.5rem",
+  "& code": { fontFamily: theme.font.mono, overflowWrap: "anywhere" },
   "@media (max-width: 767px)": { padding: "1.5rem 1rem" },
 });
 

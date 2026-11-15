@@ -6,7 +6,7 @@ import { createSqliteDatabase } from "remix/data-table/sqlite";
 import { loadMigrations } from "remix/data-table/migrations/node";
 
 export async function openDatabase(
-  path = resolve(process.env.TEA_DATA_DIR ?? "data", "tea.db"),
+  path = resolve(process.env.HARRHY_CMS_DATA_DIR ?? "data", "tea.db"),
 ) {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const sqlite = new DatabaseSync(path);

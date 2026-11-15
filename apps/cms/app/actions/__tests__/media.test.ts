@@ -20,8 +20,8 @@ it("confines stored media paths to the upload directory", () => {
 
 it("streams typed media and ranges while rejecting missing files and symlinks", async () => {
   const directory = await mkdtemp(join(tmpdir(), "tea-media-test-"));
-  const previous = process.env.TEA_DATA_DIR;
-  process.env.TEA_DATA_DIR = directory;
+  const previous = process.env.HARRHY_CMS_DATA_DIR;
+  process.env.HARRHY_CMS_DATA_DIR = directory;
   const database = await openDatabase(":memory:");
   const store = createContentStore(database.sqlite);
   try {
@@ -95,8 +95,8 @@ it("streams typed media and ranges while rejecting missing files and symlinks", 
     );
   } finally {
     database.sqlite.close();
-    if (previous === undefined) delete process.env.TEA_DATA_DIR;
-    else process.env.TEA_DATA_DIR = previous;
+    if (previous === undefined) delete process.env.HARRHY_CMS_DATA_DIR;
+    else process.env.HARRHY_CMS_DATA_DIR = previous;
     await rm(directory, { recursive: true, force: true });
   }
 });

@@ -22,3 +22,4 @@ app.addEventListener("error", (event) =>
   console.error("UI component error", event.error),
 );
 await app.ready();
+document.documentElement.dataset.uiReady = "true";

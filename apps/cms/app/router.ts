@@ -65,11 +65,11 @@ export function createTeaRouter(
   });
   const auth = createAuthStore(
     database.sqlite,
-    Boolean(process.env.TEA_AUTH_ISSUER),
+    Boolean(process.env.HARRHY_AUTH_ISSUER),
   );
   const central = centralAuth(
     site.origin,
-    process.env[`TEA_AUTH_${site.id.toUpperCase()}_CLIENT_ID`],
+    process.env.HARRHY_AUTH_OPERATOR_CLIENT_ID,
   );
   const router = createRouter<AppContext>({
     middleware: [
@@ -97,7 +97,7 @@ export function createTeaRouter(
     ],
   });
   router.map(routes, createPublicController(site, operator));
-  router.map(routes.auth, createAuthController(site, operator));
+  router.map(routes.auth, createAuthController(site, operator, operatorOrigin));
   router.map(routes.admin, createAdminController(site, operatorOrigin));
   router.map(
     routes.protectedResource,
@@ -137,20 +137,24 @@ export function createTeaRouter(
                 headers: { "WWW-Authenticate": challenge },
               });
             if (
-              !process.env.TEA_AUTH_INTROSPECTION_CLIENT_ID ||
-              !process.env.TEA_AUTH_INTROSPECTION_SECRET
+              !process.env.HARRHY_AUTH_INTROSPECTION_CLIENT_ID ||
+              !process.env.HARRHY_AUTH_INTROSPECTION_SECRET
             )
-              return new Response("CMS Central Auth resource is unavailable", {
+              return new Response("CMS Auth resource is unavailable", {
                 status: 503,
               });
             try {
               const principal = await createIdentityClient(
                 central.config,
               ).introspect(authorization.slice(7), {
-                clientId: process.env.TEA_AUTH_INTROSPECTION_CLIENT_ID,
-                clientSecret: process.env.TEA_AUTH_INTROSPECTION_SECRET,
+                clientId: process.env.HARRHY_AUTH_INTROSPECTION_CLIENT_ID,
+                clientSecret: process.env.HARRHY_AUTH_INTROSPECTION_SECRET,
               });
-              if (principal.principalType !== "user")
+              if (
+                principal.principalType !== "user" ||
+                principal.subject !== central.ownerSubject ||
+                principal.actor
+              )
                 return new Response("Human authorization required", {
                   status: 403,
                 });
@@ -166,9 +170,9 @@ export function createTeaRouter(
                     : undefined,
               });
             }
-            return createMcpHandler().fetch(context);
+            return createMcpHandler(content).fetch(context.request);
           }
-          const token = process.env.TEA_MCP_TOKEN;
+          const token = process.env.HARRHY_CMS_MCP_TOKEN;
           if (!token) return new Response("Not found", { status: 404 });
           if (
             !validMcpToken(context.request.headers.get("authorization"), token)
@@ -177,7 +181,7 @@ export function createTeaRouter(
               status: 401,
               headers: { "WWW-Authenticate": "Bearer" },
             });
-          return createMcpHandler().fetch(context);
+          return createMcpHandler(content).fetch(context.request);
         },
       },
     }),

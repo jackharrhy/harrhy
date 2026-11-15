@@ -20,7 +20,7 @@ it("renders a native filtered fixture and escapes query text", async (t) => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /data-theme="tactile"/);
-  assert.match(html, /No matching components/);
+  assert.match(html, /No components found/);
   assert.ok(!html.includes("<script><"));
   assert.match(html, /method="get"/);
 });

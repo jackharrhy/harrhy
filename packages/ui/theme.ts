@@ -9,6 +9,24 @@ export interface ThemeTokens {
   muted: string;
   border: string;
   controlBorder: string;
+  hoverSurface: string;
+  selectedSurface: string;
+  selectedInk: string;
+  disabledSurface: string;
+  popupOffset: string;
+  tableBorder: string;
+  tableSurface: string;
+  tableStripe: string;
+  tableTextSize: string;
+  tableCellPadding: string;
+  tableColumnBorder: string;
+  tableHeader: string;
+  tableHeaderImage: string;
+  tableHeaderShadow: string;
+  popupRadius: string;
+  popupPadding: string;
+  optionRadius: string;
+  optionGap: string;
   buttonBorder: string;
   buttonPrimaryBorder: string;
   buttonHeight: string;
@@ -28,9 +46,12 @@ export interface ThemeTokens {
   dangerSurface: string;
   success: string;
   successSurface: string;
-  fontBody: string;
-  fontControl: string;
-  fontCode: string;
+  fontDisplay: string;
+  fontUi: string;
+  fontDetail: string;
+  fontMono: string;
+  fontDisplayVariation: string;
+  fontDisplayOpticalSizing: string;
   textSize: string;
   lineHeight: string;
   space: string;
@@ -56,7 +77,25 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   ink: "#192126",
   muted: "#536169",
   border: "#d8dfe2",
-  controlBorder: "#87959d",
+  controlBorder: "#7d8b94",
+  hoverSurface: "#edf0f2",
+  selectedSurface: "#dfe9ed",
+  selectedInk: "#243f4d",
+  disabledSurface: "#edf0f2",
+  popupOffset: "6px",
+  tableBorder: "var(--hui-border)",
+  tableSurface: "var(--hui-surface)",
+  tableStripe: "transparent",
+  tableTextSize: "0.875rem",
+  tableCellPadding: "0.625rem 0.75rem",
+  tableColumnBorder: "0 solid transparent",
+  tableHeader: "var(--hui-surface)",
+  tableHeaderImage: "none",
+  tableHeaderShadow: "none",
+  popupRadius: "10px",
+  popupPadding: "6px",
+  optionRadius: "6px",
+  optionGap: "2px",
   buttonBorder: "var(--hui-control-border)",
   buttonPrimaryBorder: "var(--hui-button-border)",
   buttonHeight: "var(--hui-control-height)",
@@ -76,24 +115,27 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   dangerSurface: "#fff0f1",
   success: "#17613c",
   successSurface: "#eaf6ee",
-  fontBody: "system-ui, sans-serif",
-  fontControl: "inherit",
-  fontCode: "ui-monospace, monospace",
+  fontDisplay: "var(--hui-font-ui)",
+  fontUi: "system-ui, sans-serif",
+  fontDetail: "var(--hui-font-ui)",
+  fontMono: "ui-monospace, monospace",
+  fontDisplayVariation: "normal",
+  fontDisplayOpticalSizing: "auto",
   textSize: "1rem",
   lineHeight: "1.5",
   space: "0.75rem",
-  controlHeight: "2.75rem",
-  controlPadding: "0.5rem 0.875rem",
+  controlHeight: "2.25rem",
+  controlPadding: "0.375rem 0.625rem",
   controlRadius: "0.375rem",
   borderWidth: "1px",
   panelRadius: "0.5rem",
-  panelPadding: "1.25rem",
+  panelPadding: "1rem",
   panelImage: "none",
   buttonImage: "none",
   buttonShadow: "none",
   buttonWeight: "600",
   controlShadow: "none",
-  overlayShadow: "0 16px 48px rgb(0 0 0 / 0.2)",
+  overlayShadow: "0 8px 24px rgb(25 33 38 / 0.14)",
   motion: "120ms",
 };
 
@@ -105,7 +147,17 @@ export function composeTheme(
   return Object.assign({}, base, ...overrides);
 }
 
+// Table treatment follows Radio room utility headers and fine desktop list rules.
 export const tactileTheme = composeTheme(cleanTheme, {
+  tableBorder: "#7b878c",
+  tableSurface: "#f8fbfb",
+  tableStripe: "#edf2f4",
+  tableTextSize: "13px",
+  tableCellPadding: "0.4375rem 0.625rem",
+  tableColumnBorder: "1px solid #dce4e7",
+  tableHeader: "#dce4e7",
+  tableHeaderImage: "linear-gradient(#f8fbfb, #dce4e7)",
+  tableHeaderShadow: "inset 0 1px #fff",
   canvas: "#edf5f5",
   surface: "#f9fdfb",
   elevated: "#ffffff",
@@ -113,6 +165,13 @@ export const tactileTheme = composeTheme(cleanTheme, {
   muted: "#466367",
   border: "#98b6b7",
   controlBorder: "#587c81",
+  hoverSurface: "#e2f1ee",
+  selectedSurface: "#c7e9e7",
+  selectedInk: "#173c42",
+  disabledSurface: "#e7efed",
+  popupRadius: "5px",
+  popupPadding: "3px",
+  optionRadius: "2px",
   accent: "#b5eff2",
   onAccent: "#173c42",
   focus: "#006579",
@@ -136,7 +195,14 @@ export const brutalistTheme = composeTheme(cleanTheme, {
   ink: "#111111",
   muted: "#666666",
   border: "#cccccc",
-  controlBorder: "#cccccc",
+  controlBorder: "#888888",
+  hoverSurface: "#eeeeee",
+  selectedSurface: "#dddddd",
+  selectedInk: "#111111",
+  disabledSurface: "#f0f0f0",
+  popupRadius: "0",
+  popupPadding: "4px",
+  optionRadius: "0",
   buttonBorder: "#222222",
   buttonPrimaryBorder: "#111111",
   accent: "#111111",
@@ -146,21 +212,25 @@ export const brutalistTheme = composeTheme(cleanTheme, {
   dangerSurface: "#fff0f0",
   success: "#008700",
   successSurface: "#f0fff0",
-  fontBody: '"Times New Roman", Georgia, serif',
-  fontCode: '"Courier New", Courier, monospace',
-  lineHeight: "normal",
-  space: "0.5rem",
-  controlHeight: "2rem",
-  controlPadding: "0.5rem",
+  fontDisplay: '"Fraunces", Georgia, serif',
+  fontUi: '"IBM Plex Sans", Arial, sans-serif',
+  fontMono: '"IBM Plex Mono", "Courier New", monospace',
+  fontDetail: "var(--hui-font-mono)",
+  fontDisplayVariation: '"SOFT" 30, "WONK" 1',
+  fontDisplayOpticalSizing: "auto",
+  lineHeight: "1.45",
+  space: "0.625rem",
+  controlHeight: "2.125rem",
+  controlPadding: "0.4375rem 0.625rem",
   controlTextSize: "0.875rem",
-  buttonHeight: "1.875rem",
+  buttonHeight: "2rem",
   buttonPadding: "0.375rem 0.75rem",
   buttonTextSize: "0.875rem",
   labelSize: "0.75rem",
   labelWeight: "500",
   labelTransform: "uppercase",
   labelTracking: "0.025em",
-  fieldGap: "0.25rem",
+  fieldGap: "0.375rem",
   controlRadius: "0",
   panelRadius: "0",
   panelPadding: "1rem",
@@ -181,11 +251,22 @@ export function themeStyles(theme: Readonly<ThemeTokens>) {
   );
 }
 
+const displayTypography = {
+  fontFamily: "var(--hui-font-display)",
+  fontVariationSettings: "var(--hui-font-display-variation)",
+  fontOpticalSizing: "var(--hui-font-display-optical-sizing)",
+};
+/** Short expressive headings/callouts, never a long-reading body default. */
+export const displayStyles = css(displayTypography);
+
 export const themeRoot = css({
   color: "var(--hui-ink)",
   backgroundColor: "var(--hui-canvas)",
-  fontFamily: "var(--hui-font-body)",
+  fontFamily: "var(--hui-font-ui)",
   fontSize: "var(--hui-text-size)",
+  fontOpticalSizing: "auto",
+  fontVariationSettings: "normal",
+  "& h1, & h2, & h3": displayTypography,
   lineHeight: "var(--hui-line-height)",
   accentColor: "var(--hui-accent)",
   caretColor: "var(--hui-ink)",

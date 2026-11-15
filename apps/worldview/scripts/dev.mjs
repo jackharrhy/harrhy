@@ -12,17 +12,17 @@ const args = [
   "--config",
   "wrangler.dev.jsonc",
   "--port",
-  process.env.TEA_MAPS_DEV_PORT ?? "8790",
+  process.env.HARRHY_MAPS_DEV_PORT ?? "8790",
 ];
-if (process.env.TEA_MAPS_SERVICE_ORIGIN)
+if (process.env.HARRHY_MAPS_SERVICE_ORIGIN)
   args.push(
     "--var",
-    `MAPS_SERVICE_ORIGIN:${process.env.TEA_MAPS_SERVICE_ORIGIN}`,
+    `MAPS_SERVICE_ORIGIN:${process.env.HARRHY_MAPS_SERVICE_ORIGIN}`,
   );
-if (process.env.TEA_MAPS_COLLABORATION_ORIGIN)
+if (process.env.HARRHY_MAPS_COLLABORATION_ORIGIN)
   args.push(
     "--var",
-    `MAPS_COLLABORATION_ORIGIN:${process.env.TEA_MAPS_COLLABORATION_ORIGIN}`,
+    `MAPS_COLLABORATION_ORIGIN:${process.env.HARRHY_MAPS_COLLABORATION_ORIGIN}`,
   );
 const server = spawn("wrangler", args, { stdio: "inherit" });
 const fixtures = spawn("vite", ["--config", "vite.config.ts"], {

@@ -73,6 +73,32 @@ test("preserves GFM, safe details and local links for backlink resolution", asyn
   assert.match(result.text, /Details body/);
 });
 
+test("GFM tables retain semantics and safe inline content in a keyboard scroll region", async () => {
+  const result = await renderMarkdown(
+    '| Source | Command | Status |\n| :--- | ---: | :---: |\n| [notes](/notes/) | `a < b` | **ready** |\n| <img src="https://tracker.example" onerror="alert(1)"> | <a href="javascript:alert(1)">unsafe</a> | <script>evil()</script> |',
+    (href) => `/spaces/alpha${href}`,
+  );
+  assert.match(
+    result.html,
+    /class="atlas-table" role="region" aria-label="Markdown table" tabindex="0"/,
+  );
+  assert.match(
+    result.html,
+    /<thead>\s*<tr>\s*<th align="left" scope="col">Source<\/th>/,
+  );
+  assert.match(
+    result.html,
+    /<tbody>\s*<tr>\s*<td align="left"><a href="\/spaces\/alpha\/notes\/">notes<\/a>/,
+  );
+  assert.match(result.html, /<code>a (?:&lt;|&#x3C;) b<\/code>/);
+  assert.match(result.html, /<strong>ready<\/strong>/);
+  assert.doesNotMatch(
+    result.html,
+    /<script|<img|onerror|javascript:|tracker\.example|evil\(\)/,
+  );
+  assert.deepEqual(result.links, ["/spaces/alpha/notes/"]);
+});
+
 test("highlights fenced code after sanitizing and tolerates unknown languages", async () => {
   const result = await renderMarkdown(
     '```typescript\nconst answer: number = 42;\n```\n\n```not-a-real-language\n<safe>\n```\n\n<span style="color:red">author</span>',

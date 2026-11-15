@@ -286,6 +286,11 @@ export const refStyles = css({
     border: "0",
     "font-size": "16px",
   },
+  "& .zoom-controls #scroll-mode": {
+    width: "auto",
+    padding: "0 8px",
+    "font-size": "11px",
+  },
   "& .zoom-controls span": {
     "min-width": "44px",
     "text-align": "center",

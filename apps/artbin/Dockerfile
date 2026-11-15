@@ -3,6 +3,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends python3 make g+
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/artbin/package.json apps/artbin/package.json
+COPY packages/ui/package.json packages/ui/package.json
 COPY packages/artbin-core/package.json packages/artbin-core/package.json
 COPY packages/identity/package.json packages/identity/package.json
 COPY packages/request-body/package.json packages/request-body/package.json
@@ -17,6 +18,7 @@ RUN npm ci --workspace @harrhy/artbin-app --workspace @harrhy/worldview-renderer
   && node /usr/local/lib/node_modules/npm/node_modules/node-gyp/bin/node-gyp.js rebuild --directory node_modules/better-sqlite3 --nodedir=/usr/local --jobs=2
 COPY tsconfig.base.json ./
 COPY apps/artbin apps/artbin
+COPY packages/ui packages/ui
 COPY packages/artbin-core packages/artbin-core
 COPY packages/identity packages/identity
 COPY packages/request-body packages/request-body
@@ -35,6 +37,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 WORKDIR /app
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/tsconfig.base.json ./tsconfig.base.json
+COPY --from=build /app/packages/ui ./packages/ui
 COPY --from=build /app/packages/artbin-core ./packages/artbin-core
 COPY --from=build /app/packages/identity ./packages/identity
 COPY --from=build /app/packages/request-body ./packages/request-body
@@ -46,6 +49,7 @@ COPY --from=build /app/packages/maps-renderer ./packages/maps-renderer
 COPY --from=build /app/apps/artbin ./apps/artbin
 RUN chmod -R a+rX \
     /app/tsconfig.base.json \
+    /app/packages/ui \
     /app/packages/artbin-core \
     /app/packages/identity \
     /app/packages/request-body \

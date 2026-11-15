@@ -18,11 +18,7 @@ import type { OperatorAccess } from "../../operator-access.ts";
 import { readInput, invalid } from "../input.ts";
 import { Document } from "../../ui/document.tsx";
 import { AdminBrand } from "../../ui/admin-brand.tsx";
-import {
-  beginCentralLogin,
-  centralAuth,
-  finishCentralLogin,
-} from "../../data/central-auth.ts";
+import { centralAuth } from "../../data/central-auth.ts";
 
 function Login(
   handle: Handle<{ error?: string; siteName: string; central?: boolean }>,
@@ -88,12 +84,14 @@ function Login(
 export function createAuthController(
   site: SiteRuntime,
   operator?: OperatorAccess,
+  operatorOrigin?: string,
 ) {
   const central = centralAuth(
-    site.origin,
-    process.env[`TEA_AUTH_${site.id.toUpperCase()}_CLIENT_ID`],
+    operatorOrigin ?? site.origin,
+    process.env.HARRHY_AUTH_OPERATOR_CLIENT_ID,
   );
-  const transactionCookie = `tea-${site.id}-oauth`;
+  if (central && !operatorOrigin)
+    throw new Error("CMS Auth requires the operator origin");
   return createController(routes.auth, {
     actions: {
       login(context) {
@@ -111,57 +109,16 @@ export function createAuthController(
       },
       centralLogin() {
         if (!central) return new Response("Not found", { status: 404 });
-        return beginCentralLogin(
-          central,
-          routes.auth.centralCallback.href(),
-          transactionCookie,
-        );
-      },
-      async centralCallback(context) {
-        if (!central) return new Response("Not found", { status: 404 });
-        const result = await finishCentralLogin(
-          context.request,
-          central,
-          routes.auth.centralCallback.href(),
-          transactionCookie,
-        );
-        if (!result.ok) return result.response;
-        const auth = context.get(authContext);
-        const user = auth.bySubject(result.profile.subject);
-        if (
-          !user ||
-          (!result.profile.roles.has("member") &&
-            !result.profile.roles.has("admin"))
-        )
-          return new Response("Site editor access is not assigned", {
-            status: 403,
-            headers: { "Set-Cookie": result.cleared },
-          });
-        auth.revoke(sessionId(context.request, site.id));
-        const session = auth.createSession(
-          user.id,
-          60 * 60_000,
-          result.profile.subject,
-        );
-        const response = new Response(null, {
+        return new Response(null, {
           status: 303,
           headers: {
-            Location: routes.admin.index.href(),
-            "Set-Cookie": result.cleared,
+            Location: `${operatorOrigin}/auth/login`,
+            "Cache-Control": "no-store",
           },
         });
-        response.headers.append(
-          "Set-Cookie",
-          sessionCookie(
-            context.request,
-            session.id,
-            session.expiresAt,
-            site.origin,
-            siteSessionCookieName(site.id),
-            "Lax",
-          ),
-        );
-        return response;
+      },
+      centralCallback() {
+        return new Response("Not found", { status: 404 });
       },
       async authenticate(context) {
         if (central)

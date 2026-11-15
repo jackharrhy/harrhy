@@ -225,7 +225,7 @@ fs.writeFileSync(map.replace(/\\.map$/, '.bsp'), Buffer.from([38, 0, 0, 0]));
           maxArtifactBytes: 1_024,
         },
       ),
-    ).rejects.toThrow(/cannot be combined with TEA_MAPS_GAME_DIR/);
+    ).rejects.toThrow(/cannot be combined with HARRHY_MAPS_GAME_DIR/);
   });
 
   it("bounds each ericw Quake II stage and keeps the game-root paths", () => {
@@ -365,10 +365,10 @@ if (${JSON.stringify(status)} === 'failed') {
   it("accepts launch configuration only from machine-local absolute paths", () => {
     expect(
       configuredLaunchProfile({
-        TEA_MAPS_LAUNCH_EXECUTABLE: "/games/quake",
-        TEA_MAPS_LAUNCH_WORKING_DIRECTORY: "/games",
-        TEA_MAPS_LAUNCH_MAP_DIRECTORY: "/games/id1/maps",
-        TEA_MAPS_LAUNCH_ARGS_JSON: '["+map","%MAP%"]',
+        HARRHY_MAPS_LAUNCH_EXECUTABLE: "/games/quake",
+        HARRHY_MAPS_LAUNCH_WORKING_DIRECTORY: "/games",
+        HARRHY_MAPS_LAUNCH_MAP_DIRECTORY: "/games/id1/maps",
+        HARRHY_MAPS_LAUNCH_ARGS_JSON: '["+map","%MAP%"]',
       }),
     ).toMatchObject({
       profileId: "default-launch",
@@ -377,17 +377,17 @@ if (${JSON.stringify(status)} === 'failed') {
     });
     expect(() =>
       configuredLaunchProfile({
-        TEA_MAPS_LAUNCH_EXECUTABLE: "quake",
-        TEA_MAPS_LAUNCH_WORKING_DIRECTORY: "/games",
-        TEA_MAPS_LAUNCH_MAP_DIRECTORY: "/games/id1/maps",
+        HARRHY_MAPS_LAUNCH_EXECUTABLE: "quake",
+        HARRHY_MAPS_LAUNCH_WORKING_DIRECTORY: "/games",
+        HARRHY_MAPS_LAUNCH_MAP_DIRECTORY: "/games/id1/maps",
       }),
     ).toThrow(/absolute paths/);
     expect(() =>
       configuredLaunchProfile({
-        TEA_MAPS_LAUNCH_EXECUTABLE: "/games/quake",
-        TEA_MAPS_LAUNCH_WORKING_DIRECTORY: "/games",
-        TEA_MAPS_LAUNCH_MAP_DIRECTORY: "/games/id1/maps",
-        TEA_MAPS_LAUNCH_ARGS_JSON: '["+map", 7]',
+        HARRHY_MAPS_LAUNCH_EXECUTABLE: "/games/quake",
+        HARRHY_MAPS_LAUNCH_WORKING_DIRECTORY: "/games",
+        HARRHY_MAPS_LAUNCH_MAP_DIRECTORY: "/games/id1/maps",
+        HARRHY_MAPS_LAUNCH_ARGS_JSON: '["+map", 7]',
       }),
     ).toThrow(/JSON array of strings/);
   });

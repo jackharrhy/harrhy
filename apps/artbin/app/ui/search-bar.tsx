@@ -1,3 +1,4 @@
+import { Input } from "@harrhy/ui/native";
 import { css, type Handle } from "remix/component";
 
 import { Button, ButtonLink } from "./primitives.tsx";
@@ -41,13 +42,13 @@ export function SearchBar(handle: Handle<SearchBarProps>) {
           <label mix={visuallyHiddenStyle} htmlFor="browse-search">
             Search {currentView}
           </label>
-          <input
+          <Input
             id="browse-search"
             type="search"
             name="q"
             value={currentQuery}
             placeholder={`Search ${currentView}`}
-            mix={[inputStyle, fillStyle]}
+            mix={fillStyle}
           />
           <Button type="submit">Search</Button>
         </div>

@@ -1,13 +1,18 @@
-import { on, type Handle, type RemixNode } from "remix/component";
+import { css, on, type Handle, type RemixNode } from "remix/component";
+import { Dialog } from "@harrhy/ui/interactive";
 
-import {
-  modalBodyStyle,
-  modalFooterStyle,
-  modalHeaderStyle,
-  modalOverlayStyle,
-  modalStyle,
-  modalTitleStyle,
-} from "./styles.ts";
+const closeStyle = css({
+  display: "flex",
+  justifyContent: "flex-end",
+  position: "absolute",
+  top: "1.25rem",
+  right: "1.25rem",
+});
+const footerStyle = css({
+  borderTop: "1px solid var(--hui-border)",
+  marginTop: "1rem",
+  paddingTop: "1rem",
+});
 
 export function ModalFrame(
   handle: Handle<{
@@ -18,34 +23,45 @@ export function ModalFrame(
     onDismiss?: () => void;
   }>,
 ) {
+  const trigger =
+    typeof document === "undefined" ? null : document.activeElement;
+  handle.signal.addEventListener(
+    "abort",
+    () => {
+      queueMicrotask(() => {
+        if (trigger && trigger instanceof HTMLElement && trigger.isConnected)
+          trigger.focus();
+      });
+    },
+    { once: true },
+  );
+
   return () => {
-    const { title, children, closeControl, footer } = handle.props;
-    const titleId = `${handle.id}-title`;
+    const { title, children, closeControl, footer, onDismiss } = handle.props;
     return (
-      <div
+      <Dialog
+        open
+        title={title}
+        onClose={() => onDismiss?.()}
         mix={[
-          modalOverlayStyle,
-          handle.props.onDismiss
-            ? on("click", handle.props.onDismiss)
-            : undefined,
+          css({ position: "relative", "& > h2": { paddingRight: "2.5rem" } }),
+          on("click", (event) => {
+            if (event.target !== event.currentTarget) return;
+            const bounds = event.currentTarget.getBoundingClientRect();
+            if (
+              event.clientX < bounds.left ||
+              event.clientX > bounds.right ||
+              event.clientY < bounds.top ||
+              event.clientY > bounds.bottom
+            )
+              onDismiss?.();
+          }),
         ]}
       >
-        <section
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby={titleId}
-          mix={[modalStyle, on("click", (event) => event.stopPropagation())]}
-        >
-          <header mix={modalHeaderStyle}>
-            <h2 id={titleId} mix={modalTitleStyle}>
-              {title}
-            </h2>
-            {closeControl}
-          </header>
-          <div mix={modalBodyStyle}>{children}</div>
-          {footer ? <footer mix={modalFooterStyle}>{footer}</footer> : null}
-        </section>
-      </div>
+        {closeControl ? <div mix={closeStyle}>{closeControl}</div> : null}
+        {children}
+        {footer ? <footer mix={footerStyle}>{footer}</footer> : null}
+      </Dialog>
     );
   };
 }

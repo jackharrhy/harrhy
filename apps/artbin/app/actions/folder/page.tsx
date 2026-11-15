@@ -1,3 +1,4 @@
+import { Input } from "@harrhy/ui/native";
 import { css, type Handle, type RemixNode } from "remix/component";
 
 import type { User } from "#db";
@@ -31,7 +32,7 @@ import { LuckyButton } from "../../ui/public/lucky-button.tsx";
 import { Page } from "../../ui/page.tsx";
 import { SearchBar } from "../../ui/search-bar.tsx";
 import { UploadControl } from "../../ui/public/upload-control.tsx";
-import { inputStyle, theme, visuallyHiddenStyle } from "../../ui/styles.ts";
+import { theme, visuallyHiddenStyle } from "../../ui/styles.ts";
 
 const pageStyle = css({
   background: theme.color.background,
@@ -595,12 +596,12 @@ function WadLibraryPage(handle: Handle<{ data: WadPageData; user: User }>) {
             <label mix={visuallyHiddenStyle} htmlFor="wad-search">
               Search WAD textures
             </label>
-            <input
+            <Input
               id="wad-search"
               type="search"
               name="q"
               value={data.query}
-              mix={[inputStyle, searchInputStyle]}
+              mix={searchInputStyle}
               placeholder="Search textures"
             />
             <Button type="submit">Search</Button>

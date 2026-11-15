@@ -119,7 +119,7 @@ function JobsTable(handle: { props: { jobs: AdminJob[] } }) {
               <div mix={progressCellStyle}>
                 {job.status === "running" ? (
                   <ProgressBar
-                    value={job.progress ?? 0}
+                    value={job.progress ?? null}
                     label={job.progressMessage ?? "Running"}
                   />
                 ) : job.status === "failed" ? (

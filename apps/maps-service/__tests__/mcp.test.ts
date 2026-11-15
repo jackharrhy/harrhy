@@ -12,6 +12,8 @@ async function call(origin: string, method: string, args: unknown) {
     headers: {
       Authorization: "Bearer test-token",
       "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+      "MCP-Protocol-Version": "2025-11-25",
     },
     body: JSON.stringify({
       jsonrpc: "2.0",
@@ -20,6 +22,15 @@ async function call(origin: string, method: string, args: unknown) {
       params: { name: method, arguments: args },
     }),
   });
+}
+
+async function rpcBody(response: Response) {
+  const text = await response.text();
+  if (!response.headers.get("content-type")?.includes("text/event-stream"))
+    return JSON.parse(text);
+  const data = text.split("\n").find((line) => line.startsWith("data: "));
+  if (!data) throw new Error("Missing MCP response");
+  return JSON.parse(data.slice(6));
 }
 
 async function setup(identity = identityFixture()) {
@@ -61,16 +72,28 @@ describe("Tea Maps MCP", () => {
       headers: {
         Authorization: "Bearer test-token",
         "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
       },
-      body: JSON.stringify({ jsonrpc: "2.0", id: 0, method: "initialize" }),
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 0,
+        method: "initialize",
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "fixture", version: "1" },
+        },
+      }),
     });
-    expect((await initialized.json()).result.serverInfo.name).toBe("tea-maps");
+    expect((await rpcBody(initialized)).result.serverInfo.name).toBe(
+      "tea-maps",
+    );
     const created = await call(app.origin, "tea_maps_create_project", {
       name: "MCP map",
       game: "quake",
     });
     expect(created.status).toBe(200);
-    const project = (await created.json()).result.structuredContent.project;
+    const project = (await rpcBody(created)).result.structuredContent.project;
     expect(project.name).toBe("MCP map");
     expect(app.database.role(project.id, admin.id)).toBe("owner");
     const mapResponse = await call(app.origin, "tea_maps_create_map", {
@@ -78,7 +101,7 @@ describe("Tea Maps MCP", () => {
       name: "test.map",
       format: "quake",
     });
-    expect((await mapResponse.json()).result.structuredContent.map.name).toBe(
+    expect((await rpcBody(mapResponse)).result.structuredContent.map.name).toBe(
       "test.map",
     );
     const grantResponse = await call(
@@ -89,7 +112,7 @@ describe("Tea Maps MCP", () => {
       },
     );
     expect(
-      (await grantResponse.json()).result.structuredContent.projectUrl,
+      (await rpcBody(grantResponse)).result.structuredContent.projectUrl,
     ).toBe(`${app.origin}/projects/${project.id}`);
     const outsider = app.database.upsertUser({
       authSubject: "outsider",
@@ -101,7 +124,7 @@ describe("Tea Maps MCP", () => {
     const denied = await call(app.origin, "tea_maps_get_project", {
       projectId: other.id,
     });
-    expect((await denied.json()).result.isError).toBe(true);
+    expect((await rpcBody(denied)).result.isError).toBe(true);
   });
 
   test("rejects unknown, non-admin, service, and underscoped central principals", async () => {

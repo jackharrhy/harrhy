@@ -59,8 +59,8 @@ describe("compiler HTTP boundary", () => {
       ERICW_QBSP: "/tools/qbsp",
       ERICW_VIS: "/tools/vis",
       ERICW_LIGHT: "/tools/light",
-      TEA_MAPS_COMPILER_MAX_REQUEST_BYTES: "8",
-      TEA_MAPS_COMPILER_ORIGINS: "https://editor.example",
+      HARRHY_MAPS_COMPILER_MAX_REQUEST_BYTES: "8",
+      HARRHY_MAPS_COMPILER_ORIGINS: "https://editor.example",
     });
     const denied = await app.fetch(
       new Request("http://local.test/health", {

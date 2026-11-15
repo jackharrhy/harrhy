@@ -7,14 +7,19 @@
     "node": ">=26.13.0 <27"
   },
   "scripts": {
-    "dev": "node --watch --import remix/node-tsx server.ts",
+    "dev": "node dev.mjs",
     "start": "node --import remix/node-tsx server.ts",
     "typecheck": "tsrs --noEmit",
     "test": "cd ../.. && remix test 'apps/ui/__tests__/*.test{,.browser,.e2e}.{ts,tsx}'",
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {
+    "@chenglou/pretext": "^1.0.0",
     "@harrhy/ui": "*",
+    "@shikijs/core": "4.6.0",
+    "@shikijs/engine-javascript": "4.6.0",
+    "@shikijs/langs": "4.6.0",
+    "@shikijs/themes": "4.6.0",
     "remix": "3.2.0"
   },
   "devDependencies": {

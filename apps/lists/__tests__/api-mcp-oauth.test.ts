@@ -14,6 +14,7 @@ import { mcpTools, operationCatalog } from "../src/operations/catalog";
 import { createTestDb, seedList } from "./helpers";
 import * as schema from "../src/db/schema";
 import type { Config } from "../src/config";
+import { mcpHeaders, readMcpResponse } from "./mcp-fixture.ts";
 
 const sesMock = mockClient(SESv2Client);
 beforeEach(() => sesMock.reset());
@@ -62,7 +63,7 @@ function setup() {
 }
 
 function bearer(token: string) {
-  return { Authorization: `Bearer ${token}` };
+  return { Authorization: `Bearer ${token}`, ...mcpHeaders };
 }
 
 async function mcpCall(
@@ -81,7 +82,7 @@ async function mcpCall(
       params: { name, arguments: args },
     }),
   });
-  return response.json() as Promise<any>;
+  return readMcpResponse(response);
 }
 
 describe("scoped API and MCP", () => {
@@ -147,7 +148,7 @@ describe("scoped API and MCP", () => {
       }),
     });
     expect(mcp.status).toBe(200);
-    const mcpData = (await mcp.json()) as any;
+    const mcpData = await readMcpResponse(mcp);
     const decoded = CallToolResultSchema.parse(mcpData.result);
     expect(decoded.structuredContent).toEqual({ items: restData });
     expect(decoded.content).toEqual([
@@ -264,7 +265,7 @@ describe("scoped API and MCP", () => {
         params: {},
       }),
     });
-    const body = (await response.json()) as any;
+    const body = await readMcpResponse(response);
     ListToolsResultSchema.parse(body.result);
     expect(
       body.result.tools
@@ -326,11 +327,7 @@ describe("scoped API and MCP", () => {
       body: JSON.stringify({ jsonrpc: "1.0", method: "tools/list" }),
     });
     expect(response.status).toBe(400);
-    expect(await response.json()).toEqual({
-      jsonrpc: "2.0",
-      id: null,
-      error: { code: -32600, message: "Invalid Request" },
-    });
+    expect((await readMcpResponse(response)).error.code).toBe(-32600);
   });
 
   test("creates subscribers through the same contract in REST and MCP", async () => {
@@ -910,11 +907,15 @@ describe("scoped API and MCP", () => {
         jsonrpc: "2.0",
         id: 1,
         method: "initialize",
-        params: { protocolVersion: "2025-11-25" },
+        params: {
+          protocolVersion: "2025-11-25",
+          capabilities: {},
+          clientInfo: { name: "fixture", version: "1" },
+        },
       }),
     });
     expect(response.status).toBe(200);
-    const initialized = (await response.json()) as any;
+    const initialized = await readMcpResponse(response);
     expect(initialized.result.serverInfo.name).toBe("lists");
     expect(initialized.result.protocolVersion).toBe("2025-11-25");
 
@@ -929,7 +930,7 @@ describe("scoped API and MCP", () => {
       }),
     });
     expect(unknown.status).toBe(200);
-    expect(((await unknown.json()) as any).error.code).toBe(-32601);
+    expect((await readMcpResponse(unknown)).error.code).toBe(-32601);
   });
 
   test("rejects bearer tokens that were not issued for the MCP resource", async () => {

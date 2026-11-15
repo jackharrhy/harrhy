@@ -3,7 +3,7 @@ import test from "node:test";
 import "remix/node-tsx";
 import { createElement as h } from "remix/component";
 import { renderToString } from "remix/component/server";
-const { Button, ButtonLink, Field, Input, Select, Textarea } =
+const { Button, ButtonLink, Field, Input, Textarea, Range } =
   await import("../components.tsx");
 const { Dialog, Tabs, TabList, Tab, TabPanel } =
   await import("../interactive.ts");
@@ -35,7 +35,7 @@ test("native actions keep native form and navigation contracts without a client 
 });
 
 test("Field wires a single control and merges authored description IDs without duplicates", async () => {
-  for (const Control of [Input, Select, Textarea]) {
+  for (const Control of [Input, Textarea]) {
     const html = await renderToString(
       h(
         Field,
@@ -110,7 +110,7 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   );
   assert.match(html, /--hui-control-height: 3rem/);
   assert.match(html, /--hui-button-image:/);
-  assert.match(html, /--hui-font-body:/);
+  assert.match(html, /--hui-font-ui:/);
 });
 
 function luminance(hex) {
@@ -175,4 +175,29 @@ test("official tabs SSR links selected tab and excludes inactive content from in
   assert.match(html, /role="tabpanel"/);
   assert.match(html, /hidden/);
   assert.match(html, /inert/);
+});
+
+test("Range renders a labelled native slider and preserves form and disabled contracts", async () => {
+  const html = await renderToString(
+    h(
+      "form",
+      {},
+      h(Range, {
+        "aria-label": "Volume",
+        name: "volume",
+        min: "0",
+        max: "1",
+        step: "0.01",
+        defaultValue: "0.5",
+      }),
+      h(Range, { "aria-label": "Unavailable", disabled: true }),
+    ),
+  );
+  assert.match(html, /type="range"/);
+  assert.match(html, /aria-label="Volume"/);
+  assert.match(html, /name="volume"/);
+  assert.match(html, /step="0.01"/);
+  assert.match(html, /value="0.5"/);
+  assert.match(html, /disabled/);
+  assert.doesNotMatch(html, /rmx:h:|<script/);
 });

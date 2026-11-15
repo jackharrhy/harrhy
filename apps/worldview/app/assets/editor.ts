@@ -4213,6 +4213,7 @@ async function openProjectMap(
     readonly expectedDocumentId: string;
     readonly expectedRevision: number;
     readonly discardUnsavedChanges: boolean;
+    readonly signal: AbortSignal;
   },
 ) {
   const previous = activeProjectPath ?? "";
@@ -4238,6 +4239,7 @@ async function openProjectMap(
       projectContext.update({ selectedPath: previous });
       return false;
     }
+    siteTool?.signal.throwIfAborted();
     persistDraft();
     leaveHostedMap();
     const identity = `project:${projectRecoveryScope}:${path}`;
@@ -4923,7 +4925,8 @@ void registerEditorWebMcpTools(
       if (source.value !== sourcePreview())
         throw new Error("Apply source edits before using site tools");
     },
-    async history(action) {
+    async history(action, signal) {
+      signal.throwIfAborted();
       if (hostedMap) await hostedConnection![action]();
       else session[action]();
     },
@@ -4932,20 +4935,31 @@ void registerEditorWebMcpTools(
       discardUnsavedChanges,
       expectedDocumentId,
       expectedRevision,
+      signal,
     ) {
+      signal.throwIfAborted();
       await openProjectMap(path, {
         expectedDocumentId,
         expectedRevision,
         discardUnsavedChanges,
+        signal,
       });
     },
-    async replaceMapSource(text, name, expectedDocumentId, expectedRevision) {
+    async replaceMapSource(
+      text,
+      name,
+      expectedDocumentId,
+      expectedRevision,
+      signal,
+    ) {
+      signal.throwIfAborted();
       const parsed = parseMapSource(text);
       await checkSiteToolReplacement(
         expectedDocumentId,
         expectedRevision,
         true,
       );
+      signal.throwIfAborted();
       const game = activeGame();
       persistDraft();
       leaveHostedMap();

@@ -29,6 +29,8 @@ Keep Markdown tables unpadded and put `<!-- prettier-ignore -->` immediately bef
 
 Apps import packages; packages must not import apps. Use Remix 3 for app routing, controllers, middleware, and UI. Read the [Remix skill](.agents/skills/remix/SKILL.md) and relevant installed guides before changing framework behavior. Put Node and Cloudflare runtime rules in the relevant workspace guide.
 
+Prefix first-party environment settings with `HARRHY_`; use `HARRHY_AUTH_*` for Auth integration and an app-specific prefix where settings differ. Preserve platform and third-party environment contracts. Coordinate existing setting renames with their deployed consumers; never rename secret values or silently change runtime behavior.
+
 Use Remix `css(...)` mixins for static UI styles. Keep inline `style` for values computed at runtime. A small stylesheet is fine for CSS features the mixin cannot express, such as `@font-face`.
 
 Keep behavior owned by one app inside that app, even when it has a clean internal interface. Extract a package when another consumer needs it or the module is meant to be embedded by independent hosts.

@@ -5,10 +5,18 @@ export default defineConfig({
   fullyParallel: false,
   workers: 1,
   use: { browserName: "chromium", headless: true },
-  webServer: {
-    command:
-      "NODE_ENV=production node --import remix/node-tsx __tests__/server.ts",
-    port: 4352,
-    reuseExistingServer: false,
-  },
+  webServer: [
+    {
+      command:
+        "NODE_ENV=production node --import remix/node-tsx __tests__/server.ts",
+      port: 4352,
+      reuseExistingServer: false,
+    },
+    {
+      command:
+        "NODE_ENV=production node --import remix/node-tsx __tests__/central-server.ts",
+      port: 4353,
+      reuseExistingServer: false,
+    },
+  ],
 });

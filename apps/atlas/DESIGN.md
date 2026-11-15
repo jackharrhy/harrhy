@@ -1,79 +1,21 @@
----
-name: Atlas
-description: Existing Wonder reading direction, preserved as a plain document garden.
-colors:
-  background: "#fff"
-  text: "#222"
-  link: "#0645ad"
-  visited-link: "#59348c"
-  selection: "#dbe9ff"
-  quote-border: "#aaa"
-  rule: "#ddd"
-typography:
-  body:
-    fontFamily: "Georgia, 'Times New Roman', serif"
-    fontSize: "18px"
-    lineHeight: 1.65
-  heading-one:
-    fontSize: "1.9rem"
-    lineHeight: 1.25
-  heading-two:
-    fontSize: "1.35rem"
-    lineHeight: 1.25
-  heading-three:
-    fontSize: "1.1rem"
-    lineHeight: 1.25
-  small:
-    fontSize: ".85rem"
-  code:
-    fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace"
-    fontSize: ".82em"
-spacing:
-  paragraph: "1rem"
-  column-gutter: "1.25rem"
-  list-indent: "1.5rem"
----
+# Atlas reading surface
 
-# Design System: Atlas
+Read mode. Owner direction updated November 15, 2026: adopt merged `@harrhy/ui` themes and native controls, add agent navigation across the top and a theme picker at the top right. Preserve corpus identity, content/search routes, native disclosures and readable articles. No branding masthead, dashboard cards or client application shell.
 
-## Overview
+## Themes and type
 
-Preserve the owner's pinned Wonder direction: plain headings and links, a white page and dark serif text. This is a Read surface; content hierarchy, citations and topic relationships provide the structure, not branding or application chrome. No new visual direction is proposed here.
+`app/theme.ts` imports Clean, tactile/Radio and brutalist/Artbin directly from `@harrhy/ui/theme`, composing only 18px text and 1.7 line-height for reading. `themeRoot` supplies the corresponding UI/display/mono families and semantic canvas, ink, border, accent and focus roles. The theme is selected server-side from a validated query value or HttpOnly SameSite=Lax preference cookie. Artbin is the default for new visitors; valid query and saved choices still win. Initial HTML has its final theme: no client script or color flash.
 
-Evidence: `PRODUCT.md`, `app/ui.tsx`, and supplied captures `index-390.png`, `pi-1440.png`, `pi-768.png`, `pi-390.png` in `/tmp/atlas-screens/`. The captures show the nested index and article reflow, restrained navigation, closed Sources disclosure and backlinks. Interaction rules below come from implementation, not screenshots alone.
+Artbin uses the Explorer’s OFL Fraunces, IBM Plex Sans and IBM Plex Mono resources, copied into this app’s own public boundary with licenses and provenance. The stylesheet loads only on Artbin pages; fonts load on use. Clean and Radio use the shared themes’ system stacks. No external font service, icon font or Explorer-only visual stylesheet.
 
-## Colors
+## Layout and controls
 
-Blue marks ordinary underlined links; purple distinguishes visited links. Hover thickens the underline to 2px without changing layout. Link underline offset is .12em. The link color also supplies the focus outline and input caret. Selection uses the pale blue background with the normal dark text. Neutral rules distinguish code, table rows and quotations. Light color scheme only; no dark theme is implemented.
+The thin header matches main’s centered 72ch reading measure and gutters. Only tables break out wider. Agent links and a top-right gear share a row; links wrap on narrow screens. The gear uses the existing shared Button `quiet` variant: no visible idle border, background or shadow, while keeping the shared keyboard focus ring and comfortable touch target. Its settings popover aligns to the content column’s right edge rather than the viewport. The gear opens a native auto popover containing the theme form, with browser-managed Escape, outside-click dismissal and keyboard focus. No client script is needed. These are route links with aria-current, never an ARIA tabs widget. Labels come from Atlas’s existing trusted spaces registry; page-count tooltips derive from the current catalog generation, including legitimate empty registered spaces.
 
-## Typography
+Main is a centered 72ch prose column with 1.25rem gutters and normal document hierarchy. GFM tables break out up to 76rem within the viewport gutters; each table has a labelled, keyboard-focusable horizontal scroll region. Semantic table headers retain alignment and column scope. Code remains bounded to prose width. On narrow screens the navigation wraps rather than disappearing into a drawer. Keep the skip link, focus rings, visible article link underlines and native details/summary behavior.
 
-Body text and headings share the serif stack above; headings retain native bold weight. No font download or display face. Paragraphs have a bottom margin of 1rem. Heading margins are `0 0 1.25rem` for h1, `2rem 0 .75rem` for h2, and `1.5rem 0 .5rem` for h3. Small text serves the navigation trail and metadata. Code uses the monospace stack; preformatted blocks use line-height 1.6 and tab size 2.
+The theme selector is a native select styled with shared control/focus recipes and a real shared Button submit control. Search uses shared Field/Input/Button. Notice renders rejected-generation status. No interactive package, hydration or JavaScript bundle is needed. Theme submission preserves query parameters, including scoped search words; the cookie preserves the choice across routes.
 
-## Layout
+## Verification
 
-One centered column: main has `max-width: 42rem`, margin `2.5rem auto 5rem`, and horizontal padding from the gutter token. Border-box sizing includes the padding in that maximum. Body margin is zero. There is no sidebar, grid or fixed header.
-
-At `max-width: 520px` (inclusive), main's top margin becomes 1.5rem and h1 becomes 1.7rem. Body size, gutters and content order remain unchanged. The supplied 390px captures show natural text and heading wrapping; the 768px and 1440px article captures retain the same document structure.
-
-Main permits long text to wrap anywhere. Code blocks and tables scroll horizontally within their own maximum width rather than widening the reading column; tables retain normal word wrapping rules. Inputs and buttons are bounded by the available width.
-
-## Elevation & Depth
-
-Flat white ground, without shadows, cards or layered panels. Whitespace, heading hierarchy, list indentation and light rules separate content.
-
-## Components
-
-- **Document:** English-language HTML, viewport metadata, one `main` landmark with `id="main"` and `tabIndex={-1}`. The skip link sits offscreen until focused, then appears at the upper left on white.
-- **Navigation and lists:** ordinary anchors, paragraphs and nested native lists. Home is an agent directory, not a shared topic index. Each section lists only its owner’s topics and dates; search is scoped to that owner. The article trail is small Agent spaces / selected owner / Search selected owner links, not a branded masthead. Lists indent by the list token; items have .25rem vertical margins, nested unordered lists `.25rem .75rem` block margins.
-- **Disclosures:** native `details`/`summary`, with the browser marker, pointer cursor and underlined summary (.15em offset). Details have 1.5rem vertical margins; an open summary gains .75rem below it. No custom accordion or JavaScript is needed.
-- **Reading material:** blockquotes use a 2px left rule and 1rem inset. Preformatted blocks have 1rem padding and a 1px border. Table cells are left-aligned with `.35rem .75rem .35rem 0` padding and a 1px bottom rule.
-- **Search controls:** native input/button appearance, inherited font and `.3rem .5rem` padding; no custom control skin. Navigation, form submission and disclosures work without browser JavaScript.
-- **Status and focus:** rejected content updates produce a plain paragraph with `role="status"`. Focus-visible uses a 2px solid link-colored outline offset by 4px. These are implemented accessibility provisions, not evidence of complete WCAG conformance or a completed assistive-technology audit.
-
-## Do's and Don'ts
-
-- Do keep native document semantics, visible link underlines, focus treatment and content-first reading order.
-- Do preserve the bounded column, natural mobile reflow and local code/table overflow.
-- Don't add a masthead, logo, cards, slogans, marketing sections or dashboard chrome.
-- Don't replace native navigation or disclosures with JavaScript-dependent controls.
+Use synthetic content for committed tests and any shareable captures. Check every theme at desktop and 390px, article/code/table readability, keyboard focus, native theme persistence, agent navigation and scoped search. Source content remains separate from application assets and cannot inject scripts/styles/images. Visual and browser checks supplement server tests; they are not a claim of complete assistive-technology conformance.

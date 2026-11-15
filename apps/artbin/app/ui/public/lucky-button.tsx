@@ -1,3 +1,4 @@
+import { Button as UiButton } from "@harrhy/ui/native";
 import {
   clientEntry,
   css,
@@ -109,7 +110,7 @@ export const LuckyButton = clientEntry(
             </span>
           ) : null}
           {context ? (
-            <button
+            <UiButton
               type="button"
               mix={[
                 buttonStyle,
@@ -160,7 +161,7 @@ export const LuckyButton = clientEntry(
                 : historyContext
                   ? (props.historyLabel ?? "Lucky again")
                   : (props.label ?? "I'm feeling lucky")}
-            </button>
+            </UiButton>
           ) : null}
           {error ? (
             <span role="alert" mix={[errorStyle, dangerTextStyle]}>
