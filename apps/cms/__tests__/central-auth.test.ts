@@ -11,19 +11,19 @@ import { parseFixtureSites } from "./sites.ts";
 
 it("requires reviewed local links and rejects old CMS password sessions in Central mode", async () => {
   const names = [
-    "TEA_AUTH_ISSUER",
-    "TEA_AUTH_PROJECT_ID",
-    "TEA_AUTH_ORGANIZATION_ID",
-    "TEA_AUTH_OPERATOR_CLIENT_ID",
-    "TEA_AUTH_ANDREW_CLIENT_ID",
+    "HARRHY_AUTH_OWNER_SUBJECT",
+    "HARRHY_AUTH_ISSUER",
+    "HARRHY_AUTH_PROJECT_ID",
+    "HARRHY_AUTH_ORGANIZATION_ID",
+    "HARRHY_AUTH_OPERATOR_CLIENT_ID",
   ] as const;
   const previous = names.map((name) => process.env[name]);
   Object.assign(process.env, {
-    TEA_AUTH_ISSUER: "https://auth.example.test",
-    TEA_AUTH_PROJECT_ID: "cms-project",
-    TEA_AUTH_ORGANIZATION_ID: "cms-org",
-    TEA_AUTH_OPERATOR_CLIENT_ID: "cms-operator",
-    TEA_AUTH_ANDREW_CLIENT_ID: "cms-andrew",
+    HARRHY_AUTH_OWNER_SUBJECT: "operator-subject",
+    HARRHY_AUTH_ISSUER: "https://auth.example.test",
+    HARRHY_AUTH_PROJECT_ID: "cms-project",
+    HARRHY_AUTH_ORGANIZATION_ID: "cms-org",
+    HARRHY_AUTH_OPERATOR_CLIENT_ID: "cms-operator",
   });
   const dir = await mkdtemp(join(tmpdir(), "cms-central-"));
   const site = parseFixtureSites(

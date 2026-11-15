@@ -63,6 +63,17 @@ export function createAuthorizationActions({
       throw Object.assign(new Error("Sign in again to continue."), {
         status: 401,
       });
+    if (
+      Object.hasOwn(intent.application, "allowedUserIds") &&
+      (!Array.isArray(intent.application.allowedUserIds) ||
+        !intent.application.allowedUserIds.includes(session.userId))
+    )
+      throw Object.assign(
+        new Error("Access to this application is not assigned."),
+        {
+          status: 403,
+        },
+      );
     if (isBlocked(session.userId, intent.application.projectId))
       throw Object.assign(
         new Error(

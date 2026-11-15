@@ -1,10 +1,10 @@
 # @harrhy/mcp
 
-Harrhy's MCP boundaries. CMS uses the existing Remix 3 handler and tool/resource definitions at the default export. Artbin uses the additive `@harrhy/mcp/native` entry point for the official SDK's modern transport and native stateless legacy compatibility. Apps keep authentication, origin policy and operation execution in their own routes.
+Harrhy's MCP boundaries. CMS and Artbin use the additive `@harrhy/mcp/native` entry point for the official SDK's modern transport and native stateless legacy compatibility. The default export retains the earlier Remix handler and tool/resource definitions for compatibility. Apps keep authentication, origin policy and operation execution in their own routes.
 
 `src/index.ts` is the public entry point. `createHandler` owns parsing and protocol responses; `maxRequestBytes` and `requestTimeoutMs` bound JSON input. Tool and protocol errors use `createToolError`, `createForbiddenError`, and `createInvalidArgumentsError`. Schemas come from [`@harrhy/json-schema`](../json-schema/README.md), results from [`@harrhy/result`](../result/README.md), and optional request log enrichment from [`@harrhy/logger`](../logger/README.md).
 
-`@harrhy/mcp/native` exports `createNativeHandler(factory, { maxRequestBytes, requestTimeoutMs })`. The factory creates an SDK server; the SDK owns discovery, negotiation and protocol dispatch, including existing 2025 clients. The boundary reads actual stream bytes with a size limit and a default ten-second input deadline, accepts one request per HTTP body (no batches), and marks responses no-store. Authenticate and validate request origins before calling it. This does not change CMS's existing protocol handler.
+`@harrhy/mcp/native` exports `createNativeHandler(factory, { maxRequestBytes, requestTimeoutMs })`. The factory creates an SDK server; the SDK owns discovery, negotiation and protocol dispatch, including existing 2025 clients. The boundary reads actual stream bytes with a size limit and a default ten-second input deadline, accepts one request per HTTP body (no batches), and marks responses no-store. Authenticate and validate request origins before calling it. CMS and Artbin own their catalogs and published-content or operation semantics.
 
 Run `npm run check --workspace @harrhy/mcp` from the root, plus the CMS and Artbin workspace checks when changing this package.
 

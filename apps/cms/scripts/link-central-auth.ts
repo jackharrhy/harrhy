@@ -3,7 +3,28 @@ import { resolve, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 type Link = { id: number; subject: string };
-type Manifest = { operator: Link[]; sites: Record<string, Link[]> };
+type Manifest = {
+  issuer: string;
+  operator: Link[];
+  sites: Record<string, Link[]>;
+};
+
+function reviewedIssuer(value: unknown): string {
+  if (typeof value !== "string")
+    throw new Error("A reviewed issuer is required");
+  const url = URL.parse(value);
+  if (
+    !url ||
+    url.origin !== value ||
+    (url.protocol !== "https:" &&
+      !(
+        url.protocol === "http:" &&
+        ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname)
+      ))
+  )
+    throw new Error("Invalid reviewed issuer");
+  return value;
+}
 
 function links(value: unknown): Link[] {
   if (!Array.isArray(value)) throw new Error("Invalid reviewed links");
@@ -31,6 +52,7 @@ function links(value: unknown): Link[] {
 export function parseReviewedManifest(value: unknown): Manifest {
   if (!value || typeof value !== "object") throw new Error("Invalid manifest");
   const root = value as Record<string, unknown>;
+  const issuer = reviewedIssuer(root.issuer);
   if (
     !root.sites ||
     typeof root.sites !== "object" ||
@@ -46,22 +68,28 @@ export function parseReviewedManifest(value: unknown): Manifest {
   if (!Object.keys(sites).length) throw new Error("Site links are required");
   const operator = links(root.operator);
   if (!operator.length) throw new Error("An operator link is required");
-  return { operator, sites };
+  return { issuer, operator, sites };
 }
 
-function check(database: DatabaseSync, rows: Link[]) {
+function check(database: DatabaseSync, rows: Link[], issuer: string) {
   const columns = database.prepare("PRAGMA table_info(users)").all() as {
     name: string;
   }[];
-  if (!columns.some((column) => column.name === "auth_subject"))
-    throw new Error("Apply the Central Auth schema migration first");
+  if (
+    !["auth_subject", "auth_issuer"].every((name) =>
+      columns.some((column) => column.name === name),
+    )
+  )
+    throw new Error("Apply the Auth schema migration first");
   for (const { id, subject } of rows) {
     const row = database
-      .prepare("SELECT auth_subject FROM users WHERE id=?")
+      .prepare("SELECT auth_subject,auth_issuer FROM users WHERE id=?")
       .get(id);
     if (!row) throw new Error(`Unknown local user ID ${id}`);
     if (row.auth_subject !== null && row.auth_subject !== subject)
       throw new Error(`Local user ID ${id} already has another subject`);
+    if (row.auth_issuer !== null && row.auth_issuer !== issuer)
+      throw new Error(`Local user ID ${id} already has another issuer`);
     const owner = database
       .prepare("SELECT id FROM users WHERE auth_subject=?")
       .get(subject);
@@ -73,7 +101,9 @@ function check(database: DatabaseSync, rows: Link[]) {
 export function applyReviewedLinks(
   targets: { name: string; path: string; rows: Link[] }[],
   apply: boolean,
+  issuer: string,
 ) {
+  reviewedIssuer(issuer);
   const databases: DatabaseSync[] = [];
   try {
     for (const target of targets) {
@@ -81,17 +111,20 @@ export function applyReviewedLinks(
         throw new Error(`Missing ${target.name} database`);
       const database = new DatabaseSync(target.path);
       databases.push(database);
-      check(database, target.rows);
+      check(database, target.rows, issuer);
     }
     if (apply)
       for (const [index, database] of databases.entries()) {
         database.exec("BEGIN IMMEDIATE");
         try {
+          check(database, targets[index].rows, issuer);
           for (const { id, subject } of targets[index].rows)
             database
-              .prepare("UPDATE users SET auth_subject=? WHERE id=?")
-              .run(subject, id);
-          check(database, targets[index].rows);
+              .prepare(
+                "UPDATE users SET auth_subject=?,auth_issuer=? WHERE id=?",
+              )
+              .run(subject, issuer, id);
+          check(database, targets[index].rows, issuer);
           database.exec("COMMIT");
         } catch (error) {
           database.exec("ROLLBACK");
@@ -125,7 +158,7 @@ if (
   const reviewed = parseReviewedManifest(
     JSON.parse(readFileSync(input, "utf8")),
   );
-  const root = resolve(process.env.TEA_DATA_DIR ?? "data");
+  const root = resolve(process.env.HARRHY_CMS_DATA_DIR ?? "data");
   const targets = [
     {
       name: "operator",
@@ -138,7 +171,11 @@ if (
       rows,
     })),
   ];
-  const counts = applyReviewedLinks(targets, process.argv[3] === "--apply");
+  const counts = applyReviewedLinks(
+    targets,
+    process.argv[3] === "--apply",
+    reviewed.issuer,
+  );
   console.log(
     JSON.stringify({ applied: process.argv[3] === "--apply", counts }),
   );

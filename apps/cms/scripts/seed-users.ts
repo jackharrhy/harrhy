@@ -5,11 +5,11 @@ import { createApp } from "../app.ts";
 import { openDatabase } from "../app/data/database.ts";
 import { assets } from "../app/assets.ts";
 const site = (await loadSites()).find((s) => s.id === process.argv[2]);
-const email = process.env.TEA_ADMIN_EMAIL?.trim().toLowerCase(),
-  password = process.env.TEA_ADMIN_PASSWORD;
+const email = process.env.HARRHY_CMS_ADMIN_EMAIL?.trim().toLowerCase(),
+  password = process.env.HARRHY_CMS_ADMIN_PASSWORD;
 if (!site || !email || !password || password.length < 12)
   throw new Error(
-    "Usage: set TEA_ADMIN_EMAIL and TEA_ADMIN_PASSWORD (12+ characters), then npm run cms:seed-users -- site-id",
+    "Usage: set HARRHY_CMS_ADMIN_EMAIL and HARRHY_CMS_ADMIN_PASSWORD (12+ characters), then npm run cms:seed-users -- site-id",
   );
 const app = await createApp([site]);
 app.close();

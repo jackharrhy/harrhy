@@ -11,7 +11,7 @@ import { invalid } from "./input.ts";
 
 const uploadDirectory = (store?: ContentStore) =>
   resolve(
-    store?.options.dataDir ?? process.env.TEA_DATA_DIR ?? "data",
+    store?.options.dataDir ?? process.env.HARRHY_CMS_DATA_DIR ?? "data",
     "uploads",
   );
 export { safeUploadPath } from "../data/upload-path.ts";

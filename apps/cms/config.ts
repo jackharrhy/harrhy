@@ -90,7 +90,7 @@ async function readConfig(dir: string, localOverrides: boolean) {
 
 export async function loadRegistry(
   sitesRoot = fileURLToPath(new URL("./sites", import.meta.url)),
-  dataRoot = resolve(process.env.TEA_DATA_DIR ?? "data"),
+  dataRoot = resolve(process.env.HARRHY_CMS_DATA_DIR ?? "data"),
   localOverrides = true,
 ) {
   const entries = await readdir(sitesRoot, { withFileTypes: true });
