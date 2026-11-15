@@ -50,3 +50,52 @@ it("registers the existing catalog and keeps schema, identity, revision, and con
   ).rejects.toThrow(/Stale document revision/);
   expect(replaceMapSource).not.toHaveBeenCalled();
 });
+
+it("forwards invocation cancellation through validated document actions before deferred commits", async () => {
+  const tools = new Map<string, WebMcpTool>();
+  const view = new EventTarget();
+  const document = {
+    documentElement: { dataset: {} },
+    defaultView: view,
+    modelContext: {
+      registerTool: async (tool: WebMcpTool) => {
+        tools.set(tool.name, tool);
+      },
+    },
+  } as unknown as Document;
+  const map = createStarterDocument();
+  const state = { session: { document: map } } as EditorState;
+  let finish!: () => void;
+  const waiting = new Promise<void>((resolve) => {
+    finish = resolve;
+  });
+  const commit = vi.fn();
+  const replaceMapSource: EditorActions["replaceMapSource"] = async (
+    _source,
+    _name,
+    _id,
+    _revision,
+    signal,
+  ) => {
+    await waiting;
+    signal.throwIfAborted();
+    commit();
+  };
+  await registerEditorWebMcpTools(document, () => state, {
+    replaceMapSource,
+  } as unknown as EditorActions);
+  const controller = new AbortController();
+  const result = tools.get("tea_maps_replace_map_source")!.execute(
+    {
+      expectedDocumentId: map.id,
+      expectedRevision: map.revision,
+      source: "synthetic",
+      confirmDestructive: true,
+    },
+    { signal: controller.signal },
+  );
+  controller.abort();
+  finish();
+  await expect(result).rejects.toMatchObject({ name: "AbortError" });
+  expect(commit).not.toHaveBeenCalled();
+});

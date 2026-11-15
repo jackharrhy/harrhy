@@ -502,12 +502,12 @@ export function editEditorWebMcpTools(
         description:
           "Undo or redo one live editor transaction, including personalized hosted history.",
         annotations: changesView,
-        async execute(input) {
+        async execute(input, { signal }) {
           const current = assertCurrentDocument(input);
           actions.prepareEdit();
           if (input.action === "undo" ? !current.canUndo : !current.canRedo)
             throw new Error(`Nothing to ${input.action}`);
-          await actions.history(input.action);
+          await actions.history(input.action, signal);
           actions.status(`${input.action} completed`);
           const updated = state();
           return {

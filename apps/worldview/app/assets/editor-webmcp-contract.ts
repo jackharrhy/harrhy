@@ -34,18 +34,20 @@ export interface EditorState {
 
 export interface EditorActions {
   prepareEdit(): void;
-  history(action: "undo" | "redo"): Promise<void>;
+  history(action: "undo" | "redo", signal: AbortSignal): Promise<void>;
   openProjectMap(
     path: string,
     discardUnsavedChanges: boolean,
     expectedDocumentId: string,
     expectedRevision: number,
+    signal: AbortSignal,
   ): Promise<void>;
   replaceMapSource(
     source: string,
     name: string,
     expectedDocumentId: string,
     expectedRevision: number,
+    signal: AbortSignal,
   ): Promise<void>;
   setTool(tool: string): void;
   status(message: string): void;
@@ -79,7 +81,10 @@ export function tool<Schema extends z.ZodType>(
     readonly name: string;
     readonly description: string;
     readonly annotations?: WebMcpTool["annotations"];
-    execute(input: z.output<Schema>): JsonObject | Promise<JsonObject>;
+    execute(
+      input: z.output<Schema>,
+      context: { readonly signal: AbortSignal },
+    ): JsonObject | Promise<JsonObject>;
   },
 ): WebMcpTool {
   return {
@@ -87,14 +92,15 @@ export function tool<Schema extends z.ZodType>(
     description: definition.description,
     inputSchema: z.toJSONSchema(schema) as JsonObject,
     annotations: definition.annotations ?? readOnly,
-    execute(input) {
+    execute(input, context) {
+      context.signal.throwIfAborted();
       const parsed = schema.safeParse(input);
       if (!parsed.success) {
         const issue = parsed.error.issues[0]!;
         const path = issue.path.length ? ` at ${issue.path.join(".")}` : "";
         throw new Error(`Tool input is invalid${path}: ${issue.message}`);
       }
-      return definition.execute(parsed.data);
+      return definition.execute(parsed.data, context);
     },
   };
 }
