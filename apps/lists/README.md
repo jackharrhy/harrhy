@@ -10,7 +10,7 @@ Install from the Tea root with `npm ci` and use Bun 1.4.4 for execution. For loc
 
 Run `npm run check --workspace @harrhy/lists` for type checking, the isolated Bun test suite, and browser asset builds. The Compose-backed integration suite is `npm run test:local --workspace @harrhy/lists` after starting its local dependencies. Tests use synthetic in-memory databases and mocked SES unless explicitly marked as local stack tests.
 
-MCP publishes object-root schemas for SDK interoperability. Array-valued operations expose structured results as `{ items: [...] }`; their text content and REST results retain the original arrays. The API/MCP tests validate the complete catalog and a real array-valued response with the MCP SDK.
+MCP uses `@harrhy/mcp/native` for the official SDK's modern and stateless legacy Streamable HTTP transport at `/mcp` and `/mcp/`. The app owns all 25 tool schemas, operation scopes and list access checks. Requests are bounded to 128 MiB, matching the existing Bun server body limit so multi-section template previews remain supported; batches and cross-origin requests are rejected. GET remains unsupported after authentication. Array-valued operations expose structured results as `{ items: [...] }`; their text content and REST results retain the original arrays. API/MCP tests exercise the existing Executor SDK 1.32.1 and the current SDK pinned to the modern protocol, including catalog, array-valued reads, scope checks and local list access.
 
 ## Boundaries and deployment
 
