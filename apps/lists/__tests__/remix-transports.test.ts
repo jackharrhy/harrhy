@@ -7,6 +7,7 @@ import type { Config } from "../src/config.ts";
 import { schema } from "../src/db/index.ts";
 import { mintApiToken } from "../src/services/api-tokens.ts";
 import { createTestDb, seedList } from "./helpers.ts";
+import { mcpHeaders, readMcpResponse } from "./mcp-fixture.ts";
 
 const config: Config = {
   awsRegion: "us-east-1",
@@ -70,7 +71,11 @@ test("Remix REST and MCP share list operations and preserve member ACL", async (
   const call = await mcp.fetch(
     new Request("http://localhost/mcp", {
       method: "POST",
-      headers: { ...headers, "Content-Type": "application/json" },
+      headers: {
+        ...headers,
+        ...mcpHeaders,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         jsonrpc: "2.0",
         id: 1,
@@ -80,7 +85,7 @@ test("Remix REST and MCP share list operations and preserve member ACL", async (
     }),
   );
   expect(call.status).toBe(200);
-  const payload = (await call.json()) as {
+  const payload = (await readMcpResponse(call)) as {
     result: { structuredContent: { items: { id: number }[] } };
   };
   expect(payload.result.structuredContent.items.map((list) => list.id)).toEqual(

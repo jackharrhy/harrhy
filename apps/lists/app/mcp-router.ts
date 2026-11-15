@@ -1,6 +1,10 @@
 import { IdentityError } from "@harrhy/identity";
+import {
+  createNativeHandler,
+  Server,
+  specTypeSchemas,
+} from "@harrhy/mcp/native";
 import { createRouter } from "remix/router";
-import { z } from "zod";
 
 import type { Config } from "../src/config.ts";
 import type { Db } from "../src/db/index.ts";
@@ -10,18 +14,11 @@ import {
   createCentralBearerAuth,
 } from "../src/services/request-auth.ts";
 
-const RpcRequest = z.object({
-  jsonrpc: z.literal("2.0"),
-  id: z.union([z.string(), z.number(), z.null()]).optional(),
-  method: z.string(),
-  params: z.record(z.string(), z.unknown()).optional(),
+const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
+  tools: mcpTools,
 });
-
-const versions = ["2025-11-25", "2025-06-18", "2025-03-26"] as const;
-
-function result(id: unknown, value: unknown) {
-  return { jsonrpc: "2.0", id: id ?? null, result: value };
-}
+if (catalog.issues) throw new Error("Invalid Lists MCP catalog");
+const toolsResult = catalog.value;
 
 function rpcError(id: unknown, code: number, message: string) {
   return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
@@ -32,6 +29,12 @@ export function createMcpRouter(db: Db, config: Config) {
   const central = config.identity ? createCentralBearerAuth(db, config) : null;
 
   async function handle(request: Request) {
+    const origin = request.headers.get("Origin");
+    if (origin && origin !== new URL(config.baseUrl).origin)
+      return new Response("Forbidden Origin", {
+        status: 403,
+        headers: { "Cache-Control": "no-store" },
+      });
     let principal;
     try {
       principal = central
@@ -41,18 +44,21 @@ export function createMcpRouter(db: Db, config: Config) {
       const status = error instanceof IdentityError ? error.status : 503;
       return Response.json(rpcError(null, -32001, "Unauthorized"), {
         status,
-        headers:
-          status === 401
+        headers: {
+          "Cache-Control": "no-store",
+          ...(status === 401
             ? {
                 "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource"`,
               }
-            : undefined,
+            : {}),
+        },
       });
     }
     if (!principal) {
       return Response.json(rpcError(null, -32001, "Unauthorized"), {
         status: 401,
         headers: {
+          "Cache-Control": "no-store",
           "WWW-Authenticate": `Bearer resource_metadata="${config.baseUrl}/.well-known/oauth-protected-resource"`,
         },
       });
@@ -60,66 +66,54 @@ export function createMcpRouter(db: Db, config: Config) {
     if (request.method === "GET")
       return new Response("Method Not Allowed", {
         status: 405,
-        headers: { Allow: "POST" },
+        headers: { Allow: "POST", "Cache-Control": "no-store" },
       });
-    let parsed: z.infer<typeof RpcRequest>;
-    try {
-      parsed = RpcRequest.parse(await request.json());
-    } catch {
-      return Response.json(rpcError(null, -32600, "Invalid Request"), {
-        status: 400,
-      });
-    }
-    if (parsed.method === "initialize") {
-      const requested = parsed.params?.protocolVersion;
-      const protocolVersion =
-        typeof requested === "string" &&
-        versions.includes(requested as (typeof versions)[number])
-          ? requested
-          : versions[0];
-      return Response.json(
-        result(parsed.id, {
-          protocolVersion,
-          capabilities: { tools: { listChanged: false } },
-          serverInfo: { name: "lists", version: "1.0.0" },
-        }),
-      );
-    }
-    if (parsed.method === "notifications/initialized")
-      return new Response(null, { status: 202 });
-    if (parsed.method === "tools/list")
-      return Response.json(result(parsed.id, { tools: mcpTools }));
-    if (parsed.method === "tools/call") {
-      const params = parsed.params ?? {};
-      try {
-        const operation = mcpOperations.get(String(params.name ?? ""));
-        if (!operation)
-          throw new Error(`Unknown tool: ${String(params.name ?? "")}`);
-        const value = await operation.execute(
-          { db, config, principal },
-          params.arguments ?? {},
+    const handler = createNativeHandler(
+      () => {
+        const server = new Server(
+          { name: "lists", version: "1.0.0" },
+          { capabilities: { tools: { listChanged: false } } },
         );
-        return Response.json(
-          result(parsed.id, {
-            content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
-            structuredContent: Array.isArray(value) ? { items: value } : value,
-          }),
-        );
-      } catch (error) {
-        return Response.json(
-          result(parsed.id, {
-            content: [
+        server.setRequestHandler("tools/list", () => toolsResult);
+        server.setRequestHandler("tools/call", async (message) => {
+          try {
+            const operation = mcpOperations.get(message.params.name);
+            if (!operation)
+              throw new Error(`Unknown tool: ${message.params.name}`);
+            const value = await operation.execute(
+              { db, config, principal },
+              message.params.arguments ?? {},
+            );
+            return server.projectCallToolResult(
               {
-                type: "text",
-                text: error instanceof Error ? error.message : "Tool failed",
+                content: [
+                  { type: "text", text: JSON.stringify(value, null, 2) },
+                ],
+                structuredContent: Array.isArray(value)
+                  ? { items: value }
+                  : value,
               },
-            ],
-            isError: true,
-          }),
-        );
-      }
-    }
-    return Response.json(rpcError(parsed.id, -32601, "Method not found"));
+              toolsResult.tools.find(
+                (tool) => tool.name === message.params.name,
+              )?.outputSchema,
+            );
+          } catch (error) {
+            return {
+              content: [
+                {
+                  type: "text",
+                  text: error instanceof Error ? error.message : "Tool failed",
+                },
+              ],
+              isError: true,
+            };
+          }
+        });
+        return server;
+      },
+      { maxRequestBytes: 24 * 1024 * 1024 },
+    );
+    return handler.fetch(request);
   }
 
   router.get("/mcp", ({ request }) => handle(request));
