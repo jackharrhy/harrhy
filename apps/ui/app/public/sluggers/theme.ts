@@ -14,7 +14,7 @@ export const sluggersTheme = themeStyles(
     onAccent: "#ffffff",
     focus: "#a43a00",
     fontUi: "SluggersCezanne, system-ui, sans-serif",
-    fontDisplay: "SluggersBolt, system-ui, sans-serif",
+    fontDisplay: "SluggersRodin, system-ui, sans-serif",
     fontDetail: "SluggersCezanne, system-ui, sans-serif",
     textSize: "14px",
     lineHeight: "1.6",

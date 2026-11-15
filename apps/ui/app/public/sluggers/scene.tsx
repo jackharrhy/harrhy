@@ -544,7 +544,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                     </div>
                     <strong
                       mix={css({
-                        fontFamily: "SluggersRodin, sans-serif",
+                        fontFamily: "SluggersCezanne, sans-serif",
                         fontSize: "36px",
                         fontVariantNumeric: "tabular-nums",
                       })}

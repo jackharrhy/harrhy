@@ -28,7 +28,7 @@ Reference: `jackharrhy/sluggers-super-draft` at `3c6013531c304c82f1a6bf741c83347
 
 - Original `app/app.css`: blue league field, white ink, NewCezanne UI, Rodin statistical numerals and expressive display lettering. Local theme retains those roles, original blue-600 canvas and stationary 7rem dotted field, with opaque white score sheets and clearer control/focus treatment. The dots are source-derived identity, not a new dashboard texture; no background animation.
 - `app/routes/home.tsx`: PopHappiness league masthead; local masthead uses that family rather than approximating with a system face.
-- `app/components/StandingsTable.tsx`: conference/team identity, W/L, win-loss difference, run differential and weekly results. Local fixture uses the same core standings metrics.
+- `app/components/StandingsTable.tsx`: conference/team identity, W/L, win-loss difference, run differential and weekly results. Local fixture uses the same core standings metrics. Its Rodin numeric/identity role is retained; match scores use Cezanne as in original `routes/match.tsx`. ITC Bolt was an archive kitchen-sink specimen, not the product's general heading face.
 - `app/components/Lineup.tsx`: captain, batting order and nine defensive locations; local ordered rows expose all nine without drag dependence.
 - `app/utils/matches.server.ts`: `freezeMatchLineups` on transition into live play. Frozen fixture appearances never follow editor mutations.
 
@@ -44,8 +44,8 @@ All inputs come from the pinned original app's `public/fonts/`. Converted using 
 | Private output under `fonts/` | Original filename | Role |
 | --- | --- | --- |
 | `cezanne.woff2` | `FOT-NewCezanne Pro M.otf` | Body, controls |
-| `rodin.woff2` | `FOT-NewRodin Pro EB.otf` | Tabular statistics, scores |
-| `bolt.woff2` | `ITC Bolt Bold Regular.otf` | Short display headings |
+| `rodin.woff2` | `FOT-NewRodin Pro EB.otf` | Tabular statistics, identity headings |
+| `bolt.woff2` | `ITC Bolt Bold Regular.otf` | Optional archive display specimen/fallback, not general product headings |
 | `happiness.woff2` | `FOT-PopHappinessStd-EB.otf` | League masthead |
 
 ## Behavior and integration boundaries
