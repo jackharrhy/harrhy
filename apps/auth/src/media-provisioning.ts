@@ -80,7 +80,8 @@ function parseBody(value: unknown): CreationBody {
     review.profile !== "exact-jellyfin-import-v1" ||
     review.permissions !== 160 ||
     review.permissionMeaning !== "request-and-auto-approve" ||
-    review.userType !== 3
+    review.userType !== 3 ||
+    review.jellyfinNativeId !== target.sourceNativeId
   )
     throw fail();
   return {
@@ -106,6 +107,7 @@ function decodeCreation(value: unknown): Creation {
     created_at: text(row.created_at),
     body: parseBody(JSON.parse(textBody(row.body))),
   };
+  if (!Number.isFinite(Date.parse(base.created_at))) throw fail();
   if (row.state === "created")
     return { ...base, state: row.state, native_id: text(row.native_id) };
   if (row.state === "review" && row.native_id === null)

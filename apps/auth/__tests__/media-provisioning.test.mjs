@@ -187,6 +187,24 @@ test("Seerr import requires a fresh exact source mapping and blocks duplicate na
       reason: "Explicit import",
       target: seerrTarget,
     });
+    db.prepare("UPDATE media_provisioning SET body=? WHERE id=?").run(
+      JSON.stringify({
+        ...review.body,
+        review: {
+          ...review.body.review,
+          jellyfinNativeId: "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        },
+      }),
+      review.id,
+    );
+    await assert.rejects(ledger.confirm({ id: review.id, actor: "reviewer" }), {
+      status: 409,
+    });
+    assert.equal(writes, 0);
+    db.prepare("UPDATE media_provisioning SET body=? WHERE id=?").run(
+      JSON.stringify(review.body),
+      review.id,
+    );
     links.pop();
     await assert.rejects(ledger.confirm({ id: review.id, actor: "reviewer" }));
     assert.equal(writes, 0);
@@ -241,6 +259,13 @@ test("persisted provisioning rejects crossed service reviews and impossible rece
         { status: 409 },
       );
     }
+    update.run("review", null, body, action.id);
+    db.prepare(
+      "UPDATE media_provisioning SET created_at='invalid' WHERE id=?",
+    ).run(action.id);
+    await assert.rejects(ledger.confirm({ id: action.id, actor: "reviewer" }), {
+      status: 409,
+    });
     assert.equal(writes(), 0);
   } finally {
     db.close();

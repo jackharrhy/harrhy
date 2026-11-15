@@ -4,8 +4,6 @@ import { createSeerrProvisioning } from "../src/seerr-provisioning.ts";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createJellyfinNativeFixture } from "./fixtures/jellyfin-native.mjs";
-import { createJellyfinLifecycle } from "../src/jellyfin-lifecycle.mjs";
-import { normalizeJellyfinUsers } from "../src/jellyfin-inventory.mjs";
 
 const name = `harrhy-seerr-import-test-${randomBytes(6).toString("hex")}`;
 const docker = (...args) =>
@@ -26,8 +24,7 @@ try {
   docker("network", "create", network);
   networkOwned = true;
   fixture = await createJellyfinNativeFixture({ network });
-  const { baseUrl, api, session, token, password, libraries, adapter } =
-    fixture;
+  const { api, session, token, password, libraries, adapter } = fixture;
   phase = "review";
   const review = await adapter.preview({
     username: "synthetic-recipient",
@@ -53,12 +50,6 @@ try {
     body: { Username: "synthetic-recipient", Pw: recipientPassword },
   });
   assert.equal(recipient.User.Id, result.nativeId);
-  assert.equal(recipient.User.Policy.IsAdministrator, false);
-  assert.equal(recipient.User.Policy.EnableAllFolders, false);
-  assert.deepEqual(recipient.User.Policy.EnabledFolders, [libraries[0].ItemId]);
-  const users = await api("Users", { token });
-  assert.equal(users.length, 2);
-  assert.equal(normalizeJellyfinUsers(users).length, 2);
 
   phase = "seerr-start";
   docker(
@@ -186,23 +177,14 @@ try {
   phase = "seerr-duplicate-rejection";
   await assert.rejects(importer.preview({ jellyfinNativeId: result.nativeId }));
 
-  phase = "synthetic-disable";
-  const lifecycle = createJellyfinLifecycle(
-    { baseUrl, writeTokenFile: "/synthetic/in-memory-only" },
-    { readToken: async () => token },
-  );
-  const disableReview = await lifecycle.inspect(result.nativeId);
-  assert.equal(
-    (await lifecycle.disable(disableReview, async () => {})).state,
-    "disabled",
-  );
-  assert.equal(
+  phase = "owner-preservation";
+  assert.deepEqual(
     (await api("Users", { token })).find((user) => user.Id === session.User.Id)
-      .Policy.IsAdministrator,
-    true,
+      .Policy,
+    session.User.Policy,
   );
   console.log(
-    "PASS isolated pinned Seerr3.5.2 + Jellyfin12.4: exact-ID import160, returned-ID receipt, real native recipient login, existing-association rejection; compact-ID inventory, reviewed selected-library creation, claim/ID checkpoint, policy verification, separate native password, real recipient sign-in and reviewed synthetic disable; owner unchanged.",
+    "PASS isolated pinned Seerr3.5.2 + Jellyfin12.4: prerequisite Jellyfin creation/login, exact-ID import160, returned-ID receipt, real native recipient login, existing-association rejection; both owners unchanged.",
   );
 } catch {
   throw new Error(

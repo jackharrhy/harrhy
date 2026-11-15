@@ -51,10 +51,10 @@ try {
     (await lifecycle.disable(disableReview, async () => {})).state,
     "disabled",
   );
-  assert.equal(
+  assert.deepEqual(
     (await api("Users", { token })).find((user) => user.Id === session.User.Id)
-      .Policy.IsAdministrator,
-    true,
+      .Policy,
+    session.User.Policy,
   );
   console.log(
     "PASS isolated pinned Jellyfin12.4: compact-ID inventory, reviewed selected-library creation, claim/ID checkpoint, policy verification, separate native password, real recipient sign-in and reviewed synthetic disable; owner unchanged.",
