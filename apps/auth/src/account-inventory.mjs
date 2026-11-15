@@ -2,14 +2,15 @@ import { open } from "node:fs/promises";
 import { createJellyfinInventory } from "./jellyfin-inventory.mjs";
 
 const limit = 1024 * 1024;
-const invalid = () => new Error("Invalid media inventory configuration");
+const invalid = () => new Error("Invalid account inventory configuration");
 
-export function createMediaInventory(instances = []) {
+export function createAccountInventory(instances = []) {
   if (!Array.isArray(instances) || instances.length > 20) throw invalid();
   const keys = new Set();
   const configured = instances.map((item) => {
     if (
-      !["jellyfin", "seerr", "navidrome"].includes(item.service) ||
+      typeof item.service !== "string" ||
+      !/^[a-z][a-z0-9-]{0,99}$/.test(item.service) ||
       typeof item.instance !== "string" ||
       !/^[A-Za-z0-9-]{1,100}$/.test(item.instance) ||
       typeof item.name !== "string" ||
@@ -47,7 +48,7 @@ export function createMediaInventory(instances = []) {
         (item) => item.service === service && item.instance === instance,
       );
       if (!source)
-        throw Object.assign(new Error("Media instance not found."), {
+        throw Object.assign(new Error("Service instance not found."), {
           status: 404,
         });
       let file;

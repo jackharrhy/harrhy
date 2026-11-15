@@ -1,7 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { chmodSync } from "node:fs";
 import { randomUUID } from "node:crypto";
-import { createMediaIdentityLedger } from "./media-identities.mjs";
+import { createConnectedAccountLedger } from "./connected-accounts.mjs";
 import { createIdentityOnboardingLedger } from "./identity-onboarding.mjs";
 import { createMediaServiceActions } from "./media-service-actions.mjs";
 import { createMediaLifecycle } from "./media-lifecycle.mjs";
@@ -37,7 +37,7 @@ export function createAccessStore({
   db.prepare(
     "UPDATE operations SET state='unknown' WHERE state='applying'",
   ).run();
-  const media = createMediaIdentityLedger(db);
+  const media = createConnectedAccountLedger(db);
   const mediaActions = createMediaServiceActions(db, {
     mappings: media.mappings,
     lifecycle: mediaLifecycle,

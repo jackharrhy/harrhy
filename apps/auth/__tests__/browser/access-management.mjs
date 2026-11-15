@@ -699,13 +699,13 @@ try {
     .last()
     .click();
   await page
-    .getByRole("link", { name: "Media identities", exact: true })
+    .getByRole("link", { name: "Service accounts", exact: true })
     .click();
   await page
     .getByRole("link", { name: "Synthetic Jellyfin", exact: true })
     .click();
   assert.equal(
-    await page.getByText("Native only · needs review", { exact: true }).count(),
+    await page.getByText("Not linked to Auth", { exact: true }).count(),
     2,
   );
   await capture(page, "media-desktop");
@@ -761,12 +761,12 @@ try {
     .getByRole("link", { name: "Return to native inventory", exact: true })
     .click();
   assert.equal(
-    await page.getByText("Native only · needs review", { exact: true }).count(),
+    await page.getByText("Not linked to Auth", { exact: true }).count(),
     1,
   );
   assert.equal(
     await page
-      .getByText("Linked identity · access is separate", { exact: true })
+      .getByText("Linked", { exact: true })
       .count(),
     1,
   );
@@ -836,7 +836,7 @@ try {
   await page.reload();
   await page
     .getByRole("status")
-    .filter({ hasText: "Inventory is stale" })
+    .filter({ hasText: "Account list is out of date" })
     .waitFor();
   assert.equal(
     await page
@@ -1186,7 +1186,7 @@ try {
   await page.goto(origin + "/manage/media");
   await page
     .getByRole("link", {
-      name: "Create a new native account · separate review",
+      name: "Create service account",
       exact: true,
     })
     .click();

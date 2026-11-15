@@ -12,7 +12,7 @@ const nativeKey = (value) =>
 const personKey = (value) =>
   JSON.stringify([value.service, value.instance, value.issuer, value.subject]);
 
-export function mediaDiscrepancies({
+export function accountDiscrepancies({
   snapshot,
   mappings,
   people,
@@ -72,7 +72,7 @@ export function mediaDiscrepancies({
   return { state: "available", observedAt: snapshot.observedAt, rows };
 }
 
-export function createMediaIdentityLedger(db) {
+export function createConnectedAccountLedger(db) {
   db.exec(`CREATE TABLE IF NOT EXISTS media_identity_links (
     service TEXT NOT NULL, instance TEXT NOT NULL, native_id TEXT NOT NULL,
     issuer TEXT NOT NULL, subject TEXT NOT NULL, actor TEXT NOT NULL,
@@ -115,7 +115,7 @@ export function createMediaIdentityLedger(db) {
       );
       if (scopeKey(exact) !== scopeKey(inventory))
         throw fail(409, "Inventory scope changed.");
-      const result = mediaDiscrepancies({
+      const result = accountDiscrepancies({
         snapshot: inventory,
         mappings: mappings(),
         people,
@@ -170,7 +170,7 @@ export function createMediaIdentityLedger(db) {
       const mapping = operation.body.mapping;
       if (scopeKey(mapping) !== scopeKey(inventory))
         throw fail(409, "Inventory scope changed.");
-      const result = mediaDiscrepancies({
+      const result = accountDiscrepancies({
         snapshot: inventory,
         mappings: mappings(),
         people,

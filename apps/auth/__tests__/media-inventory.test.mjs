@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { mkdtemp, writeFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { createMediaInventory } from "../src/media-inventory.mjs";
+import { createAccountInventory } from "../src/account-inventory.mjs";
 import {
   createJellyfinInventory,
   normalizeJellyfinUsers,
@@ -101,7 +101,7 @@ test("file inventory is bounded, scope-checked, sanitized and reports unavailabl
     name: "Synthetic Jellyfin",
     snapshotFile: `${directory}/snapshot.json`,
   };
-  const inventory = createMediaInventory([source]);
+  const inventory = createAccountInventory([source]);
   assert.deepEqual(inventory.instances(), [
     { service: source.service, instance: source.instance, name: source.name },
   ]);
@@ -146,4 +146,41 @@ test("file inventory is bounded, scope-checked, sanitized and reports unavailabl
   await assert.rejects(inventory.read("seerr", source.instance), {
     status: 404,
   });
+});
+
+test("unmanaged service snapshots use the same account inventory without acquiring a write adapter", async (t) => {
+  const directory = await mkdtemp(`${tmpdir()}/auth-accounts-`);
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const source = {
+    service: "forum",
+    instance: "synthetic",
+    name: "Synthetic Forum",
+    snapshotFile: `${directory}/snapshot.json`,
+  };
+  const snapshot = {
+    service: source.service,
+    instance: source.instance,
+    state: "available",
+    observedAt: new Date().toISOString(),
+    accounts: [
+      {
+        nativeId: "forum-42",
+        name: "Synthetic Member",
+        disabled: false,
+        administrator: false,
+      },
+    ],
+  };
+  await writeFile(source.snapshotFile, JSON.stringify(snapshot));
+  const inventory = createAccountInventory([source]);
+  assert.deepEqual(
+    await inventory.read(source.service, source.instance),
+    snapshot,
+  );
+  assert.throws(() =>
+    createAccountInventory([{ ...source, adapter: "jellyfin" }]),
+  );
+  assert.throws(() =>
+    createAccountInventory([{ ...source, service: "../forum" }]),
+  );
 });

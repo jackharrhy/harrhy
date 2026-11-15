@@ -41,7 +41,7 @@ function fixture() {
       },
     },
     rateLimit: () => {},
-    renderMediaAction: (value) => {
+    renderAccountAction: (value) => {
       calls.push(["render", value]);
       return "html";
     },

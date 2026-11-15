@@ -1,4 +1,4 @@
-import { type Handle } from "remix/component";
+import { css, type Handle } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { Document, type DocumentProps } from "./document.tsx";
 
@@ -40,19 +40,23 @@ type Review = {
     observedAt: string;
   };
 };
+const accountHeadingStyles = css({
+  flexWrap: "wrap",
+  "& .actions": { flexWrap: "wrap", marginTop: 0 },
+});
 const base = (item: Instance | Mapping) =>
   `/manage/media/${item.service}/${item.instance}`;
 const labels: Record<string, string> = {
-  "native-only": "Native only · needs review",
-  linked: "Linked identity · access is separate",
+  "native-only": "Not linked to Auth",
+  linked: "Linked",
   orphaned: "Auth identity missing",
   "auth-inactive": "Auth account inactive",
-  "native-disabled": "Native account disabled",
-  "native-missing": "Native account missing",
+  "native-disabled": "Service account disabled",
+  "native-missing": "Linked account not found",
   ambiguous: "Conflicting mappings",
 };
 
-function MediaPage(
+function ConnectedAccountsPage(
   handle: Handle<{
     instances: Instance[];
     selected?: Instance;
@@ -74,51 +78,63 @@ function MediaPage(
       context,
     } = handle.props;
     return (
-      <Document {...context} title="Media identities" active="services">
-        <div class="page-heading">
+      <Document {...context} title="Service accounts" active="services">
+        <div class="page-heading" mix={accountHeadingStyles}>
           <div>
-            <h1>Media identities</h1>
+            <h1>Service accounts</h1>
             <p class="muted">
-              Native accounts and Auth identities. Linking does not grant access
-              or change native accounts.
+              See accounts in your services and link them to people in Auth.
             </p>
           </div>
-          <a class="button" href="/manage/services">
-            Services
-          </a>
+          <div class="actions">
+            <a class="button primary" href="/manage/media/provisioning">
+              Create service account
+            </a>
+            <a class="button" href="/manage/services">
+              Services
+            </a>
+          </div>
         </div>
-        <p>
-          <a class="text-link" href="/manage/media/provisioning">
-            Create a new native account · separate review
-          </a>
+        <p class="muted">
+          Available actions depend on each service’s integration.
         </p>
         {instances.length === 0 ? (
           <p>
-            No media inventory instances are configured. Ask the operator to
-            connect a read-only roster.
+            No service account connections are configured. Ask the operator to
+            connect a read-only account list.
           </p>
         ) : (
-          <nav aria-label="Media instances" class="actions">
+          <nav aria-label="Service instances">
             {instances.map((item) => (
-              <a
-                href={base(item)}
-                aria-current={
-                  selected?.service === item.service &&
-                  selected.instance === item.instance
-                    ? "page"
-                    : undefined
-                }
-              >
-                {item.name}
-              </a>
+              <div class="settings-row">
+                <div>
+                  <h2>
+                    <a
+                      href={base(item)}
+                      aria-current={
+                        selected?.service === item.service &&
+                        selected.instance === item.instance
+                          ? "page"
+                          : undefined
+                      }
+                    >
+                      {item.name}
+                    </a>
+                  </h2>
+                  <p class="muted">{item.instance}</p>
+                </div>
+                <a class="text-link" href={base(item)}>
+                  View accounts
+                </a>
+              </div>
             ))}
           </nav>
         )}
         {!selected && (
           <section>
-            <h2>Your recent native service actions</h2>
+            <h2>Your recent account changes</h2>
             {actions.length === 0 ? (
-              <p>No native service actions reviewed.</p>
+              <p>No account changes reviewed yet.</p>
             ) : (
               <ul>
                 {actions.map((action) => (
@@ -159,23 +175,22 @@ function MediaPage(
             <p class="muted">
               {inventory.observedAt ? (
                 <>
-                  Native snapshot observed{" "}
+                  Last checked{" "}
                   <time dateTime={inventory.observedAt}>
                     {inventory.observedAt}
                   </time>
                   .{" "}
                 </>
               ) : null}
-              Snapshots are not proof of live convergence.{" "}
-              <a href={base(selected)}>Refresh inventory</a>
+              <a href={base(selected)}>Check again</a>
             </p>
             {inventory.state !== "available" ? (
               <p role="status">
                 {inventory.state === "stale"
-                  ? "Inventory is stale."
-                  : "Inventory is unavailable."}{" "}
-                No native absence or readiness can be established. Ask the
-                operator to refresh the read-only source.
+                  ? "Account list is out of date."
+                  : "Account list is unavailable."}{" "}
+                Ask the operator to update the service connection before linking
+                or changing accounts.
               </p>
             ) : inventory.rows.length === 0 ? (
               <p>No native accounts or saved mappings in this instance.</p>
@@ -250,9 +265,8 @@ function MediaPage(
                         </label>
                         <button>Review identity link</button>
                         <p class="muted">
-                          Leave native-only accounts unchanged unless an
-                          explicit manual decision has been made. Names and
-                          email are not matching keys.
+                          Accounts stay unchanged until you explicitly review a
+                          link.
                         </p>
                       </form>
                     ) : row.mapping &&
@@ -328,7 +342,9 @@ function MediaPage(
     );
   };
 }
-function MediaReviewPage(handle: Handle<{ review: Review; context: Context }>) {
+function AccountLinkReviewPage(
+  handle: Handle<{ review: Review; context: Context }>,
+) {
   return () => {
     const { review, context } = handle.props;
     const { mapping, account, reason, observedAt } = review.body;
@@ -395,7 +411,7 @@ function MediaReviewPage(handle: Handle<{ review: Review; context: Context }>) {
     );
   };
 }
-export const renderMedia = (
+export const renderConnectedAccounts = (
   instances: Instance[],
   selected: Instance | undefined,
   inventory: Inventory | undefined,
@@ -406,7 +422,7 @@ export const renderMedia = (
   actions: ServiceAction[] = [],
 ) =>
   renderToString(
-    <MediaPage
+    <ConnectedAccountsPage
       instances={instances}
       selected={selected}
       inventory={inventory}
@@ -417,12 +433,12 @@ export const renderMedia = (
     />,
     { nonce },
   );
-export const renderMediaReview = (
+export const renderAccountLinkReview = (
   review: Review,
   context: Context,
   nonce: string,
 ) =>
-  renderToString(<MediaReviewPage review={review} context={context} />, {
+  renderToString(<AccountLinkReviewPage review={review} context={context} />, {
     nonce,
   });
 
@@ -438,7 +454,7 @@ type ServiceAction = {
     review: { requestCount?: number };
   };
 };
-function MediaActionPage(
+function AccountActionPage(
   handle: Handle<{ action: ServiceAction; context: Context }>,
 ) {
   return () => {
@@ -558,11 +574,11 @@ function MediaActionPage(
     );
   };
 }
-export const renderMediaAction = (
+export const renderAccountAction = (
   action: ServiceAction,
   context: Context,
   nonce: string,
 ) =>
-  renderToString(<MediaActionPage action={action} context={context} />, {
+  renderToString(<AccountActionPage action={action} context={context} />, {
     nonce,
   });

@@ -4,9 +4,9 @@ import { DatabaseSync } from "node:sqlite";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import {
-  createMediaIdentityLedger,
-  mediaDiscrepancies,
-} from "../src/media-identities.mjs";
+  createConnectedAccountLedger,
+  accountDiscrepancies,
+} from "../src/connected-accounts.mjs";
 
 const now = Date.parse("2026-07-01T12:00:00Z");
 const mapping = {
@@ -33,7 +33,7 @@ const inventory = {
 function fixture(t) {
   const db = new DatabaseSync(":memory:");
   t.after(() => db.close());
-  return createMediaIdentityLedger(db);
+  return createConnectedAccountLedger(db);
 }
 const preview = (ledger, overrides = {}) =>
   ledger.preview({
@@ -64,7 +64,7 @@ test("manual review links only an exact scoped ID, preserves native-only peers a
   assert.equal(confirm(ledger, operation.id).state, "complete");
   assert.equal(ledger.mappings().length, 1);
   assert.deepEqual(inventory, before);
-  const result = mediaDiscrepancies({
+  const result = accountDiscrepancies({
     snapshot: inventory,
     mappings: ledger.mappings(),
     people,
@@ -147,7 +147,7 @@ test("review/audit survives restart and competing reviewed links cannot silently
   t.after(() => rmSync(directory, { recursive: true, force: true }));
   const filename = `${directory}/access.sqlite`;
   let db = new DatabaseSync(filename);
-  let ledger = createMediaIdentityLedger(db);
+  let ledger = createConnectedAccountLedger(db);
   const first = preview(ledger);
   const otherPeople = [...people, { ...people[0], subject: "subject-b" }];
   const second = preview(ledger, {
@@ -157,7 +157,7 @@ test("review/audit survives restart and competing reviewed links cannot silently
   db.close();
   db = new DatabaseSync(filename);
   t.after(() => db.close());
-  ledger = createMediaIdentityLedger(db);
+  ledger = createConnectedAccountLedger(db);
   assert.equal(ledger.reviews().length, 2);
   assert.equal(confirm(ledger, first.id).state, "complete");
   assert.throws(() => confirm(ledger, second.id, { people: otherPeople }), {
@@ -175,7 +175,7 @@ test("freshness/unavailability never present cached absence as authoritative", (
     { ...inventory, observedAt: new Date(now + 600000).toISOString() },
     inventory,
   ]) {
-    const result = mediaDiscrepancies({
+    const result = accountDiscrepancies({
       snapshot,
       mappings: [mapping],
       people,
@@ -186,7 +186,7 @@ test("freshness/unavailability never present cached absence as authoritative", (
   }
   assert.throws(
     () =>
-      mediaDiscrepancies({
+      accountDiscrepancies({
         snapshot: {
           ...inventory,
           accounts: [inventory.accounts[0], inventory.accounts[0]],
@@ -200,7 +200,7 @@ test("freshness/unavailability never present cached absence as authoritative", (
 });
 
 test("mapping does not imply another service is ready even on the same issuer/project", () => {
-  const result = mediaDiscrepancies({
+  const result = accountDiscrepancies({
     snapshot: { ...inventory, service: "seerr" },
     mappings: [mapping],
     people,
@@ -210,11 +210,35 @@ test("mapping does not imply another service is ready even on the same issuer/pr
     result.rows.map((item) => item.state),
     ["native-only", "native-only"],
   );
-  const missing = mediaDiscrepancies({
+  const missing = accountDiscrepancies({
     snapshot: { ...inventory, accounts: [] },
     mappings: [mapping],
     people,
     now,
   });
   assert.equal(missing.rows[0].state, "native-missing");
+});
+
+test("exact manual linking is independent of service authentication and provisioning protocols", (t) => {
+  const ledger = fixture(t);
+  const serviceMapping = { ...mapping, service: "forum" };
+  const snapshot = { ...inventory, service: "forum" };
+  const review = preview(ledger, {
+    mapping: serviceMapping,
+    inventory: snapshot,
+  });
+  assert.equal(
+    confirm(ledger, review.id, { inventory: snapshot }).state,
+    "complete",
+  );
+  assert.equal(ledger.mappings()[0].service, "forum");
+  assert.deepEqual(
+    accountDiscrepancies({
+      snapshot,
+      mappings: ledger.mappings(),
+      people,
+      now,
+    }).rows.map((row) => row.state),
+    ["linked", "native-only"],
+  );
 });

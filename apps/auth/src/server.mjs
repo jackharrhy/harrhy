@@ -7,7 +7,7 @@ import { createSupportRoutes } from "./support-routes.mjs";
 import { createNativeAccess } from "./native-access.mjs";
 import { createAccessStore } from "./access-store.mjs";
 import { createAccessRoutes } from "./access-routes.mjs";
-import { createMediaInventory } from "./media-inventory.mjs";
+import { createAccountInventory } from "./account-inventory.mjs";
 import { createMediaLifecycle } from "./media-lifecycle.mjs";
 import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.mjs";
 import { createInvitationRoute } from "./invitation-routes.mjs";
@@ -46,8 +46,11 @@ const { renderGroups, renderGroupForm } = await import("./group-pages.tsx");
 const { renderAccessForm, renderChangePreview } =
   await import("./access-pages.tsx");
 const { renderPerson } = await import("./person-page.tsx");
-const { renderMedia, renderMediaReview, renderMediaAction } =
-  await import("./media-pages.tsx");
+const {
+  renderConnectedAccounts,
+  renderAccountLinkReview,
+  renderAccountAction,
+} = await import("./connected-account-pages.tsx");
 const { renderMediaProvisioning, renderMediaProvisioningReview } =
   await import("./media-provisioning-pages.tsx");
 const { renderOnboarding } = await import("./onboarding-page.tsx");
@@ -111,7 +114,7 @@ const integrations = JSON.parse(
   ),
 );
 const nativeAccess = createNativeAccess(api, organizationId);
-const mediaInventory = createMediaInventory(
+const mediaInventory = createAccountInventory(
   process.env.AUTH_MEDIA_INSTANCES_FILE
     ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_INSTANCES_FILE, "utf8"))
     : [],
@@ -160,9 +163,9 @@ const accessRoutes = createAccessRoutes({
   organizationId,
   issuer: origin,
   mediaInventory,
-  renderMedia,
-  renderMediaReview,
-  renderMediaAction,
+  renderConnectedAccounts,
+  renderAccountLinkReview,
+  renderAccountAction,
   renderMediaProvisioning,
   renderMediaProvisioningReview,
   accountActions,

@@ -1,6 +1,6 @@
 import { directoryFor } from "./directory.mjs";
 import { searchAll } from "./applications.mjs";
-import { mediaDiscrepancies } from "./media-identities.mjs";
+import { accountDiscrepancies } from "./connected-accounts.mjs";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
@@ -14,9 +14,9 @@ export function createAccessRoutes({
   organizationId,
   issuer,
   mediaInventory,
-  renderMedia,
-  renderMediaReview,
-  renderMediaAction,
+  renderConnectedAccounts,
+  renderAccountLinkReview,
+  renderAccountAction,
   renderMediaProvisioning,
   renderMediaProvisioningReview,
   accountActions,
@@ -291,7 +291,9 @@ export function createAccessRoutes({
         if (!action || action.actor !== session.userId)
           throw fail(404, "Service action review not found.");
         if (request.method === "GET" && !actionPath[2]) {
-          await sendRemix((nonce) => renderMediaAction(action, context, nonce));
+          await sendRemix((nonce) =>
+            renderAccountAction(action, context, nonce),
+          );
           return true;
         }
         if (request.method === "POST" && actionPath[2]) {
@@ -350,7 +352,7 @@ export function createAccessRoutes({
       const instances = mediaInventory.instances();
       if (request.method === "GET" && url.pathname === "/manage/media") {
         await sendRemix((nonce) =>
-          renderMedia(
+          renderConnectedAccounts(
             instances,
             undefined,
             undefined,
@@ -381,7 +383,9 @@ export function createAccessRoutes({
           inventory: await mediaInventory.read(service, instance),
           people: await identities(),
         });
-        await sendRemix((nonce) => renderMediaReview(result, context, nonce));
+        await sendRemix((nonce) =>
+          renderAccountLinkReview(result, context, nonce),
+        );
         return true;
       }
       const audit = url.pathname.match(
@@ -390,7 +394,9 @@ export function createAccessRoutes({
       if (request.method === "GET" && audit) {
         const review = access.media.review(audit[1]);
         if (!review) throw fail(404, "Mapping review not found.");
-        await sendRemix((nonce) => renderMediaReview(review, context, nonce));
+        await sendRemix((nonce) =>
+          renderAccountLinkReview(review, context, nonce),
+        );
         return true;
       }
       const target = url.pathname.match(
@@ -408,13 +414,20 @@ export function createAccessRoutes({
       );
       const current = await identities();
       if (request.method === "GET" && !target[3]) {
-        const result = mediaDiscrepancies({
+        const result = accountDiscrepancies({
           snapshot: inventory,
           mappings: access.media.mappings(),
           people: current,
         });
         await sendRemix((nonce) =>
-          renderMedia(instances, selected, result, current, context, nonce),
+          renderConnectedAccounts(
+            instances,
+            selected,
+            result,
+            current,
+            context,
+            nonce,
+          ),
         );
         return true;
       }
@@ -433,7 +446,9 @@ export function createAccessRoutes({
           inventory,
           people: current,
         });
-        await sendRemix((nonce) => renderMediaReview(review, context, nonce));
+        await sendRemix((nonce) =>
+          renderAccountLinkReview(review, context, nonce),
+        );
         return true;
       }
       throw fail(404, "Media action not found.");

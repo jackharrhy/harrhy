@@ -55,7 +55,7 @@ function ServiceListPage(
           </div>
           <div class="actions">
             <a class="button" href="/manage/media">
-              Media identities
+              Service accounts
             </a>
             <a class="button" href="/manage/integrations">
               Technical integrations

@@ -1,6 +1,10 @@
 # Reviewed media identity lifecycle
 
-This feature is in development, not deployed. Services → Media identities (`/manage/media`) exposes read-only native inventory and reviewed exact-ID linking for active Auth administrators. `src/media-identities.mjs` owns mappings and audit reviews in the existing access SQLite database; `media-inventory.mjs` and `jellyfin-inventory.mjs` own bounded read-only sources. Mapping does not change directory eligibility, issuer provisioning or native permissions.
+This feature is in development, not deployed.
+
+The front door is **Service accounts**. `src/connected-accounts.mjs` owns service-independent exact-ID links and discrepancies; `src/account-inventory.mjs` accepts bounded operator snapshots for any explicitly configured service ID. Live readers and write capabilities remain concrete reviewed integrations: Jellyfin inventory/create/disable and Seerr import/account-and-request removal. OIDC sign-in does not imply account provisioning or revocation, and this change adds no SCIM client or generic plugin registry. Existing `/manage/media` routes, `media_*` SQLite tables, and `AUTH_MEDIA_*` host keys remain compatible; presentation/module naming is not a host configuration migration.
+
+ Services → Service accounts (`/manage/media`) exposes read-only native inventory and reviewed exact-ID linking for active Auth administrators. `src/connected-accounts.mjs` owns mappings and audit reviews in the existing access SQLite database; `account-inventory.mjs` and `jellyfin-inventory.mjs` own bounded read-only sources. Mapping does not change directory eligibility, issuer provisioning or native permissions.
 
 ## Boundaries
 
