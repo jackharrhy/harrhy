@@ -509,14 +509,18 @@ export function createAccessRoutes({
           confirmed: form.get("confirmed") === "yes",
           api: provisioningApi,
         };
-        if (onboardingPath[2] === "create")
-          await access.onboarding.create(shared);
-        else
-          await access.onboarding.invite({
-            ...shared,
-            recipient: form.get("recipient"),
-            callbackUrl: invitationCallbackUrl,
-          });
+        try {
+          if (onboardingPath[2] === "create")
+            await access.onboarding.create(shared);
+          else
+            await access.onboarding.invite({
+              ...shared,
+              recipient: form.get("recipient"),
+              callbackUrl: invitationCallbackUrl,
+            });
+        } catch (error) {
+          if (error?.onboardingUncertain !== true) throw error;
+        }
         redirect(`/manage/onboarding/${id}`);
         return true;
       }

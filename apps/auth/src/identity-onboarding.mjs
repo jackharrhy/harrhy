@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
+const uncertain = (message) =>
+  Object.assign(fail(502, message), { onboardingUncertain: true });
 const field = (value, max, name) => {
   if (typeof value !== "string" || !value.trim() || value.length > max)
     throw fail(400, `Check ${name}.`);
@@ -137,8 +139,7 @@ export function createIdentityOnboardingLedger(db) {
         return finish(id, "creating", "created");
       } catch {
         finish(id, "creating", "creation-unknown");
-        throw fail(
-          502,
+        throw uncertain(
           "Account creation outcome is uncertain. Inspect the reserved exact ID; do not create it again.",
         );
       }
@@ -173,19 +174,22 @@ export function createIdentityOnboardingLedger(db) {
           "Invitation is unavailable or already used; request administrator review.",
         );
       const row = matches[0];
+      // Read-only preflight cannot consume proof or poison the durable invitation.
+      const { user } = await provisioningApi(
+        `/v2/users/${encodeURIComponent(subject)}`,
+        { management: true },
+      );
+      if (
+        user?.userId !== subject ||
+        user.details?.resourceOwner !== organizationId ||
+        user.human?.email?.email !== row.body.email
+      )
+        throw fail(
+          409,
+          "Invited identity changed. Administrator review is required.",
+        );
       claim(row.id, "invited", "verifying-invitation");
       try {
-        // Recheck ownership before proof consumption or privileged reset issuance.
-        const { user } = await provisioningApi(
-          `/v2/users/${encodeURIComponent(subject)}`,
-          { management: true },
-        );
-        if (
-          user?.userId !== subject ||
-          user.details?.resourceOwner !== organizationId ||
-          user.human?.email?.email !== row.body.email
-        )
-          throw fail(409, "Invited identity changed.");
         await loginApi(
           `/v2/users/${encodeURIComponent(subject)}/invite_code/verify`,
           {
@@ -193,10 +197,16 @@ export function createIdentityOnboardingLedger(db) {
             body: { verificationCode: code },
           },
         );
-      } catch {
+      } catch (error) {
+        if (error?.invitationProofRejected === true) {
+          finish(row.id, "verifying-invitation", "invited");
+          throw fail(
+            400,
+            "This invitation proof is invalid or expired. Open your current invitation email.",
+          );
+        }
         finish(row.id, "verifying-invitation", "recipient-proof-unknown");
-        throw fail(
-          502,
+        throw uncertain(
           "Invitation verification did not complete. Administrator review is required; do not repeat it.",
         );
       }
@@ -225,8 +235,7 @@ export function createIdentityOnboardingLedger(db) {
         return finish(row.id, "setting-password", "completed");
       } catch {
         finish(row.id, "setting-password", "password-setup-unknown");
-        throw fail(
-          502,
+        throw uncertain(
           "Password setup did not complete. Use account recovery or administrator review; do not repeat this invitation.",
         );
       }
@@ -289,8 +298,7 @@ export function createIdentityOnboardingLedger(db) {
         return finish(id, "inviting", "invited");
       } catch {
         finish(id, "inviting", "invitation-unknown");
-        throw fail(
-          502,
+        throw uncertain(
           "Invitation outcome is uncertain. Delivery is not confirmed; do not resend blindly.",
         );
       }

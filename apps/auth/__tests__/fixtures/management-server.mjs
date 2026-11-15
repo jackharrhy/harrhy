@@ -107,6 +107,7 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
     let identityWrites = 0;
     let invitationLink;
     const recipientEffects = [];
+    const lostIdentityResponses = new Set();
     let recipientPassword;
     const sessions = new Map();
     const store = createAccessStore({
@@ -473,11 +474,19 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
           recipientEffects.push("send");
           result = {};
         } else if (action === "/invite_code/verify") {
-          assert.equal(data.verificationCode, "synthetic-invitation-proof");
+          if (data.verificationCode !== "synthetic-invitation-proof") {
+            response.writeHead(400, { "content-type": "application/json" }).end(
+              JSON.stringify({
+                code: 3,
+                message: "Invalid invitation code (COMMAND-Wgn4q)",
+              }),
+            );
+            return;
+          }
           recipientEffects.push("verify");
           result = {};
         } else if (action === "/password_reset") {
-          assert.deepEqual(recipientEffects, ["send", "verify"]);
+          assert.deepEqual(recipientEffects.slice(-2), ["send", "verify"]);
           assert.deepEqual(data, { returnCode: {} });
           recipientEffects.push("reset");
           result = { verificationCode: "synthetic-password-proof" };
@@ -614,6 +623,15 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
         response.end("{}");
         return;
       }
+      const identityEffect =
+        request.url === "/v2/users/new" ? "/new" : identityPath?.[2];
+      if (
+        request.method === "POST" &&
+        lostIdentityResponses.delete(identityEffect)
+      ) {
+        response.destroy();
+        return;
+      }
       response.setHeader("content-type", "application/json");
       response.end(JSON.stringify(result));
     });
@@ -722,6 +740,7 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
       directory,
       users,
       recipientEffects,
+      lostIdentityResponses,
       nativeSnapshot,
       seerrSnapshot,
       selectedLibrary,

@@ -106,18 +106,33 @@ export function createInvitationRoute({
     }
     // Consume the browser binding before effects. Ambiguous native outcomes cannot be replayed.
     delete session.identityInvitation;
-    await ledger.completeInvitation({
-      subject: pending.subject,
-      code: pending.code,
-      organizationId,
-      issuer,
-      password,
-      validatePassword: async () => {
-        if (!valid) throw fail(400, "Check password.");
-      },
-      loginApi,
-      provisioningApi,
-    });
+    try {
+      await ledger.completeInvitation({
+        subject: pending.subject,
+        code: pending.code,
+        organizationId,
+        issuer,
+        password,
+        validatePassword: async () => {
+          if (!valid) throw fail(400, "Check password.");
+        },
+        loginApi,
+        provisioningApi,
+      });
+    } catch (error) {
+      if (error?.onboardingUncertain !== true) throw error;
+      await sendRemix(
+        (nonce) =>
+          renderEmailResult(
+            "Account setup needs review",
+            "The setup outcome is uncertain. Do not repeat this invitation. Ask your administrator to review the exact account; use password recovery if a password may already have been set.",
+            { csrf: context.csrf },
+            nonce,
+          ),
+        502,
+      );
+      return;
+    }
     await sendRemix((nonce) =>
       renderEmailResult(
         "Account ready",

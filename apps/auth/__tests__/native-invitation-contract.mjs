@@ -79,13 +79,19 @@ try {
     api(`/v2/users/${userId}/invite_code`, { returnCode: {} }),
   );
   assert.equal(typeof invitation.inviteCode, "string");
-  await step("reject-wrong-invitation", () =>
+  const rejected = await step("reject-wrong-invitation", () =>
     api(
       `/v2/users/${userId}/invite_code/verify`,
       { verificationCode: "wrong-code" },
       login,
       400,
     ),
+  );
+  assert.equal(rejected.code, 3, "Native invalid-proof code changed");
+  assert(
+    typeof rejected.message === "string" &&
+      rejected.message.endsWith("(COMMAND-Wgn4q)"),
+    "Native invalid-proof identifier changed",
   );
   await step("recipient-proof-verifies-invitation", () =>
     api(

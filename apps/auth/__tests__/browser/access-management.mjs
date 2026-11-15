@@ -535,6 +535,25 @@ try {
   recipient.on("request", (request) => {
     recipientReferrers.push(request.headers().referer || "");
   });
+  await recipient.goto(
+    fixture.invitationLink.replace("synthetic-invitation-proof", "wrong-proof"),
+  );
+  await recipient
+    .locator('input[name="password"]')
+    .fill("Synthetic-passphrase-42");
+  await recipient
+    .locator('input[name="confirmation"]')
+    .fill("Synthetic-passphrase-42");
+  await recipient
+    .getByRole("button", { name: "Finish account setup", exact: true })
+    .click();
+  await recipient
+    .getByText(
+      "This invitation proof is invalid or expired. Open your current invitation email.",
+      { exact: true },
+    )
+    .waitFor();
+  assert.deepEqual(fixture.recipientEffects, ["send"]);
   await recipient.goto(fixture.invitationLink);
   await recipient.waitForURL(origin + "/invitation");
   assert.deepEqual(fixture.recipientEffects, ["send"]);
@@ -805,6 +824,136 @@ try {
     form: { operation: "made-up", csrf: "wrong" },
   });
   assert.equal(forged.status(), 403);
+  for (const [index, lostEffect, expectedState] of [
+    [0, "/new", "Creation outcome uncertain"],
+    [1, "/invite_code", "Invitation delivery uncertain"],
+    [2, "/invite_code/verify", "Recipient verification uncertain"],
+    [3, "/password", "Password setup uncertain"],
+  ]) {
+    const email = `uncertain-${index}@example.invalid`;
+    await page.goto(origin + "/manage/people/new");
+    await page
+      .getByLabel("Username", { exact: true })
+      .fill(`uncertain-${index}`);
+    await page
+      .getByLabel("Display name", { exact: true })
+      .fill("Synthetic Uncertain Recipient");
+    await page.getByLabel("Invitation recipient", { exact: true }).fill(email);
+    await page
+      .getByLabel("Reason", { exact: true })
+      .fill("Synthetic response-loss regression");
+    await page
+      .getByRole("button", { name: "Review person", exact: true })
+      .click();
+    await page.getByText("Awaiting creation review", { exact: true }).waitFor();
+    const uncertainReview = page.url();
+    const csrf = await page.locator('main input[name="csrf"]').inputValue();
+    if (lostEffect === "/new") fixture.lostIdentityResponses.add(lostEffect);
+    await page.getByRole("checkbox").check();
+    await page
+      .getByRole("button", { name: "Create identity", exact: true })
+      .click();
+    if (lostEffect !== "/new") {
+      await page
+        .getByText("Identity created; invitation not sent", { exact: true })
+        .waitFor();
+      if (lostEffect === "/invite_code")
+        fixture.lostIdentityResponses.add(lostEffect);
+      await page
+        .getByLabel("Retype the exact invitation recipient")
+        .fill(email);
+      await page.getByRole("checkbox").check();
+      await page
+        .getByRole("button", { name: "Send invitation", exact: true })
+        .click();
+    }
+    if (lostEffect === "/invite_code/verify" || lostEffect === "/password") {
+      await page
+        .getByText("Invitation requested; recipient setup pending", {
+          exact: true,
+        })
+        .waitFor();
+      const pendingContext = await browser.newContext({
+        ignoreHTTPSErrors: true,
+      });
+      try {
+        const pendingPage = await pendingContext.newPage();
+        await pendingPage.goto(fixture.invitationLink);
+        await pendingPage
+          .locator('input[name="password"]')
+          .fill("Synthetic-passphrase-42");
+        await pendingPage
+          .locator('input[name="confirmation"]')
+          .fill("Synthetic-passphrase-42");
+        fixture.lostIdentityResponses.add(lostEffect);
+        await pendingPage
+          .getByRole("button", { name: "Finish account setup", exact: true })
+          .click();
+        await pendingPage
+          .getByRole("heading", {
+            name: "Account setup needs review",
+            exact: true,
+          })
+          .waitFor();
+        assert(
+          (await pendingPage.locator("main").innerText()).includes(
+            "Do not repeat this invitation",
+          ),
+        );
+        assert.equal(
+          await pendingPage.getByText("Account ready", { exact: true }).count(),
+          0,
+        );
+        const effectCount = fixture.recipientEffects.length;
+        await pendingPage.goto(fixture.invitationLink);
+        await pendingPage
+          .locator('input[name="password"]')
+          .fill("Synthetic-passphrase-42");
+        await pendingPage
+          .locator('input[name="confirmation"]')
+          .fill("Synthetic-passphrase-42");
+        await pendingPage
+          .getByRole("button", { name: "Finish account setup", exact: true })
+          .click();
+        await pendingPage
+          .getByText(
+            "Invitation is unavailable or already used; request administrator review.",
+            { exact: true },
+          )
+          .waitFor();
+        assert.equal(fixture.recipientEffects.length, effectCount);
+      } finally {
+        await pendingContext.close();
+      }
+      await page.goto(uncertainReview);
+    }
+    await page.getByText(expectedState, { exact: true }).waitFor();
+    assert(
+      (await page.locator("main").innerText()).includes(
+        "Do not repeat this operation",
+      ),
+    );
+    assert(
+      !(await page.locator("main").innerText()).includes("Please try again"),
+    );
+    assert.equal(page.url(), uncertainReview);
+    const effectsBeforeReplay = [
+      fixture.identityWrites,
+      fixture.recipientEffects.length,
+    ];
+    const replay = await context.request.post(
+      uncertainReview + (lostEffect === "/new" ? "/create" : "/invite"),
+      {
+        headers: { origin },
+        form: { csrf, confirmed: "yes", recipient: email },
+      },
+    );
+    assert.equal(replay.status(), 409);
+    assert.deepEqual(
+      [fixture.identityWrites, fixture.recipientEffects.length],
+      effectsBeforeReplay,
+    );
+  }
   // Preview refresh observes current synthetic effects, not just a new timestamp.
   await fixture.refreshInventorySnapshots();
   const refreshedJellyfin = JSON.parse(

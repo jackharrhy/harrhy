@@ -365,6 +365,7 @@ test("changed recipient blocks proof verification and password failure never rep
     /review/,
   );
   assert.equal(effects, 0);
+  assert.equal(ledger.get(row.id).state, "invited");
   const second = await invited(t);
   const calls = [];
   await assert.rejects(
@@ -385,4 +386,26 @@ test("changed recipient blocks proof verification and password failure never rep
     /unavailable/,
   );
   assert.equal(calls.length, count);
+});
+
+test("verified native invalid proof leaves the genuine invitation usable without reset issuance", async (t) => {
+  const { ledger, row } = await invited(t);
+  const calls = [];
+  await assert.rejects(
+    complete(ledger, row, calls, {
+      loginApi: async () => {
+        throw Object.assign(new Error("native rejection"), {
+          invitationProofRejected: true,
+        });
+      },
+    }),
+    { status: 400 },
+  );
+  assert.equal(ledger.get(row.id).state, "invited");
+  assert.equal(calls.length, 1);
+  assert.equal((await complete(ledger, row, calls)).state, "completed");
+  assert.equal(
+    calls.filter(({ path }) => path.endsWith("/password_reset")).length,
+    1,
+  );
 });
