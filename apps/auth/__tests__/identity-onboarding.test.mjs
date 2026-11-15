@@ -196,3 +196,193 @@ test("recipient changes, insecure callback and uncertain delivery cannot silentl
     { status: 409 },
   );
 });
+
+async function invited(t) {
+  const value = fixture(t);
+  const api = issuer(value.row, []);
+  await create(value.ledger, value.row, api);
+  await invite(value.ledger, value.row, api);
+  return value;
+}
+function complete(ledger, row, calls, overrides = {}) {
+  return ledger.completeInvitation({
+    subject: row.body.subject,
+    organizationId: scope.organizationId,
+    issuer: scope.issuer,
+    code: "private-invite-proof",
+    password: "private-recipient-password",
+    validatePassword: async () => {},
+    provisioningApi: async (path, options) => {
+      calls.push({ path, options });
+      if (path.endsWith("/password_reset"))
+        return { verificationCode: "private-reset-proof" };
+      return {
+        user: {
+          userId: row.body.subject,
+          details: { resourceOwner: "org" },
+          human: { email: { email: row.body.email } },
+        },
+      };
+    },
+    loginApi: async (path, options) => {
+      calls.push({ path, options });
+    },
+    ...overrides,
+  });
+}
+test("recipient proof gates privileged first-password setup for only the reserved invited identity", async (t) => {
+  const { ledger, row, db } = await invited(t);
+  const calls = [];
+  assert.equal((await complete(ledger, row, calls)).state, "completed");
+  assert.deepEqual(
+    calls.map(({ path }) => path),
+    [
+      `/v2/users/${row.body.subject}`,
+      `/v2/users/${row.body.subject}/invite_code/verify`,
+      `/v2/users/${row.body.subject}/password_reset`,
+      `/v2/users/${row.body.subject}/password`,
+    ],
+  );
+  assert.equal(calls[1].options.body.verificationCode, "private-invite-proof");
+  assert.equal(calls[3].options.body.verificationCode, "private-reset-proof");
+  const persisted = JSON.stringify(
+    db.prepare("SELECT * FROM identity_onboarding").all(),
+  );
+  for (const secret of [
+    "private-invite-proof",
+    "private-reset-proof",
+    "private-recipient-password",
+  ])
+    assert.equal(persisted.includes(secret), false);
+  await assert.rejects(complete(ledger, row, calls), /already used/);
+  assert.equal(calls.length, 4);
+});
+test("recipient scope and password validation precede all external effects", async (t) => {
+  const { ledger, row } = await invited(t);
+  const calls = [];
+  for (const overrides of [
+    { subject: "existing-native-person" },
+    { organizationId: "other-org" },
+    { issuer: "https://other.invalid" },
+  ])
+    await assert.rejects(
+      complete(ledger, row, calls, overrides),
+      /unavailable/,
+    );
+  await assert.rejects(
+    complete(ledger, row, calls, {
+      validatePassword: async () => {
+        throw new Error("password policy");
+      },
+    }),
+    /password policy/,
+  );
+  assert.equal(calls.length, 0);
+  assert.equal(ledger.get(row.id).state, "invited");
+});
+test("failed recipient proof cannot mint a reset proof or replay after restart", async (t) => {
+  const { ledger, row, db } = await invited(t);
+  const calls = [];
+  await assert.rejects(
+    complete(ledger, row, calls, {
+      loginApi: async () => {
+        throw new Error("lost response");
+      },
+    }),
+    /review/,
+  );
+  assert.equal(calls.length, 1);
+  const restarted = createIdentityOnboardingLedger(db);
+  assert.equal(restarted.get(row.id).state, "recipient-proof-unknown");
+  await assert.rejects(complete(restarted, row, calls), /unavailable/);
+  assert.equal(calls.length, 1);
+});
+
+test("recipient concurrency claims before proof verification and never repeats password setup", async (t) => {
+  const { ledger, row } = await invited(t);
+  const calls = [];
+  let release;
+  let entered;
+  const gate = new Promise((resolve) => {
+    release = resolve;
+  });
+  const started = new Promise((resolve) => {
+    entered = resolve;
+  });
+  const first = complete(ledger, row, calls, {
+    loginApi: async (path) => {
+      calls.push({ path });
+      if (path.endsWith("/verify")) {
+        entered();
+        await gate;
+      }
+    },
+  });
+  await started;
+  await assert.rejects(complete(ledger, row, calls), /unavailable/);
+  release();
+  assert.equal((await first).state, "completed");
+  assert.equal(
+    calls.filter(({ path }) => path.endsWith("/password_reset")).length,
+    1,
+  );
+});
+
+test("recipient startup marks each interrupted effect unknown without provider calls", async (t) => {
+  for (const [from, to] of [
+    ["verifying-invitation", "recipient-proof-unknown"],
+    ["setting-password", "password-setup-unknown"],
+  ]) {
+    const { db, row } = await invited(t);
+    db.prepare("UPDATE identity_onboarding SET state=? WHERE id=?").run(
+      from,
+      row.id,
+    );
+    const restarted = createIdentityOnboardingLedger(db);
+    const calls = [];
+    assert.equal(restarted.get(row.id).state, to);
+    await assert.rejects(complete(restarted, row, calls), /unavailable/);
+    assert.equal(calls.length, 0);
+  }
+});
+
+test("changed recipient blocks proof verification and password failure never repeats reset issuance", async (t) => {
+  const { ledger, row } = await invited(t);
+  let effects = 0;
+  await assert.rejects(
+    complete(ledger, row, [], {
+      provisioningApi: async () => ({
+        user: {
+          userId: row.body.subject,
+          details: { resourceOwner: "org" },
+          human: { email: { email: "changed@example.invalid" } },
+        },
+      }),
+      loginApi: async () => {
+        effects++;
+      },
+    }),
+    /review/,
+  );
+  assert.equal(effects, 0);
+  const second = await invited(t);
+  const calls = [];
+  await assert.rejects(
+    complete(second.ledger, second.row, calls, {
+      loginApi: async (path) => {
+        if (path.endsWith("/password")) throw new Error("lost response");
+      },
+    }),
+    /review/,
+  );
+  assert.equal(
+    second.ledger.get(second.row.id).state,
+    "password-setup-unknown",
+  );
+  const count = calls.length;
+  await assert.rejects(
+    complete(second.ledger, second.row, calls),
+    /unavailable/,
+  );
+  assert.equal(calls.length, count);
+});

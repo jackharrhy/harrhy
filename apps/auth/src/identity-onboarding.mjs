@@ -13,8 +13,11 @@ export function createIdentityOnboardingLedger(db) {
     id TEXT PRIMARY KEY, actor TEXT NOT NULL, state TEXT NOT NULL,
     created_at TEXT NOT NULL, body TEXT NOT NULL
   ); UPDATE identity_onboarding SET state=CASE state
-    WHEN 'creating' THEN 'creation-unknown' ELSE 'invitation-unknown' END
-    WHERE state IN ('creating','inviting');`);
+    WHEN 'creating' THEN 'creation-unknown'
+    WHEN 'inviting' THEN 'invitation-unknown'
+    WHEN 'verifying-invitation' THEN 'recipient-proof-unknown'
+    ELSE 'password-setup-unknown' END
+    WHERE state IN ('creating','inviting','verifying-invitation','setting-password');`);
   const get = (id) => {
     const row = db
       .prepare("SELECT * FROM identity_onboarding WHERE id=?")
@@ -137,6 +140,94 @@ export function createIdentityOnboardingLedger(db) {
         throw fail(
           502,
           "Account creation outcome is uncertain. Inspect the reserved exact ID; do not create it again.",
+        );
+      }
+    },
+    // Call only from a same-origin, CSRF-checked recipient POST. Never on GET.
+    async completeInvitation({
+      subject,
+      organizationId,
+      issuer,
+      code,
+      password,
+      validatePassword,
+      loginApi,
+      provisioningApi,
+    }) {
+      field(subject, 200, "invited identity");
+      field(code, 2000, "invitation proof");
+      if (typeof password !== "string" || password.length > 1024)
+        throw fail(400, "Check password.");
+      // Provider policy must be checked before consuming the one-use invitation.
+      await validatePassword(password);
+      const matches = db
+        .prepare(`SELECT id FROM identity_onboarding
+          WHERE json_extract(body,'$.subject')=?
+          AND json_extract(body,'$.organizationId')=?
+          AND json_extract(body,'$.issuer')=? LIMIT 2`)
+        .all(subject, organizationId, issuer)
+        .map(({ id }) => get(id));
+      if (matches.length !== 1 || matches[0].state !== "invited")
+        throw fail(
+          409,
+          "Invitation is unavailable or already used; request administrator review.",
+        );
+      const row = matches[0];
+      claim(row.id, "invited", "verifying-invitation");
+      try {
+        // Recheck ownership before proof consumption or privileged reset issuance.
+        const { user } = await provisioningApi(
+          `/v2/users/${encodeURIComponent(subject)}`,
+          { management: true },
+        );
+        if (
+          user?.userId !== subject ||
+          user.details?.resourceOwner !== organizationId ||
+          user.human?.email?.email !== row.body.email
+        )
+          throw fail(409, "Invited identity changed.");
+        await loginApi(
+          `/v2/users/${encodeURIComponent(subject)}/invite_code/verify`,
+          {
+            method: "POST",
+            body: { verificationCode: code },
+          },
+        );
+      } catch {
+        finish(row.id, "verifying-invitation", "recipient-proof-unknown");
+        throw fail(
+          502,
+          "Invitation verification did not complete. Administrator review is required; do not repeat it.",
+        );
+      }
+      claim(row.id, "verifying-invitation", "setting-password");
+      try {
+        const proof = await provisioningApi(
+          `/v2/users/${encodeURIComponent(subject)}/password_reset`,
+          {
+            method: "POST",
+            management: true,
+            body: { returnCode: {} },
+          },
+        );
+        if (
+          typeof proof.verificationCode !== "string" ||
+          !proof.verificationCode
+        )
+          throw fail(502, "Password proof was unavailable.");
+        await loginApi(`/v2/users/${encodeURIComponent(subject)}/password`, {
+          method: "POST",
+          body: {
+            newPassword: { password, changeRequired: false },
+            verificationCode: proof.verificationCode,
+          },
+        });
+        return finish(row.id, "setting-password", "completed");
+      } catch {
+        finish(row.id, "setting-password", "password-setup-unknown");
+        throw fail(
+          502,
+          "Password setup did not complete. Use account recovery or administrator review; do not repeat this invitation.",
         );
       }
     },
