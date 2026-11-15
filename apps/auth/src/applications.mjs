@@ -103,6 +103,17 @@ export function authorizationForRequest(applications, request) {
   );
   if (application.delegatedPermissions?.length && !permissions.length)
     throw denied();
+  if (application.delegatedPermissionPolicies) {
+    const matching = application.delegatedPermissionPolicies.filter(
+      (policy) =>
+        policy.roles.includes(roles[0]) &&
+        permissions.length > 0 &&
+        permissions.every((permission) =>
+          policy.permissions.includes(permission),
+        ),
+    );
+    if (matching.length !== 1) throw denied();
+  }
   const allowed = new Set([
     ...required,
     ...permissions.map((role) => `urn:zitadel:iam:org:project:role:${role}`),

@@ -5,13 +5,8 @@ import {
   CurrentSessionToken,
 } from "../../data/runtime.ts";
 import { tokenHash } from "../../data/crypto.ts";
-import {
-  cachePreviewImage,
-  isGenericSocialPreview,
-  normalizeLinkUrl,
-  previewLink,
-} from "../../data/link-preview.ts";
-import { imageType, MAX_UPLOAD_BYTES } from "../../data/image-upload.ts";
+import { saveBoardLink, uploadBoardImage } from "../../data/board-resources.ts";
+import { MAX_UPLOAD_BYTES } from "../../data/image-upload.ts";
 import type { AppContext } from "../../router.ts";
 import { routes } from "../../routes.ts";
 
@@ -49,89 +44,30 @@ export default createController(routes.resources, {
         return new Response("Image too large", { status: 413 });
       const form = context.get(FormData)!;
       const file = form.get("file");
-      if (
-        !(file instanceof File) ||
-        file.size === 0 ||
-        file.size > MAX_UPLOAD_BYTES
-      )
+      if (!(file instanceof File))
         return new Response("Image must be 20 MB or less", { status: 413 });
-      const type = await imageType(file, MAX_UPLOAD_BYTES);
-      if (!type)
-        return new Response("PNG, JPEG, GIF, or WebP required", {
-          status: 415,
-        });
-      const assetId = crypto.randomUUID();
-      const boardId = context.params.boardId;
-      const objectKey = `boards/${boardId}/${assetId}`;
-      const runtime = context.get(AppRuntime)!;
-      await runtime.media.put(objectKey, await file.arrayBuffer(), {
-        httpMetadata: { contentType: type },
-      });
-      const filename = file.name.slice(0, 160) || "Image";
-      try {
-        await runtime.board(boardId).recordAsset(boardId, {
-          id: assetId,
-          objectKey,
-          filename,
-          contentType: type,
-          size: file.size,
-        });
-      } catch (error) {
-        await runtime.media.delete(objectKey);
-        throw error;
-      }
-      return Response.json(
-        { assetId, filename, url: `/media/${boardId}/${assetId}` },
-        { status: 201 },
+      const result = await uploadBoardImage(
+        context.get(AppRuntime)!,
+        context.params.boardId,
+        file,
       );
+      return result.ok
+        ? Response.json(result.value, { status: result.status })
+        : new Response(result.message, { status: result.status });
     },
     async link(context) {
       if (!(await boardAccess(context)))
         return new Response("Forbidden", { status: 403 });
       const form = context.get(FormData)!;
-      const url = normalizeLinkUrl(String(form.get("url") ?? ""));
-      if (!url) return new Response("Enter a public web URL", { status: 400 });
-      const refresh = form.get("refresh") === "1";
-      const runtime = context.get(AppRuntime)!;
-      const board = runtime.board(context.params.boardId);
-      const existing = await board.existingLink(context.params.boardId, url);
-      if (existing && !refresh) return Response.json(existing);
-      if (refresh && !existing)
-        return new Response("Link is no longer on this board", { status: 404 });
-      const fetched = await previewLink(url);
-      if (
-        refresh &&
-        ((!fetched.imageUrl && !fetched.videoUrl) ||
-          isGenericSocialPreview(fetched))
-      )
-        return new Response("The post did not provide a usable preview yet", {
-          status: 422,
-        });
-      const preview = await cachePreviewImage(
-        fetched,
-        runtime.media,
+      const result = await saveBoardLink(
+        context.get(AppRuntime)!,
         context.params.boardId,
+        String(form.get("url") ?? ""),
+        form.get("refresh") === "1",
       );
-      if (
-        refresh &&
-        !preview.videoUrl &&
-        !preview.imageUrl?.startsWith(`/previews/${context.params.boardId}/`)
-      )
-        return new Response("Could not cache the new preview image", {
-          status: 502,
-        });
-      if (existing) {
-        const updated = await board.refreshLink(
-          context.params.boardId,
-          existing.assetId,
-          preview,
-        );
-        return updated
-          ? Response.json(updated)
-          : new Response("Link is no longer on this board", { status: 404 });
-      }
-      const saved = await board.recordLink(context.params.boardId, preview);
-      return Response.json(saved, { status: 201 });
+      return result.ok
+        ? Response.json(result.value, { status: result.status })
+        : new Response(result.message, { status: result.status });
     },
     async preview(context) {
       if (!(await boardAccess(context)))

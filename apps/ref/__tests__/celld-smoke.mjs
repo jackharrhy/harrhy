@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -136,11 +136,27 @@ async function stop(signal) {
   runtime = undefined;
 }
 
+const tokenFile = join(state, "mcp-token");
+const mcpResultFile = join(state, "mcp-result.json");
+const authConfigFile = join(state, "dev-auth.json");
+const mcpEnvironment = {
+  REF_SMOKE_URL: origin,
+  REF_ACCESS_TOKEN_FILE: tokenFile,
+  REF_MCP_RESULT_FILE: mcpResultFile,
+};
+
 try {
+  const authConfig = JSON.parse(
+    await readFile(join(root, "../../packages/dev-auth/apps.json"), "utf8"),
+  );
+  authConfig.applications[0].callback = `${origin}/auth/callback`;
+  authConfig.applications[0].roles.push("boards-read", "boards-write");
+  await writeFile(authConfigFile, JSON.stringify(authConfig), { mode: 0o600 });
   auth = spawn(process.execPath, ["../../packages/dev-auth/server.mjs"], {
     cwd: root,
     env: {
       ...process.env,
+      HARRHY_DEV_AUTH_CONFIG: authConfigFile,
       HARRHY_DEV_AUTH_PORT: String(authPort),
       HARRHY_DEV_AUTH_ORIGIN: authOrigin,
       HARRHY_DEV_AUTH_CALLBACK: `${origin}/auth/callback`,
@@ -155,6 +171,14 @@ try {
     if (attempt === 49) throw new Error("Local Jack Auth did not start");
     await delay(100);
   }
+  await command(
+    [process.execPath, "../../packages/dev-auth/token.mjs", tokenFile],
+    {
+      HARRHY_DEV_AUTH_ORIGIN: authOrigin,
+      HARRHY_DEV_AUTH_CALLBACK: `${origin}/auth/callback`,
+      HARRHY_DEV_AUTH_ROLES: "admin,boards-read,boards-write",
+    },
+  );
   result.version = (await command([binary, "--version"])).trim();
   await command([
     binary,
@@ -172,6 +196,17 @@ try {
   assert.equal(first.ok, true);
   result.checks.push(
     "browser smoke: live sync, private media, link preview, cleanup, logout",
+  );
+
+  const mcpSmoke = await command(
+    [process.execPath, "__tests__/mcp-smoke.mjs"],
+    mcpEnvironment,
+  );
+  const mcp = JSON.parse(mcpSmoke.trim().split("\n").at(-1));
+  assert.equal(mcp.ok, true);
+  result.mcpClients = mcp.clients;
+  result.checks.push(
+    "MCP legacy/current clients: upload, shared asset, browser broadcast, revision, dedupe and conflict",
   );
 
   assert.equal(
@@ -194,6 +229,13 @@ try {
   result.checks.push(
     "SIGKILL and empty-replica restore: board, links, WebSocket",
   );
+  await command([process.execPath, "__tests__/mcp-smoke.mjs"], {
+    ...mcpEnvironment,
+    REF_MCP_PHASE: "verify",
+  });
+  result.checks.push(
+    "MCP empty-replica persistence and last-use asset cleanup",
+  );
   result.status = "passed";
 } catch (error) {
   result.status = "failed";
@@ -203,6 +245,7 @@ try {
 } finally {
   await browser?.close();
   auth?.kill();
+  await rm(tokenFile, { force: true });
   try {
     await stop("SIGKILL");
   } catch (error) {

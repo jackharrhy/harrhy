@@ -10,6 +10,14 @@ From the Harrhy root, run `npm ci`, then `npm run check --workspace @harrhy/auth
 
 The synthetic authorization browser script uses four representative applications: 4orm for direct authorization-request login and login CSP, Artbin for return-target login and delegated consent, Ref for archive scopes, and the Rotund portal for silent sessions. Each exercises first-successful login, failed-password retry, and existing-session callback. Client policy tests remain in the Node suite; Radio has its own browser enrollment flow. Maps, Executor, Burger, Lists, Media Admin, Letters to Steve, Radio, Marky, and Navidrome are not each run through the generic browser login lifecycle, so their individual configuration-to-browser-callback combinations are not covered by that matrix. Separate policy, freshness, session, stale-form/restart, and reset checks remain.
 
+Ref's delegated policy separates board and archive permission families. A human
+member or admin may request granted `boards-read`/`boards-write` capabilities;
+`archive-read`/`archive-restore` remain admin-only. A request cannot mix those
+families or request both membership roles. Every requested capability is checked
+against the active user grant both before showing consent and when approving it.
+`__tests__/ref-delegation.test.mjs` covers these policy boundaries independently
+of the generic browser archive-login fixture.
+
 ### Real local sign-in
 
 The opt-in profile in `local-real/` uses pinned ZITADEL 4.20.0 and PostgreSQL 17 images, this Auth UI, and the actual Artbin OAuth callback. It creates one synthetic organization user and an Artbin member grant. Each worktree gets a separate Compose project and database, isolated from production; `@harrhy/dev-auth` remains the faster in-memory fixture for narrow checks. Docker is needed only for the provider and database. Node 26 and the repository dependencies run the two apps on loopback.

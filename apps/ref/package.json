@@ -22,11 +22,14 @@
   },
   "dependencies": {
     "@harrhy/identity": "0.1.0",
+    "@harrhy/mcp": "0.1.0",
     "@harrhy/ui": "0.1.0",
     "remix": "3.2.0"
   },
   "devDependencies": {
     "@harrhy/dev-auth": "0.1.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@playwright/test": "^1.65.0",
     "@types/node": "^26.6.6",
     "esbuild": "^0.28.2",
