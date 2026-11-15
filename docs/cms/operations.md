@@ -31,7 +31,7 @@ References: [Traefik Docker routing](https://doc.traefik.io/traefik/reference/ro
 
 ## Mug preview deployment
 
-The [Publish CMS workflow](../../.github/workflows/publish-cms.yml) runs when a push to `main` changes `apps/cms`, its shared packages, or the image build inputs. It checks the CMS and publishes `ghcr.io/jackharrhy/tea-cms:latest` and a commit tag. A manual run from `main` is also available:
+The [Publish CMS workflow](../../.github/workflows/publish-cms.yml) runs when a push to `main` changes `apps/cms`, its shared packages, or the image build inputs. It checks the CMS and publishes `ghcr.io/jackharrhy/teacms:latest` and a commit tag. A manual run from `main` is also available:
 
 ```sh
 gh workflow run publish-cms.yml --ref main
@@ -53,9 +53,77 @@ and retains seven daily generations. See [backups](backups.md) for explicit moun
 actual per-database consistency, status, offline restore and cron retirement gates.
 Keep off-host copies and test restores. Standalone Andrew remains outside this app.
 
-`data/operator/operator.db` holds operator password hashes, sessions, and site-entry tickets. Back it up securely or reseed an operator after restoring.
+`data/operator/operator.db` holds operator password hashes, reviewed identity links, sessions, and site-entry tickets. Restore the reviewed existing account from its verified backup; do not replace its identity by guessing an email or reseeding an operator.
 
 Each site's stores scope sessions, rate limits, and file lookups. Cookies include the site ID because browser cookies do not isolate ports on one hostname. Editors sign in separately. The operator database holds its credentials, sessions, and one-time entry tickets; operator sign-out invalidates operator-issued site sessions. `apps/cms/__tests__/tenants.test.ts` and `apps/cms/__tests__/operator.test.ts` test the main isolation boundaries of the shared server.
+
+## Initial owner-only Central Auth cutover
+
+Central mode intentionally replaces **all** tenant and operator password forms with
+Central sign-in. Preserve existing user rows, content, uploads, revisions and identity
+links; the initial reviewed manifest links only the existing operator. No Luke/Andrew
+Central accounts, invitations or grants are part of this operation.
+
+Infra owns the bounded Watchtower/image selection, private configuration and recovery
+receipts. Before activation, retain a fresh verified native SQLite-and-media snapshot
+and matching-image offline restore/readback. Deploy the checked Auth UI image with
+CMS still held; its `allowedUserIds` guard must be present before release. Preserve the
+current Ref preview registry overlay and all unrelated application policy. Source CMS
+policy remains `authorizationHold: true, allowedUserIds: []`; activation selects a
+reviewed private registry with only CMS hold false and the exact owner ID allowed.
+
+### Schema initialization without starting a server
+
+Stop CMS before modifying links. Use the exact checked new CMS image, its existing
+reviewed site manifests, data mount and `TEA_OPERATOR_ORIGIN`; do not start the normal
+server or create replacement databases. From `/app/apps/cms`, this recipe checks every
+configured database exists as a regular file **before** opening any for migration:
+
+```sh
+node --import remix/node-tsx --input-type=module <<'NODE'
+import { lstat } from 'node:fs/promises';
+import { join, resolve } from 'node:path';
+import { loadSites, parseOperatorOrigin } from './config.ts';
+import { openDatabase } from './app/data/database.ts';
+import { createOperatorStore } from './operator/store.ts';
+
+const sites = await loadSites();
+if (!parseOperatorOrigin(process.env.TEA_OPERATOR_ORIGIN, sites))
+  throw new Error('The reviewed operator origin is required');
+const root = resolve(process.env.TEA_DATA_DIR ?? 'data');
+const sitePaths = sites.map(site => join(root, site.id, 'tea.db'));
+const operatorPath = join(root, 'operator', 'operator.db');
+for (const path of [...sitePaths, operatorPath])
+  if (!(await lstat(path)).isFile())
+    throw new Error('An existing regular database is required');
+for (const path of sitePaths) {
+  const { sqlite } = await openDatabase(path);
+  sqlite.close();
+}
+createOperatorStore(operatorPath, false).close();
+console.log('Existing site and operator schemas initialized');
+NODE
+```
+
+These are the same migration and operator-schema APIs used at normal startup, without
+`createApp`, a listener, seed users or identity-provider calls. The additive issuer
+migration adds nullable `auth_issuer` to users and sessions; it does not adopt any old
+subject-only link. Inspect every database's resulting schema before proceeding.
+
+Use the private issuer-bearing link manifest and dry-run/apply commands in the
+[CMS guide](../../apps/cms/README.md#central-auth-transition). The initial manifest has
+one reviewed stable operator row ID and empty `andrew`/`luke` arrays. Migration and
+linking are transactional **per database**, not one cross-database transaction. On
+failure stop, inspect all databases and receipts, and only then resume an idempotent
+retry; do not assume earlier databases rolled back. Verify exactly the reviewed
+operator issuer/subject was linked and every tenant user row stayed unchanged.
+
+Configure the pinned issuer/owner subject and existing public clients before starting
+Central CMS; verify registered-host public health and the sign-in redirect on all
+three hosts. Release the CMS registry hold only with the checked owner-only list.
+Acceptance needs the owner's actual fresh sign-in and entry to both tenant editors;
+synthetic tests do not establish production acceptance. Keep the prior image, full
+configuration/registry overlay and snapshot for rollback as described in the CMS guide.
 
 ## Scope of this repository
 
