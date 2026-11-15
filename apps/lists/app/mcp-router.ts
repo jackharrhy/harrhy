@@ -111,7 +111,7 @@ export function createMcpRouter(db: Db, config: Config) {
         });
         return server;
       },
-      { maxRequestBytes: 24 * 1024 * 1024 },
+      { maxRequestBytes: 128 * 1024 * 1024 },
     );
     return handler.fetch(request);
   }

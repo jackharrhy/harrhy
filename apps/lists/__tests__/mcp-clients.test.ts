@@ -157,10 +157,18 @@ test("notifications, batches, cross-origin and oversized requests never create s
     Authorization: `Bearer ${fixture.token}`,
     "Content-Type": "application/json",
   };
+  let remaining = 129;
+  const chunk = new Uint8Array(1024 * 1024).fill(32);
+  const oversized = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      if (remaining-- > 0) controller.enqueue(chunk);
+      else controller.close();
+    },
+  });
   for (const [body, status] of [
     [JSON.stringify(operation), 202],
     [JSON.stringify([{ ...operation, id: 1 }]), 400],
-    [" ".repeat(24 * 1024 * 1024 + 1), 413],
+    [oversized, 413],
   ] as const) {
     const response = await fixture.app.request("/mcp", {
       method: "POST",
