@@ -68,9 +68,12 @@ export class DirectoryCell extends DurableObject<Env> {
     return token;
   }
 
-  async session(token: string): Promise<boolean> {
+  async session(token: string, allowedSubject = ""): Promise<boolean> {
     if (!/^[0-9a-f]{64}$/.test(token)) return false;
-    return (await this.sessionExpiry(await tokenHash(token))) !== null;
+    return (
+      (await this.sessionExpiry(await tokenHash(token), allowedSubject)) !==
+      null
+    );
   }
 
   async endSession(token: string): Promise<void> {
@@ -148,18 +151,24 @@ export class DirectoryCell extends DurableObject<Env> {
   async socketAccess(
     boardId: string,
     sessionHash: string,
+    allowedSubject = "",
   ): Promise<{ expiresAt: number } | null> {
     if (!this.board(boardId)) return null;
-    const expiresAt = await this.sessionExpiry(sessionHash);
+    const expiresAt = await this.sessionExpiry(sessionHash, allowedSubject);
     return expiresAt === null ? null : { expiresAt };
   }
 
-  private async sessionExpiry(sessionHash: string): Promise<number | null> {
+  private async sessionExpiry(
+    sessionHash: string,
+    allowedSubject = "",
+  ): Promise<number | null> {
     const row = this.ctx.storage.sql
       .exec<{ expires_at: number }>(
-        "SELECT expires_at FROM solo_sessions WHERE token_hash = ? AND expires_at > ? AND auth_subject <> ''",
+        "SELECT expires_at FROM solo_sessions WHERE token_hash = ? AND expires_at > ? AND auth_subject <> '' AND (? = '' OR auth_subject = ?)",
         sessionHash,
         Date.now(),
+        allowedSubject,
+        allowedSubject,
       )
       .toArray()[0];
     return row?.expires_at ?? null;

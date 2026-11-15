@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import {
   applicationForClient,
   applicationRoleKeys,
@@ -11,6 +12,39 @@ const applications = [
   { id: "lore", projectId: "lore-project", clientIds: ["lore-client"] },
   { id: "fourm", projectId: "fourm-project", clientIds: ["fourm-client"] },
 ];
+test("Ref private preview is separately registered, admin-only and fresh without changing production admission", async () => {
+  const registry = JSON.parse(
+    await readFile(
+      new URL("../config/applications.json", import.meta.url),
+      "utf8",
+    ),
+  );
+  const ref = registry.find((app) => app.id === "ref");
+  const preview = "399668574953668628";
+  assert.ok(ref.pkceClientIds.includes(preview));
+  const intent = authorizationForRequest(registry, {
+    clientId: preview,
+    creationDate: "2026-11-15T04:30:35Z",
+  });
+  assert.deepEqual(intent.anyRoles, ["admin"]);
+  assert.equal(intent.consent, false);
+  assert.throws(
+    () =>
+      authorizationForRequest(registry, {
+        clientId: preview,
+        creationDate: "2026-11-15T04:30:34Z",
+      }),
+    { status: 400 },
+  );
+  assert.deepEqual(
+    authorizationForRequest(registry, {
+      clientId: "399095840712491028",
+      creationDate: "2026-11-15T04:30:35Z",
+    }).anyRoles,
+    ["member", "admin"],
+  );
+});
+
 test("membership includes own-content permissions without changing admin or revoked grants", () => {
   const app = {
     apiRoles: ["pages-read", "pages-write", "media-read", "media-write"],

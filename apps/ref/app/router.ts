@@ -31,7 +31,7 @@ export function createAppRouter(
   runtime: AppRuntimeService,
   authenticated: boolean,
   token: string | null,
-  identity: { config: IdentityConfig; origin: string },
+  identity: { config: IdentityConfig; origin: string; allowedSubject?: string },
 ) {
   const router = createRouter<AppContext>({
     middleware: [

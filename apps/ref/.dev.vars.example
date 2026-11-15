@@ -5,3 +5,7 @@ AUTH_ORGANIZATION_ID=ref-local-org
 AUTH_PUBLIC_ORIGIN=http://127.0.0.1:8787
 AUTH_INTROSPECTION_CLIENT_ID=ref-local-resource
 AUTH_INTROSPECTION_SECRET=ref-local-resource-secret
+
+# Optional immutable subject restriction for a separately registered private preview.
+# The issuer must authenticate the real owner; this does not secure an open dev issuer.
+AUTH_ALLOWED_SUBJECT=

@@ -85,7 +85,7 @@ export default {
       }
       const token = readSessionCookie(request);
       let authenticated = token
-        ? await runtime.directory.session(token)
+        ? await runtime.directory.session(token, env.AUTH_ALLOWED_SUBJECT)
         : false;
       const bearer = request.headers.get("Authorization");
       const archive = url.pathname.startsWith("/api/archive/");
@@ -115,6 +115,14 @@ export default {
             clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
             clientSecret: env.AUTH_INTROSPECTION_SECRET,
           });
+          if (
+            env.AUTH_ALLOWED_SUBJECT &&
+            principal.subject !== env.AUTH_ALLOWED_SUBJECT
+          )
+            throw new IdentityError(
+              "This preview is restricted to its owner",
+              403,
+            );
           authorizeArchive(
             principal,
             env.AUTH_PROJECT_ID,
@@ -142,6 +150,7 @@ export default {
           organizationId: env.AUTH_ORGANIZATION_ID,
         },
         origin: env.AUTH_PUBLIC_ORIGIN,
+        allowedSubject: env.AUTH_ALLOWED_SUBJECT,
       });
       return withSecurityHeaders(await router.fetch(request), true);
     } catch (error) {

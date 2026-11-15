@@ -81,6 +81,14 @@ export default createController(routes.auth, {
           transaction,
           `${central.origin}${routes.auth.callback.href()}`,
         );
+        if (
+          central.allowedSubject &&
+          profile.subject !== central.allowedSubject
+        )
+          return new Response("This preview is restricted to its owner", {
+            status: 403,
+            headers: { "Set-Cookie": cleared! },
+          });
         stage = "session";
         const token = await context
           .get(AppRuntime)!

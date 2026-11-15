@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -193,6 +193,86 @@ try {
   assert.equal(await page.locator(".link-item").count(), 2);
   result.checks.push(
     "SIGKILL and empty-replica restore: board, links, WebSocket",
+  );
+  const tokenFile = join(state, "synthetic-archive-token");
+  await command(
+    [process.execPath, "../../packages/dev-auth/token.mjs", tokenFile],
+    {
+      HARRHY_DEV_AUTH_ORIGIN: authOrigin,
+      HARRHY_DEV_AUTH_CALLBACK: `${origin}/auth/callback`,
+    },
+  );
+  const bearer = {
+    Authorization: `Bearer ${await readFile(tokenFile, "utf8")}`,
+  };
+  assert.equal(
+    (
+      await page.request.get(`${origin}/api/archive/boards`, {
+        headers: bearer,
+      })
+    ).status(),
+    200,
+  );
+  await rm(tokenFile);
+  // Reopen the same populated store with a different admitted subject. Existing
+  // cookies must not retain access when a private-preview restriction changes.
+  await stop("SIGKILL");
+  environment.CELLD_VAR_AUTH_ALLOWED_SUBJECT = "different-preview-owner";
+  await start();
+  for (const path of [
+    `/api/boards/${first.boardId}/snapshot`,
+    `/media/${first.boardId}/00000000-0000-4000-8000-000000000000`,
+    `/previews/${first.boardId}/${"0".repeat(64)}`,
+  ]) {
+    assert.equal((await page.request.get(`${origin}${path}`)).status(), 404);
+  }
+  for (const path of [
+    "/api/archive/boards",
+    `/api/boards/${first.boardId}/snapshot`,
+    `/media/${first.boardId}/00000000-0000-4000-8000-000000000000`,
+  ]) {
+    assert.equal(
+      (
+        await page.request.get(`${origin}${path}`, { headers: bearer })
+      ).status(),
+      403,
+    );
+  }
+  await page.goto(`${origin}/boards/${first.boardId}`);
+  await page.getByRole("link", { name: "Sign in", exact: true }).waitFor();
+  const socketStatus = await page.evaluate(
+    (boardId) =>
+      new Promise((resolve) => {
+        const socket = new WebSocket(
+          `${location.origin.replace("http", "ws")}/api/boards/${boardId}/ws`,
+        );
+        socket.addEventListener(
+          "open",
+          () => {
+            socket.close();
+            resolve("opened");
+          },
+          { once: true },
+        );
+        socket.addEventListener("error", () => resolve("denied"), {
+          once: true,
+        });
+      }),
+    first.boardId,
+  );
+  assert.equal(socketStatus, "denied");
+  await page.getByRole("link", { name: "Sign in", exact: true }).click();
+  const deniedCallback = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/auth/callback",
+  );
+  await page.getByRole("button", { name: "Continue as local user" }).click();
+  assert.equal((await deniedCallback).status(), 403);
+  assert.equal(
+    await page.locator("body").textContent(),
+    "This preview is restricted to its owner",
+  );
+  result.checks.push(
+    "private preview: stored other-subject cookie, snapshot, media, preview, WebSocket, OAuth callback and valid other-subject archive bearer denied",
   );
   result.status = "passed";
 } catch (error) {

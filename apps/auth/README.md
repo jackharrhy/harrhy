@@ -26,6 +26,13 @@ The native setup writes only synthetic project/client IDs to local configuration
 
 The app is independently containerized by `Dockerfile`. The Auth publisher checks this workspace and publishes `ghcr.io/jackharrhy/auth` when Auth or a relevant shared build input changes; it does not select the production container. Production settings, DNS, sealed credential files, both SQLite data files, appearance state, and backups are owned by Infra. Set `PUBLIC_ORIGIN`, `ZITADEL_API_URL`, `ORGANIZATION_ID`, the reviewed client/project IDs, and the relevant read-only credential file paths there. Keep `ACCESS_DB_FILE`, `RADIO_ENROLLMENT_DB_FILE`, `DOODLE_POOL_FILE`, and `AUTH_SUPPORT_CONFIG_FILE` with their existing data and recovery material. An Auth UI restart invalidates in-memory browser and support sessions; durable support cleanup still uses the sealed support key and access database. No source import or container build activates native impersonation.
 
+The Ref registry also includes a separate private-preview PKCE client with an
+admin-only admission requirement and its own authorization-request freshness
+cutoff. Its callback is registered separately from production. Ref itself pins
+the preview to a reviewed immutable owner subject; the Auth role requirement
+alone is not an owner-only gate. Retiring the preview removes only that client's
+registry entries and its dedicated provider clients, never production Ref grants.
+
 ## Synthetic UI review
 
 `PORT=18809 node apps/auth/__tests__/fixtures/ui-preview.mjs` (from the repository root) serves a loopback-only, GET-only background explorer (`/login`) and authenticated-header (`/`) fixture. It imports the UI without starting Auth, loading credentials, or connecting to a provider/database; the interior identity is explicitly synthetic. Do not use it as an authenticated app or production runtime. Login submissions are disabled. `__tests__/browser/ui-polish.mjs` checks responsive centering/header, explorer controls, deterministic screenshots across reload, reduced motion, and unavailable/context-lost WebGL fallback. It runs in `test:browser`.

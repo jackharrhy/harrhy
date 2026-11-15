@@ -15,6 +15,12 @@ callback and subject-bound session code as production, with the disposable
 [`@harrhy/dev-auth`](../../packages/dev-auth/README.md) issuer. The archive CLI
 uses a delegated resource token.
 
+An isolated private preview can set `AUTH_ALLOWED_SUBJECT` to a reviewed immutable
+issuer subject. When set, callback admission, existing sessions, WebSocket
+revalidation, and archive bearer access require that exact subject. Leave it
+empty for the normal shared-member deployment. This restriction requires a
+trusted issuer; it does not make the disposable local issuer safe for real data.
+
 ## Run locally
 
 Requires Node.js 26 LTS (26.13.0+) and npm. From the Harrhy root:

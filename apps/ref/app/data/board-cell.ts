@@ -250,6 +250,7 @@ export class BoardCell extends DurableObject<Env> {
     const access = await this.env.DIRECTORY.getByName("main").socketAccess(
       boardId,
       sessionHash,
+      this.env.AUTH_ALLOWED_SUBJECT,
     );
     if (!access) return new Response("Invalid board access", { status: 403 });
     if (this.ctx.getWebSockets().length >= MAX_CONNECTIONS) {
@@ -312,6 +313,7 @@ export class BoardCell extends DurableObject<Env> {
       !(await this.env.DIRECTORY.getByName("main").socketAccess(
         boardId,
         attachment.sessionHash,
+        this.env.AUTH_ALLOWED_SUBJECT,
       ))
     ) {
       this.endSocket(socket);

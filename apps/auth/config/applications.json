@@ -161,17 +161,19 @@
     "id": "ref",
     "name": "Ref",
     "projectId": "399095836685893652",
-    "clientIds": ["399095840712491028"],
-    "pkceClientIds": ["399095840712491028"],
+    "clientIds": ["399095840712491028", "399668574953668628"],
+    "pkceClientIds": ["399095840712491028", "399668574953668628"],
     "roles": ["admin", "member"],
     "authorizationHold": false,
     "delegatedRoles": ["admin"],
     "delegatedPermissions": ["archive-read", "archive-restore"],
     "clientRoleRequirements": {
-      "399095840712491028": ["member", "admin"]
+      "399095840712491028": ["member", "admin"],
+      "399668574953668628": ["admin"]
     },
     "authRequestNotBefore": {
-      "399095840712491028": "2026-11-11T11:25:22.842Z"
+      "399095840712491028": "2026-11-11T11:25:22.842Z",
+      "399668574953668628": "2026-11-15T04:30:34.140053+00:00"
     },
     "delegatedAuthRequestNotBefore": "2026-11-11T11:25:22.842Z"
   },
