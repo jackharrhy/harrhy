@@ -69,7 +69,7 @@ export function createTeaRouter(
   );
   const central = centralAuth(
     site.origin,
-    process.env[`HARRHY_AUTH_${site.id.toUpperCase()}_CLIENT_ID`],
+    process.env.HARRHY_AUTH_OPERATOR_CLIENT_ID,
   );
   const router = createRouter<AppContext>({
     middleware: [
@@ -97,7 +97,7 @@ export function createTeaRouter(
     ],
   });
   router.map(routes, createPublicController(site, operator));
-  router.map(routes.auth, createAuthController(site, operator));
+  router.map(routes.auth, createAuthController(site, operator, operatorOrigin));
   router.map(routes.admin, createAdminController(site, operatorOrigin));
   router.map(
     routes.protectedResource,

@@ -16,7 +16,6 @@ it("requires reviewed local links and rejects old CMS password sessions in Centr
     "HARRHY_AUTH_PROJECT_ID",
     "HARRHY_AUTH_ORGANIZATION_ID",
     "HARRHY_AUTH_OPERATOR_CLIENT_ID",
-    "HARRHY_AUTH_ANDREW_CLIENT_ID",
   ] as const;
   const previous = names.map((name) => process.env[name]);
   Object.assign(process.env, {
@@ -25,7 +24,6 @@ it("requires reviewed local links and rejects old CMS password sessions in Centr
     HARRHY_AUTH_PROJECT_ID: "cms-project",
     HARRHY_AUTH_ORGANIZATION_ID: "cms-org",
     HARRHY_AUTH_OPERATOR_CLIENT_ID: "cms-operator",
-    HARRHY_AUTH_ANDREW_CLIENT_ID: "cms-andrew",
   });
   const dir = await mkdtemp(join(tmpdir(), "cms-central-"));
   const site = parseFixtureSites(

@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "@harrhy/identity": "0.1.0",
-    "@harrhy/json-schema": "0.1.0",
     "@harrhy/logger": "0.1.0",
     "@harrhy/mcp": "0.1.0",
     "@harrhy/request-body": "0.1.0",

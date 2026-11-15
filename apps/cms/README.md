@@ -47,15 +47,17 @@ site and its legacy media are outside this app's backup scope.
 
 The existing operator and site password logins stay active until the operator
 has a reviewed Auth subject link and live browser/editor acceptance.
-The first Auth cutover can link only the operator: the existing one-use,
-site-bound tickets still let the operator enter both editors. Direct site
-login stays unavailable until each editor has an explicit reviewed link. Set
-`HARRHY_AUTH_ISSUER`, `HARRHY_AUTH_PROJECT_ID`,
-`HARRHY_AUTH_ORGANIZATION_ID`, `HARRHY_AUTH_OWNER_SUBJECT`, and the three public client IDs
-`HARRHY_AUTH_OPERATOR_CLIENT_ID`, `HARRHY_AUTH_ANDREW_CLIENT_ID`, and
-`HARRHY_AUTH_LUKE_CLIENT_ID` together to enable Auth mode. The exact callbacks
-are `/auth/callback` on the operator host and `/tea/auth/callback` on each site
-host. Initial Auth mode admits only the reviewed owner's immutable issuer and subject.
+The first Auth cutover links only the operator. A site's Sign in button sends
+the browser through the operator's Auth flow; the dashboard's Open editor button
+uses an existing one-use, site-bound handoff to enter either editor without another
+login. Set `HARRHY_AUTH_ISSUER`, `HARRHY_AUTH_PROJECT_ID`,
+`HARRHY_AUTH_ORGANIZATION_ID`, `HARRHY_AUTH_OWNER_SUBJECT`, and the single public
+`HARRHY_AUTH_OPERATOR_CLIENT_ID`, together with `HARRHY_CMS_OPERATOR_ORIGIN`,
+to enable Auth mode. The only browser callback is `/auth/callback` on the operator
+host. No tenant browser client settings are needed; old `/tea/auth/callback` routes
+return 404. Existing unused tenant provider registrations remain inactive and are
+not deleted. Initial Auth mode admits only the reviewed owner's immutable issuer
+and subject.
 The app requires an existing local user row with reviewed `auth_issuer` and
 `auth_subject`; subject-only links are not adopted automatically. It never links
 by email or creates an editor on sign-in. The owner pin applies to callbacks,
@@ -64,10 +66,13 @@ The Auth registry remains held with `allowedUserIds: []` in source. Infra
 must run the checked Auth image that enforces that field before releasing the CMS
 hold in its reviewed runtime registry, with exactly the owner's ID in the list.
 Keep other clients, Ref preview policy, grants, and application entries unchanged.
-No Luke/Andrew enrollment or grant is enabled by this cutover.
-Operator sign-in requires the CMS project admin grant; site editor sign-in
-requires member or admin plus that site's local subject link. Operator tickets
-continue to grant temporary access to site editors. Auth sessions expire
+No Luke/Andrew enrollment or grant is enabled by this cutover. Exactly two native
+registrations are needed: the existing operator browser client and existing MCP
+resource client. The missing resource credential is renewed privately on that same
+registration; no replacement client or additional grant is created.
+Operator sign-in requires the CMS project admin grant and a reviewed local
+issuer/subject link. Site editor access is inherited through site-bound operator
+tickets, not a separately linked tenant account. Auth sessions expire
 after one hour, and old password sessions are rejected as soon as Auth mode
 is enabled. Login transactions are bounded, server-held, ten-minute and one-use,
 bound to the browser cookie and exact host/client callback. A restart invalidates

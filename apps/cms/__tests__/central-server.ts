@@ -76,8 +76,6 @@ Object.assign(process.env, {
   HARRHY_AUTH_ORGANIZATION_ID: "cms-org",
   HARRHY_AUTH_OWNER_SUBJECT: subject,
   HARRHY_AUTH_OPERATOR_CLIENT_ID: "cms-operator",
-  HARRHY_AUTH_ANDREW_CLIENT_ID: "cms-andrew",
-  HARRHY_AUTH_LUKE_CLIENT_ID: "cms-luke",
 });
 const sites = parseFixtureSites(
   ["andrew", "luke"].map((id) => ({

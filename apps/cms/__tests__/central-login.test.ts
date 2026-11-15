@@ -24,8 +24,6 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
     HARRHY_AUTH_ORGANIZATION_ID: "cms-org",
     HARRHY_AUTH_OWNER_SUBJECT: "reviewed-owner",
     HARRHY_AUTH_OPERATOR_CLIENT_ID: "operator-client",
-    HARRHY_AUTH_ANDREW_CLIENT_ID: "andrew-client",
-    HARRHY_AUTH_LUKE_CLIENT_ID: "luke-client",
     HARRHY_AUTH_INTROSPECTION_CLIENT_ID: "resource-client",
     HARRHY_AUTH_INTROSPECTION_SECRET: "fixture-secret",
     HARRHY_CMS_MCP_TOKEN: "legacy-must-not-work",
@@ -61,7 +59,12 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
     .prepare(
       "INSERT INTO users(email,password_hash,auth_subject,auth_issuer) VALUES(?,?,?,?)",
     )
-    .run("other@example.test", "unused", "other-admin", values.HARRHY_AUTH_ISSUER);
+    .run(
+      "other@example.test",
+      "unused",
+      "other-admin",
+      values.HARRHY_AUTH_ISSUER,
+    );
   for (const site of sites) {
     const { sqlite } = await openDatabase(join(site.dataDir, "tea.db"));
     sqlite
@@ -247,17 +250,31 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
       (await get(wrongIssuer.callback, wrongIssuer.cookie)).status,
       401,
     );
-    const unlinked = await begin("andrew");
-    assert.equal((await get(unlinked.callback, unlinked.cookie)).status, 403);
-    const wrongTenant = await begin("andrew");
+    for (const host of ["andrew", "luke"]) {
+      const signIn = await get(`https://${host}.example.test/tea/auth/login`);
+      assert.equal(signIn.status, 303);
+      assert.equal(
+        signIn.headers.get("location"),
+        "https://operator.example.test/auth/login",
+      );
+      assert.equal(
+        (
+          await get(
+            `https://${host}.example.test/tea/auth/callback?code=forged&state=forged`,
+          )
+        ).status,
+        404,
+      );
+    }
+    const wrongTenant = await begin();
     assert.equal(
       (
         await get(
-          wrongTenant.callback.replace("andrew.example", "luke.example"),
+          wrongTenant.callback.replace("operator.example", "luke.example"),
           wrongTenant.cookie,
         )
       ).status,
-      400,
+      404,
     );
     assert.equal(
       (await get(wrongTenant.callback, wrongTenant.cookie + "tampered")).status,

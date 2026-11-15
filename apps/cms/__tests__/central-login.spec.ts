@@ -5,8 +5,8 @@ test("central owner signs in freshly, enters both tenant editors, and loses acce
   context,
 }) => {
   const origin = "http://operator.localhost:4353";
-  await page.goto(origin);
-  await expect(page).toHaveURL(origin + "/login");
+  await page.goto("http://andrew.localhost:4353/tea/login");
+  await expect(page).toHaveURL("http://andrew.localhost:4353/tea/login");
   await expect(page.getByLabel("Password")).toHaveCount(0);
   await page.getByRole("link", { name: "Sign in", exact: true }).click();
   await expect(
