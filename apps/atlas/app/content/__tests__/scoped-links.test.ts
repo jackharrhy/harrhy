@@ -8,33 +8,33 @@ import { createCatalog } from "../catalog.ts";
 test("render cache includes owner and local route when resolving identical relative links", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "atlas-links-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  await mkdir(path.join(root, "wonder"));
+  await mkdir(path.join(root, "alpha"));
   const put = (file: string, route: string) =>
     writeFile(
-      path.join(root, "wonder", file),
+      path.join(root, "alpha", file),
       `---\ntitle: Links\npath: ${route}\n---\n[next](child/) [malformed](http://[) [fragment](#part) [odd](%)`,
     );
   await put("a.md", "/a/");
   await put("b.md", "/b/");
   const catalog = createCatalog({
     root,
-    authors: [{ id: "wonder", directory: "wonder" }],
+    authors: [{ id: "alpha", directory: "alpha" }],
   });
   let state = await catalog.refresh();
   assert.equal(state.status, "ready");
   assert.match(
-    state.generation!.pages["/spaces/wonder/a"]!.html,
-    /href="\/spaces\/wonder\/a\/child\/"/,
+    state.generation!.pages["/spaces/alpha/a"]!.html,
+    /href="\/spaces\/alpha\/a\/child\/"/,
   );
   assert.match(
-    state.generation!.pages["/spaces/wonder/b"]!.html,
-    /href="\/spaces\/wonder\/b\/child\/"/,
+    state.generation!.pages["/spaces/alpha/b"]!.html,
+    /href="\/spaces\/alpha\/b\/child\/"/,
   );
   await put("a.md", "/moved/");
   state = await catalog.refresh();
   assert.equal(state.status, "ready");
   assert.match(
-    state.generation!.pages["/spaces/wonder/moved"]!.html,
-    /href="\/spaces\/wonder\/moved\/child\/"/,
+    state.generation!.pages["/spaces/alpha/moved"]!.html,
+    /href="\/spaces\/alpha\/moved\/child\/"/,
   );
 });

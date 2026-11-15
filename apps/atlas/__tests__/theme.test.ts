@@ -8,15 +8,26 @@ import { createAtlas } from "../app/router.tsx";
 test("SSR themes persist through native forms without changing scoped content", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "atlas-theme-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  await mkdir(path.join(root, "wonder"));
+  await mkdir(path.join(root, "alpha"));
   await writeFile(
-    path.join(root, "wonder", "note.md"),
+    path.join(root, "alpha", "note.md"),
     "---\ntitle: Example research\npath: /research/\n---\nA searchable observation.\n",
   );
-  const { router } = await createAtlas(root);
+  await writeFile(
+    path.join(root, "atlas.json"),
+    JSON.stringify({
+      spaces: [
+        { id: "alpha", name: "Alpha", directory: "alpha", legacyRoutes: true },
+        { id: "beta", name: "Beta", directory: "beta", optional: true },
+        { id: "gamma", name: "Gamma", directory: "gamma", optional: true },
+        { id: "delta", name: "Delta", directory: "delta", optional: true },
+      ],
+    }),
+  );
+  const { router } = await createAtlas(root, path.join(root, "atlas.json"));
   for (const theme of ["clean", "tactile", "brutalist"]) {
     const response = await router.fetch(
-      `https://atlas.example/spaces/wonder/search/?q=observation&theme=${theme}`,
+      `https://atlas.example/spaces/alpha/search/?q=observation&theme=${theme}`,
     );
     assert.equal(response.status, 200);
     assert.match(
@@ -34,11 +45,11 @@ test("SSR themes persist through native forms without changing scoped content", 
     assert.match(html, /popover="auto"/);
     assert.match(html, /popovertarget="settings"/);
     assert.match(html, /aria-label="Settings"[^>]*data-variant="quiet"/);
-    assert.match(html, /aria-current="page"[^>]*[^]*?Wonder/);
+    assert.match(html, /aria-current="page"[^>]*[^]*?Alpha/);
     assert.doesNotMatch(html, /role="tab"|<script/);
     assert.equal(html.includes('href="/fonts.css"'), theme === "brutalist");
     const next = await router.fetch(
-      new Request("https://atlas.example/spaces/infra/", {
+      new Request("https://atlas.example/spaces/beta/", {
         headers: { Cookie: cookie.split(";")[0]! },
       }),
     );

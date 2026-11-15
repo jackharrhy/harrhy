@@ -8,19 +8,33 @@ import { createAtlas } from "../app/router.tsx";
 test("private SSR routes, aliases, authors, search and coherent updates", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "atlas-http-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  await mkdir(path.join(root, "wonder"));
-  const file = path.join(root, "wonder", "topic.md");
+  await mkdir(path.join(root, "alpha"));
+  const file = path.join(root, "alpha", "topic.md");
   await writeFile(
     file,
     "---\ntitle: Topic\npath: /pi/\naliases: [/old/]\nkind: topic\n---\nA synthetic searchable document.\n",
   );
-  const { router, catalog } = await createAtlas(root);
+  await writeFile(
+    path.join(root, "atlas.json"),
+    JSON.stringify({
+      spaces: [
+        { id: "alpha", name: "Alpha", directory: "alpha", legacyRoutes: true },
+        { id: "beta", name: "Beta", directory: "beta", optional: true },
+        { id: "gamma", name: "Gamma", directory: "gamma", optional: true },
+        { id: "delta", name: "Delta", directory: "delta", optional: true },
+      ],
+    }),
+  );
+  const { router, catalog } = await createAtlas(
+    root,
+    path.join(root, "atlas.json"),
+  );
   for (const route of [
     "/",
-    "/spaces/wonder/pi/",
-    "/spaces/wonder/search/?q=searchable",
-    "/spaces/infra/",
-    "/spaces/wonder/",
+    "/spaces/alpha/pi/",
+    "/spaces/alpha/search/?q=searchable",
+    "/spaces/beta/",
+    "/spaces/alpha/",
   ]) {
     const response = await router.fetch(`http://localhost${route}`);
     assert.equal(response.status, 200, route);
@@ -35,16 +49,16 @@ test("private SSR routes, aliases, authors, search and coherent updates", async 
   }
   assert.equal((await router.fetch("http://localhost/briefs/")).status, 308);
   await writeFile(
-    path.join(root, "wonder", "briefs.md"),
+    path.join(root, "alpha", "briefs.md"),
     "---\ntitle: Curated briefs\npath: /briefs/\n---\nExplicit page wins.",
   );
   await catalog.refresh();
-  const curated = await router.fetch("http://localhost/spaces/wonder/briefs/");
+  const curated = await router.fetch("http://localhost/spaces/alpha/briefs/");
   assert.equal(curated.status, 200);
   assert.match(await curated.text(), /Explicit page wins/);
   const alias = await router.fetch("http://localhost/old/");
   assert.equal(alias.status, 308);
-  assert.match(alias.headers.get("location")!, /^\/spaces\/wonder\/pi\/?$/);
+  assert.match(alias.headers.get("location")!, /^\/spaces\/alpha\/pi\/?$/);
   assert.equal((await router.fetch("http://localhost/missing/")).status, 404);
   assert.equal(
     (await router.fetch("http://localhost/assets/app/content/catalog.ts"))
@@ -57,13 +71,13 @@ test("private SSR routes, aliases, authors, search and coherent updates", async 
   );
   await catalog.refresh();
   assert.match(
-    await (await router.fetch("http://localhost/spaces/wonder/pi/")).text(),
+    await (await router.fetch("http://localhost/spaces/alpha/pi/")).text(),
     /Changed/,
   );
   await writeFile(file, "---\ntitle: Broken\npath: ../../private\n---\nNo.");
   await catalog.refresh();
   const stale = await (
-    await router.fetch("http://localhost/spaces/wonder/pi/")
+    await router.fetch("http://localhost/spaces/alpha/pi/")
   ).text();
   assert.match(stale, /Changed/);
   assert.match(stale, /last validated version/);

@@ -76,7 +76,7 @@ test("preserves GFM, safe details and local links for backlink resolution", asyn
 test("GFM tables retain semantics and safe inline content in a keyboard scroll region", async () => {
   const result = await renderMarkdown(
     '| Source | Command | Status |\n| :--- | ---: | :---: |\n| [notes](/notes/) | `a < b` | **ready** |\n| <img src="https://tracker.example" onerror="alert(1)"> | <a href="javascript:alert(1)">unsafe</a> | <script>evil()</script> |',
-    (href) => `/spaces/wonder${href}`,
+    (href) => `/spaces/alpha${href}`,
   );
   assert.match(
     result.html,
@@ -88,7 +88,7 @@ test("GFM tables retain semantics and safe inline content in a keyboard scroll r
   );
   assert.match(
     result.html,
-    /<tbody>\s*<tr>\s*<td align="left"><a href="\/spaces\/wonder\/notes\/">notes<\/a>/,
+    /<tbody>\s*<tr>\s*<td align="left"><a href="\/spaces\/alpha\/notes\/">notes<\/a>/,
   );
   assert.match(result.html, /<code>a (?:&lt;|&#x3C;) b<\/code>/);
   assert.match(result.html, /<strong>ready<\/strong>/);
@@ -96,7 +96,7 @@ test("GFM tables retain semantics and safe inline content in a keyboard scroll r
     result.html,
     /<script|<img|onerror|javascript:|tracker\.example|evil\(\)/,
   );
-  assert.deepEqual(result.links, ["/spaces/wonder/notes/"]);
+  assert.deepEqual(result.links, ["/spaces/alpha/notes/"]);
 });
 
 test("highlights fenced code after sanitizing and tolerates unknown languages", async () => {

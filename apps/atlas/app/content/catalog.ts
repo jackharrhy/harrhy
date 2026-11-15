@@ -16,7 +16,9 @@ interface CatalogAuthor {
 }
 export interface CatalogOptions {
   readonly root: string;
-  readonly authors: readonly CatalogAuthor[];
+  readonly authors:
+    | readonly CatalogAuthor[]
+    | (() => Promise<readonly CatalogAuthor[]>);
 }
 interface CatalogPage {
   readonly title: string;
@@ -44,6 +46,7 @@ interface CatalogSearchEntry {
 /** All indexes belong to the same deeply frozen, atomically published generation. */
 interface CatalogGeneration {
   readonly id: number;
+  readonly spaces: readonly Readonly<CatalogAuthor & { name: string }>[];
   /** Index keys and route targets omit trailing slash; page/parent URLs include it. */
   readonly pages: Readonly<Record<string, CatalogPage>>;
   readonly routes: Readonly<Record<string, string>>;
@@ -129,7 +132,6 @@ async function noSymlink(directory: string): Promise<void> {
 /** Only recursively reads registered author directories, never adjacent inventories. */
 export function createCatalog(options: CatalogOptions): Catalog {
   const root = path.resolve(options.root);
-  const authors = options.authors.map((author) => ({ ...author }));
   let state: CatalogRead = Object.freeze({
     generation: null,
     status: "empty",
@@ -144,6 +146,10 @@ export function createCatalog(options: CatalogOptions): Catalog {
 
   async function build(): Promise<CatalogRead> {
     try {
+      const authors =
+        typeof options.authors === "function"
+          ? await options.authors()
+          : options.authors;
       await noSymlink(root);
       const sourceDigests: string[] = [];
       const nextCache = new Map<
@@ -357,7 +363,7 @@ export function createCatalog(options: CatalogOptions): Catalog {
             backlinks[target]!.push(page.path);
         }
       }
-      const nextFingerprint = JSON.stringify(sourceDigests);
+      const nextFingerprint = JSON.stringify([authors, sourceDigests]);
       renderedCache = nextCache;
       if (state.generation && nextFingerprint === fingerprint) {
         state = Object.freeze({
@@ -374,6 +380,11 @@ export function createCatalog(options: CatalogOptions): Catalog {
       }
       const generation: CatalogGeneration = Object.freeze({
         id: (state.generation?.id ?? 0) + 1,
+        spaces: Object.freeze(
+          authors.map((author) =>
+            Object.freeze({ ...author, name: author.name ?? author.id }),
+          ),
+        ),
         pages: Object.freeze(pages),
         routes: Object.freeze(routes),
         backlinks: Object.freeze(backlinks),
@@ -406,7 +417,7 @@ export function createCatalog(options: CatalogOptions): Catalog {
       const relative = filename?.toString();
       if (
         relative &&
-        !authors.some((author) => {
+        !(state.generation?.spaces ?? []).some((author) => {
           const directory = path.relative(root, inside(root, author.directory));
           return (
             relative === directory ||
@@ -423,7 +434,7 @@ export function createCatalog(options: CatalogOptions): Catalog {
     };
     const watchers = [watchDirectory(root, changed)];
     try {
-      for (const author of authors) {
+      for (const author of state.generation?.spaces ?? []) {
         const directory = inside(root, author.directory);
         if (author.optional && !existsSync(directory)) continue;
         watchers.push(
