@@ -137,12 +137,18 @@ async function stop(signal) {
 }
 
 const tokenFile = join(state, "mcp-token");
+const readTokenFile = join(state, "mcp-read-token");
+const writeTokenFile = join(state, "mcp-write-token");
+const mixedTokenFile = join(state, "mcp-mixed-token");
 const mcpResultFile = join(state, "mcp-result.json");
 const authConfigFile = join(state, "dev-auth.json");
 const mcpEnvironment = {
   REF_SMOKE_URL: origin,
   REF_ACCESS_TOKEN_FILE: tokenFile,
   REF_MCP_RESULT_FILE: mcpResultFile,
+  REF_READ_TOKEN_FILE: readTokenFile,
+  REF_WRITE_TOKEN_FILE: writeTokenFile,
+  REF_MIXED_TOKEN_FILE: mixedTokenFile,
 };
 
 try {
@@ -171,14 +177,21 @@ try {
     if (attempt === 49) throw new Error("Local Jack Auth did not start");
     await delay(100);
   }
-  await command(
-    [process.execPath, "../../packages/dev-auth/token.mjs", tokenFile],
-    {
-      HARRHY_DEV_AUTH_ORIGIN: authOrigin,
-      HARRHY_DEV_AUTH_CALLBACK: `${origin}/auth/callback`,
-      HARRHY_DEV_AUTH_ROLES: "admin,boards-read,boards-write",
-    },
-  );
+  for (const [file, roles] of [
+    [tokenFile, "admin,boards-read,boards-write"],
+    [readTokenFile, "admin,boards-read"],
+    [writeTokenFile, "admin,boards-write"],
+    [mixedTokenFile, "admin,boards-read,archive-read"],
+  ]) {
+    await command(
+      [process.execPath, "../../packages/dev-auth/token.mjs", file],
+      {
+        HARRHY_DEV_AUTH_ORIGIN: authOrigin,
+        HARRHY_DEV_AUTH_CALLBACK: `${origin}/auth/callback`,
+        HARRHY_DEV_AUTH_ROLES: roles,
+      },
+    );
+  }
   result.version = (await command([binary, "--version"])).trim();
   await command([
     binary,
@@ -204,6 +217,9 @@ try {
   );
   const mcp = JSON.parse(mcpSmoke.trim().split("\n").at(-1));
   assert.equal(mcp.ok, true);
+  result.checks.push(
+    "MCP scoped clients: read/write filtering, denied mutations/reads, private conflicts, mixed-family rejection and media authorization",
+  );
   result.mcpClients = mcp.clients;
   result.checks.push(
     "MCP legacy/current clients: upload, shared asset, browser broadcast, revision, dedupe and conflict",
@@ -245,7 +261,11 @@ try {
 } finally {
   await browser?.close();
   auth?.kill();
-  await rm(tokenFile, { force: true });
+  await Promise.all(
+    [tokenFile, readTokenFile, writeTokenFile, mixedTokenFile].map((file) =>
+      rm(file, { force: true }),
+    ),
+  );
   try {
     await stop("SIGKILL");
   } catch (error) {

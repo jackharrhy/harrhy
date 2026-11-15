@@ -50,13 +50,18 @@ const headers = { Authorization: `Bearer ${token}` };
 const png =
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1sAAAAASUVORK5CYII=";
 const geometry = { x: 10, y: 20, width: 120, height: 100, rotation: 0, z: 1 };
-async function connect(C, T) {
+async function privateHeaders(path) {
+  assert.ok(path, "Explicit private scoped token file required");
+  assert.equal((await stat(path)).mode & 0o077, 0, "Token must be private");
+  return { Authorization: `Bearer ${(await readFile(path, "utf8")).trim()}` };
+}
+async function connect(C, T, authorization = headers, count = 11) {
   const client = new C({ name: "ref-isolated-smoke", version: "1.0.0" });
   clients.push(client);
   await client.connect(
-    new T(new URL("/mcp", origin), { requestInit: { headers } }),
+    new T(new URL("/mcp", origin), { requestInit: { headers: authorization } }),
   );
-  assert.equal((await client.listTools()).tools.length, 11);
+  assert.equal((await client.listTools()).tools.length, count);
   return client;
 }
 async function call(client, name, args = {}, error = false) {
@@ -69,10 +74,12 @@ async function call(client, name, args = {}, error = false) {
   if (error && !result.structuredContent) return result.content[0].text;
   return result.structuredContent ?? JSON.parse(result.content[0].text);
 }
-async function media(boardId, assetId, status = 200) {
+async function media(boardId, assetId, status = 200, authorization = headers) {
   const response = await fetch(
     new URL(`/media/${boardId}/${assetId}`, origin),
-    { headers },
+    {
+      headers: authorization,
+    },
   );
   assert.equal(response.status, status);
   if (status === 200)
@@ -113,6 +120,43 @@ try {
       (await fetch(new URL("/mcp", origin), { method: "POST" })).status,
       401,
     );
+    const readHeaders = await privateHeaders(process.env.REF_READ_TOKEN_FILE);
+    const writeHeaders = await privateHeaders(process.env.REF_WRITE_TOKEN_FILE);
+    const mixedHeaders = await privateHeaders(process.env.REF_MIXED_TOKEN_FILE);
+    const reader = await connect(
+      Client,
+      StreamableHTTPClientTransport,
+      readHeaders,
+      3,
+    );
+    const writer = await connect(
+      Client,
+      StreamableHTTPClientTransport,
+      writeHeaders,
+      8,
+    );
+    const beforeDeniedCreate = await call(current, "boards_list");
+    await call(reader, "board_create", { title: "Must not be created" }, true);
+    assert.deepEqual(await call(current, "boards_list"), beforeDeniedCreate);
+    assert.equal(
+      (
+        await fetch(new URL("/mcp", origin), {
+          method: "POST",
+          headers: {
+            ...mixedHeaders,
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+          },
+          body: JSON.stringify({
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/list",
+            params: {},
+          }),
+        })
+      ).status,
+      403,
+    );
     const { board } = await call(old, "board_create", {
       title: "Isolated MCP smoke",
     });
@@ -132,9 +176,15 @@ try {
       base64: png,
     });
     const assetId = asset.assetId;
-    const descriptor = await call(old, "asset_get", { boardId, assetId });
+    await call(writer, "board_get", { boardId }, true);
+    assert.equal(
+      (await call(reader, "board_get", { boardId })).board.id,
+      boardId,
+    );
+    const descriptor = await call(reader, "asset_get", { boardId, assetId });
     assert.equal(descriptor.contentType, "image/png");
-    await media(boardId, assetId);
+    await media(boardId, assetId, 200, readHeaders);
+    await media(boardId, assetId, 403, writeHeaders);
     const firstId = randomUUID(),
       secondId = randomUUID();
     for (const itemId of [firstId, secondId])
@@ -161,6 +211,15 @@ try {
         })
       ).status,
       403,
+    );
+    assert.equal(
+      (
+        await fetch(new URL("/mcp", origin), {
+          method: "POST",
+          headers: { Cookie: cookie },
+        })
+      ).status,
+      401,
     );
     const frames = [];
     page.on("websocket", (socket) =>
@@ -207,6 +266,24 @@ try {
       true,
     );
     assert.equal(conflict.applied, false);
+    const privateConflict = await call(
+      writer,
+      "item_transform",
+      {
+        ...operation,
+        operationId: randomUUID(),
+        x: 999,
+      },
+      true,
+    );
+    assert.equal(privateConflict.applied, false);
+    assert.equal(Object.hasOwn(privateConflict, "snapshot"), false);
+    assert.equal(
+      (await call(reader, "board_get", { boardId })).items.find(
+        (item) => item.id === firstId,
+      ).revision,
+      2,
+    );
     assert.equal(
       (await call(old, "board_get", { boardId })).sequence,
       transformed.sequence,
