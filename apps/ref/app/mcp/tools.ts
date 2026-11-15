@@ -96,7 +96,7 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
     tool(
       "link_add",
       "Save a public web link and best-effort cached preview; use item_create to place its asset. Existing links return their existing asset.",
-      { ...board, url: { type: "string", format: "uri", maxLength: 4096 } },
+      { ...board, url: { type: "string", format: "uri", maxLength: 2048 } },
       false,
       false,
       true,
@@ -105,7 +105,7 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
     tool(
       "link_refresh",
       "Replace a saved link preview/metadata from its public source, preserving placed items. May reclaim the previous cached preview.",
-      { ...board, url: { type: "string", format: "uri", maxLength: 4096 } },
+      { ...board, url: { type: "string", format: "uri", maxLength: 2048 } },
       false,
       true,
       false,
@@ -190,11 +190,18 @@ export async function callRefTool(
   input: unknown,
   origin: string,
 ) {
-  if (!toolsFor(access).some((t) => t.name === name))
-    return failure("Unknown or unauthorized Ref tool");
+  const definition = toolsFor(access).find((entry) => entry.name === name);
+  if (!definition) return failure("Unknown or unauthorized Ref tool");
   if (!input || typeof input !== "object" || Array.isArray(input))
     return failure("Tool input is invalid");
   const args = input as Record<string, unknown>;
+  if (
+    Object.keys(args).some(
+      (key) => !Object.hasOwn(definition.inputSchema.properties ?? {}, key),
+    ) ||
+    definition.inputSchema.required?.some((key) => !Object.hasOwn(args, key))
+  )
+    return failure("Tool input is invalid");
   try {
     if (name === "boards_list")
       return success({ boards: await runtime.directory.listBoards() });
@@ -256,7 +263,7 @@ export async function callRefTool(
       const result = await saveBoardLink(
         runtime,
         boardId,
-        string(args, "url"),
+        string(args, "url", 2048),
         name === "link_refresh",
       );
       if (!result.ok) return failure(result.message);

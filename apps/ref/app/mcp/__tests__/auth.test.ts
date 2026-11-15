@@ -111,6 +111,16 @@ test("tool filtering is enforced at execution and destructive actions are explic
     await callRefTool(runtime, read, "item_remove", {}, "https://ref.test"),
   ).toHaveProperty("isError", true);
   expect(calls).toBe(1);
+  expect(
+    await callRefTool(
+      runtime,
+      read,
+      "boards_list",
+      { unexpected: true },
+      "https://ref.test",
+    ),
+  ).toHaveProperty("isError", true);
+  expect(calls).toBe(1);
   const all = toolsFor(
     authorizeRefMcp(
       principal("admin", ["boards-read", "boards-write"]),
