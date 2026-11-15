@@ -22,6 +22,12 @@ Existing native-only household examples must remain unchanged through feature de
 
 Navidrome's fixed native administrator proxy remains owner-only. A generic mapping must not widen its viewer gate. Opening requires separately proven per-user least-privilege isolation and an explicit opening decision. Preserve OpenSubsonic credentials, Jellyfin passwords/QuickConnect/native clients, Seerr requests and requester permissions `160` (`REQUEST | AUTO_APPROVE`). Unsupported non-destructive offboarding remains manual-required, not a fabricated success; deleting Seerr users is not session revocation.
 
+## Installed Jellyfin disable contract (not runtime-enabled)
+
+Infra's installed 12.4 OpenAPI confirms exact-user `GET /Users/{userId}` and full-policy `POST /Users/{userId}/Policy`; the latter is not a partial patch. `src/jellyfin-lifecycle.mjs` now provides a bounded, separate-write-credential adapter for reviewed non-administrator disable. It rereads the exact native ID and compares the entire reviewed policy before mutation, requires the caller's durable effect claim before POST, preserves every policy field except `IsDisabled`, and verifies the complete policy after writing. Transport failure or verification drift returns `effect-unknown`, never a retry or success. Already-disabled accounts need no write. No delete, password change, login, token or session endpoint is called.
+
+This adapter is deliberately not connected to runtime configuration or UI yet: durable service-action reviews and recovery must own its effect claim first. Its synthetic tests prove policy preservation, drift rejection, claim-before-write and unknown effects; they do not prove installed-server behavior or credential authority. The installed API evidence establishes neither per-user all-token revocation nor all-session termination. Disable therefore always retains `sessionRevocation: manual-required`; it cannot authorize issuer deletion. Seerr installed create/import/update/revocation contracts remain unverified; permission zero or deletion is not an offboarding substitute.
+
 ## Read-only inventory configuration
 
 Infra owns production configuration and credentials. `AUTH_MEDIA_INSTANCES_FILE` optionally points to a private JSON array; absent configuration yields an honest unconfigured screen, never a production scan. Instance names/keys are explicit and stable. The browser cannot supply endpoints or credential paths.
