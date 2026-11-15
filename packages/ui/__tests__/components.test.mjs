@@ -113,19 +113,20 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   assert.match(html, /--hui-font-body:/);
 });
 
+function luminance(hex) {
+  const [r, g, b] = hex
+    .slice(1)
+    .match(/../g)
+    .map((part) => {
+      const value = Number.parseInt(part, 16) / 255;
+      return value <= 0.04045
+        ? value / 12.92
+        : ((value + 0.055) / 1.055) ** 2.4;
+    });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+
 test("Artbin feedback ink preserves readable contrast on its source surfaces", () => {
-  function luminance(hex) {
-    const [r, g, b] = hex
-      .slice(1)
-      .match(/../g)
-      .map((part) => {
-        const value = Number.parseInt(part, 16) / 255;
-        return value <= 0.04045
-          ? value / 12.92
-          : ((value + 0.055) / 1.055) ** 2.4;
-      });
-    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
-  }
   for (const [ink, surface] of [
     [brutalistTheme.ink, brutalistTheme.surface],
     [brutalistTheme.muted, brutalistTheme.canvas],
