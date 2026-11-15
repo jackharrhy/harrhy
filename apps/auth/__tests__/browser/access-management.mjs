@@ -12,6 +12,10 @@ import { createAccessStore } from "../../src/access-store.mjs";
 
 const preview = process.env.AUTH_MANAGEMENT_PREVIEW === "1";
 const previewOrigin = "https://media-mogul.pi.jackharrhy.dev";
+const previewMinutes = Number(process.env.AUTH_MANAGEMENT_PREVIEW_MINUTES || 55);
+if (preview && (!Number.isInteger(previewMinutes) || previewMinutes < 1 || previewMinutes > 720)) {
+  throw new Error("Preview duration must be 1–720 minutes");
+}
 const directory = await mkdtemp(`${tmpdir()}/auth-management-`);
 const applications = JSON.parse(
   readFileSync(new URL("../../config/applications.json", import.meta.url)),
@@ -630,7 +634,7 @@ try {
         process.off("SIGINT", finish);
         resolve();
       };
-      const timer = setTimeout(finish, 55 * 60 * 1000);
+      const timer = setTimeout(finish, previewMinutes * 60 * 1000);
       process.once("SIGTERM", finish);
       process.once("SIGINT", finish);
     });
