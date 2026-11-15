@@ -21,6 +21,25 @@ The deployed Node apps use prebuilt `platformatic/node-caged:26-slim` in both st
 
 The table covers Node-hosted apps and the Celld Workers built with Node 26. Burger, Gurgur, and Pool also use Node 26 in their build stages and Bun in their runtime stages. The published Artbin CLI remains compatible with Node 20+ for consumers; Harrhy builds and checks it on Node 26. All short images use `ghcr.io/jackharrhy/`. Keep previous image packages and their tags available for rollback until each runtime is switched and accepted.
 
+## Image dependency policy
+
+Copy the lockfile, root and required workspace manifests, and any install-hook inputs
+before installing dependencies. Copy application source after that dependency layer;
+keep revision build arguments after it too. Full-workspace installs currently list
+all workspace manifests explicitly and include Radio's icon-font postinstall script.
+Update those inputs when adding a workspace or changing an install hook.
+`.dockerignore` excludes local worktrees as well as dependencies and runtime data.
+
+Runtime images should contain the app's known selected workspace/dependency closure,
+not the full monorepo by default. Narrow each existing image with its actual startup
+and asset checks; do not introduce a shared image framework to hide the differences.
+Celld apps deploy at startup and still need the deploy compiler (including esbuild),
+Worker source/configuration and built assets. Node source-loader apps need their raw
+imports, migrations and SQL. Preserve native bindings and dynamic assets such as
+Pierre WASM. Artbin intentionally retains Chromium, SwiftShader/WebGPU, fonts and
+image tooling; Lists already has a selected runtime closure. Builder reductions for
+Bun apps do not imply a smaller Bun runtime.
+
 ## Native modules
 
 The current better-sqlite3 13 package uses N-API, unlike older V8/NAN releases. Nevertheless, builders that install it remove its prebuilds and invoke npm's bundled node-gyp directly with `--nodedir=/usr/local --jobs=2`. This uses the compression-enabled headers/config shipped with the actual runtime, does not download stock Node headers, and ensures the rebuilt binding is loaded instead of a preferred prebuild. Sharp remains on its N-API binary. Keep the SQLite write/reopen and sharp encode/decode checks when updating either dependency. Do not assume a matching Node module ABI alone makes a V8/NAN addon safe.
