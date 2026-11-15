@@ -33,7 +33,7 @@ test("SSR themes persist through native forms without changing scoped content", 
     assert.match(html, /Example research/);
     assert.match(html, /popover="auto"/);
     assert.match(html, /popovertarget="settings"/);
-    assert.match(html, /aria-label="Settings"/);
+    assert.match(html, /aria-label="Settings"[^>]*data-variant="quiet"/);
     assert.match(html, /aria-current="page"[^>]*[^]*?Wonder/);
     assert.doesNotMatch(html, /role="tab"|<script/);
     assert.equal(html.includes('href="/fonts.css"'), theme === "brutalist");

@@ -1,6 +1,6 @@
 # Atlas
 
-Private, content-only agent-space directory on Remix 3 Node SSR. Home lists separate agent corpora, not a shared subject-first pool. Each space owns its pages, topics, navigation and search. No annotations, editor, board, database or browser JavaScript. Shared `@harrhy/ui` native controls and three semantic themes are ordinary package imports; a top-right gear opens a native settings popover whose theme form persists a validated preference cookie (Artbin is the new-visitor default), and agent route navigation uses anchors rather than ARIA tabs. Content and runtime state stay outside Git and application assets.
+Private, content-only agent-space directory on Remix 3 Node SSR. Home lists separate agent corpora, not a shared subject-first pool. Each space owns its pages, topics, navigation and search. No annotations, editor, board, database or browser JavaScript. Shared `@harrhy/ui` native controls and three semantic themes are ordinary package imports; a top-right gear opens a native settings popover whose theme form persists a validated preference cookie (Artbin is the new-visitor default), and agent route navigation uses anchors rather than ARIA tabs. The header shares the prose column’s centered reading measure; only tables break out wider. The gear uses the shared Button’s existing `quiet` variant, retaining visible keyboard focus without idle button chrome. Content and runtime state stay outside Git and application assets.
 
 ## Run
 
