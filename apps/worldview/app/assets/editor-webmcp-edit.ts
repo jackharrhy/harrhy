@@ -38,7 +38,7 @@ export function editEditorWebMcpTools(
       name: "tea_maps_frame_view",
       description:
         "Frame the document or current selection in the visible editor viewports.",
-      annotations: { ...changesView, idempotentHint: true },
+      annotations: changesView,
       execute({ target }) {
         const current = state();
         const framed =

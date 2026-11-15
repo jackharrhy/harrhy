@@ -14,25 +14,8 @@ import type { MapProject } from "./editor-project.ts";
 
 export type JsonObject = Readonly<Record<string, unknown>>;
 
-export interface WebMcpTool {
-  readonly name: string;
-  readonly description: string;
-  readonly inputSchema: JsonObject;
-  readonly annotations: Readonly<{
-    readOnlyHint: boolean;
-    idempotentHint?: boolean;
-    destructiveHint?: boolean;
-    openWorldHint: false;
-  }>;
-  execute(input: unknown): JsonObject | Promise<JsonObject>;
-}
-
-export interface WebMcpModelContext {
-  registerTool(
-    tool: WebMcpTool,
-    options: { readonly signal: AbortSignal },
-  ): void | Promise<void>;
-}
+export type { WebMcpTool } from "@harrhy/webmcp";
+import type { WebMcpTool } from "@harrhy/webmcp";
 
 export interface EditorState {
   readonly session: EditorSession;
@@ -74,15 +57,12 @@ export const pagination = {
 };
 const readOnly = {
   readOnlyHint: true,
-  idempotentHint: true,
-  openWorldHint: false,
 } as const;
 export const changesView = {
   readOnlyHint: false,
-  destructiveHint: false,
-  openWorldHint: false,
+  consequentialHint: false,
 } as const;
-export const destructive = { ...changesView, destructiveHint: true } as const;
+export const destructive = { ...changesView, consequentialHint: true } as const;
 export const expectedDocument = {
   expectedDocumentId: DocumentIdSchema,
   expectedRevision: z.number().int().nonnegative(),
