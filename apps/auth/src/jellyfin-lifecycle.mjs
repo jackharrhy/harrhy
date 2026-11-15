@@ -29,7 +29,7 @@ export function reviewJellyfinDisable(user) {
   };
 }
 
-// Intentionally not connected to runtime configuration until durable action review exists.
+// Writes require explicit operator configuration and a durable same-actor review.
 export function createJellyfinLifecycle(
   { baseUrl, writeTokenFile },
   { fetcher = fetch, readToken = readFile } = {},

@@ -16,6 +16,7 @@ export function createAccessRoutes({
   mediaInventory,
   renderMedia,
   renderMediaReview,
+  renderMediaAction,
   accountActions,
   endUserSessions,
   rateLimit,
@@ -152,6 +153,63 @@ export function createAccessRoutes({
       url.pathname === "/manage/media" ||
       url.pathname.startsWith("/manage/media/")
     ) {
+      const actionPath = url.pathname.match(
+        /^\/manage\/media\/actions\/([a-f0-9-]{36})(?:\/(confirm|recover))?$/,
+      );
+      if (actionPath) {
+        const action = access.mediaActions.get(actionPath[1]);
+        if (!action || action.actor !== session.userId)
+          throw fail(404, "Service action review not found.");
+        if (request.method === "GET" && !actionPath[2]) {
+          await sendRemix((nonce) => renderMediaAction(action, context, nonce));
+          return true;
+        }
+        if (request.method === "POST" && actionPath[2]) {
+          rateLimit(`media-action:${session.userId}`);
+          if (form.get("confirmed") !== "true")
+            throw fail(400, "Confirm the reviewed service-specific effect.");
+          if (actionPath[2] === "confirm")
+            await access.mediaActions.confirm({
+              id: action.id,
+              actor: session.userId,
+              destructiveConfirmation: form.get("destructiveConfirmation"),
+            });
+          else
+            await access.mediaActions.recover({
+              id: action.id,
+              actor: session.userId,
+            });
+          redirect(`/manage/media/actions/${action.id}`);
+          return true;
+        }
+        throw fail(404, "Service action not found.");
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/actions/preview"
+      ) {
+        rateLimit(`media-action:${session.userId}`);
+        const mapping = access.media
+          .mappings()
+          .find((item) =>
+            ["service", "instance", "nativeId", "issuer", "subject"].every(
+              (key) => item[key] === form.get(key),
+            ),
+          );
+        if (!mapping)
+          throw fail(
+            409,
+            "An explicitly confirmed exact-ID mapping is required.",
+          );
+        const action = await access.mediaActions.preview({
+          actor: session.userId,
+          mapping,
+          reason: form.get("reason"),
+          operation: form.get("operation"),
+        });
+        redirect(`/manage/media/actions/${action.id}`);
+        return true;
+      }
       const identities = async () =>
         (await people()).map((user) => ({
           issuer,
@@ -170,6 +228,9 @@ export function createAccessRoutes({
             context,
             nonce,
             access.media.reviews(),
+            access.mediaActions
+              .list()
+              .filter((action) => action.actor === session.userId),
           ),
         );
         return true;

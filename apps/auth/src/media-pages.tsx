@@ -59,12 +59,20 @@ function MediaPage(
     inventory?: Inventory;
     people: Person[];
     reviews: Review[];
+    actions: ServiceAction[];
     context: Context;
   }>,
 ) {
   return () => {
-    const { instances, selected, inventory, people, reviews, context } =
-      handle.props;
+    const {
+      instances,
+      selected,
+      inventory,
+      people,
+      reviews,
+      actions,
+      context,
+    } = handle.props;
     return (
       <Document {...context} title="Media identities" active="services">
         <div class="page-heading">
@@ -103,6 +111,23 @@ function MediaPage(
         )}
         {!selected && (
           <section>
+            <h2>Your recent native service actions</h2>
+            {actions.length === 0 ? (
+              <p>No native service actions reviewed.</p>
+            ) : (
+              <ul>
+                {actions.map((action) => (
+                  <li>
+                    <a href={`/manage/media/actions/${action.id}`}>
+                      {action.body.mapping.service} /{" "}
+                      {action.body.mapping.instance} ·{" "}
+                      {action.body.mapping.nativeId} · {action.body.action}
+                    </a>{" "}
+                    · {action.state}
+                  </li>
+                ))}
+              </ul>
+            )}
             <h2>Recent identity reviews</h2>
             {reviews.length === 0 ? (
               <p>No identity links have been reviewed.</p>
@@ -225,6 +250,63 @@ function MediaPage(
                           email are not matching keys.
                         </p>
                       </form>
+                    ) : row.mapping &&
+                      row.account &&
+                      !row.account.administrator &&
+                      ["linked", "auth-inactive", "native-disabled"].includes(
+                        row.state,
+                      ) &&
+                      ["jellyfin", "seerr"].includes(selected.service) ? (
+                      <form
+                        method="post"
+                        action="/manage/media/actions/preview"
+                        class="form-stack"
+                      >
+                        <input type="hidden" name="csrf" value={context.csrf} />
+                        {(
+                          [
+                            "service",
+                            "instance",
+                            "nativeId",
+                            "issuer",
+                            "subject",
+                          ] as const
+                        ).map((key) => (
+                          <input
+                            type="hidden"
+                            name={key}
+                            value={row.mapping![key]}
+                          />
+                        ))}
+                        <input
+                          type="hidden"
+                          name="operation"
+                          value={
+                            selected.service === "seerr"
+                              ? "remove-account-and-requests"
+                              : "disable"
+                          }
+                        />
+                        <label>
+                          Reason
+                          <textarea
+                            name="reason"
+                            required
+                            maxLength={500}
+                            rows={2}
+                          ></textarea>
+                        </label>
+                        <button>
+                          {selected.service === "seerr"
+                            ? "Review account and request removal"
+                            : "Review native account disable"}
+                        </button>
+                        <p class="muted">
+                          Separate from Auth access and session revocation.
+                          Review reads the live native account; writes require
+                          separately configured operator capability.
+                        </p>
+                      </form>
                     ) : (
                       <p class="muted">
                         No automatic repair, reassignment or deletion. Review
@@ -316,6 +398,7 @@ export const renderMedia = (
   context: Context,
   nonce: string,
   reviews: Review[] = [],
+  actions: ServiceAction[] = [],
 ) =>
   renderToString(
     <MediaPage
@@ -324,6 +407,7 @@ export const renderMedia = (
       inventory={inventory}
       people={people}
       reviews={reviews}
+      actions={actions}
       context={context}
     />,
     { nonce },
@@ -334,5 +418,146 @@ export const renderMediaReview = (
   nonce: string,
 ) =>
   renderToString(<MediaReviewPage review={review} context={context} />, {
+    nonce,
+  });
+
+type ServiceAction = {
+  id: string;
+  actor: string;
+  state: string;
+  created_at: string;
+  body: {
+    action: string;
+    mapping: Mapping;
+    reason: string;
+    review: { requestCount?: number };
+  };
+};
+function MediaActionPage(
+  handle: Handle<{ action: ServiceAction; context: Context }>,
+) {
+  return () => {
+    const { action, context } = handle.props;
+    const { mapping, reason, review } = action.body;
+    const destructive = action.body.action === "remove-account-and-requests";
+    const title = destructive
+      ? "Remove account and requests"
+      : "Disable native account";
+    const phrase = `REMOVE ${mapping.nativeId} AND ${review.requestCount} REQUESTS`;
+    return (
+      <Document {...context} title={title} active="services">
+        <h1>{title}</h1>
+        <p role="status">Action status: {action.state}</p>
+        <dl>
+          <dt>Service / instance</dt>
+          <dd>
+            {mapping.service} / {mapping.instance}
+          </dd>
+          <dt>Exact native ID</dt>
+          <dd>
+            <code>{mapping.nativeId}</code>
+          </dd>
+          <dt>Auth subject</dt>
+          <dd>
+            <code>{mapping.subject}</code>
+          </dd>
+          <dt>Auth issuer</dt>
+          <dd>
+            <code>{mapping.issuer}</code>
+          </dd>
+          <dt>Reason</dt>
+          <dd>{reason}</dd>
+          <dt>Reviewer</dt>
+          <dd>{action.actor}</dd>
+          <dt>Reviewed at</dt>
+          <dd>
+            <time dateTime={action.created_at}>{action.created_at}</time>
+          </dd>
+          {destructive && (
+            <>
+              <dt>Reviewed requests to remove</dt>
+              <dd>{review.requestCount}</dd>
+            </>
+          )}
+        </dl>
+        {destructive ? (
+          <p>
+            This intentionally deletes this Seerr account and its requests. It
+            cannot be undone here. The request set is checked again before
+            deletion, but Seerr has no conditional delete: concurrent new
+            requests may also be deleted. No Arr, download-client or filesystem
+            cleanup is performed.
+          </p>
+        ) : (
+          <p>
+            This disables only the reviewed Jellyfin native account, preserving
+            its identity, password and history.
+          </p>
+        )}
+        <p>
+          Auth identity, service eligibility and other native services are
+          unchanged. Native session revocation is manual-required; this action
+          does not prove existing sessions ended.
+        </p>
+        {action.state === "review" && action.actor === context.user && (
+          <form
+            method="post"
+            action={`/manage/media/actions/${action.id}/confirm`}
+            class="form-stack"
+          >
+            <input type="hidden" name="csrf" value={context.csrf} />
+            {destructive && (
+              <label>
+                Type <code>{phrase}</code> to confirm destructive removal
+                <input
+                  name="destructiveConfirmation"
+                  required
+                  autoComplete="off"
+                />
+              </label>
+            )}
+            <label class="check">
+              <input type="checkbox" name="confirmed" value="true" required />I
+              reviewed this exact native account and intend the stated effect.
+            </label>
+            <p class="muted">
+              Review expires after five minutes. Changed native state requires a
+              new review.
+            </p>
+            <button class="primary">{title}</button>
+          </form>
+        )}
+        {action.state === "effect-unknown" && (
+          <section>
+            <h2>Manual investigation required</h2>
+            <p>
+              The native operation may have completed or partially completed.
+              Never retry it blindly.
+            </p>
+            {!destructive && (
+              <form
+                method="post"
+                action={`/manage/media/actions/${action.id}/recover`}
+              >
+                <input type="hidden" name="csrf" value={context.csrf} />
+                <input type="hidden" name="confirmed" value="true" />
+                <button>Read native policy to reconcile · no write</button>
+              </form>
+            )}
+          </section>
+        )}
+        <a class="text-link" href={base(mapping)}>
+          Return to native inventory
+        </a>
+      </Document>
+    );
+  };
+}
+export const renderMediaAction = (
+  action: ServiceAction,
+  context: Context,
+  nonce: string,
+) =>
+  renderToString(<MediaActionPage action={action} context={context} />, {
     nonce,
   });

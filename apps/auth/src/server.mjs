@@ -45,7 +45,8 @@ const { renderGroups, renderGroupForm } = await import("./group-pages.tsx");
 const { renderAccessForm, renderChangePreview } =
   await import("./access-pages.tsx");
 const { renderPerson } = await import("./person-page.tsx");
-const { renderMedia, renderMediaReview } = await import("./media-pages.tsx");
+const { renderMedia, renderMediaReview, renderMediaAction } =
+  await import("./media-pages.tsx");
 const { renderOnboarding } = await import("./onboarding-page.tsx");
 import { createEmailActions } from "./email.mjs";
 import { applicationForClient, searchAll } from "./applications.mjs";
@@ -148,6 +149,7 @@ const accessRoutes = createAccessRoutes({
   mediaInventory,
   renderMedia,
   renderMediaReview,
+  renderMediaAction,
   accountActions,
   endUserSessions,
   rateLimit,

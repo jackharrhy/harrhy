@@ -96,7 +96,7 @@ const nativeSnapshot = {
   observedAt: new Date().toISOString(),
   accounts: [
     {
-      nativeId: "synthetic-native-a",
+      nativeId: "11111111-2222-4333-8444-555555555555",
       name: "Morgan Native",
       disabled: false,
       administrator: false,
@@ -113,6 +113,28 @@ await writeFile(
   `${directory}/media-snapshot.json`,
   JSON.stringify(nativeSnapshot),
 );
+const seerrSnapshot = {
+  ...nativeSnapshot,
+  service: "seerr",
+  accounts: [
+    {
+      nativeId: "42",
+      name: "Casey Requests",
+      disabled: false,
+      administrator: false,
+    },
+    {
+      nativeId: "160",
+      name: "Unchanged Native",
+      disabled: false,
+      administrator: false,
+    },
+  ],
+};
+await writeFile(
+  `${directory}/seerr-snapshot.json`,
+  JSON.stringify(seerrSnapshot),
+);
 await writeFile(
   `${directory}/media-instances.json`,
   JSON.stringify([
@@ -121,6 +143,101 @@ await writeFile(
       instance: "synthetic-server",
       name: "Synthetic Jellyfin",
       snapshotFile: `${directory}/media-snapshot.json`,
+    },
+    {
+      service: "seerr",
+      instance: "synthetic-server",
+      name: "Synthetic Seerr",
+      snapshotFile: `${directory}/seerr-snapshot.json`,
+    },
+  ]),
+);
+let nativeWrites = 0;
+let seerrDeletes = 0;
+let nativePolicy = {
+  IsAdministrator: false,
+  IsDisabled: false,
+  AuthenticationProviderId: "synthetic-auth",
+  PasswordResetProviderId: "synthetic-reset",
+  EnableAllFolders: true,
+};
+const nativeServer = createServer(async (request, response) => {
+  if (request.url.startsWith("/api/v1/user/")) {
+    assert.equal(request.headers["x-api-key"], "synthetic-write-only");
+    assert(
+      !request.url.includes("160"),
+      "Unselected native-only account must remain untouched",
+    );
+    response.setHeader("Content-Type", "application/json");
+    if (request.method === "GET" && request.url === "/api/v1/user/42")
+      response.end(JSON.stringify({ id: 42, permissions: 32 }));
+    else if (
+      request.method === "GET" &&
+      request.url === "/api/v1/user/42/requests?take=100&skip=0"
+    )
+      response.end(
+        JSON.stringify({
+          pageInfo: { results: 1 },
+          results: [
+            {
+              id: 99,
+              status: 2,
+              updatedAt: "2026-01-01T00:00:00Z",
+              requestedBy: { id: 42 },
+            },
+          ],
+        }),
+      );
+    else if (request.method === "DELETE" && request.url === "/api/v1/user/42") {
+      seerrDeletes++;
+      response.writeHead(204).end();
+    } else response.writeHead(404).end();
+    return;
+  }
+  assert.equal(
+    request.headers.authorization,
+    'MediaBrowser Token="synthetic-write-only"',
+  );
+  const userPath = `/Users/${nativeSnapshot.accounts[0].nativeId}`;
+  if (request.method === "GET" && request.url === userPath) {
+    response.setHeader("Content-Type", "application/json");
+    response.end(
+      JSON.stringify({
+        Id: nativeSnapshot.accounts[0].nativeId,
+        Policy: nativePolicy,
+      }),
+    );
+  } else if (
+    request.method === "POST" &&
+    request.url === `${userPath}/Policy`
+  ) {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    const next = JSON.parse(body);
+    assert.deepEqual(next, { ...nativePolicy, IsDisabled: true });
+    nativePolicy = next;
+    nativeWrites++;
+    response.writeHead(204).end();
+  } else response.writeHead(404).end();
+});
+await new Promise((resolve) => nativeServer.listen(0, "127.0.0.1", resolve));
+await writeFile(`${directory}/native-write-token`, "synthetic-write-only", {
+  mode: 0o600,
+});
+await writeFile(
+  `${directory}/media-writes.json`,
+  JSON.stringify([
+    {
+      service: "jellyfin",
+      instance: "synthetic-server",
+      baseUrl: `http://127.0.0.1:${nativeServer.address().port}`,
+      writeTokenFile: `${directory}/native-write-token`,
+    },
+    {
+      service: "seerr",
+      instance: "synthetic-server",
+      baseUrl: `http://127.0.0.1:${nativeServer.address().port}/api/v1`,
+      writeTokenFile: `${directory}/native-write-token`,
     },
   ]),
 );
@@ -353,6 +470,7 @@ const server = spawn(process.execPath, ["src/server.mjs"], {
     AUTH_PROVISIONING_TOKEN_FILE: `${directory}/key.json`,
     ACCESS_DB_FILE: `${directory}/access.sqlite`,
     AUTH_MEDIA_INSTANCES_FILE: `${directory}/media-instances.json`,
+    AUTH_MEDIA_WRITES_FILE: `${directory}/media-writes.json`,
     ORGANIZATION_ID: "org",
     LORE_PROJECT_ID: "unused",
     LORE_CLIENT_ID: "unused",
@@ -519,6 +637,60 @@ try {
     JSON.parse(await readFile(`${directory}/media-snapshot.json`, "utf8")),
     nativeSnapshot,
   );
+  const nativeActionForm = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", { name: "Morgan Native", exact: true }),
+    })
+    .locator("form");
+  await nativeActionForm
+    .getByLabel("Reason")
+    .fill("Explicit synthetic native disable; preserve password and history.");
+  await nativeActionForm
+    .getByRole("button", { name: "Review native account disable", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Disable native account", exact: true })
+    .waitFor();
+  assert.equal(nativeWrites, 0);
+  await capture(page, "media-disable-review");
+  const nativeActionUrl = page.url();
+  const nativeCsrf = await page
+    .locator("input[name=csrf]")
+    .first()
+    .inputValue();
+  const forgedNative = await context.request.post(
+    `${nativeActionUrl}/confirm`,
+    {
+      headers: { origin: "https://wrong.example" },
+      form: { csrf: nativeCsrf, confirmed: "true" },
+    },
+  );
+  assert.equal(forgedNative.status(), 403);
+  assert.equal(nativeWrites, 0);
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Disable native account", exact: true })
+    .click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Action status: disabled" })
+    .waitFor();
+  assert.equal(nativeWrites, 1);
+  await context.request.post(`${nativeActionUrl}/confirm`, {
+    headers: { origin },
+    form: { csrf: nativeCsrf, confirmed: "true" },
+  });
+  assert.equal(nativeWrites, 1);
+  await page.goto(origin + "/manage/media");
+  await page.getByRole("link", { name: /jellyfin.*disable/ }).click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Action status: disabled" })
+    .waitFor();
+  await page
+    .getByRole("link", { name: "Return to native inventory", exact: true })
+    .click();
   await writeFile(
     `${directory}/media-snapshot.json`,
     JSON.stringify({ ...nativeSnapshot, observedAt: "2000-01-01T00:00:00Z" }),
@@ -548,6 +720,97 @@ try {
   await page
     .getByRole("heading", { name: "Identity link recorded", exact: true })
     .waitFor();
+  await page.goto(origin + "/manage/media/seerr/synthetic-server");
+  const seerrForm = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", { name: "Casey Requests", exact: true }),
+    })
+    .locator("form");
+  await seerrForm.getByLabel("Existing Auth identity").selectOption("member");
+  await seerrForm
+    .getByLabel("Reason")
+    .fill("Explicit synthetic Seerr correspondence.");
+  await seerrForm
+    .getByRole("button", { name: "Review identity link", exact: true })
+    .click();
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Record reviewed identity link", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "Return to native inventory", exact: true })
+    .click();
+  const seerrActionForm = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", { name: "Casey Requests", exact: true }),
+    })
+    .locator("form");
+  await seerrActionForm
+    .getByLabel("Reason")
+    .fill("Intentional synthetic request moderation.");
+  await seerrActionForm
+    .getByRole("button", {
+      name: "Review account and request removal",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("heading", { name: "Remove account and requests", exact: true })
+    .waitFor();
+  await page
+    .getByText("Intentional synthetic request moderation.", { exact: true })
+    .waitFor();
+  assert.equal(seerrDeletes, 0);
+  await capture(page, "media-seerr-remove-review");
+  for (const width of [768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await capture(page, `media-seerr-remove-${width}`);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const seerrActionUrl = page.url();
+  const seerrCsrf = await page.locator("input[name=csrf]").first().inputValue();
+  const wrongCount = await context.request.post(`${seerrActionUrl}/confirm`, {
+    headers: { origin },
+    form: {
+      csrf: seerrCsrf,
+      confirmed: "true",
+      destructiveConfirmation: "REMOVE 42 AND 0 REQUESTS",
+    },
+  });
+  assert.equal(wrongCount.status(), 409);
+  assert.equal(seerrDeletes, 0);
+  await page
+    .getByLabel(/Type REMOVE 42 AND 1 REQUESTS/)
+    .fill("REMOVE 42 AND 1 REQUESTS");
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Remove account and requests", exact: true })
+    .click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Action status: removed" })
+    .waitFor();
+  assert.equal(seerrDeletes, 1);
+  await context.request.post(`${seerrActionUrl}/confirm`, {
+    headers: { origin },
+    form: {
+      csrf: seerrCsrf,
+      confirmed: "true",
+      destructiveConfirmation: "REMOVE 42 AND 1 REQUESTS",
+    },
+  });
+  assert.equal(seerrDeletes, 1);
+  assert.deepEqual(
+    JSON.parse(await readFile(`${directory}/seerr-snapshot.json`, "utf8")),
+    seerrSnapshot,
+  );
   await page.goto(origin + "/manage/services");
   await page.getByRole("link", { name: "Technical integrations" }).click();
   await page.getByRole("heading", { name: "Technical integrations" }).waitFor();
@@ -837,5 +1100,6 @@ try {
   await once(server, "exit");
   await new Promise((resolve) => proxy.close(resolve));
   await new Promise((resolve) => provider.close(resolve));
+  await new Promise((resolve) => nativeServer.close(resolve));
   await rm(directory, { recursive: true, force: true });
 }

@@ -69,6 +69,13 @@ export function createMediaServiceActions(db, { mappings, lifecycle }) {
   };
   return {
     get,
+    list: () =>
+      db
+        .prepare(
+          "SELECT id FROM media_service_actions ORDER BY created_at DESC, rowid DESC LIMIT 100",
+        )
+        .all()
+        .map(({ id }) => get(id)),
     events: (id) =>
       db
         .prepare(
