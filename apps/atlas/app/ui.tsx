@@ -105,7 +105,7 @@ const skipStyles = css({
 });
 
 const headerStyles = css({
-  maxWidth: "76rem",
+  maxWidth: "72ch",
   margin: "0 auto",
   padding: ".25rem 1.25rem",
   display: "flex",
@@ -135,7 +135,7 @@ const headerStyles = css({
 });
 const settingsStyles = css({
   position: "fixed",
-  inset: "3.5rem 1.25rem auto auto",
+  inset: "3.5rem max(1.25rem, calc((100vw - 72ch) / 2 + 1.25rem)) auto auto",
   margin: 0,
   maxWidth: "calc(100vw - 2.5rem)",
   padding: "1rem",
@@ -202,6 +202,7 @@ export function document(
           <Button
             type="button"
             aria-label="Settings"
+            variant="quiet"
             popoverTarget="settings"
             mix={css({
               width: "2.75rem",
