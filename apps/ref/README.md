@@ -25,7 +25,7 @@ cp apps/ref/.dev.vars.example apps/ref/.dev.vars
 npm run ref:dev
 ```
 
-Open <http://127.0.0.1:8787>. Select **Sign in**, then continue as the disposable local user. This runs authorization code with PKCE S256, signed ID-token verification, userinfo, and the ordinary Ref callback. The local issuer has its own test subject and grants; it cannot authenticate a production account. Create a board, then add images with the button, drag and drop, or paste. Add links with **Add link**, by pasting a URL, or by dropping one onto the board. Link cards show the complete preview image; select one for metadata and the original post. Drag a card to move it; select it to resize, rotate, or remove it. Scroll or drag the background to pan; pinch or use the buttons to zoom. On narrow screens, item details open below the board.
+Open <http://127.0.0.1:8787>. Select **Sign in**, then continue as the disposable local user. This runs authorization code with PKCE S256, signed ID-token verification, userinfo, and the ordinary Ref callback. The local issuer has its own test subject and grants; it cannot authenticate a production account. Create a board, then add images with the button, drag and drop, or paste. Add links with **Add link**, by pasting a URL, or by dropping one onto the board. Link cards show the complete preview image; select one for metadata and the original post. Drag a card to move it; select it to resize, rotate, or remove it. Scroll to zoom around the pointer by default. Toggle **Scroll: Zoom** to **Scroll: Pan** for two-finger trackpad panning; this preference is saved in this browser when storage is available. Hold Shift while scrolling vertically to pan horizontally in either mode. Ctrl/⌘-scroll and trackpad pinch always zoom. Drag the background or middle-drag to pan, or use the zoom buttons. With the canvas focused, Space-drag pans, Delete/Backspace removes the selection, and Escape clears it; these shortcuts do not apply in the inspector or form controls. On narrow screens, item details open below the board.
 
 `.dev.vars` is ignored by Git. Wrangler stores local board and image data under `apps/ref/.wrangler/`. Newport's production data lives in a separate Celld store; local development does not share it. **Lock** ends the current Ref session. Stopping the local issuer invalidates its in-memory codes and tokens; Ref sessions expire within one hour.
 `/health` is process liveness; `/ready` also reads the directory store so startup and crash-recovery checks wait until sessions can be served.
@@ -37,6 +37,7 @@ Open <http://127.0.0.1:8787>. Select **Sign in**, then continue as the disposabl
 - `BoardCell` stores items, link previews, and image metadata per board. It validates edits, writes them to SQLite, and broadcasts updates to every open tab with hibernatable WebSockets.
 - Removing the last item that uses an asset reclaims its metadata and stored image. Failed object-store deletions are retried by a Durable Object alarm. The operation log keeps roughly 10,000 recent edits per board; retries older than that window are no longer deduplicated.
 - `MEDIA` stores uploaded images and cached link preview images. Reads and uploads require a valid session.
+- The browser keeps the current decoded image visible while a thumbnail or full-resolution replacement loads and decodes. Reversed zoom requests and failed replacements do not clear the current image.
 - `app/assets/board.ts` is the browser editor. It uses DOM APIs, pan and zoom, uploads, optimistic edits, reconnect, and revision checks. No React, Express, or Socket.IO.
 - Remix 3.2 supplies a fresh CSP nonce for each HTML response. Ref allows its same-origin scripts, thumbnail worker, board WebSocket, stored and external link images, validated X video media, and the three explicitly supported social embeds. Private HTML remains `no-store`.
 
@@ -46,7 +47,10 @@ Images may be PNG, JPEG, GIF, or WebP, up to 20 MB each. Link previews are best 
 
 ```sh
 npm run ref:check
+npm run test:images --workspace @harrhy/ref
 ```
+
+`test:images` exercises the actual image loader in Chromium with delayed responses, rapid LOD reversal, failed requests, retries, and composited-frame pixel checks using synthetic images. It also runs as part of the browser smoke.
 
 Harrhy CI runs the browser smoke against a temporary Wrangler store and the local OAuth issuer when Ref is affected on a ready PR or `main`. It does not add a test board to your local development store.
 

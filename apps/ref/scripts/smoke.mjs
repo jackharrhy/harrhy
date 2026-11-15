@@ -152,6 +152,11 @@ try {
   );
   assert.equal((await anonymous.request.get(mediaUrl)).status(), 404);
 
+  assert.equal(
+    await page.locator("#scroll-mode").getAttribute("aria-pressed"),
+    "false",
+  );
+  await page.locator("#scroll-mode").click();
   const viewBeforePan = await page
     .locator("#world")
     .evaluate((element) => element.style.transform);
@@ -163,21 +168,79 @@ try {
     viewBeforePan,
   );
   assert.equal(await page.locator("#zoom-label").textContent(), zoomBeforePan);
-  await page.locator("#viewport").evaluate((element) => {
-    element.dispatchEvent(
-      new WheelEvent("wheel", {
-        bubbles: true,
-        cancelable: true,
-        ctrlKey: true,
-        deltaY: -25,
-        clientX: 800,
-        clientY: 500,
-      }),
-    );
+  await page.locator("#scroll-mode").click();
+  const documentScroll = await page.evaluate(() => ({
+    x: scrollX,
+    y: scrollY,
+  }));
+  const anchorBefore = await page.locator("#world").evaluate((element) => {
+    const matrix = new DOMMatrix(getComputedStyle(element).transform);
+    const rect = document.querySelector("#viewport").getBoundingClientRect();
+    return {
+      x: (800 - rect.left - matrix.e) / matrix.a,
+      y: (700 - rect.top - matrix.f) / matrix.d,
+    };
   });
+  await page.mouse.move(800, 700);
+  await page.mouse.wheel(0, 100);
   await page.waitForFunction(
     (before) => document.querySelector("#zoom-label")?.textContent !== before,
     zoomBeforePan,
+  );
+
+  const anchorAfter = await page.locator("#world").evaluate((element) => {
+    const matrix = new DOMMatrix(getComputedStyle(element).transform);
+    const rect = document.querySelector("#viewport").getBoundingClientRect();
+    return {
+      x: (800 - rect.left - matrix.e) / matrix.a,
+      y: (700 - rect.top - matrix.f) / matrix.d,
+    };
+  });
+  assert.ok(Math.abs(anchorBefore.x - anchorAfter.x) < 0.01);
+  assert.ok(Math.abs(anchorBefore.y - anchorAfter.y) < 0.01);
+  assert.deepEqual(
+    await page.evaluate(() => ({ x: scrollX, y: scrollY })),
+    documentScroll,
+  );
+  // Browser zoom/scroll and control keys remain native outside the canvas.
+  for (const selector of ["#link-url", "#zoom-in"]) {
+    assert.equal(
+      await page.locator(selector).evaluate((element) => {
+        const wheel = new WheelEvent("wheel", {
+          bubbles: true,
+          cancelable: true,
+          ctrlKey: true,
+          deltaY: 100,
+        });
+        element.dispatchEvent(wheel);
+        const key = new KeyboardEvent("keydown", {
+          bubbles: true,
+          cancelable: true,
+          code: "Space",
+          key: " ",
+        });
+        element.dispatchEvent(key);
+        return wheel.defaultPrevented || key.defaultPrevented;
+      }),
+      false,
+    );
+  }
+  assert.equal(
+    await page.locator("#viewport").evaluate((element) => {
+      element.focus();
+      const key = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        code: "Space",
+        key: " ",
+      });
+      element.dispatchEvent(key);
+      element.dispatchEvent(
+        new KeyboardEvent("keyup", { bubbles: true, code: "Space" }),
+      );
+      return key.defaultPrevented;
+    }),
+    true,
   );
 
   const before = await second

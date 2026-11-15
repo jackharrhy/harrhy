@@ -6,6 +6,10 @@ class BoardImages {
   private waiting = new Map<string, Set<HTMLImageElement>>();
   private requested = new Set<string>();
   private detail = new WeakMap<HTMLImageElement, boolean>();
+  private pending = new WeakMap<
+    HTMLImageElement,
+    { source: string; image: HTMLImageElement }
+  >();
 
   constructor() {
     try {
@@ -34,7 +38,7 @@ class BoardImages {
   load(element: HTMLImageElement, source: string): void {
     element.dataset.original = source;
     if (!/^\/(?:media|previews)\//.test(source) || !("caches" in window)) {
-      element.src = source;
+      this.show(element, source);
       return;
     }
     let group = this.waiting.get(source);
@@ -78,6 +82,8 @@ class BoardImages {
   }
 
   forget(element: HTMLImageElement): void {
+    this.cancelPending(element);
+    this.detail.delete(element);
     const source = element.dataset.original;
     if (!source) return;
     const group = this.waiting.get(source);
@@ -107,7 +113,41 @@ class BoardImages {
     const desired = this.detail.get(element)
       ? element.dataset.original!
       : preview;
-    if (element.getAttribute("src") !== desired) element.src = desired;
+    if (element.getAttribute("src") === desired) {
+      this.cancelPending(element);
+      return;
+    }
+    if (this.pending.get(element)?.source === desired) return;
+    this.cancelPending(element);
+    const image = new Image();
+    image.referrerPolicy = element.referrerPolicy;
+    const candidate = { source: desired, image };
+    this.pending.set(element, candidate);
+    image.src = desired;
+    // Changing a visible img's src before decoding can clear its painted frame.
+    void image.decode().then(
+      () => {
+        if (this.pending.get(element) !== candidate) return;
+        this.pending.delete(element);
+        if (element.isConnected) element.src = desired;
+      },
+      () => {
+        if (this.pending.get(element) !== candidate) return;
+        this.pending.delete(element);
+        if (!element.isConnected) return;
+        const original = element.dataset.original;
+        if (desired !== original && original) this.show(element, original);
+        else if (!element.hasAttribute("src"))
+          element.dispatchEvent(new Event("error"));
+      },
+    );
+  }
+
+  private cancelPending(element: HTMLImageElement): void {
+    const candidate = this.pending.get(element);
+    if (!candidate) return;
+    this.pending.delete(element);
+    candidate.image.removeAttribute("src");
   }
 }
 

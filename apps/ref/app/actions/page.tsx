@@ -178,6 +178,15 @@ export function BoardPage(
             </div>
             <div class="zoom-controls">
               <button
+                id="scroll-mode"
+                type="button"
+                aria-label="Scroll mode: Pan"
+                aria-pressed="false"
+                title="Scroll zooms. Enable Pan for two-finger scrolling; Ctrl/⌘ or pinch always zooms. Shift-scroll pans horizontally."
+              >
+                Scroll: Zoom
+              </button>
+              <button
                 id="tool-fit"
                 type="button"
                 title="Fit board"
