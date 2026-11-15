@@ -9,6 +9,14 @@ export interface ThemeTokens {
   muted: string;
   border: string;
   controlBorder: string;
+  hoverSurface: string;
+  selectedSurface: string;
+  selectedInk: string;
+  disabledSurface: string;
+  popupRadius: string;
+  popupPadding: string;
+  optionRadius: string;
+  optionGap: string;
   buttonBorder: string;
   buttonPrimaryBorder: string;
   buttonHeight: string;
@@ -56,7 +64,15 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   ink: "#192126",
   muted: "#536169",
   border: "#d8dfe2",
-  controlBorder: "#87959d",
+  controlBorder: "#7d8b94",
+  hoverSurface: "#edf0f2",
+  selectedSurface: "#dfe9ed",
+  selectedInk: "#243f4d",
+  disabledSurface: "#edf0f2",
+  popupRadius: "10px",
+  popupPadding: "6px",
+  optionRadius: "6px",
+  optionGap: "2px",
   buttonBorder: "var(--hui-control-border)",
   buttonPrimaryBorder: "var(--hui-button-border)",
   buttonHeight: "var(--hui-control-height)",
@@ -93,7 +109,7 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   buttonShadow: "none",
   buttonWeight: "600",
   controlShadow: "none",
-  overlayShadow: "0 16px 48px rgb(0 0 0 / 0.2)",
+  overlayShadow: "0 8px 24px rgb(25 33 38 / 0.14)",
   motion: "120ms",
 };
 
@@ -113,6 +129,13 @@ export const tactileTheme = composeTheme(cleanTheme, {
   muted: "#466367",
   border: "#98b6b7",
   controlBorder: "#587c81",
+  hoverSurface: "#e2f1ee",
+  selectedSurface: "#c7e9e7",
+  selectedInk: "#173c42",
+  disabledSurface: "#e7efed",
+  popupRadius: "5px",
+  popupPadding: "3px",
+  optionRadius: "2px",
   accent: "#b5eff2",
   onAccent: "#173c42",
   focus: "#006579",
@@ -136,7 +159,14 @@ export const brutalistTheme = composeTheme(cleanTheme, {
   ink: "#111111",
   muted: "#666666",
   border: "#cccccc",
-  controlBorder: "#cccccc",
+  controlBorder: "#888888",
+  hoverSurface: "#eeeeee",
+  selectedSurface: "#dddddd",
+  selectedInk: "#111111",
+  disabledSurface: "#f0f0f0",
+  popupRadius: "0",
+  popupPadding: "4px",
+  optionRadius: "0",
   buttonBorder: "#222222",
   buttonPrimaryBorder: "#111111",
   accent: "#111111",

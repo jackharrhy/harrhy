@@ -66,7 +66,9 @@ export const buttonStyles = css({
   "&:disabled, &[aria-disabled=true]": {
     cursor: "not-allowed",
     boxShadow: "none",
-    opacity: "0.65",
+    color: "var(--hui-muted)",
+    backgroundColor: "var(--hui-disabled-surface)",
+    backgroundImage: "none",
   },
 });
 
@@ -86,7 +88,12 @@ export const controlStyles = css({
   boxShadow: "var(--hui-control-shadow)",
   "&::placeholder": { color: "var(--hui-muted)", opacity: 1 },
   '&[aria-invalid="true"]': { borderColor: "var(--hui-danger)" },
-  "&:disabled": { opacity: "0.65", cursor: "not-allowed" },
+  "&:disabled": {
+    color: "var(--hui-muted)",
+    backgroundColor: "var(--hui-disabled-surface)",
+    backgroundImage: "none",
+    cursor: "not-allowed",
+  },
 });
 export const checkStyles = css({
   width: "1.25rem",
@@ -160,4 +167,14 @@ export const badgeStyles = css({
   color: "var(--hui-muted)",
   border: "var(--hui-border-width) solid var(--hui-border)",
   borderRadius: "var(--hui-control-radius)",
+});
+
+export const rangeStyles = css({
+  boxSizing: "border-box",
+  minWidth: 0,
+  minHeight: "24px",
+  margin: 0,
+  accentColor: "var(--hui-accent)",
+  cursor: "pointer",
+  "&:disabled": { cursor: "not-allowed", opacity: "0.65" },
 });

@@ -19,3 +19,14 @@ Deliberate changes: remove file selection and production visualizer paths; “up
 `material-symbols-rounded.woff2` is the exact local Radio asset, originally supplied by `@material-symbols/font-400` 0.49.0. The package's Apache-2.0 license is preserved in `MATERIAL-SYMBOLS-LICENSE.txt`. The scene-only `fonts.css` declares the face; no remote font request. No glyph/theme/implementation is copied from Primer, Geist or Pierre.
 
 The narrow font asset extension and Pretext package are explicitly allowed by the showcase asset server. The parent app owns hosting and controls. Browser tests must prove no non-asset requests, no WebSocket/audio/storage creation, local keyboard interactions and responsive geometry.
+
+## Shared-library adoption
+
+Before the polish pass, only `scene.tsx` used @harrhy/ui: Inline, Select and Button around scenario/reset controls. The player itself was bespoke. The current boundary is component/file based, not a line-count percentage:
+
+- `scene.tsx`: shared Inline, Select and Button own scenario controls.
+- `player.tsx`: all five transport/calibration actions use shared Button (native button semantics, variant, disabled and focus recipes); seek and volume use shared Range; inline rename uses shared Input. Range was added to the library for this genuine native-control need, not as a Radio widget.
+- `theme.ts`: `radioControlsTheme` maps the actual desktop skin to the shared public token contract. `styles.ts` retains icon glyphs, compact geometry and layout, removing duplicated transport base button styles. Native ranges retain the original local track/thumb artwork over shared target/focus/disabled treatment.
+- Queue rows, reorder handles, native details menus, upload action, header, listeners, visualizer and title fitter remain app-owned source-derived presentation. Their track lifecycle, calibration/seek commit logic and synthetic model are business composition, not generic package APIs.
+
+This is partial, meaningful shared-control adoption, not a claim that the whole Radio scene is library-built. There is no generic queue/menu/toolbar abstraction yet: no independent consumer needs that policy. The production Radio app is unchanged. Slider and calibration hit areas are at least 24px high; touch and screen-reader testing remain manual follow-up work.

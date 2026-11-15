@@ -63,7 +63,20 @@ export function Select(handle: Handle<SelectProps>) {
                   key={option.value}
                   mix={[optionStyles, select.option(option)]}
                 >
-                  {option.label}
+                  <span>{option.label}</span>
+                  <svg
+                    aria-hidden="true"
+                    width="16"
+                    height="16"
+                    viewBox="0 0 16 16"
+                    fill="none"
+                  >
+                    <path
+                      d="m3 8 3 3 7-7"
+                      stroke="currentColor"
+                      stroke-width="1.5"
+                    />
+                  </svg>
                 </div>
               ))}
             </div>
@@ -130,21 +143,49 @@ const surfaceStyles = css({
   color: "var(--hui-ink)",
   background: "var(--hui-elevated)",
   border: "var(--hui-border-width) solid var(--hui-control-border)",
-  borderRadius: "var(--hui-control-radius)",
+  borderRadius: "var(--hui-popup-radius)",
+  boxShadow: "var(--hui-overlay-shadow)",
   fontFamily: "var(--hui-font-control)",
 });
 const listStyles = css({
-  maxHeight: "18rem",
+  display: "grid",
+  gap: "var(--hui-option-gap)",
+  maxHeight: "min(18rem, 60dvh)",
   overflowY: "auto",
-  padding: "var(--hui-field-gap)",
+  padding: "var(--hui-popup-padding)",
+  "&:focus-visible": {
+    outline: "2px solid var(--hui-focus)",
+    outlineOffset: "-2px",
+  },
+  '&:focus-visible:has([data-highlighted="true"])': { outline: "none" },
+  '&:focus-visible [data-highlighted="true"]': {
+    outline: "2px solid var(--hui-focus)",
+    outlineOffset: "-2px",
+  },
+  "@media (forced-colors: active)": {
+    '& [aria-selected="true"]': { outline: "1px solid Highlight" },
+  },
 });
 const optionStyles = css({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  gap: "1rem",
+  minHeight: "var(--hui-control-height)",
   padding: "var(--hui-control-padding)",
+  borderRadius: "var(--hui-option-radius)",
   cursor: "pointer",
-  '&[data-highlighted="true"], &[aria-selected="true"]': {
-    background: "var(--hui-accent)",
-    color: "var(--hui-on-accent)",
+  "& svg": { visibility: "hidden", flexShrink: 0 },
+  '&[aria-selected="true"]': {
+    background: "var(--hui-selected-surface)",
+    color: "var(--hui-selected-ink)",
+    "& svg": { visibility: "visible" },
   },
-  '&[aria-disabled="true"]': { opacity: "0.65", cursor: "not-allowed" },
-  "&:focus-visible": { outline: "2px solid var(--hui-focus)" },
+  '&[data-highlighted="true"]:not([aria-selected="true"])': {
+    background: "var(--hui-hover-surface)",
+  },
+  '&[aria-disabled="true"]': {
+    color: "var(--hui-muted)",
+    cursor: "not-allowed",
+  },
 });

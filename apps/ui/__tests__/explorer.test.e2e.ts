@@ -3,7 +3,7 @@ import { createTestServer } from "remix/node-fetch-server/test";
 import { it } from "remix/test";
 import { createApp } from "../app/router.tsx";
 
-it("explores actual props, matching source, and scoped themes", async (t) => {
+it("explores actual props, matching source, and global themes", async (t) => {
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
@@ -38,9 +38,7 @@ it("explores actual props, matching source, and scoped themes", async (t) => {
   );
   assert.match(await page.locator("pre").innerText(), / disabled>/);
   await page.getByLabel("Disabled", { exact: true }).uncheck();
-  await page
-    .getByRole("button", { name: "Preview theme", exact: true })
-    .click();
+  await page.getByRole("button", { name: "Theme", exact: true }).click();
   await page.waitForFunction(
     () => document.activeElement?.getAttribute("role") === "listbox",
   );
@@ -61,7 +59,7 @@ it("explores actual props, matching source, and scoped themes", async (t) => {
       .evaluate((node) =>
         getComputedStyle(node).fontFamily.includes("Times New Roman"),
       ),
-    false,
+    true,
   );
   for (const width of [1440, 768, 390]) {
     await page.setViewportSize({ width, height: 900 });
@@ -168,4 +166,87 @@ it("filters component navigation with a native GET and without scripts", async (
     .filter({ visible: true })
     .click();
   await page.getByRole("heading", { name: "Field", exact: true }).waitFor();
+});
+
+it("separates selected, highlighted and disabled options and keeps global theme across destinations", async (t) => {
+  const app = createApp();
+  t.after(() => app.close());
+  const page = await t.serve(await createTestServer(app.fetch));
+  await page.goto("/?component=select");
+  assert.equal(
+    await page
+      .getByRole("link", { name: "@harrhy/ui", exact: true })
+      .getAttribute("href"),
+    "/",
+  );
+  assert.equal(
+    await page
+      .getByText("Official Remix UI: 10 modules", { exact: false })
+      .count(),
+    0,
+  );
+  await page.getByRole("button", { name: "Visibility", exact: true }).click();
+  const list = page.getByRole("listbox");
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.keyboard.press("Home");
+  await page.keyboard.press("ArrowDown");
+  const selected = page.getByRole("option", { name: "Private", exact: true });
+  const highlighted = page.getByRole("option", { name: "Shared", exact: true });
+  assert.equal(await selected.getAttribute("aria-selected"), "true");
+  assert.equal(await highlighted.getAttribute("data-highlighted"), "true");
+  assert.notEqual(
+    await selected.evaluate((n) => getComputedStyle(n).backgroundColor),
+    await highlighted.evaluate((n) => getComputedStyle(n).backgroundColor),
+  );
+  assert.equal(
+    await selected
+      .locator("svg")
+      .evaluate((n) => getComputedStyle(n).visibility),
+    "visible",
+  );
+  assert.equal(
+    await highlighted
+      .locator("svg")
+      .evaluate((n) => getComputedStyle(n).visibility),
+    "hidden",
+  );
+  assert.equal(
+    await highlighted.evaluate((n) => getComputedStyle(n).outlineWidth),
+    "2px",
+  );
+  assert.equal(
+    await page
+      .getByRole("option", { name: "Public", exact: true })
+      .getAttribute("aria-disabled"),
+    "true",
+  );
+  await page.keyboard.press("End");
+  assert.equal(await highlighted.getAttribute("data-highlighted"), "true");
+  await page.keyboard.press("Escape");
+  assert.equal(await list.isVisible(), false);
+  await page.getByRole("button", { name: "Theme", exact: true }).click();
+  await page.getByRole("option", { name: "Artbin", exact: true }).click();
+  await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
+  await page.getByRole("link", { name: "Scenes", exact: true }).click();
+  await page.getByRole("link", { name: "Radio", exact: true }).click();
+  assert.equal(new URL(page.url()).searchParams.get("theme"), "brutalist");
+  assert.equal(
+    await page
+      .locator("header")
+      .first()
+      .evaluate((n) =>
+        getComputedStyle(n).fontFamily.includes("Times New Roman"),
+      ),
+    true,
+  );
+  await page.getByRole("button", { name: "Theme", exact: true }).click();
+  await page.getByRole("option", { name: "Radio", exact: true }).click();
+  await page.waitForURL((url) => url.searchParams.get("theme") === "tactile");
+  await page.reload();
+  assert.match(
+    await page.getByRole("button", { name: "Theme", exact: true }).innerText(),
+    /Radio/,
+  );
 });

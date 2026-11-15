@@ -12,6 +12,7 @@ import {
   labelStyles,
   noticeStyles,
   panelStyles,
+  rangeStyles,
   stackStyles,
 } from "./recipes.ts";
 
@@ -188,5 +189,17 @@ export function Badge(handle: Handle<Props<"span">>) {
   return () => {
     const { mix, ...props } = handle.props;
     return <span {...props} mix={[badgeStyles, mix]} />;
+  };
+}
+
+/** Native range semantics, keyboard handling and value events remain browser-owned. */
+export function Range(
+  handle: Handle<Omit<Props<"input">, "type" | "role"> & { role?: "slider" }>,
+) {
+  return () => {
+    const { mix, ...props } = handle.props;
+    return (
+      <input {...props} type="range" mix={[rangeStyles, focusStyles, mix]} />
+    );
   };
 }

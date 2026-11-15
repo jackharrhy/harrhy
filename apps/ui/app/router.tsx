@@ -37,7 +37,7 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="robots" content="noindex, nofollow" />
-          <title>Harrhy UI workbench</title>
+          <title>@harrhy/ui workbench</title>
           {url.searchParams.get("scene") === "radio" && (
             <link rel="stylesheet" href="/assets/ui/radio/fonts.css" />
           )}

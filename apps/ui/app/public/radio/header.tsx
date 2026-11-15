@@ -7,6 +7,7 @@ type RadioStatusTone = "offline" | "online" | "syncing";
 export function RadioHeader(
   handle: Handle<{
     roomName?: string;
+    sceneHref?: string;
     status?: RemixNode;
   }>,
 ) {
@@ -17,7 +18,7 @@ export function RadioHeader(
       <header mix={[desktopStyle.titleBar, radioHeaderStyle.header]}>
         <nav aria-label="Breadcrumb" mix={radioHeaderStyle.breadcrumbs}>
           <a
-            href={"/?view=scenes&scene=radio"}
+            href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
             mix={radioHeaderStyle.brandLink}
           >
             radio
@@ -27,7 +28,7 @@ export function RadioHeader(
           </span>
           {roomName ? (
             <a
-              href={"/?view=scenes&scene=radio"}
+              href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
               mix={radioHeaderStyle.roomsLink}
             >
               <span aria-hidden="true" mix={radioHeaderStyle.backIcon}>
@@ -109,7 +110,7 @@ const radioHeaderStyle = {
     display: "inline-flex",
     alignItems: "center",
     gap: "3px",
-    color: "rgba(255, 255, 255, 0.76)",
+    color: "#ffffff",
     borderRadius: "2px",
     textDecoration: "none",
     textShadow: "0 1px #000",

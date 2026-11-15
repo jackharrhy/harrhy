@@ -12,7 +12,7 @@ import {
   Stack,
   Textarea,
 } from "@harrhy/ui/native";
-import { Select } from "@harrhy/ui/interactive";
+import { WorkbenchHeader } from "./workbench.tsx";
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { themes } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
@@ -21,30 +21,6 @@ import { RadioScene } from "./radio/scene.tsx";
 const shell = css({
   minHeight: "100vh",
   "& *": { boxSizing: "border-box" },
-});
-const header = css({
-  fontFamily: "system-ui, sans-serif",
-  fontSize: "14px",
-  color: "#202124",
-  background: "white",
-  borderBottom: "1px solid #dedfe2",
-  padding: "0 24px",
-  minHeight: "60px",
-  display: "flex",
-  alignItems: "center",
-  gap: "40px",
-  "& strong": { fontSize: "16px", letterSpacing: "-0.025em" },
-  "& nav": { display: "flex", alignSelf: "stretch", gap: "24px" },
-  "& a": {
-    color: "inherit",
-    display: "flex",
-    alignItems: "center",
-    textDecoration: "none",
-    borderBottom: "2px solid transparent",
-  },
-  '& a[aria-current="page"]': { borderColor: "#24292f", fontWeight: 600 },
-  "& :focus-visible": { outline: "2px solid #0969da", outlineOffset: "3px" },
-  "@media (max-width: 600px)": { padding: "0 16px", gap: "24px" },
 });
 const main = css({
   maxWidth: "1280px",
@@ -77,15 +53,14 @@ export const Scenes = clientEntry(
     let board: string | null = null;
     return () => (
       <div mix={[themeStyles(themes[theme]), themeRoot, shell]}>
-        <header mix={header}>
-          <strong>Harrhy UI</strong>
-          <nav aria-label="Workbench">
-            <a href="/">Explorer</a>
-            <a href="/?view=scenes" aria-current="page">
-              Scenes
-            </a>
-          </nav>
-        </header>
+        <WorkbenchHeader
+          theme={theme}
+          page="scenes"
+          onThemeChange={(next) => {
+            theme = next;
+            handle.update();
+          }}
+        />
         <main mix={main}>
           <div>
             <h1
@@ -111,7 +86,7 @@ export const Scenes = clientEntry(
           >
             <Inline>
               <a
-                href="/?view=scenes&scene=radio"
+                href={`/?view=scenes&scene=radio&theme=${theme}`}
                 aria-current={
                   handle.props.scene === "radio" ? "page" : undefined
                 }
@@ -119,7 +94,7 @@ export const Scenes = clientEntry(
                 Radio
               </a>
               <a
-                href="/?view=scenes&scene=forms"
+                href={`/?view=scenes&scene=forms&theme=${theme}`}
                 aria-current={
                   handle.props.scene === "forms" ? "page" : undefined
                 }
@@ -127,7 +102,7 @@ export const Scenes = clientEntry(
                 Forms
               </a>
               <a
-                href="/?view=scenes&scene=themes"
+                href={`/?view=scenes&scene=themes&theme=${theme}`}
                 aria-current={
                   handle.props.scene === "themes" ? "page" : undefined
                 }
@@ -137,26 +112,9 @@ export const Scenes = clientEntry(
             </Inline>
           </nav>
           {handle.props.scene === "radio" ? (
-            <RadioScene />
+            <RadioScene theme={theme} />
           ) : handle.props.scene === "forms" ? (
             <>
-              <Inline>
-                <label htmlFor="scene-theme">Theme</label>
-                <Select
-                  id="scene-theme"
-                  defaultValue={theme}
-                  options={[
-                    { value: "clean", label: "Clean" },
-                    { value: "tactile", label: "Radio" },
-                    { value: "brutalist", label: "Artbin" },
-                  ]}
-                  onValueChange={(value) => {
-                    theme = value as ThemeName;
-                    handle.update();
-                  }}
-                  mix={css({ width: "auto" })}
-                />
-              </Inline>
               <div mix={grid}>
                 <Panel aria-labelledby="auth-title">
                   <Stack>

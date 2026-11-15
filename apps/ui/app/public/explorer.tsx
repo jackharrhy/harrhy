@@ -9,6 +9,7 @@ import {
   Input,
   Notice,
   Panel,
+  Range,
   Stack,
   Textarea,
 } from "@harrhy/ui/native";
@@ -24,6 +25,7 @@ import {
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { CodeBlock, CodeDiff } from "@harrhy/ui/code";
 import type { DiffLine } from "@harrhy/ui/code";
+import { WorkbenchHeader } from "./workbench.tsx";
 import { themes } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
 
@@ -50,7 +52,13 @@ export const stories = [
     id: "select",
     name: "Select",
     group: "Forms",
-    summary: "A themed choice with official Remix UI keyboard interaction.",
+    summary: "Choose one value from a short list.",
+  },
+  {
+    id: "range",
+    name: "Range",
+    group: "Forms",
+    summary: "A native slider with themed focus and a usable hit area.",
   },
   {
     id: "checkbox",
@@ -109,10 +117,10 @@ export const stories = [
 ] as const;
 export type StoryId = (typeof stories)[number]["id"];
 const chrome = css({
-  color: "#202124",
-  background: "#fff",
+  color: "var(--hui-ink)",
+  background: "var(--hui-canvas)",
   minHeight: "100vh",
-  fontFamily: "system-ui, sans-serif",
+  fontFamily: "var(--hui-font-body)",
   fontSize: "14px",
   lineHeight: "1.5",
   "& *": { boxSizing: "border-box" },
@@ -122,8 +130,11 @@ const chrome = css({
       font: "inherit",
     },
   "& header :focus-visible, & aside :focus-visible, & [data-workbench-controls] :focus-visible, & [data-source] :focus-visible":
-    { outline: "2px solid #0969da", outlineOffset: "3px" },
-  "& ::selection": { background: "#d9eaff", color: "#12243b" },
+    { outline: "2px solid var(--hui-focus)", outlineOffset: "3px" },
+  "& ::selection": {
+    background: "var(--hui-selected-surface)",
+    color: "var(--hui-selected-ink)",
+  },
   "& h1": {
     fontSize: "28px",
     lineHeight: "1.2",
@@ -137,24 +148,6 @@ const chrome = css({
     fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
   },
 });
-const topbar = css({
-  display: "flex",
-  alignItems: "center",
-  gap: "40px",
-  borderBottom: "1px solid #dedfe2",
-  minHeight: "60px",
-  padding: "0 24px",
-  "& strong": { letterSpacing: "-0.025em", fontSize: "16px" },
-  "& nav": { display: "flex", alignSelf: "stretch", gap: "24px" },
-  "& a": {
-    display: "flex",
-    alignItems: "center",
-    textDecoration: "none",
-    borderBottom: "2px solid transparent",
-  },
-  '& a[aria-current="page"]': { borderColor: "#24292f", fontWeight: 600 },
-  "@media (max-width: 600px)": { padding: "0 16px", gap: "24px" },
-});
 const workspace = css({
   display: "grid",
   gridTemplateColumns: "220px minmax(0, 1fr)",
@@ -163,41 +156,32 @@ const workspace = css({
 });
 const rail = css({
   padding: "24px 16px",
-  borderRight: "1px solid #dedfe2",
-  background: "#fafafa",
+  borderRight: "1px solid var(--hui-border)",
+  background: "var(--hui-surface)",
   "& form": { display: "flex", gap: "4px", marginBottom: "24px" },
-  "& input": {
-    minWidth: 0,
-    width: "100%",
-    border: "1px solid #c5c8ce",
-    borderRadius: "6px",
-    padding: "6px 8px",
-    background: "white",
+  "& input": { minWidth: 0, width: "100%" },
+  "& h2": {
+    fontSize: "12px",
+    color: "var(--hui-muted)",
+    margin: "20px 10px 6px",
   },
-  "& button": {
-    border: "1px solid #c5c8ce",
-    borderRadius: "6px",
-    background: "white",
-    cursor: "pointer",
-  },
-  "& h2": { fontSize: "12px", color: "#59616b", margin: "20px 10px 6px" },
   "& a": {
     display: "block",
     padding: "6px 10px",
-    borderRadius: "6px",
+    borderRadius: "var(--hui-control-radius)",
     textDecoration: "none",
     marginBottom: "2px",
-    "&:hover": { background: "#eceef0" },
+    "&:hover": { background: "var(--hui-hover-surface)" },
   },
   '& a[aria-current="page"]': {
-    background: "#e5e9ee",
-    color: "#182c48",
+    background: "var(--hui-selected-surface)",
+    color: "var(--hui-selected-ink)",
     fontWeight: 600,
   },
   "@media (max-width: 760px)": {
     padding: "12px 16px",
     borderRight: 0,
-    borderBottom: "1px solid #dedfe2",
+    borderBottom: "1px solid var(--hui-border)",
     "& nav": { display: "none" },
     "& form": { marginBottom: "8px" },
   },
@@ -216,7 +200,7 @@ const contentStyle = css({
   "@media (max-width: 1000px)": { padding: "28px 24px" },
   "@media (max-width: 600px)": { padding: "24px 16px" },
 });
-const introStyle = css({ color: "#59616b", maxWidth: "70ch" });
+const introStyle = css({ color: "var(--hui-muted)", maxWidth: "70ch" });
 const toolbar = css({
   display: "flex",
   flexWrap: "wrap",
@@ -224,12 +208,12 @@ const toolbar = css({
   alignItems: "center",
   gap: "12px",
   padding: "12px 16px",
-  borderBottom: "1px solid #dedfe2",
-  background: "#fafafa",
+  borderBottom: "1px solid var(--hui-border)",
+  background: "var(--hui-surface)",
 });
 const bench = css({
-  border: "1px solid #dedfe2",
-  borderRadius: "8px",
+  border: "1px solid var(--hui-border)",
+  borderRadius: "var(--hui-panel-radius)",
   overflow: "hidden",
   marginTop: "28px",
 });
@@ -249,8 +233,8 @@ const stage = css({
   "@media (max-width: 600px)": { padding: "28px 20px", minHeight: "260px" },
 });
 const controls = css({
-  borderLeft: "1px solid #dedfe2",
-  background: "#fafafa",
+  borderLeft: "1px solid var(--hui-border)",
+  background: "var(--hui-surface)",
   padding: "20px",
   display: "grid",
   alignContent: "start",
@@ -261,39 +245,15 @@ const controls = css({
     alignItems: "center",
     gap: "8px",
   },
-  "& input:not([type=checkbox]), & textarea": {
-    width: "100%",
-    minWidth: 0,
-    color: "#202124",
-    background: "white",
-    border: "1px solid #c5c8ce",
-    borderRadius: "5px",
-    padding: "6px 8px",
-  },
-  "& input[type=checkbox]": {
-    accentColor: "#24292f",
-    width: "16px",
-    height: "16px",
-  },
   "@media (max-width: 1100px)": {
     borderLeft: 0,
-    borderTop: "1px solid #dedfe2",
+    borderTop: "1px solid var(--hui-border)",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     "& h2": { gridColumn: "1 / -1" },
   },
   "@media (max-width: 450px)": { gridTemplateColumns: "1fr" },
 });
-const source = css({
-  borderTop: "1px solid #dedfe2",
-
-  "& button": {
-    border: "1px solid #c5c8ce",
-    borderRadius: "5px",
-    padding: "4px 10px",
-    background: "white",
-    cursor: "pointer",
-  },
-});
+const source = css({ borderTop: "1px solid var(--hui-border)" });
 
 export const Explorer = clientEntry(
   import.meta.url,
@@ -308,7 +268,7 @@ export const Explorer = clientEntry(
         item.name.toLowerCase().includes(query.toLowerCase()),
       );
       return (
-        <div mix={[themeStyles(themes.clean), chrome]}>
+        <div mix={[themeStyles(themes[theme]), themeRoot, chrome]}>
           <a
             href="#component"
             mix={css({
@@ -317,7 +277,7 @@ export const Explorer = clientEntry(
               "&:focus": {
                 left: "16px",
                 top: "12px",
-                background: "white",
+                background: "var(--hui-surface)",
                 zIndex: 10,
                 padding: "8px",
               },
@@ -325,36 +285,25 @@ export const Explorer = clientEntry(
           >
             Skip to component
           </a>
-          <header mix={topbar}>
-            <strong>Harrhy UI</strong>
-            <nav aria-label="Workbench">
-              <a href="/" aria-current="page">
-                Explorer
-              </a>
-              <a href="/?view=scenes">Scenes</a>
-            </nav>
-            <span
-              mix={css({
-                marginLeft: "auto",
-                color: "#59616b",
-                fontSize: "12px",
-                "@media (max-width: 450px)": { display: "none" },
-              })}
-            >
-              Remix 3
-            </span>
-          </header>
+          <WorkbenchHeader
+            theme={theme}
+            page="explorer"
+            onThemeChange={(next) => {
+              theme = next;
+              handle.update();
+            }}
+          />
           <div mix={workspace}>
             <aside mix={rail} aria-label="Components">
               <form method="get" action="/">
-                <input
+                <Input
                   name="q"
                   type="search"
                   aria-label="Find a component"
                   placeholder="Find a component…"
                   defaultValue={query}
                 />
-                <button type="submit">Find</button>
+                <Button type="submit">Find</Button>
                 <input type="hidden" name="component" value={story} />
                 <input type="hidden" name="theme" value={theme} />
               </form>
@@ -401,78 +350,10 @@ export const Explorer = clientEntry(
             <main id="component" mix={contentStyle}>
               <h1>{selected.name}</h1>
               <p mix={introStyle}>{selected.summary}</p>
-              <details
-                aria-label="Official upstream inventory"
-                mix={css({
-                  marginTop: "20px",
-                  fontSize: "12px",
-                  color: "#59616b",
-                })}
-              >
-                <summary>
-                  Official Remix UI: 10 modules · Select/Tabs adopted
-                </summary>
-                <p>
-                  10 installed subpaths. Popover and Listbox support Select
-                  internals. Others are available upstream, not Harrhy adapters.
-                  Dialog stays native: upstream has no Dialog.
-                </p>
-                <ul
-                  mix={css({
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "6px 16px",
-                    padding: 0,
-                    margin: "8px 0 0",
-                    listStyle: "none",
-                  })}
-                >
-                  {[
-                    "accordion",
-                    "anchor",
-                    "animation",
-                    "combobox",
-                    "listbox",
-                    "menu",
-                    "popover",
-                    "select",
-                    "tabs",
-                    "toggle",
-                  ].map((name) => (
-                    <li>
-                      <a
-                        href={`https://github.com/remix-run/remix/tree/main/packages/ui/src/${name}`}
-                      >
-                        {name}
-                      </a>{" "}
-                      —{" "}
-                      {name === "select" || name === "tabs"
-                        ? "adopted"
-                        : name === "popover" || name === "listbox"
-                          ? "Select internals"
-                          : "upstream only"}
-                    </li>
-                  ))}
-                </ul>
-              </details>
-              {(story === "select" || story === "tabs") && (
-                <p mix={introStyle}>
-                  Uses official Remix UI {selected.name} with Harrhy theme
-                  recipes.
-                </p>
-              )}
-              <Story
-                key={story}
-                story={story}
-                theme={theme}
-                onThemeChange={(next) => {
-                  theme = next;
-                  handle.update();
-                }}
-              />
+              <Story key={story} story={story} theme={theme} />
               <p
                 mix={css({
-                  color: "#59616b",
+                  color: "var(--hui-muted)",
                   fontSize: "12px",
                   marginTop: "20px",
                 })}
@@ -559,7 +440,6 @@ function Story(
   handle: Handle<{
     story: StoryId;
     theme: ThemeName;
-    onThemeChange: (theme: ThemeName) => void;
   }>,
 ) {
   let variant: "primary" | "secondary" | "quiet" | "danger" = "primary";
@@ -574,6 +454,7 @@ function Story(
   let error = false;
   let description = true;
   let checked = true;
+  let rangeValue = "0.65";
   let failAction = false;
   let resultFailed = false;
   let open = false;
@@ -620,31 +501,33 @@ function Story(
         ? demoDiff
         : demoDiff.map((line) => ({ kind: line.kind, text: line.text }));
     const content =
-      story === "code"
-        ? `<CodeBlock label="Collection action" language="${language}"\n  source={${JSON.stringify(shownSource)}} />`
-        : story === "diff"
-          ? '<CodeDiff label="Action label revision" lines={lines} />'
-          : story === "button"
-            ? `<Button variant="${variant}"${disabled ? " disabled" : ""}>{${JSON.stringify(label)}}</Button>`
-            : story === "field"
-              ? `<Field id="collection" label="Collection name"${description ? '\n  description="Only visible to you."' : ""}${error ? '\n  error="Enter a collection name."' : ""}>\n  <Input name="name"${disabled ? " disabled" : ""} required />\n</Field>`
-              : story === "action"
-                ? `// save receives { signal }; honor it before side effects.\n<ActionButton action={save} pendingLabel="Saving…"${disabled ? " disabled" : ""}\n  onError={reportError}>Save changes</ActionButton>`
-                : story === "dialog"
-                  ? '<Dialog open={open} title="Rename collection"\n  onClose={() => { open = false; handle.update(); }}>\n  {/* labelled form and explicit close actions */}\n</Dialog>'
-                  : story === "tabs"
-                    ? `<Tabs defaultActiveTab="${activeTab}">\n  <TabList aria-label="Collection">\n    <Tab name="overview">Overview</Tab>\n    <Tab name="activity"${disabled ? " disabled" : ""}>Activity</Tab>\n  </TabList>\n  <TabPanel name="overview">Collection details</TabPanel>\n  <TabPanel name="activity">No changes yet.</TabPanel>\n</Tabs>`
-                    : story === "notice"
-                      ? `<Notice tone="${tone}">{${JSON.stringify(label)}}</Notice>`
-                      : story === "badge"
-                        ? `<Badge>{${JSON.stringify(label)}}</Badge>`
-                        : story === "checkbox"
-                          ? `<label><Checkbox name="private"${checked ? " defaultChecked" : ""}${disabled ? " disabled" : ""} /> Private collection</label>`
-                          : story === "select"
-                            ? `<Field id="visibility" label="Visibility">\n  <Select name="visibility" defaultValue="private"${disabled ? " disabled" : ""}\n    options={[{ value: "private", label: "Private" }, { value: "shared", label: "Shared" }]} />\n</Field>`
-                            : story === "textarea"
-                              ? `<Field id="notes" label="Notes">\n  <Textarea name="notes" rows={3}${disabled ? " disabled" : ""} />\n</Field>`
-                              : '<Panel aria-labelledby="collection-title">\n  <Stack>\n    <h2 id="collection-title">Evening sketches</h2>\n    <p>Reference images for the next drawing session.</p>\n  </Stack>\n</Panel>';
+      story === "range"
+        ? `<label>Volume<Range name="volume" min="0" max="1" step="0.01" defaultValue="${rangeValue}"${disabled ? " disabled" : ""} /></label>`
+        : story === "code"
+          ? `<CodeBlock label="Collection action" language="${language}"\n  source={${JSON.stringify(shownSource)}} />`
+          : story === "diff"
+            ? '<CodeDiff label="Action label revision" lines={lines} />'
+            : story === "button"
+              ? `<Button variant="${variant}"${disabled ? " disabled" : ""}>{${JSON.stringify(label)}}</Button>`
+              : story === "field"
+                ? `<Field id="collection" label="Collection name"${description ? '\n  description="Only visible to you."' : ""}${error ? '\n  error="Enter a collection name."' : ""}>\n  <Input name="name"${disabled ? " disabled" : ""} required />\n</Field>`
+                : story === "action"
+                  ? `// save receives { signal }; honor it before side effects.\n<ActionButton action={save} pendingLabel="Saving…"${disabled ? " disabled" : ""}\n  onError={reportError}>Save changes</ActionButton>`
+                  : story === "dialog"
+                    ? '<Dialog open={open} title="Rename collection"\n  onClose={() => { open = false; handle.update(); }}>\n  {/* labelled form and explicit close actions */}\n</Dialog>'
+                    : story === "tabs"
+                      ? `<Tabs defaultActiveTab="${activeTab}">\n  <TabList aria-label="Collection">\n    <Tab name="overview">Overview</Tab>\n    <Tab name="activity"${disabled ? " disabled" : ""}>Activity</Tab>\n  </TabList>\n  <TabPanel name="overview">Collection details</TabPanel>\n  <TabPanel name="activity">No changes yet.</TabPanel>\n</Tabs>`
+                      : story === "notice"
+                        ? `<Notice tone="${tone}">{${JSON.stringify(label)}}</Notice>`
+                        : story === "badge"
+                          ? `<Badge>{${JSON.stringify(label)}}</Badge>`
+                          : story === "checkbox"
+                            ? `<label><Checkbox name="private"${checked ? " defaultChecked" : ""}${disabled ? " disabled" : ""} /> Private collection</label>`
+                            : story === "select"
+                              ? `<Field id="visibility" label="Visibility">\n  <Select name="visibility" defaultValue="private"${disabled ? " disabled" : ""}\n    options={[{ value: "private", label: "Private" }, { value: "shared", label: "Shared" }, { value: "public", label: "Public", disabled: true }]} />\n</Field>`
+                              : story === "textarea"
+                                ? `<Field id="notes" label="Notes">\n  <Textarea name="notes" rows={3}${disabled ? " disabled" : ""} />\n</Field>`
+                                : '<Panel aria-labelledby="collection-title">\n  <Stack>\n    <h2 id="collection-title">Evening sketches</h2>\n    <p>Reference images for the next drawing session.</p>\n  </Stack>\n</Panel>';
     const imports = ["code", "diff"].includes(story)
       ? "@harrhy/ui/code"
       : ["action", "dialog", "tabs", "select"].includes(story)
@@ -670,27 +553,6 @@ function Story(
       <section mix={bench} aria-label="Component workbench">
         <div mix={toolbar}>
           <h2>Preview</h2>
-          <div mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}>
-            <label htmlFor="preview-theme">Theme</label>
-            <Select
-              id="preview-theme"
-              aria-label="Preview theme"
-              defaultValue={theme}
-              options={[
-                { value: "clean", label: "Clean" },
-                { value: "tactile", label: "Radio" },
-                { value: "brutalist", label: "Artbin" },
-              ]}
-              onValueChange={(value) => {
-                if (value === null) return;
-                const next = value as ThemeName;
-                const url = new URL(location.href);
-                url.searchParams.set("theme", next);
-                history.replaceState(null, "", url);
-                handle.props.onThemeChange(next);
-              }}
-            />
-          </div>
         </div>
         <div mix={specimenLayout}>
           <div
@@ -785,6 +647,24 @@ function Story(
                   />
                 </Field>
               )}
+              {story === "range" && (
+                <label mix={css({ display: "grid", gap: "8px" })}>
+                  <span>Volume</span>
+                  <Range
+                    name="volume"
+                    min="0"
+                    max="1"
+                    step="0.01"
+                    value={rangeValue}
+                    disabled={disabled}
+                    mix={on("input", (event) => {
+                      rangeValue = event.currentTarget.value;
+                      handle.update();
+                    })}
+                  />
+                  <output>{Math.round(Number(rangeValue) * 100)}%</output>
+                </label>
+              )}
               {story === "select" && (
                 <Field id="visibility" label="Visibility">
                   <Select
@@ -794,6 +674,7 @@ function Story(
                     options={[
                       { value: "private", label: "Private" },
                       { value: "shared", label: "Shared" },
+                      { value: "public", label: "Public", disabled: true },
                     ]}
                   />
                 </Field>
@@ -921,7 +802,7 @@ function Story(
               <>
                 <label>
                   Source
-                  <textarea
+                  <Textarea
                     aria-label="Source"
                     rows={6}
                     value={codeSource}
@@ -951,8 +832,7 @@ function Story(
                   />
                 </div>
                 <label>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={longLine}
                     mix={on("change", (event) => {
                       longLine = event.currentTarget.checked;
@@ -966,8 +846,7 @@ function Story(
             {story === "diff" && (
               <>
                 <label>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={lineNumbers}
                     mix={on("change", (event) => {
                       lineNumbers = event.currentTarget.checked;
@@ -977,8 +856,7 @@ function Story(
                   Line numbers
                 </label>
                 <label>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={emptyDiff}
                     mix={on("change", (event) => {
                       emptyDiff = event.currentTarget.checked;
@@ -992,7 +870,7 @@ function Story(
             {["button", "notice", "badge"].includes(story) && (
               <label>
                 Label
-                <input
+                <Input
                   value={label}
                   maxLength={80}
                   mix={on("input", (event) => {
@@ -1045,8 +923,7 @@ function Story(
             )}
             {!["notice", "badge", "panel", "code", "diff"].includes(story) && (
               <label>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={disabled}
                   mix={on("change", (event) => {
                     disabled = event.currentTarget.checked;
@@ -1059,8 +936,7 @@ function Story(
             {story === "field" && (
               <>
                 <label>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={error}
                     mix={on("change", (event) => {
                       error = event.currentTarget.checked;
@@ -1070,8 +946,7 @@ function Story(
                   Error
                 </label>
                 <label>
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={description}
                     mix={on("change", (event) => {
                       description = event.currentTarget.checked;
@@ -1084,8 +959,7 @@ function Story(
             )}
             {story === "action" && (
               <label>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={failAction}
                   mix={on("change", (event) => {
                     failAction = event.currentTarget.checked;
@@ -1097,8 +971,7 @@ function Story(
             )}
             {story === "checkbox" && (
               <label>
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={checked}
                   mix={on("change", (event) => {
                     checked = event.currentTarget.checked;
@@ -1120,7 +993,7 @@ function Story(
                       : story === "action"
                         ? "1.2s fixture. Repeated activation is guarded."
                         : story === "select"
-                          ? "Official Select: arrows/typeahead; Escape returns focus. Hydration required; no native required/reset integration."
+                          ? "Arrows or type to choose. Escape closes."
                           : story === "field"
                             ? "Error and help IDs compose with the native label."
                             : "Tab to inspect focus. Hover and press to inspect states."}
@@ -1131,17 +1004,15 @@ function Story(
           <details
             mix={css({
               padding: "16px",
-              borderTop: "1px solid #dedfe2",
+              borderTop: "1px solid var(--hui-border)",
               minWidth: 0,
             })}
           >
             <summary>
-              Underlying official API: {story === "select" ? "Select" : "Tabs"}
+              Headless source: {story === "select" ? "Select" : "Tabs"}
             </summary>
             <p mix={descriptionCss}>
-              Adapter composition using @remix-run/ui 0.13.1. Theme recipes and
-              Field wiring omitted; the preview above uses these upstream
-              behaviors through Harrhy adapters.{" "}
+              Unstyled composition.{" "}
               <a href={`https://ui.remix.run/patterns/${story}/`}>
                 Official pattern and examples
               </a>
@@ -1158,7 +1029,7 @@ function Story(
         <div mix={source} data-source="">
           <div mix={toolbar}>
             <h2>Code</h2>
-            <button
+            <Button
               type="button"
               mix={on("click", async () => {
                 try {
@@ -1171,7 +1042,7 @@ function Story(
               })}
             >
               Copy code
-            </button>
+            </Button>
           </div>
           <div mix={css({ padding: "20px", minWidth: 0 })}>
             <CodeBlock label="Code example" language="tsx" source={example} />
@@ -1184,6 +1055,6 @@ function Story(
 }
 const descriptionCss = css({
   fontSize: "12px",
-  color: "#59616b",
+  color: "var(--hui-muted)",
   maxWidth: "35ch",
 });

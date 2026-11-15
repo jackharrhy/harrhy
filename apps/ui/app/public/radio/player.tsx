@@ -1,5 +1,9 @@
 import { css, on, ref, type Handle } from "remix/component";
 
+import { Button, Input, Range } from "@harrhy/ui/native";
+import { focusStyles } from "@harrhy/ui/recipes";
+import { radioControlsTheme } from "./theme.ts";
+
 import type { Track } from "./model.ts";
 import { RadioHeader, RadioStatus } from "./header.tsx";
 import {
@@ -16,6 +20,7 @@ import { radioStyle } from "./styles.ts";
 export function RadioPlayerView(
   handle: Handle<{
     state: RadioDemoState;
+    sceneHref?: string;
     client: RadioDemoActions | null;
     preview?: boolean;
     roomName?: string;
@@ -75,11 +80,13 @@ export function RadioPlayerView(
         mix={[
           radioStyle.window,
           radioStyle.shell,
+          radioControlsTheme,
           preview ? radioStyle.previewShell : radioStyle.pageShell,
         ]}
       >
         <RadioHeader
           roomName={handle.props.roomName}
+          sceneHref={handle.props.sceneHref}
           status={<StatusPill state={state} />}
         />
 
@@ -133,7 +140,11 @@ export function RadioPlayerView(
 
           <aside mix={[radioStyle.panel, radioStyle.listeners]}>
             <h2 mix={radioStyle.utilityTitle}>listeners</h2>
-            <ul mix={radioStyle.list}>
+            <ul
+              aria-label="Listeners"
+              tabIndex={0}
+              mix={[radioStyle.list, focusStyles]}
+            >
               {state.clients.map((person) => (
                 <li key={person.clientId} mix={radioStyle.person}>
                   <span>{person.name}</span>
@@ -148,7 +159,7 @@ export function RadioPlayerView(
 
         <footer mix={radioStyle.controlBar}>
           <div mix={radioStyle.transport}>
-            <button
+            <Button
               mix={[
                 radioStyle.playToggle,
                 on("click", () =>
@@ -161,8 +172,8 @@ export function RadioPlayerView(
               title={state.playing ? "Pause" : "Play"}
             >
               {state.playing ? "Pause" : "Play"}
-            </button>
-            <button
+            </Button>
+            <Button
               mix={[
                 radioStyle.iconButton,
                 on("click", () => client?.wakeAudio()),
@@ -172,8 +183,8 @@ export function RadioPlayerView(
               title="Wake audio"
             >
               Wake
-            </button>
-            <button
+            </Button>
+            <Button
               mix={[
                 radioStyle.iconButton,
                 on("click", () => client?.syncNow()),
@@ -184,9 +195,9 @@ export function RadioPlayerView(
               title="Sync playback"
             >
               Sync
-            </button>
+            </Button>
             <div mix={radioStyle.nudgeControls}>
-              <button
+              <Button
                 mix={[
                   radioStyle.nudgeButton,
                   on("click", () =>
@@ -200,7 +211,7 @@ export function RadioPlayerView(
                 title="Play 10 milliseconds earlier"
               >
                 −10ms
-              </button>
+              </Button>
               <output
                 aria-hidden={playbackOffsetMs === 0}
                 aria-label={
@@ -221,7 +232,7 @@ export function RadioPlayerView(
                   ? null
                   : `${Math.abs(playbackOffsetMs)}ms`}
               </output>
-              <button
+              <Button
                 mix={[
                   radioStyle.nudgeButton,
                   on("click", () =>
@@ -235,15 +246,14 @@ export function RadioPlayerView(
                 title="Play 10 milliseconds later"
               >
                 +10ms
-              </button>
+              </Button>
             </div>
           </div>
           <label mix={radioStyle.seek}>
             <span>{formatTime(displayedPosition)}</span>
-            <input
+            <Range
               aria-label="Track position"
               key={`${state.currentTrackId ?? "empty"}:${state.durationSeconds > 0 ? "ready" : "loading"}`}
-              type="range"
               min="0"
               max={String(Math.max(0, state.durationSeconds))}
               step="0.1"
@@ -300,9 +310,8 @@ export function RadioPlayerView(
           </label>
           <label mix={radioStyle.volume}>
             <span>vol</span>
-            <input
+            <Range
               aria-label="Volume"
-              type="range"
               min="0"
               max="1"
               step="0.01"
@@ -662,10 +671,9 @@ function TrackList(
                 </span>
               </button>
               {editingTrackId === track.id ? (
-                <input
+                <Input
                   aria-label={`Rename ${track.title}`}
                   mix={[
-                    radioStyle.input,
                     radioStyle.queueEditInput,
                     on("input", (event) => {
                       draftTitle = event.currentTarget.value;

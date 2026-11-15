@@ -7,7 +7,7 @@ import { desktopThemeStyle } from "./theme.ts";
 import { createRadioDemo, scenarios } from "./model.ts";
 import type { Scenario } from "./model.ts";
 
-export function RadioScene(handle: Handle) {
+export function RadioScene(handle: Handle<{ theme: string }>) {
   let scenario: Scenario = "paused";
   let width = 960;
   const demo = createRadioDemo(() => {
@@ -39,7 +39,7 @@ export function RadioScene(handle: Handle) {
         <Button mix={on("click", () => demo.reset(scenario))}>
           Reset scene
         </Button>
-        <span mix={css({ color: "#59616b", fontSize: "13px" })}>
+        <span mix={css({ color: "var(--hui-muted)", fontSize: "13px" })}>
           Synthetic room · no audio, files or network
         </span>
       </Inline>
@@ -62,6 +62,7 @@ export function RadioScene(handle: Handle) {
         ]}
       >
         <RadioPlayerView
+          sceneHref={`/?view=scenes&scene=radio&theme=${handle.props.theme}`}
           state={demo.state}
           client={demo.actions}
           preview
@@ -72,7 +73,11 @@ export function RadioScene(handle: Handle) {
       </div>
       <p
         role="status"
-        mix={css({ color: "#59616b", fontSize: "13px", minHeight: "20px" })}
+        mix={css({
+          color: "var(--hui-muted)",
+          fontSize: "13px",
+          minHeight: "20px",
+        })}
       >
         {demo.announcement ||
           "Try transport, track actions, keyboard reorder and calibration."}

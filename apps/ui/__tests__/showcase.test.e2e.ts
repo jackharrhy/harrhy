@@ -41,7 +41,7 @@ it("keeps Artbin reference geometry and visible focus scoped at desktop and mobi
       await specimen
         .locator("input")
         .evaluate((node) => getComputedStyle(node).borderColor),
-      "rgb(204, 204, 204)",
+      "rgb(136, 136, 136)",
     );
     await button.focus();
     assert.equal(

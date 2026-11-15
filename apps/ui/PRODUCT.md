@@ -1,4 +1,4 @@
-# UI explorer
+# @harrhy/ui explorer
 
 An internal workbench for @harrhy/ui, implemented with native Remix 3 on a Node host. No Storybook or second UI framework.
 

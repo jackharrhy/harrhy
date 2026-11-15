@@ -29,7 +29,7 @@ export const desktopControlStyle = {
   },
   range: {
     appearance: "none",
-    height: "18px",
+    height: "24px",
     background: "transparent",
     "&::-webkit-slider-runnable-track": {
       height: "14px",
@@ -60,10 +60,6 @@ export const desktopControlStyle = {
       border: `1px solid ${desktopColor.ink}`,
       borderRadius: "2px",
       background: `linear-gradient(${desktopColor.accentSoft}, ${desktopColor.accent})`,
-    },
-    "&:focus-visible": {
-      outline: `2px solid ${desktopColor.accent}`,
-      outlineOffset: "2px",
     },
   },
 } as const;

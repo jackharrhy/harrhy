@@ -1,14 +1,14 @@
-# UI explorer design
+# @harrhy/ui explorer design
 
 Mode: Operate / Read. A component tool, not a landing page.
 
 ## Direction
 
-Primer's product documentation is the primary reference: persistent component navigation, compact hierarchy, working examples beside source, explicit variants and accessibility behavior. Geist contributes disciplined neutral surfaces, fine separators, strong action hierarchy, and concise control labels. Neither brand, assets nor React implementation is copied. Use system typography for the tool; respect the specimen's own theme typography.
+Primer's product documentation is the primary reference: persistent component navigation, compact hierarchy, working examples beside source, explicit variants and accessibility behavior. Geist contributes disciplined neutral surfaces, fine separators, strong action hierarchy, and concise control labels. Neither brand, assets nor React implementation is copied. The tool and specimens inherit the chosen theme typography.
 
 Explorer and Scenes are different destinations. Explorer selects one component, changes its actual props, exercises its behavior, and shows matching code. Scenes demonstrate compositions, including synthetic Radio views studied from the actual app. Controls and code remain findable without scrolling through unrelated examples. Desktop has a component rail, specimen, and controls; mobile uses disclosed component links and stacked controls. Native links retain useful destinations without scripts.
 
-The workbench chrome stays neutral. Clean, tactile and Artbin themes scope only the specimen, never conditional app selectors. Preserve PR161 Artbin density, typography, borders, feedback contrast and focus. No production app cutover, backend mutation, playback or credentials.
+The header theme picker themes the complete workbench using shared tokens and controls. Radio retains its nested desktop skin; the theme comparison deliberately shows independent subtrees. Preserve PR161 Artbin density, typography, borders, feedback contrast and focus. No production app cutover, backend mutation, playback or credentials.
 
 ## Primary references
 
@@ -20,7 +20,7 @@ Read directly on 2026-11-15:
 
 ## Official patterns
 
-Select and Tabs compose the pinned official `@remix-run/ui` 0.13.1 behavior; Select uses its Popover, list, option and hidden-input composition. No native select is used in the library/showcase. The Explorer inventories the other published patterns rather than presenting our wrapper coverage as the whole upstream library. Native Dialog remains intentional: this upstream version has no Dialog export. Select renders its default label and hidden form value on the server, but choosing requires hydration. It is not a native required-validation, reset or no-JavaScript replacement. Route navigation stays anchors; search stays native GET.
+Select and Tabs compose the pinned official `@remix-run/ui` 0.13.1 behavior; Select uses its Popover, list, option and hidden-input composition. No native select is used in the library/showcase. Developer documentation inventories published patterns; coverage bookkeeping does not appear in the working interface. Native Dialog remains intentional: this upstream version has no Dialog export. Select renders its default label and hidden form value on the server, but choosing requires hydration. It is not a native required-validation, reset or no-JavaScript replacement. Route navigation stays anchors; search stays native GET.
 
 ## Verification
 
