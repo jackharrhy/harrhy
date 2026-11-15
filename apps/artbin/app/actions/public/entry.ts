@@ -31,6 +31,7 @@ app.addEventListener("error", (event) => {
 });
 
 await app.ready();
+document.documentElement.dataset.artbinReady = "true";
 
 if (import.meta.hot) {
   import.meta.hot.on("server:update", async () => {

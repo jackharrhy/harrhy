@@ -6,8 +6,6 @@ import {
   BreadcrumbLink,
   BreadcrumbPage,
   BreadcrumbSeparator,
-  NavigationMenu,
-  NavigationMenuLink,
   Progress,
   TableContainer,
   Table,
@@ -37,6 +35,7 @@ import {
   MenuTrigger,
   MenuContent,
   MenuItem,
+  Select,
 } from "@harrhy/ui/interactive";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
@@ -55,12 +54,6 @@ export const expandedStories = [
     name: "Breadcrumbs",
     group: "Navigation",
     summary: "An ordered path with a current page.",
-  },
-  {
-    id: "navigation-menu",
-    name: "NavigationMenu",
-    group: "Navigation",
-    summary: "Native route links, not a popup menubar.",
   },
   {
     id: "table",
@@ -117,33 +110,29 @@ export function ExpandedStory(
         ? `<Progress aria-label="Upload" value={${progress}} />`
         : story === "breadcrumbs"
           ? `<Breadcrumbs>\n  <BreadcrumbList>\n    <BreadcrumbItem><BreadcrumbLink href="/?view=scenes&scene=radio">radio</BreadcrumbLink></BreadcrumbItem>\n    <BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbLink href="/?view=scenes&scene=radio">rooms</BreadcrumbLink></BreadcrumbItem>\n    <BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbPage>Evening radio</BreadcrumbPage></BreadcrumbItem>\n  </BreadcrumbList>\n</Breadcrumbs>`
-          : story === "navigation-menu"
-            ? `<NavigationMenu aria-label="Collections">\n  <NavigationMenuLink href="/?component=navigation-menu" aria-current="page">Browse</NavigationMenuLink>\n  <NavigationMenuLink href="/?component=table">Recent uploads</NavigationMenuLink>\n</NavigationMenu>`
-            : story === "table"
-              ? `<TableContainer tabindex={0} role="region" aria-label="Upload table">\n  <Table>\n    <TableCaption>Synthetic uploads</TableCaption>\n    <TableHeader><TableRow><TableHead>File</TableHead><TableHead>Size</TableHead></TableRow></TableHeader>\n    <TableBody><TableRow><TableHead scope="row">moss.png</TableHead><TableCell>128 KB</TableCell></TableRow><TableRow><TableHead scope="row">slate.png</TableHead><TableCell>96 KB</TableCell></TableRow></TableBody>\n    <TableFooter><TableRow><TableHead scope="row">Total</TableHead><TableCell>224 KB</TableCell></TableRow></TableFooter>\n  </Table>\n</TableContainer>`
-              : story === "collapsible"
-                ? `<Collapsible>\n  <CollapsibleTrigger>Archive contents</CollapsibleTrigger>\n  <CollapsibleContent>Two images, ready to review.</CollapsibleContent>\n</Collapsible>`
-                : story === "accordion"
-                  ? `<Accordion ${multiple ? 'type="multiple" defaultValue={["storage"]}' : 'defaultValue="storage"'}>\n  <AccordionItem value="storage"><Heading level={3}><AccordionTrigger>Storage</AccordionTrigger></Heading><AccordionContent>Files stay in your archive.</AccordionContent></AccordionItem>\n  <AccordionItem value="sharing"${disabled ? " disabled" : ""}><Heading level={3}><AccordionTrigger>Sharing</AccordionTrigger></Heading><AccordionContent>Share a link when you are ready.</AccordionContent></AccordionItem>\n</Accordion>`
-                  : story === "menu"
-                    ? `<Menu label="Collection actions">\n  <MenuTrigger>Actions</MenuTrigger>\n  <MenuContent onSelect={(item) => { result = item.label; handle.update(); }}>\n    <MenuItem name="rename">Rename</MenuItem>\n    <MenuItem name="download">Download</MenuItem>\n    <MenuItem name="delete" disabled>Delete</MenuItem>\n  </MenuContent>\n</Menu>\n<output aria-live="polite">{result}</output>`
-                    : `<Stack>\n  <Heading level={2}>No uploads yet</Heading>\n  <Text tone="muted">Choose files to start your collection.</Text>\n</Stack>`;
+          : story === "table"
+            ? `<TableContainer tabindex={0} role="region" aria-label="Upload table">\n  <Table>\n    <TableCaption>Synthetic uploads</TableCaption>\n    <TableHeader><TableRow><TableHead>File</TableHead><TableHead>Size</TableHead></TableRow></TableHeader>\n    <TableBody><TableRow><TableHead scope="row">moss.png</TableHead><TableCell>128 KB</TableCell></TableRow><TableRow><TableHead scope="row">slate.png</TableHead><TableCell>96 KB</TableCell></TableRow></TableBody>\n    <TableFooter><TableRow><TableHead scope="row">Total</TableHead><TableCell>224 KB</TableCell></TableRow></TableFooter>\n  </Table>\n</TableContainer>`
+            : story === "collapsible"
+              ? `<Collapsible>\n  <CollapsibleTrigger>Archive contents</CollapsibleTrigger>\n  <CollapsibleContent>Two images, ready to review.</CollapsibleContent>\n</Collapsible>`
+              : story === "accordion"
+                ? `<Accordion ${multiple ? 'type="multiple" defaultValue={["storage"]}' : 'defaultValue="storage"'}>\n  <AccordionItem value="storage"><Heading level={3}><AccordionTrigger>Storage</AccordionTrigger></Heading><AccordionContent>Files stay in your archive.</AccordionContent></AccordionItem>\n  <AccordionItem value="sharing"${disabled ? " disabled" : ""}><Heading level={3}><AccordionTrigger>Sharing</AccordionTrigger></Heading><AccordionContent>Share a link when you are ready.</AccordionContent></AccordionItem>\n</Accordion>`
+                : story === "menu"
+                  ? `<Menu label="Collection actions">\n  <MenuTrigger>Actions</MenuTrigger>\n  <MenuContent onSelect={(item) => { result = item.label; handle.update(); }}>\n    <MenuItem name="rename">Rename</MenuItem>\n    <MenuItem name="download">Download</MenuItem>\n    <MenuItem name="delete" disabled>Delete</MenuItem>\n  </MenuContent>\n</Menu>\n<Field id="file-order" label="File order">\n  <Select defaultValue="name" options={[{ value: "name", label: "Name" }, { value: "size", label: "Size" }]} />\n</Field>\n<output aria-live="polite">{result}</output>`
+                  : `<Stack>\n  <Heading level={2}>No uploads yet</Heading>\n  <Text tone="muted">Choose files to start your collection.</Text>\n</Stack>`;
     const names =
       story === "progress"
         ? "Progress"
         : story === "breadcrumbs"
           ? "Breadcrumbs, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator"
-          : story === "navigation-menu"
-            ? "NavigationMenu, NavigationMenuLink"
-            : story === "table"
-              ? "TableContainer, Table, TableCaption, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell"
-              : story === "collapsible"
-                ? "Collapsible, CollapsibleTrigger, CollapsibleContent"
-                : story === "accordion"
-                  ? "Accordion, AccordionItem, AccordionTrigger, AccordionContent"
-                  : story === "menu"
-                    ? "Menu, MenuTrigger, MenuContent, MenuItem"
-                    : "Stack, Heading, Text";
+          : story === "table"
+            ? "TableContainer, Table, TableCaption, TableHeader, TableBody, TableFooter, TableRow, TableHead, TableCell"
+            : story === "collapsible"
+              ? "Collapsible, CollapsibleTrigger, CollapsibleContent"
+              : story === "accordion"
+                ? "Accordion, AccordionItem, AccordionTrigger, AccordionContent"
+                : story === "menu"
+                  ? "Menu, MenuTrigger, MenuContent, MenuItem, Select"
+                  : "Stack, Heading, Text";
     const interactive = story === "accordion" || story === "menu";
     const themeName =
       theme === "clean"
@@ -151,7 +140,7 @@ export function ExpandedStory(
         : theme === "tactile"
           ? "tactileTheme"
           : "brutalistTheme";
-    const source = `import { ${names} } from "@harrhy/ui/${interactive ? "interactive" : "native"}";\n${story === "accordion" ? 'import { Heading } from "@harrhy/ui/native";\n' : ""}import { ${themeName}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n${story === "menu" ? '\n// Inside an app-owned clientEntry; result starts as "No action selected."\n' : interactive ? "\n// Render inside an app-owned clientEntry and boot Remix run().\n" : ""}\n<section mix={[themeStyles(${themeName}), themeRoot]}>\n${content
+    const source = `import { ${names} } from "@harrhy/ui/${interactive ? "interactive" : "native"}";\n${story === "accordion" ? 'import { Heading } from "@harrhy/ui/native";\n' : story === "menu" ? 'import { Field } from "@harrhy/ui/native";\n' : ""}import { ${themeName}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n${story === "menu" ? '\n// Inside an app-owned clientEntry; result starts as "No action selected."\n' : interactive ? "\n// Render inside an app-owned clientEntry and boot Remix run().\n" : ""}\n<section mix={[themeStyles(${themeName}), themeRoot]}>\n${content
       .split("\n")
       .map((line) => `  ${line}`)
       .join("\n")}\n</section>`;
@@ -193,19 +182,6 @@ export function ExpandedStory(
                 </BreadcrumbItem>
               </BreadcrumbList>
             </Breadcrumbs>
-          )}
-          {story === "navigation-menu" && (
-            <NavigationMenu aria-label="Collections">
-              <NavigationMenuLink
-                href="/?component=navigation-menu"
-                aria-current="page"
-              >
-                Browse
-              </NavigationMenuLink>
-              <NavigationMenuLink href="/?component=table">
-                Recent uploads
-              </NavigationMenuLink>
-            </NavigationMenu>
           )}
           {story === "table" && (
             <TableContainer
@@ -268,21 +244,41 @@ export function ExpandedStory(
           )}
           {story === "menu" && (
             <Stack>
-              <Menu label="Collection actions">
-                <MenuTrigger>Actions</MenuTrigger>
-                <MenuContent
-                  onSelect={(item) => {
-                    result = item.label;
-                    handle.update();
-                  }}
-                >
-                  <MenuItem name="rename">Rename</MenuItem>
-                  <MenuItem name="download">Download</MenuItem>
-                  <MenuItem name="delete" disabled>
-                    Delete
-                  </MenuItem>
-                </MenuContent>
-              </Menu>
+              <div
+                mix={css({
+                  display: "flex",
+                  alignItems: "end",
+                  gap: "1rem",
+                  flexWrap: "wrap",
+                })}
+              >
+                <div>
+                  <Menu label="Collection actions">
+                    <MenuTrigger>Actions</MenuTrigger>
+                    <MenuContent
+                      onSelect={(item) => {
+                        result = item.label;
+                        handle.update();
+                      }}
+                    >
+                      <MenuItem name="rename">Rename</MenuItem>
+                      <MenuItem name="download">Download</MenuItem>
+                      <MenuItem name="delete" disabled>
+                        Delete
+                      </MenuItem>
+                    </MenuContent>
+                  </Menu>
+                </div>
+                <Field id="file-order" label="File order">
+                  <Select
+                    defaultValue="name"
+                    options={[
+                      { value: "name", label: "Name" },
+                      { value: "size", label: "Size" },
+                    ]}
+                  />
+                </Field>
+              </div>
               <output aria-live="polite">{result}</output>
             </Stack>
           )}
@@ -352,15 +348,13 @@ export function ExpandedStory(
                 ? "Use arrows and Home/End between triggers; Enter or Space toggles a panel."
                 : story === "collapsible"
                   ? "Native details/summary; no hydration required."
-                  : story === "navigation-menu"
-                    ? "Ordinary links with aria-current. No popup navigation semantics are claimed."
-                    : story === "typography"
-                      ? "Apps compose empty states and section headings from these parts; no shared EmptyState wrapper."
-                      : story === "breadcrumbs"
-                        ? "The Radio scene also composes these parts in its original title bar."
-                        : story === "table"
-                          ? "A native table, not a sorting/filtering DataTable engine."
-                          : "Native progress; an unknown total omits the value attribute."}
+                  : story === "typography"
+                    ? "Apps compose empty states and section headings from these parts; no shared EmptyState wrapper."
+                    : story === "breadcrumbs"
+                      ? "The Radio scene also composes these parts in its original title bar."
+                      : story === "table"
+                        ? "A native table, not a sorting/filtering DataTable engine."
+                        : "Native progress; an unknown total omits the value attribute."}
           </Text>
         </div>
         <div data-source>

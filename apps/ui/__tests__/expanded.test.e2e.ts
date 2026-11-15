@@ -103,7 +103,7 @@ it("exercises extracted parts, official Accordion/Menu and matching Explorer sou
     await crumbs.locator('[aria-current="page"]').innerText(),
     "Evening radio",
   );
-  const nav = await visit("navigation-menu");
+  const nav = await visit("tabs");
   assert.equal(
     await nav
       .getByRole("link", { name: "Browse" })
@@ -120,7 +120,7 @@ it("exercises extracted parts, official Accordion/Menu and matching Explorer sou
   for (const story of [
     "progress",
     "breadcrumbs",
-    "navigation-menu",
+    "tabs",
     "table",
     "collapsible",
     "accordion",

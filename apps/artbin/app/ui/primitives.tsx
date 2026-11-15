@@ -144,14 +144,6 @@ const progressMetaStyle = css({
   justifyContent: "space-between",
   marginTop: "0.25rem",
 });
-const tableHeaderStyle = css({
-  borderBottom: `2px solid ${theme.color.subtle}`,
-  textAlign: "left",
-});
-const tableRowStyle = css({
-  borderBottom: `1px solid ${theme.color.subtle}`,
-  "&:last-child": { borderBottom: 0 },
-});
 const tableHeaderCellStyle = css({
   color: theme.color.muted,
   fontWeight: 500,
@@ -587,14 +579,10 @@ export function DataTable(
   );
 }
 export function TableHeaderRow(handle: Handle<{ children?: RemixNode }>) {
-  return () => (
-    <UiTableRow mix={tableHeaderStyle}>{handle.props.children}</UiTableRow>
-  );
+  return () => <UiTableRow>{handle.props.children}</UiTableRow>;
 }
 export function TableRow(handle: Handle<{ children?: RemixNode }>) {
-  return () => (
-    <UiTableRow mix={tableRowStyle}>{handle.props.children}</UiTableRow>
-  );
+  return () => <UiTableRow>{handle.props.children}</UiTableRow>;
 }
 export function TableHeaderCell(handle: Handle<{ children?: RemixNode }>) {
   return () => (

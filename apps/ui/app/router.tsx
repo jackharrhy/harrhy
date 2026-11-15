@@ -70,7 +70,11 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
               theme={theme}
               story={
                 stories.find(
-                  (story) => story.id === url.searchParams.get("component"),
+                  (story) =>
+                    story.id ===
+                    (url.searchParams.get("component") === "navigation-menu"
+                      ? "tabs"
+                      : url.searchParams.get("component")),
                 )?.id ?? "button"
               }
               query={(url.searchParams.get("q") ?? "").slice(0, 100)}

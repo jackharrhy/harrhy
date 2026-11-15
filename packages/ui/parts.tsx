@@ -1,5 +1,9 @@
 import { css, type Handle, type Props } from "remix/component";
-import { focusStyles } from "./recipes.ts";
+import {
+  focusStyles,
+  navigationStripStyles,
+  navigationItemStyles,
+} from "./recipes.ts";
 
 export function Heading(
   handle: Handle<Props<"h2"> & { level?: 1 | 2 | 3 | 4 | 5 | 6 }>,
@@ -125,37 +129,17 @@ export function NavigationMenu(
 ) {
   return () => {
     const { mix, ...props } = handle.props;
-    return <nav {...props} mix={[navigationStyles, mix]} />;
+    return <nav {...props} mix={[navigationStripStyles, mix]} />;
   };
 }
-const navigationStyles = css({
-  display: "flex",
-  gap: 0,
-  overflowX: "auto",
-  borderBottom: "1px solid var(--hui-border)",
-});
 export function NavigationMenuLink(
   handle: Handle<Props<"a"> & { href: string }>,
 ) {
   return () => {
     const { mix, ...props } = handle.props;
-    return <a {...props} mix={[navigationLinkStyles, focusStyles, mix]} />;
+    return <a {...props} mix={[navigationItemStyles, focusStyles, mix]} />;
   };
 }
-const navigationLinkStyles = css({
-  flexShrink: 0,
-  padding: "0.5rem 1rem",
-  fontSize: "0.875rem",
-  borderBottom: "2px solid transparent",
-  color: "var(--hui-muted)",
-  textDecoration: "none",
-  "&:hover": { color: "var(--hui-ink)" },
-  '&[aria-current="page"]': {
-    borderBottomColor: "var(--hui-ink)",
-    color: "var(--hui-ink)",
-    fontWeight: 600,
-  },
-});
 export function Collapsible(handle: Handle<Props<"details">>) {
   return () => {
     const { mix, ...props } = handle.props;
@@ -194,7 +178,8 @@ export function TableContainer(handle: Handle<Props<"div">>) {
 const tableContainerStyles = css({
   maxWidth: "100%",
   overflowX: "auto",
-  border: "1px solid var(--hui-border)",
+  border: "1px solid var(--hui-table-border)",
+  background: "var(--hui-table-surface)",
 });
 export function Table(handle: Handle<Props<"table">>) {
   return () => {
@@ -205,7 +190,18 @@ export function Table(handle: Handle<Props<"table">>) {
 const tableStyles = css({
   width: "100%",
   borderCollapse: "collapse",
-  fontSize: "0.875rem",
+  fontSize: "var(--hui-table-text-size)",
+  color: "var(--hui-ink)",
+  background: "var(--hui-table-surface)",
+  "& tr + tr, & thead + tbody > tr:first-child, & tbody + tfoot > tr:first-child":
+    { borderTop: "1px solid var(--hui-table-border)" },
+  "& tbody > tr:nth-child(even)": { background: "var(--hui-table-stripe)" },
+  "& tbody > tr:hover": { background: "var(--hui-hover-surface)" },
+  "& thead": {
+    background: "var(--hui-table-header)",
+    backgroundImage: "var(--hui-table-header-image)",
+    boxShadow: "var(--hui-table-header-shadow)",
+  },
   fontVariantNumeric: "tabular-nums",
 });
 export function TableHeader(handle: Handle<Props<"thead">>) {
@@ -231,10 +227,9 @@ const captionStyles = css({
 export function TableRow(handle: Handle<Props<"tr">>) {
   return () => {
     const { mix, ...props } = handle.props;
-    return <tr {...props} mix={[rowStyles, mix]} />;
+    return <tr {...props} mix={mix} />;
   };
 }
-const rowStyles = css({ borderBottom: "1px solid var(--hui-border)" });
 export function TableHead(handle: Handle<Props<"th">>) {
   return () => {
     const { mix, ...props } = handle.props;
@@ -250,6 +245,7 @@ export function TableCell(handle: Handle<Props<"td">>) {
 const cellStyles = css({
   textAlign: "start",
   verticalAlign: "top",
-  padding: "0.625rem 0.75rem",
+  padding: "var(--hui-table-cell-padding)",
+  "& + th, & + td": { borderLeft: "var(--hui-table-column-border)" },
 });
-const headStyles = css({ background: "var(--hui-surface)", fontWeight: 600 });
+const headStyles = css({ fontWeight: 600 });

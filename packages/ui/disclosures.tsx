@@ -1,7 +1,7 @@
 import { css, type Handle, type Props } from "remix/component";
 import * as accordion from "@remix-run/ui/accordion";
 import * as menu from "@remix-run/ui/menu";
-import { buttonStyles, focusStyles } from "./recipes.ts";
+import { buttonStyles, focusStyles, popupOffset } from "./recipes.ts";
 
 export type AccordionProps = accordion.AccordionContextProps;
 export function Accordion(handle: Handle<AccordionProps>) {
@@ -110,7 +110,7 @@ export function MenuTrigger(handle: Handle<Props<"button">>) {
           buttonStyles,
           menuTriggerStyles,
           focusStyles,
-          menu.trigger(),
+          menu.trigger({ offset: popupOffset }),
           mix,
         ]}
       />

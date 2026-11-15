@@ -100,6 +100,9 @@ test("real uploads, shared dialog focus, local fonts and narrow layouts", async 
     });
     expect(created).toBe(200);
     await page.goto(`${origin}/folder/synthetic-study`);
+    await page.waitForFunction(
+      () => document.documentElement.dataset.artbinReady === "true",
+    );
     const upload = page.getByRole("button", { name: "Upload", exact: true });
     await upload.click();
     await page.getByRole("dialog").waitFor();
