@@ -34,11 +34,11 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="robots" content="noindex, nofollow" />
           <title>@harrhy/ui workbench</title>
-          <link rel="stylesheet" href="/assets/ui/fonts.css" />
+          <link rel="stylesheet" href="/assets/hui/fonts.css" />
           {theme === "brutalist" && (
             <link
               rel="preload"
-              href="/assets/ui/fonts/ibm-plex-sans-latin.woff2"
+              href="/assets/hui/fonts/ibm-plex-sans-latin.woff2"
               as="font"
               type="font/woff2"
               crossOrigin="anonymous"
@@ -70,7 +70,11 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
               theme={theme}
               story={
                 stories.find(
-                  (story) => story.id === url.searchParams.get("component"),
+                  (story) =>
+                    story.id ===
+                    (url.searchParams.get("component") === "navigation-menu"
+                      ? "tabs"
+                      : url.searchParams.get("component")),
                 )?.id ?? "button"
               }
               query={(url.searchParams.get("q") ?? "").slice(0, 100)}

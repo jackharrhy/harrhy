@@ -21,7 +21,8 @@ const app = run({
       return `<pre>Frame error: ${response.status} ${response.statusText}</pre>`;
     }
 
-    return response.body ?? (await response.text());
+    // Keep CSP headers so Remix translates fetched styles to the document nonce.
+    return response;
   },
 });
 
@@ -30,6 +31,7 @@ app.addEventListener("error", (event) => {
 });
 
 await app.ready();
+document.documentElement.dataset.artbinReady = "true";
 
 if (import.meta.hot) {
   import.meta.hot.on("server:update", async () => {

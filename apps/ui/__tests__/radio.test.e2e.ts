@@ -50,6 +50,9 @@ it("ports Radio queue, transport and keyboard behavior without a runtime connect
     };
   });
   await page.goto("/?view=scenes&scene=radio");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
   const room = page.locator("[data-radio-shell]");
   await room.getByRole("button", { name: "Play", exact: true }).click();
   await room.getByRole("button", { name: "Pause", exact: true }).waitFor();
@@ -83,7 +86,11 @@ it("ports Radio queue, transport and keyboard behavior without a runtime connect
   await firstHandle.focus();
   await page.keyboard.press("ArrowDown");
   assert.match(
-    await room.locator("ol > li").first().innerText(),
+    await room
+      .getByRole("list", { name: "Queue", exact: true })
+      .locator(":scope > li")
+      .first()
+      .innerText(),
     /A small room/,
   );
   assert.equal(
@@ -91,13 +98,27 @@ it("ports Radio queue, transport and keyboard behavior without a runtime connect
     true,
   );
   await page.keyboard.press("Home");
-  assert.match(await room.locator("ol > li").first().innerText(), /Midnight/);
+  assert.match(
+    await room
+      .getByRole("list", { name: "Queue", exact: true })
+      .locator(":scope > li")
+      .first()
+      .innerText(),
+    /Midnight/,
+  );
   const trackActions = room.getByLabel("Actions for Tape loop no. 4", {
     exact: true,
   });
   await trackActions.click();
   await room.getByRole("button", { name: "queue next", exact: true }).click();
-  assert.match(await room.locator("ol > li").nth(1).innerText(), /Tape loop/);
+  assert.match(
+    await room
+      .getByRole("list", { name: "Queue", exact: true })
+      .locator(":scope > li")
+      .nth(1)
+      .innerText(),
+    /Tape loop/,
+  );
   assert.equal(
     await trackActions.evaluate((node) => node === document.activeElement),
     true,
@@ -187,6 +208,9 @@ it("renders actual Radio scenario states and narrow layouts", async (t) => {
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.goto("/?view=scenes&scene=radio");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
   const scenario = page.getByRole("button", { name: "Scenario", exact: true });
   const room = page.locator("[data-radio-shell]");
   await scenario.click();
@@ -202,7 +226,13 @@ it("renders actual Radio scenario states and narrow layouts", async (t) => {
     await room.getByRole("button", { name: "Play", exact: true }).isDisabled(),
     true,
   );
-  assert.equal(await room.locator("ol > li").count(), 0);
+  assert.equal(
+    await room
+      .getByRole("list", { name: "Queue", exact: true })
+      .locator(":scope > li")
+      .count(),
+    0,
+  );
   await scenario.click();
   await page.waitForFunction(
     () => document.activeElement?.getAttribute("role") === "listbox",

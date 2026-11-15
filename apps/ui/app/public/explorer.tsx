@@ -2,6 +2,8 @@ import { clientEntry, css, on } from "remix/component";
 import type { Handle } from "remix/component";
 import {
   Badge,
+  NavigationMenu,
+  NavigationMenuLink,
   Button,
   Checkbox,
   Field,
@@ -30,7 +32,14 @@ import { WorkbenchHeader } from "./workbench.tsx";
 import { themes } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
 
+import {
+  expandedStories,
+  isExpandedStory,
+  ExpandedStory,
+} from "./expanded-stories.tsx";
+
 export const stories = [
+  ...expandedStories,
   {
     id: "button",
     name: "Button",
@@ -87,9 +96,9 @@ export const stories = [
   },
   {
     id: "tabs",
-    name: "Tabs",
+    name: "Navigation",
     group: "Navigation",
-    summary: "Related panels, with arrow-key navigation.",
+    summary: "Route links and in-page tabs share presentation, not behavior.",
   },
   {
     id: "panel",
@@ -488,6 +497,8 @@ function Story(
   }
   return () => {
     const { story, theme } = handle.props;
+    if (isExpandedStory(story))
+      return <ExpandedStory story={story} theme={theme} />;
     const shownSource =
       codeSource +
       (longLine
@@ -514,7 +525,14 @@ function Story(
                 : story === "dialog"
                   ? '<Dialog open={open} title="Rename collection"\n  onClose={() => { open = false; handle.update(); }}>\n  {/* labelled form and explicit close actions */}\n</Dialog>'
                   : story === "tabs"
-                    ? `<Tabs defaultActiveTab="${activeTab}">\n  <TabList aria-label="Collection">\n    <Tab name="overview">Overview</Tab>\n    <Tab name="activity"${disabled ? " disabled" : ""}>Activity</Tab>\n  </TabList>\n  <TabPanel name="overview">Collection details</TabPanel>\n  <TabPanel name="activity">No changes yet.</TabPanel>\n</Tabs>`
+                    ? `// Route links navigate to another URL.
+<NavigationMenu aria-label="Collections">
+  <NavigationMenuLink href="/?component=tabs" aria-current="page">Browse</NavigationMenuLink>
+  <NavigationMenuLink href="/?component=table">Recent uploads</NavigationMenuLink>
+</NavigationMenu>
+
+// Tabs switch panels in this page; arrows move between tabs.
+<Tabs defaultActiveTab="${activeTab}">\n  <TabList aria-label="Collection">\n    <Tab name="overview">Overview</Tab>\n    <Tab name="activity"${disabled ? " disabled" : ""}>Activity</Tab>\n  </TabList>\n  <TabPanel name="overview">Collection details</TabPanel>\n  <TabPanel name="activity">No changes yet.</TabPanel>\n</Tabs>`
                     : story === "notice"
                       ? `<Notice tone="${tone}">{${JSON.stringify(label)}}</Notice>`
                       : story === "badge"
@@ -543,7 +561,7 @@ function Story(
 
 `
         : "";
-    const example = `import { ${stories.find((item) => item.id === story)!.name}${story === "diff" ? ", type DiffLine" : story === "field" ? ", Input" : story === "textarea" ? ", Field" : story === "panel" ? ", Stack" : story === "tabs" ? ", TabList, Tab, TabPanel" : ""} } from "${imports}";\n${story === "select" ? 'import { Field } from "@harrhy/ui/native";\n' : ""}${story === "checkbox" ? 'import { checkboxLabelStyles } from "@harrhy/ui/recipes";\n' : ""}import { ${themeImport}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n\n${declaration}<section mix={[themeStyles(${themeImport}), themeRoot]}>\n${content
+    const example = `import { ${story === "tabs" ? "Tabs" : stories.find((item) => item.id === story)!.name}${story === "diff" ? ", type DiffLine" : story === "field" ? ", Input" : story === "textarea" ? ", Field" : story === "panel" ? ", Stack" : story === "tabs" ? ", TabList, Tab, TabPanel" : ""} } from "${imports}";\n${story === "select" ? 'import { Field } from "@harrhy/ui/native";\n' : story === "tabs" ? 'import { NavigationMenu, NavigationMenuLink } from "@harrhy/ui/native";\n' : ""}${story === "checkbox" ? 'import { checkboxLabelStyles } from "@harrhy/ui/recipes";\n' : ""}import { ${themeImport}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n\n${declaration}<section mix={[themeStyles(${themeImport}), themeRoot]}>\n${content
       .split("\n")
       .map((line) => `  ${line}`)
       .join("\n")}\n</section>`;
@@ -731,26 +749,50 @@ function Story(
                 </Panel>
               )}
               {story === "tabs" && (
-                <Tabs
-                  activeTab={activeTab}
-                  onActiveTabChange={(name) => {
-                    activeTab = name;
-                    handle.update();
-                  }}
+                <div
+                  data-navigation-examples
+                  mix={css({ display: "grid", gap: "1.5rem" })}
                 >
-                  <TabList aria-label="Collection">
-                    <Tab name="overview">Overview</Tab>
-                    <Tab name="activity" disabled={disabled}>
-                      Activity
-                    </Tab>
-                  </TabList>
-                  <TabPanel name="overview">
-                    <p>Collection details</p>
-                  </TabPanel>
-                  <TabPanel name="activity">
-                    <p>No changes yet.</p>
-                  </TabPanel>
-                </Tabs>
+                  <section aria-label="Route links example">
+                    <h3>Route links</h3>
+                    <p>Open another URL; each link is a normal Tab stop.</p>
+                    <NavigationMenu aria-label="Collections">
+                      <NavigationMenuLink
+                        href="/?component=tabs"
+                        aria-current="page"
+                      >
+                        Browse
+                      </NavigationMenuLink>
+                      <NavigationMenuLink href="/?component=table">
+                        Recent uploads
+                      </NavigationMenuLink>
+                    </NavigationMenu>
+                  </section>
+                  <section aria-label="In-page tabs example">
+                    <h3>In-page tabs</h3>
+                    <p>Switch panels here; use arrows to move between tabs.</p>
+                    <Tabs
+                      activeTab={activeTab}
+                      onActiveTabChange={(name) => {
+                        activeTab = name;
+                        handle.update();
+                      }}
+                    >
+                      <TabList aria-label="Collection">
+                        <Tab name="overview">Overview</Tab>
+                        <Tab name="activity" disabled={disabled}>
+                          Activity
+                        </Tab>
+                      </TabList>
+                      <TabPanel name="overview">
+                        <p>Collection details</p>
+                      </TabPanel>
+                      <TabPanel name="activity">
+                        <p>No changes yet.</p>
+                      </TabPanel>
+                    </Tabs>
+                  </section>
+                </div>
               )}
               {story === "dialog" && (
                 <>

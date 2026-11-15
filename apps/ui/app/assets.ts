@@ -13,6 +13,8 @@ export function createAssets() {
       "apps/ui/app/public/**",
       "packages/ui/*.ts",
       "packages/ui/*.tsx",
+      "packages/ui/fonts.css",
+      "packages/ui/fonts/*.woff2",
     ],
     allowPackages: [
       "remix",

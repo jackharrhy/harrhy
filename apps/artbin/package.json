@@ -23,6 +23,7 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@harrhy/ui": "0.1.0",
     "@harrhy/worldview-renderer": "0.2.0",
     "@harrhy/artbin-core": "0.0.1",
     "@harrhy/request-body": "0.1.0",

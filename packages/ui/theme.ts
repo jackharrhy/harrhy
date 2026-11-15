@@ -13,6 +13,16 @@ export interface ThemeTokens {
   selectedSurface: string;
   selectedInk: string;
   disabledSurface: string;
+  popupOffset: string;
+  tableBorder: string;
+  tableSurface: string;
+  tableStripe: string;
+  tableTextSize: string;
+  tableCellPadding: string;
+  tableColumnBorder: string;
+  tableHeader: string;
+  tableHeaderImage: string;
+  tableHeaderShadow: string;
   popupRadius: string;
   popupPadding: string;
   optionRadius: string;
@@ -72,6 +82,16 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   selectedSurface: "#dfe9ed",
   selectedInk: "#243f4d",
   disabledSurface: "#edf0f2",
+  popupOffset: "6px",
+  tableBorder: "var(--hui-border)",
+  tableSurface: "var(--hui-surface)",
+  tableStripe: "transparent",
+  tableTextSize: "0.875rem",
+  tableCellPadding: "0.625rem 0.75rem",
+  tableColumnBorder: "0 solid transparent",
+  tableHeader: "var(--hui-surface)",
+  tableHeaderImage: "none",
+  tableHeaderShadow: "none",
   popupRadius: "10px",
   popupPadding: "6px",
   optionRadius: "6px",
@@ -127,7 +147,17 @@ export function composeTheme(
   return Object.assign({}, base, ...overrides);
 }
 
+// Table treatment follows Radio room utility headers and fine desktop list rules.
 export const tactileTheme = composeTheme(cleanTheme, {
+  tableBorder: "#7b878c",
+  tableSurface: "#f8fbfb",
+  tableStripe: "#edf2f4",
+  tableTextSize: "13px",
+  tableCellPadding: "0.4375rem 0.625rem",
+  tableColumnBorder: "1px solid #dce4e7",
+  tableHeader: "#dce4e7",
+  tableHeaderImage: "linear-gradient(#f8fbfb, #dce4e7)",
+  tableHeaderShadow: "inset 0 1px #fff",
   canvas: "#edf5f5",
   surface: "#f9fdfb",
   elevated: "#ffffff",

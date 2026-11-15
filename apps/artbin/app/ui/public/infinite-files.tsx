@@ -1,6 +1,7 @@
+import { ButtonLink } from "@harrhy/ui/native";
 import { clientEntry, css, on, ref, type Handle } from "remix/component";
 import { FileCollection, type FileItem } from "../file-collection.tsx";
-import { buttonStyle, theme } from "../styles.ts";
+import { theme } from "../styles.ts";
 
 type Props = {
   files: FileItem[];
@@ -121,11 +122,10 @@ export const InfiniteFiles = clientEntry(
                     ? "Could not load more files. Try again."
                     : `${files.length} files loaded`}
               </p>
-              <a
+              <ButtonLink
                 href={nextHref}
                 aria-disabled={Boolean(request)}
                 mix={[
-                  buttonStyle,
                   on("click", (event) => {
                     if (
                       event.button !== 0 ||
@@ -141,7 +141,7 @@ export const InfiniteFiles = clientEntry(
                 ]}
               >
                 {error ? "Retry" : "Load more"}
-              </a>
+              </ButtonLink>
             </div>
           ) : null}
         </div>

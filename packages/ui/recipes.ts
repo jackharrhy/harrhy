@@ -195,3 +195,40 @@ export const checkboxLabelStyles = css({
   cursor: "pointer",
   "& input[type=checkbox]": { marginBlockStart: "4px" },
 });
+
+/** Shared route/tab presentation; callers retain their own link or widget semantics. */
+export const navigationStripStyles = css({
+  display: "flex",
+  gap: 0,
+  overflowX: "auto",
+  borderBottom: "1px solid var(--hui-border)",
+});
+export const navigationItemStyles = css({
+  flexShrink: 0,
+  minHeight: "var(--hui-control-height)",
+  padding: "0.5rem 1rem",
+  fontFamily: "var(--hui-font-ui)",
+  fontSize: "0.875rem",
+  lineHeight: 1.25,
+  border: 0,
+  borderBottom: "2px solid transparent",
+  background: "transparent",
+  color: "var(--hui-muted)",
+  textDecoration: "none",
+  cursor: "pointer",
+  "&:hover": { color: "var(--hui-ink)" },
+  "&[aria-current=page], &[aria-selected=true]": {
+    borderBottomColor: "var(--hui-ink)",
+    color: "var(--hui-ink)",
+    fontWeight: 600,
+  },
+  "&:disabled": { color: "var(--hui-muted)", cursor: "not-allowed" },
+});
+
+/** Pixel distance consumed by upstream anchor positioning, including collision flipping. */
+export function popupOffset(floating: HTMLElement): number {
+  const value = Number.parseFloat(
+    getComputedStyle(floating).getPropertyValue("--hui-popup-offset"),
+  );
+  return Number.isFinite(value) && value >= 0 ? value : 6;
+}

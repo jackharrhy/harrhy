@@ -29,7 +29,7 @@ it("server renders real syntax tokens and serves only local Fraunces assets", as
   assert.match(html, /ibm-plex-sans-latin\.woff2/);
   assert.ok(!html.includes("fonts.googleapis.com"));
   const font = await app.fetch(
-    new Request("http://localhost/assets/ui/fonts/fraunces-variable.woff2"),
+    new Request("http://localhost/assets/hui/fonts/fraunces-variable.woff2"),
   );
   assert.equal(font.status, 200);
   assert.equal(

@@ -32,6 +32,14 @@ export function Document(handle: Handle<DocumentProps>) {
             href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎨</text></svg>"
           />
           <title>{title}</title>
+          <link rel="stylesheet" href="/assets/hui/fonts.css" />
+          <link
+            rel="preload"
+            href="/assets/hui/fonts/ibm-plex-sans-latin.woff2"
+            as="font"
+            type="font/woff2"
+            crossOrigin="anonymous"
+          />
           {head}
           <ImportMap value={documentImportMap} nonce={nonce} />
           {entryScript.preloads.map((href) => (

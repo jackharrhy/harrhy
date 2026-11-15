@@ -1,3 +1,4 @@
+import { Button as UiButton } from "@harrhy/ui/native";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -16,7 +17,6 @@ import {
 import { ASELoader } from "./loaders/ASELoader.ts";
 import { MD5Loader } from "./loaders/MD5Loader.ts";
 import {
-  buttonStyle,
   dangerTextStyle,
   inputStyle,
   monoTextStyle,
@@ -187,10 +187,9 @@ export const ModelViewer = clientEntry(
             ) : null}
             {!loading && !error && animation?.names.length ? (
               <div mix={animationBarStyle}>
-                <button
+                <UiButton
                   type="button"
                   mix={[
-                    buttonStyle,
                     smallButtonStyle,
                     monoTextStyle,
                     animationButtonStyle,
@@ -198,8 +197,9 @@ export const ModelViewer = clientEntry(
                   ]}
                 >
                   {animation.isPlaying ? "Pause" : "Play"}
-                </button>
+                </UiButton>
                 <select
+                  aria-label="Animation"
                   value={animation.currentIndex}
                   mix={[
                     inputStyle,
@@ -232,8 +232,11 @@ export const ModelViewer = clientEntry(
           </div>
           {(handle.props.textures?.length ?? 0) > 1 ? (
             <div mix={textureBarStyle}>
-              <label mix={textureLabelStyle}>Texture:</label>
+              <label htmlFor={`${handle.id}-texture`} mix={textureLabelStyle}>
+                Texture:
+              </label>
               <select
+                id={`${handle.id}-texture`}
                 value={selectedTexture ?? ""}
                 mix={[
                   inputStyle,

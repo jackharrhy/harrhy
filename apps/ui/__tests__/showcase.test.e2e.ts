@@ -77,6 +77,9 @@ it("exercises local consent and board composition without persistence", async (t
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.goto("/?view=scenes");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
   await page.getByRole("button", { name: "Deny", exact: true }).click();
   await page
     .getByText("Access denied. Nothing shared.", { exact: true })

@@ -8,7 +8,7 @@ import {
 import * as select from "@remix-run/ui/select";
 import * as popover from "@remix-run/ui/popover";
 import { Field, mergeIds } from "./components.tsx";
-import { controlStyles, focusStyles } from "./recipes.ts";
+import { controlStyles, focusStyles, popupOffset } from "./recipes.ts";
 
 export interface SelectOption {
   value: string;
@@ -97,17 +97,12 @@ function SelectSurface(handle: Handle<{ children?: RemixNode }>) {
       data-part="select-popover"
       mix={[
         surfaceStyles,
-        // The upstream selected-row overlay is useful on desktop, but covers
-        // narrow header labels on touch screens. Keep its anchor/viewport logic.
+        // Use the same trigger gap as Menu; upstream still owns flip/collision.
         on("beforetoggle", (event) => {
-          if (
-            event.newState === "open" &&
-            matchMedia("(max-width: 600px), (pointer: coarse)").matches &&
-            context.anchor
-          ) {
+          if (event.newState === "open" && context.anchor) {
             context.anchor = {
               target: context.anchor.target,
-              options: { placement: "bottom-end", offset: 6 },
+              options: { placement: "bottom-end", offset: popupOffset },
             };
           }
         }),

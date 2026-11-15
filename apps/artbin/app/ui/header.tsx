@@ -1,3 +1,5 @@
+import { Button } from "@harrhy/ui/native";
+import { displayStyles } from "@harrhy/ui/theme";
 import { css, type Handle } from "remix/component";
 
 import type { User } from "#db";
@@ -11,7 +13,10 @@ const headerStyle = css({
   backgroundColor: theme.color.background,
   borderBottom: `1px solid ${theme.color.borderLight}`,
   display: "flex",
-  height: "3rem",
+  minHeight: "3rem",
+  gap: "0.75rem",
+  flexWrap: "wrap",
+  paddingBlock: "0.5rem",
   justifyContent: "space-between",
   paddingInline: "1rem",
   position: "sticky",
@@ -27,6 +32,7 @@ const brandStyle = css({
 const navStyle = css({
   alignItems: "center",
   display: "flex",
+  flexWrap: "wrap",
   gap: "1rem",
   "@media (max-width: 640px)": { gap: "0.5rem" },
 });
@@ -87,16 +93,16 @@ export function Header(handle: Handle<HeaderProps>) {
             </span>
             <form method="post" action={routes.auth.supportExit.href()}>
               <input type="hidden" name="csrf" value={user.support.csrfToken} />
-              <button type="submit" mix={supportExitStyle}>
+              <Button type="submit" mix={supportExitStyle}>
                 Exit support session
-              </button>
+              </Button>
             </form>
           </aside>
         ) : null}
         <header mix={headerStyle}>
           <a
             href={user ? routes.folders.href() : routes.home.href()}
-            mix={brandStyle}
+            mix={[brandStyle, displayStyles]}
           >
             artbin
           </a>

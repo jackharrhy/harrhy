@@ -20,4 +20,4 @@ Copyright © 2017 IBM Corp., Reserved Font Name “Plex”; [IBM-Plex-Mono-OFL.t
 
 Verified axis: wght 100–700, default 400. No binary modification. CSS uses the `IBM Plex Mono` alias. SHA256: `632cb6cee5e90d89bd4354ff362bcffcef1384c19b603ddd2830561716e1f440`.
 
-The official Latin1 files include common punctuation; CSS retains their upstream unicode range so unsupported characters use the named fallbacks. Only upright faces are shipped, not extra italics/families/all static weights. Production Artbin and its assets are unchanged. See [third-party notices](../../../THIRD_PARTY_NOTICES.md).
+The official Latin1 files include common punctuation; CSS retains their upstream unicode range so unsupported characters use the named fallbacks. Only upright faces are shipped, not extra italics/families/all static weights. Both Artbin and the UI workbench explicitly serve these package-owned resources. Loading remains host-owned; importing a theme does not download fonts. See [third-party notices](../THIRD_PARTY_NOTICES.md).
