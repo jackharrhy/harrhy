@@ -52,6 +52,17 @@ confirmation constraints remain intact. The workspace check validates the comple
 catalog with the MCP SDK and checks those unions against both published schemas
 and operation validators.
 
+`app/actions/mcp/controller.ts` authenticates each request and validates its origin
+before passing it to `@harrhy/mcp/native`. The official SDK owns modern protocol
+handling and native stateless compatibility with existing 2025 clients. The MCP
+body limit is 8 MiB (including JSON/base64 overhead for the existing 5 MiB upload
+limit), with a ten-second input deadline. Tool execution, confirmation, local
+administrator checks and logging remain app-owned. SDK request handlers expose
+the existing catalog directly, keeping operation validation and error messages in
+one place rather than registering a second set of tool validators. Protected-resource metadata,
+issuer and scopes are unchanged. Router tests exercise the same endpoint with
+both the current native SDK client and Executor's exact SDK 1.32.1 client.
+
 ## Support login
 
 Artbin contains a separate, disabled-by-default support login adapter. The

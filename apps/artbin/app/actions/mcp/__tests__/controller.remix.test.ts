@@ -1,4 +1,10 @@
 import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import { Client as LegacyClient } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport as LegacyTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import {
   activeToken,
   identityDiscovery,
   permissionScopes,
@@ -13,6 +19,7 @@ import { existsSync } from "node:fs";
 import { clearServiceAuthCacheForTesting } from "#lib/service-auth.server";
 
 import { routes } from "../../../routes.ts";
+import { mcpOperations } from "../../../operations/catalog.ts";
 import {
   adminCookie,
   createRouterHarness,
@@ -95,11 +102,12 @@ describe("administrator MCP", () => {
       clientInfo: { name: "artbin-test", version: "1.0.0" },
     });
     assert.equal(initialized.status, 200);
-    const initializeBody = (await initialized.json()) as any;
+    const initializeBody = await readRpcResponse(initialized);
     assert.equal(initializeBody.result.serverInfo.name, "artbin");
+    assert.equal(initializeBody.result.protocolVersion, "2025-11-25");
 
     const listed = await mcpCall("admin-token", "tools/list");
-    const names = ((await listed.json()) as any).result.tools.map(
+    const names = (await readRpcResponse(listed)).result.tools.map(
       (tool: any) => tool.name,
     );
     assert.deepEqual(names, [
@@ -117,9 +125,7 @@ describe("administrator MCP", () => {
       "artbin_import_queue",
     ]);
     const tools = (
-      (await mcpCall("admin-token", "tools/list").then((response) =>
-        response.json(),
-      )) as any
+      await mcpCall("admin-token", "tools/list").then(readRpcResponse)
     ).result.tools;
     assert.ok(tools.every((tool: any) => tool.outputSchema?.type === "object"));
     assert.equal(
@@ -135,6 +141,86 @@ describe("administrator MCP", () => {
     );
     assert.equal(getResponse.status, 405);
     assert.equal(getResponse.headers.get("allow"), "POST");
+  });
+
+  it("serves discovery, the catalog and a bounded read to the current native client", async () => {
+    const client = new Client(
+      { name: "native-interop", version: "1.0.0" },
+      { versionNegotiation: { mode: { pin: "2026-07-28" } } },
+    );
+    const requests: Headers[] = [];
+    const transport = new StreamableHTTPClientTransport(
+      new URL("http://artbin.test/mcp"),
+      {
+        fetch: (input, init) => {
+          const request = new Request(input, init);
+          requests.push(request.headers);
+          return router.fetch(request);
+        },
+        requestInit: { headers: { Authorization: "Bearer admin-token" } },
+      },
+    );
+    try {
+      await client.connect(transport);
+      const catalog = await client.listTools();
+      assert.equal(catalog.tools.length, 12);
+      const result = await client.callTool({
+        name: "artbin_assets_list",
+        arguments: { limit: 2 },
+      });
+      assert.equal(result.isError, undefined);
+      assert.deepEqual(result.structuredContent, { assets: [] });
+      for (const method of ["server/discover", "tools/call"]) {
+        assert.ok(
+          requests.some(
+            (headers) =>
+              headers.get("Mcp-Method") === method &&
+              headers.get("MCP-Protocol-Version") === "2026-07-28",
+          ),
+        );
+      }
+    } finally {
+      await client.close();
+    }
+  });
+
+  it("serves the complete catalog and a bounded read to Executor's SDK 1.32.1", async () => {
+    const client = new LegacyClient({
+      name: "executor-interop",
+      version: "1.0.0",
+    });
+    const transport = new LegacyTransport(new URL("http://artbin.test/mcp"), {
+      fetch: (input, init) => router.fetch(new Request(input, init)),
+      requestInit: { headers: { Authorization: "Bearer admin-token" } },
+    });
+    try {
+      await client.connect(transport);
+      assert.equal(client.getServerVersion()?.name, "artbin");
+      const catalog = await client.listTools();
+      assert.equal(catalog.tools.length, 12);
+      const result = await client.callTool({
+        name: "artbin_folders_list",
+        arguments: { limit: 2, includeSystem: false },
+      });
+      assert.equal(result.isError, undefined);
+      assert.deepEqual(result.structuredContent, { folders: [] });
+      const rejected = await client.callTool({
+        name: "artbin_folder_manage",
+        arguments: {
+          operation: "rename",
+          slug: "missing",
+          name: "Missing",
+          execution: { mode: "apply" },
+        },
+      });
+      assert.equal(rejected.isError, true);
+      assert.deepEqual(rejected.content, [
+        { type: "text", text: "Operation input is invalid" },
+      ]);
+      assert.deepEqual(await harness.database.db.select().from(folders), []);
+    } finally {
+      await client.close();
+    }
   });
 
   it("authorizes registered clients by user, scope, audience, and local role", async () => {
@@ -153,7 +239,7 @@ describe("administrator MCP", () => {
     assert.equal((await mcpCall("member-token", "tools/list")).status, 403);
   });
 
-  it("rejects foreign origins, unsupported versions, and mutation notifications", async () => {
+  it("rejects foreign origins and unsupported versions without executing mutation notifications", async () => {
     const foreignOrigin = await router.fetch(
       harness.request(routes.mcp.endpoint.href(), undefined, {
         method: "POST",
@@ -179,6 +265,7 @@ describe("administrator MCP", () => {
           Authorization: "Bearer admin-token",
           "Content-Type": "application/json",
           "MCP-Protocol-Version": "2099-01-01",
+          Accept: "application/json, text/event-stream",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -188,7 +275,7 @@ describe("administrator MCP", () => {
         }),
       }),
     );
-    assert.equal(unsupported.status, 400);
+    assert.equal(unsupported.status, 400, "unsupported protocol version");
 
     const notification = await router.fetch(
       harness.request(routes.mcp.endpoint.href(), undefined, {
@@ -196,6 +283,8 @@ describe("administrator MCP", () => {
         headers: {
           Authorization: "Bearer admin-token",
           "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          "MCP-Protocol-Version": "2025-11-25",
         },
         body: JSON.stringify({
           jsonrpc: "2.0",
@@ -207,8 +296,60 @@ describe("administrator MCP", () => {
         }),
       }),
     );
-    assert.equal(notification.status, 400);
+    assert.equal(notification.status, 202);
+    for (const payload of [
+      { jsonrpc: "2.0", id: 1, method: 123 },
+      [
+        {
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: {
+            name: "artbin_preview_regenerate",
+            arguments: { target: { scope: "all" }, confirm: true },
+          },
+        },
+      ],
+    ]) {
+      const response = await router.fetch(
+        harness.request(routes.mcp.endpoint.href(), undefined, {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer admin-token",
+            "Content-Type": "application/json",
+            Accept: "application/json, text/event-stream",
+            "MCP-Protocol-Version": "2025-11-25",
+          },
+          body: JSON.stringify(payload),
+        }),
+      );
+      assert.equal(
+        response.status,
+        400,
+        Array.isArray(payload) ? "batch" : "malformed envelope",
+      );
+      await response.text();
+    }
     assert.equal(await harness.database.db.query.jobs.findFirst(), undefined);
+  });
+
+  it("sanitizes unexpected operation failures before the SDK sees them", async (t) => {
+    t.mock.method(
+      mcpOperations.get("artbin_folders_list")!,
+      "execute",
+      async () => {
+        throw new Error("synthetic-private-detail");
+      },
+    );
+    const response = await mcpTool("admin-token", "artbin_folders_list", {});
+    assert.equal(response.result.isError, true);
+    assert.deepEqual(response.result.content, [
+      { type: "text", text: "Tool failed" },
+    ]);
+    assert.equal(
+      JSON.stringify(response).includes("synthetic-private-detail"),
+      false,
+    );
   });
 
   it("returns the same folder result through CLI REST and MCP", async () => {
@@ -599,6 +740,8 @@ async function mcpCall(
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
+        Accept: "application/json, text/event-stream",
+        "MCP-Protocol-Version": "2025-11-25",
       },
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
     }),
@@ -620,5 +763,16 @@ async function mcpTool(
     arguments: args,
   });
   assert.equal(response.status, 200);
-  return (await response.json()) as any;
+  return readRpcResponse(response);
+}
+
+async function readRpcResponse(response: Response): Promise<any> {
+  const text = await response.text();
+  if (!response.headers.get("Content-Type")?.startsWith("text/event-stream"))
+    return JSON.parse(text);
+  const messages = text
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("data:"));
+  assert.equal(messages.length, 1);
+  return JSON.parse(messages[0]!.slice(5).trim());
 }

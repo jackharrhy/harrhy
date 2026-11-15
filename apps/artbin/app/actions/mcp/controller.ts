@@ -1,7 +1,10 @@
 import { identityConfig } from "#lib/oauth.server";
 import { createController } from "remix/router";
-import { createRequestLogger } from "evlog";
-import { z, ZodError } from "zod";
+import {
+  createNativeHandler,
+  Server,
+  specTypeSchemas,
+} from "@harrhy/mcp/native";
 
 import {
   mcpResourceUrl,
@@ -9,32 +12,15 @@ import {
   mcpAuthorizationScopes,
 } from "#lib/mcp-auth.server";
 
-import { mcpOperations, mcpTools } from "../../operations/catalog.ts";
-import { OperationError } from "../../operations/errors.ts";
+import { mcpTools } from "../../operations/catalog.ts";
 import { routes } from "../../routes.ts";
+import { callArtbinTool } from "./tools.ts";
 
-const rpcRequest = z
-  .object({
-    jsonrpc: z.literal("2.0"),
-    id: z.union([z.string(), z.number(), z.null()]).optional(),
-    method: z.string(),
-    params: z.record(z.string(), z.unknown()).optional(),
-  })
-  .strict();
-
-const SUPPORTED_PROTOCOL_VERSIONS = [
-  "2025-11-25",
-  "2025-06-18",
-  "2025-03-26",
-] as const;
-
-const initializeParams = z
-  .object({
-    protocolVersion: z.string(),
-    capabilities: z.record(z.string(), z.unknown()),
-    clientInfo: z.object({ name: z.string(), version: z.string() }).loose(),
-  })
-  .loose();
+const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
+  tools: mcpTools,
+});
+if (catalog.issues) throw new Error("Invalid Artbin MCP catalog");
+const toolsResult = catalog.value;
 
 export default createController(routes.mcp, {
   actions: {
@@ -55,101 +41,30 @@ export default createController(routes.mcp, {
       const user = await requireMcpAdmin(request);
       if (user instanceof Response) return user;
 
-      let parsed: z.output<typeof rpcRequest>;
-      try {
-        parsed = rpcRequest.parse(await request.json());
-      } catch {
-        return Response.json(rpcError(null, -32600, "Invalid Request"), {
-          status: 400,
-          headers: noStoreHeaders(),
-        });
-      }
-
-      if (parsed.method !== "initialize") {
-        const versionError = validateProtocolVersion(request);
-        if (versionError) return versionError;
-      }
-      const isNotification = !Object.hasOwn(parsed, "id");
-      if (isNotification) {
-        if (parsed.method === "notifications/initialized") {
-          return new Response(null, { status: 202, headers: noStoreHeaders() });
-        }
-        return new Response(null, { status: 400, headers: noStoreHeaders() });
-      }
-
-      if (parsed.method === "initialize") {
-        const initialized = initializeParams.safeParse(parsed.params);
-        if (!initialized.success) {
-          return rpcResponse(rpcError(parsed.id, -32602, "Invalid params"));
-        }
-        const requested = initialized.data.protocolVersion;
-        const protocolVersion = SUPPORTED_PROTOCOL_VERSIONS.includes(
-          requested as never,
-        )
-          ? requested
-          : SUPPORTED_PROTOCOL_VERSIONS[0];
-        return rpcResponse(
-          result(parsed.id, {
-            protocolVersion,
-            capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: "artbin", version: "1.0.0" },
-          }),
-        );
-      }
-      if (parsed.method === "tools/list") {
-        return rpcResponse(result(parsed.id, { tools: mcpTools }));
-      }
-      if (parsed.method === "tools/call") {
-        const name = String(parsed.params?.name ?? "");
-        const log = createRequestLogger();
-        log.set({ mcp: { tool: name, userId: user.id } });
-        const operation = mcpOperations.get(name);
-        if (!operation) {
-          log.set({
-            mcp: { tool: name, userId: user.id, outcome: "unknown-tool" },
+      const handler = createNativeHandler(
+        () => {
+          const server = new Server(
+            { name: "artbin", version: "1.0.0" },
+            { capabilities: { tools: { listChanged: false } } },
+          );
+          server.setRequestHandler("tools/list", () => toolsResult);
+          server.setRequestHandler("tools/call", async (message) => {
+            const result = await callArtbinTool(
+              user,
+              message.params.name,
+              message.params.arguments ?? {},
+            );
+            return server.projectCallToolResult(
+              result,
+              mcpTools.find((tool) => tool.name === message.params.name)
+                ?.outputSchema,
+            );
           });
-          log.emit();
-          return rpcResponse(
-            result(parsed.id, toolError(`Unknown tool: ${name}`)),
-          );
-        }
-        try {
-          const value = await operation.execute(
-            { user, channel: "mcp" },
-            parsed.params?.arguments ?? {},
-          );
-          log.set({ mcp: { tool: name, userId: user.id, outcome: "success" } });
-          log.emit();
-          return rpcResponse(
-            result(parsed.id, {
-              content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
-              structuredContent: value,
-            }),
-          );
-        } catch (error) {
-          const expected =
-            error instanceof OperationError || error instanceof ZodError;
-          const message =
-            error instanceof OperationError
-              ? error.message
-              : error instanceof ZodError
-                ? "Operation input is invalid"
-                : "Tool failed";
-          if (expected) {
-            log.set({
-              mcp: { tool: name, userId: user.id, outcome: "rejected" },
-            });
-          } else {
-            log.error(error instanceof Error ? error : new Error(message), {
-              tool: name,
-              userId: user.id,
-            });
-          }
-          log.emit();
-          return rpcResponse(result(parsed.id, toolError(message)));
-        }
-      }
-      return rpcResponse(rpcError(parsed.id, -32601, "Method not found"));
+          return server;
+        },
+        { maxRequestBytes: 8 * 1024 * 1024 },
+      );
+      return handler.fetch(request);
     },
 
     protectedResource() {
@@ -166,26 +81,6 @@ export default createController(routes.mcp, {
   },
 });
 
-function result(id: unknown, value: unknown) {
-  return { jsonrpc: "2.0", id: id ?? null, result: value };
-}
-
-function rpcError(id: unknown, code: number, message: string) {
-  return { jsonrpc: "2.0", id: id ?? null, error: { code, message } };
-}
-
-function toolError(message: string) {
-  return { content: [{ type: "text", text: message }], isError: true };
-}
-
-function noStoreHeaders(): HeadersInit {
-  return { "Cache-Control": "no-store", "Content-Type": "application/json" };
-}
-
-function rpcResponse(body: unknown): Response {
-  return Response.json(body, { headers: noStoreHeaders() });
-}
-
 function validateOrigin(request: Request): Response | null {
   const origin = request.headers.get("Origin");
   if (!origin) return null;
@@ -195,21 +90,12 @@ function validateOrigin(request: Request): Response | null {
   } catch {
     return new Response("MCP resource URL is invalid", {
       status: 500,
-      headers: noStoreHeaders(),
+      headers: { "Cache-Control": "no-store" },
     });
   }
   if (origin === expected) return null;
   return new Response("Forbidden Origin", {
     status: 403,
-    headers: noStoreHeaders(),
-  });
-}
-
-function validateProtocolVersion(request: Request): Response | null {
-  const version = request.headers.get("MCP-Protocol-Version") ?? "2025-03-26";
-  if (SUPPORTED_PROTOCOL_VERSIONS.includes(version as never)) return null;
-  return new Response("Unsupported MCP protocol version", {
-    status: 400,
-    headers: noStoreHeaders(),
+    headers: { "Cache-Control": "no-store" },
   });
 }
