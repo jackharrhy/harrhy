@@ -81,11 +81,11 @@ test("Remix REST and MCP share list operations and preserve member ACL", async (
   );
   expect(call.status).toBe(200);
   const payload = (await call.json()) as {
-    result: { structuredContent: { id: number }[] };
+    result: { structuredContent: { items: { id: number }[] } };
   };
-  expect(payload.result.structuredContent.map((list) => list.id)).toEqual([
-    allowed.id,
-  ]);
+  expect(payload.result.structuredContent.items.map((list) => list.id)).toEqual(
+    [allowed.id],
+  );
 });
 
 test("application serves Remix health, public pages, REST and MCP from the same fetch server", async () => {
