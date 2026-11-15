@@ -13,6 +13,7 @@
     "test": "vitest run",
     "smoke": "node __tests__/image-handoff.mjs && node scripts/smoke.mjs",
     "test:images": "node __tests__/image-handoff.mjs",
+    "test:mcp": "node __tests__/mcp-smoke.mjs",
     "test:celld": "npm run build && node __tests__/celld-smoke.mjs",
     "test:archive:source": "node __tests__/source-archive-smoke.mjs",
     "backup": "node scripts/archive.mjs backup",

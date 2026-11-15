@@ -150,7 +150,7 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
   ],
 });
 if (catalog.issues) throw new Error("Invalid Ref MCP catalog");
-export const refTools = catalog.value.tools;
+const refTools = catalog.value.tools;
 const readTools = new Set(["boards_list", "board_get", "asset_get"]);
 export function toolsFor(access: RefMcpAccess) {
   return refTools.filter((t) =>
