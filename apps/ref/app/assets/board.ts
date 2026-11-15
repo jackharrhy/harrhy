@@ -106,18 +106,12 @@ const toolOperations = new Map<
     reject(reason: Error): void;
   }
 >();
-const browserToolsButton = required<HTMLButtonElement>("#webmcp-toggle");
-const browserToolsStatus = required<HTMLElement>("#webmcp-status");
 let browserTools: WebMcpRegistration | null = null;
+let pageHidden = false;
 
-function disableBrowserTools(
-  message = "Off. Enable again to share this open board with your browser assistant.",
-) {
+function disposeBrowserTools() {
   browserTools?.dispose();
   browserTools = null;
-  browserToolsButton.textContent = "Enable browser tools";
-  browserToolsButton.setAttribute("aria-pressed", "false");
-  browserToolsStatus.textContent = message;
 }
 
 function requireToolBoard() {
@@ -141,6 +135,7 @@ const browserToolCatalog = boardWebMcpTools({
     sequence,
     live: snapshotReady && socket?.readyState === WebSocket.OPEN,
     pendingEdits: pending.size,
+    interaction: drag?.kind ?? null,
     selectedItemId: selectedId,
     camera: {
       offsetX,
@@ -224,36 +219,35 @@ const browserToolCatalog = boardWebMcpTools({
   },
 });
 
-browserToolsButton.addEventListener("click", () => {
-  if (browserTools) {
-    disableBrowserTools();
-    return;
-  }
+function registerBrowserTools() {
+  if (browserTools || pageHidden) return;
   const registration = registerWebMcpTools(document, browserToolCatalog);
   if (!registration.supported) {
     registration.dispose();
-    browserToolsStatus.textContent =
-      "This browser does not support WebMCP. All ordinary board controls remain available.";
     return;
   }
   browserTools = registration;
-  browserToolsButton.textContent = "Disable browser tools";
-  browserToolsButton.setAttribute("aria-pressed", "true");
-  browserToolsStatus.textContent = "Enabling browser tools…";
-  void registration.ready
-    .then(() => {
-      if (browserTools === registration)
-        browserToolsStatus.textContent =
-          "On for this page. Your browser assistant can read this board, navigate, and edit or remove items. Disable to stop tools; submitted edits cannot be undone by disabling.";
-    })
-    .catch(() => {
-      if (browserTools === registration)
-        disableBrowserTools(
-          "Browser tools could not start. Try enabling again; ordinary board controls still work.",
-        );
-    });
+  void registration.ready.catch(() => {
+    if (browserTools === registration) {
+      disposeBrowserTools();
+      console.warn(
+        "Ref browser tool registration failed; ordinary board controls remain available.",
+      );
+    }
+  });
+}
+window.addEventListener("pagehide", () => {
+  pageHidden = true;
+  snapshotReady = false;
+  disposeBrowserTools();
+  clearTimeout(reconnectTimer);
+  socket?.close();
 });
-window.addEventListener("pagehide", () => disableBrowserTools());
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  pageHidden = false;
+  connect();
+});
 
 function required<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -282,6 +276,7 @@ function toast(message: string) {
 }
 
 function connect() {
+  if (pageHidden) return;
   snapshotReady = false;
   clearTimeout(reconnectTimer);
   clearInterval(heartbeatTimer);
@@ -300,6 +295,8 @@ function connect() {
       if (Date.now() - lastHeard > 12_000) {
         if (socket === ws) {
           socket = null;
+          snapshotReady = false;
+          disposeBrowserTools();
           clearInterval(heartbeatTimer);
           setConnection("offline");
           void scheduleReconnect();
@@ -325,6 +322,8 @@ function connect() {
     if (socket !== ws) return;
     clearInterval(heartbeatTimer);
     socket = null;
+    snapshotReady = false;
+    disposeBrowserTools();
     setConnection("offline");
     void scheduleReconnect();
   });
@@ -332,14 +331,13 @@ function connect() {
 }
 
 async function scheduleReconnect() {
+  if (pageHidden) return;
   try {
     const response = await fetch(`/api/boards/${boardId}/snapshot`, {
       cache: "no-store",
     });
     if (response.status === 404 || response.status === 401) {
-      disableBrowserTools(
-        "Board access ended. Return to your boards and sign in again.",
-      );
+      disposeBrowserTools();
       required<HTMLElement>(".connection-text").textContent = "Access ended";
       toast("Your board access ended. Return to your boards.");
       return;
@@ -347,6 +345,7 @@ async function scheduleReconnect() {
   } catch {
     /* network may recover */
   }
+  if (pageHidden) return;
   reconnectTimer = window.setTimeout(connect, reconnectDelay);
   reconnectDelay = Math.min(reconnectDelay * 1.8, 8000);
 }
@@ -354,6 +353,7 @@ async function scheduleReconnect() {
 function receive(frame: BoardServerFrame) {
   if (frame.type === "ready") {
     loadSnapshot(frame.snapshot);
+    registerBrowserTools();
     if (!didInitialFit) {
       didInitialFit = true;
       fitBoard();
@@ -407,9 +407,7 @@ function receive(frame: BoardServerFrame) {
   if (frame.type === "error") {
     toast(frame.message);
     if (frame.message.includes("Session ended")) {
-      disableBrowserTools(
-        "Your session ended. Sign in again to use browser tools.",
-      );
+      disposeBrowserTools();
       socket?.close(4001, "Session ended");
     }
   }

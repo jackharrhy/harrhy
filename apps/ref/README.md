@@ -102,13 +102,16 @@ The normal archive CLI and browser endpoints retain their separate authorization
 
 ## Browser WebMCP
 
-On an open board, **Browser tools → Enable browser tools** opts this page into
-native WebMCP. This is separate from HTTP MCP: it uses the signed-in browser
-session and the actual canvas, not a remote MCP bridge or delegated token.
+On an authenticated open board, native WebMCP tools register quietly after the
+live board snapshot arrives. This is separate from HTTP MCP: it uses the signed-in
+browser session and actual canvas, not a remote MCP bridge or delegated token.
 Support is experimental and limited to browsers exposing `document.modelContext`;
-unsupported browsers keep all ordinary board controls. Tools stay off until
-explicitly enabled, do not persist across navigation, and stop on disable,
-page exit, or detected loss of access. Registration failure is shown in the menu.
+unsupported browsers silently retain all ordinary board controls. There is no
+extra enable switch, banner, or modal. Registration stops on connection loss,
+page exit, or detected loss of access; a reconnect or back/forward-cache return
+must obtain a fresh authorized snapshot before registering again. Registration
+failures leave ordinary controls intact and emit a diagnostic console warning.
+Native consequential annotations are hints, not a guarantee of browser confirmation.
 
 The app-owned `app/assets/board-webmcp.ts` defines six tools using
 [`@harrhy/webmcp`](../../packages/webmcp/README.md): `ref_board_context` reads
@@ -121,7 +124,7 @@ is untrusted content, not instructions.
 `ref_item_transform` and `ref_item_remove` use the existing validated WebSocket
 operation path and server authorization. They require a live, settled board and
 its current item revision; removal can reclaim last-use media. Results wait for
-server confirmation. Cancellation, disabling, or a timeout after submission
+server confirmation. Cancellation, page exit, or a timeout after submission
 cannot undo an edit: read the board before retrying and reuse an operation ID
 only for the same operation. Ordinary uploads and link creation remain human
 controls; no file access, arbitrary JavaScript, or general DOM automation is

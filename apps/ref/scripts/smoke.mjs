@@ -339,10 +339,26 @@ try {
     .locator(`[data-item-id="${itemId}"]`)
     .waitFor({ state: "detached" });
   assert.equal((await context.request.get(mediaUrl)).status(), 404);
-  await page.getByText("Browser tools", { exact: true }).click();
-  await page.locator("#webmcp-toggle").click();
+  await page.evaluate(() => {
+    window.refTestBeforeLogoutContext =
+      window.refTestBrowserTools.get("ref_board_context");
+  });
   await page.evaluate(async () => fetch("/logout", { method: "POST" }));
   await page.waitForFunction(() => window.refTestBrowserTools.size === 0);
+  assert.equal(
+    await page.evaluate(async () => {
+      try {
+        await window.refTestBeforeLogoutContext.execute(
+          { offset: 0 },
+          { signal: new AbortController().signal },
+        );
+        return false;
+      } catch {
+        return true;
+      }
+    }),
+    true,
+  );
   await page.locator("#connection.offline").waitFor({ timeout: 5_000 });
   assert.equal(
     (

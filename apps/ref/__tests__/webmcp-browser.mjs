@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
+import { expect } from "@playwright/test";
 
-export async function installWebMcpTestHost(page) {
-  await page.addInitScript(() => {
+export async function installWebMcpTestHost(page, fail = false) {
+  await page.addInitScript((registrationFails) => {
+    window.refTestWebMcpFail = registrationFails;
+    window.refTestRegistrationAttempts = 0;
     const tools = new Map();
     window.refTestBrowserTools = tools;
     Object.defineProperty(document, "modelContext", {
       value: {
         async registerTool(tool, { signal }) {
+          window.refTestRegistrationAttempts++;
           if (signal.aborted) throw signal.reason;
           if (window.refTestWebMcpFail)
             throw new Error("Synthetic registration failure");
@@ -21,27 +25,31 @@ export async function installWebMcpTestHost(page) {
         },
       },
     });
-  });
+  }, fail);
+}
+
+async function waitForSettled(page) {
+  await expect
+    .poll(() =>
+      page.evaluate(async () => {
+        const state = await window.refTestBrowserTools
+          .get("ref_board_context")
+          .execute({ offset: 0 }, { signal: new AbortController().signal });
+        return (
+          state.live && state.pendingEdits === 0 && state.interaction === null
+        );
+      }),
+    )
+    .toBe(true);
 }
 
 export async function checkWebMcpBrowser(page, second, itemId) {
-  assert.equal(await page.evaluate(() => window.refTestBrowserTools.size), 0);
-  await page.getByText("Browser tools", { exact: true }).click();
-  await page.locator("#webmcp-toggle").click();
-  await page.waitForFunction(() =>
-    document
-      .querySelector("#webmcp-status")
-      .textContent.startsWith("On for this page"),
+  await page.waitForFunction(() => window.refTestBrowserTools.size === 6);
+  assert.equal(
+    await page.getByText("Browser tools", { exact: true }).count(),
+    0,
   );
-  assert.equal(await page.evaluate(() => window.refTestBrowserTools.size), 6);
-  await page.waitForFunction(async () => {
-    const tool = window.refTestBrowserTools.get("ref_board_context");
-    const state = await tool.execute(
-      { offset: 0 },
-      { signal: new AbortController().signal },
-    );
-    return state.pendingEdits === 0;
-  });
+  await waitForSettled(page);
   const transformed = await page.evaluate(async (id) => {
     const signal = new AbortController().signal;
     const call = (name, input = {}) =>
@@ -124,19 +132,14 @@ export async function checkWebMcpBrowser(page, second, itemId) {
     }
   });
   assert.equal(cancelled, true);
-  await page.waitForFunction(
-    async () =>
-      (
-        await window.refTestBrowserTools
-          .get("ref_board_context")
-          .execute({ offset: 0 }, { signal: new AbortController().signal })
-      ).pendingEdits === 0,
-  );
-  const disabledPending = await page.evaluate(async () => {
+  await waitForSettled(page);
+  const pageExitPending = await page.evaluate(async () => {
     const signal = new AbortController().signal;
     const state = await window.refTestBrowserTools
       .get("ref_board_context")
       .execute({ offset: 0 }, { signal });
+    if (!state.live || state.pendingEdits || state.interaction !== null)
+      throw new Error(`Unexpected unsettled board: ${JSON.stringify(state)}`);
     const item = state.items[0];
     const result = window.refTestBrowserTools.get("ref_item_transform").execute(
       {
@@ -152,7 +155,8 @@ export async function checkWebMcpBrowser(page, second, itemId) {
       },
       { signal },
     );
-    document.querySelector("#webmcp-toggle").click();
+    window.refTestStaleTool = window.refTestBrowserTools.get("ref_board_fit");
+    window.dispatchEvent(new Event("pagehide"));
     try {
       await result;
       return false;
@@ -160,20 +164,7 @@ export async function checkWebMcpBrowser(page, second, itemId) {
       return error.message.includes("cannot undo");
     }
   });
-  assert.equal(disabledPending, true);
-  await page.locator("#webmcp-toggle").click();
-  await page.waitForFunction(
-    async () =>
-      (
-        await window.refTestBrowserTools
-          .get("ref_board_context")
-          .execute({ offset: 0 }, { signal: new AbortController().signal })
-      ).pendingEdits === 0,
-  );
-  await page.evaluate(() => {
-    window.refTestStaleTool = window.refTestBrowserTools.get("ref_board_fit");
-  });
-  await page.locator("#webmcp-toggle").click();
+  assert.equal(pageExitPending, true);
   assert.equal(await page.evaluate(() => window.refTestBrowserTools.size), 0);
   assert.equal(
     await page.evaluate(async () => {
@@ -189,40 +180,29 @@ export async function checkWebMcpBrowser(page, second, itemId) {
     }),
     true,
   );
-  assert.equal(
-    await page.locator("#webmcp-toggle").getAttribute("aria-pressed"),
-    "false",
+  await page.evaluate(() =>
+    window.dispatchEvent(
+      new PageTransitionEvent("pageshow", { persisted: true }),
+    ),
   );
-  await page.evaluate(() => {
-    window.refTestWebMcpFail = true;
-  });
-  await page.locator("#webmcp-toggle").click();
-  await page.waitForFunction(() =>
-    document
-      .querySelector("#webmcp-status")
-      .textContent.startsWith("Browser tools could not start"),
-  );
-  assert.equal(await page.evaluate(() => window.refTestBrowserTools.size), 0);
-  await page.evaluate(() => {
-    window.refTestWebMcpFail = false;
-  });
-  await page.locator("#webmcp-toggle").click();
   await page.waitForFunction(() => window.refTestBrowserTools.size === 6);
-  await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
-  assert.equal(await page.evaluate(() => window.refTestBrowserTools.size), 0);
+  await waitForSettled(page);
   assert.equal(
-    await page.locator("#webmcp-toggle").getAttribute("aria-pressed"),
-    "false",
+    await second.locator("#webmcp-toggle, #webmcp-status").count(),
+    0,
   );
-  await page.getByText("Browser tools", { exact: true }).click();
-
-  await second.getByText("Browser tools", { exact: true }).click();
-  await second.locator("#webmcp-toggle").click();
-  assert.match(
-    await second.locator("#webmcp-status").textContent(),
-    /does not support WebMCP/,
+  const failed = await page.context().newPage();
+  await installWebMcpTestHost(failed, true);
+  await failed.goto(page.url());
+  await failed.locator("#connection.online").waitFor();
+  await failed.waitForFunction(() => window.refTestRegistrationAttempts > 0);
+  assert.equal(await failed.evaluate(() => window.refTestBrowserTools.size), 0);
+  assert.equal(await failed.locator(".board-item").count(), 1);
+  assert.equal(
+    await failed.locator("#webmcp-toggle, #webmcp-status").count(),
+    0,
   );
-  await second.getByText("Browser tools", { exact: true }).click();
+  await failed.close();
 }
 
 export async function checkWebMcpRemoval(page, second) {
@@ -235,8 +215,6 @@ export async function checkWebMcpRemoval(page, second) {
     .locator(".link-item")
     .nth(2)
     .getAttribute("data-item-id");
-  await page.getByText("Browser tools", { exact: true }).click();
-  await page.locator("#webmcp-toggle").click();
   await page.waitForFunction(() => window.refTestBrowserTools.size === 6);
   const result = await page.evaluate(async (id) => {
     const signal = new AbortController().signal;
@@ -260,6 +238,4 @@ export async function checkWebMcpRemoval(page, second) {
   await second
     .locator(`[data-item-id="${itemId}"]`)
     .waitFor({ state: "detached" });
-  await page.locator("#webmcp-toggle").click();
-  await page.getByText("Browser tools", { exact: true }).click();
 }
