@@ -1,10 +1,6 @@
 import { identityConfig } from "#lib/oauth.server";
 import { createController } from "remix/router";
-import {
-  createNativeHandler,
-  Server,
-  specTypeSchemas,
-} from "@harrhy/mcp/native";
+import { createNativeHandler, Server, specTypeSchemas } from "@harrhy/mcp";
 
 import {
   mcpResourceUrl,

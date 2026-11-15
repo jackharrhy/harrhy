@@ -1,9 +1,5 @@
 import { z } from "zod";
-import {
-  createNativeHandler,
-  Server,
-  specTypeSchemas,
-} from "@harrhy/mcp/native";
+import { createNativeHandler, Server, specTypeSchemas } from "@harrhy/mcp";
 import {
   mcpAuthorizationScopes,
   mcpResourceUrl,

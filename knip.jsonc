@@ -165,6 +165,9 @@
     "packages/dev-auth": {
       "entry": ["token.mjs"],
     },
+    "packages/mcp": {
+      "entry": ["__tests__/binding.types.ts"],
+    },
     "packages/pool": {
       // The physical cabinet and gameplay table share the same measured bounds.
       "ignoreIssues": { "src/physical-table.ts": ["duplicates"] },

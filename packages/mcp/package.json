@@ -4,8 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./native": "./src/native.ts"
+    ".": "./src/index.ts"
   },
   "scripts": {
     "typecheck": "tsrs --noEmit",
@@ -15,12 +14,14 @@
   "dependencies": {
     "@modelcontextprotocol/server": "2.4.0",
     "@harrhy/request-body": "0.1.0",
-    "@harrhy/json-schema": "0.1.0",
-    "@harrhy/logger": "0.1.0",
-    "@harrhy/result": "0.1.0",
-    "remix": "3.2.0"
+    "@standard-schema/spec": "1.1.0"
   },
   "devDependencies": {
-    "@types/node": "26.6.6"
+    "@types/node": "26.6.6",
+    "remix": "3.2.0",
+    "@harrhy/json-schema": "0.1.0",
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "zod": "4.6.7"
   }
 }

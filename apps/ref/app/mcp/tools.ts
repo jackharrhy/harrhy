@@ -1,4 +1,4 @@
-import { specTypeSchemas } from "@harrhy/mcp/native";
+import { specTypeSchemas } from "@harrhy/mcp";
 import type { AppRuntimeService } from "../data/runtime.ts";
 import { parseOperation } from "../data/protocol.ts";
 import { tokenHash } from "../data/crypto.ts";
