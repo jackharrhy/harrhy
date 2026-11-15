@@ -1,4 +1,4 @@
-import type { Handle, Props, RemixNode } from "remix/component";
+import { on, type Handle, type Props, type RemixNode } from "remix/component";
 import {
   badgeStyles,
   buttonStyles,
@@ -14,11 +14,35 @@ import {
   panelStyles,
   rangeStyles,
   stackStyles,
+  visuallyHiddenStyles,
 } from "./recipes.ts";
 
 export type ButtonVariant = "primary" | "secondary" | "quiet" | "danger";
-export type ButtonProps = Props<"button"> & { variant?: ButtonVariant };
+interface ButtonActionOptions {
+  action: (details: { signal: AbortSignal }) => Promise<unknown>;
+  pendingLabel: string;
+  onError: (error: unknown) => void;
+}
+type NativeButtonProps = Props<"button"> & { variant?: ButtonVariant };
+export type ButtonProps = NativeButtonProps &
+  (
+    | { action?: never; pendingLabel?: never; onError?: never }
+    | (ButtonActionOptions & { type?: "button" })
+  );
 export function Button(handle: Handle<ButtonProps>) {
+  return () => {
+    const props = handle.props;
+    if (props.action) return <AsyncButton {...props} />;
+    const {
+      action: _action,
+      pendingLabel: _pendingLabel,
+      onError: _onError,
+      ...native
+    } = props;
+    return <NativeButton {...native} />;
+  };
+}
+function NativeButton(handle: Handle<NativeButtonProps>) {
   return () => {
     const {
       variant = "secondary",
@@ -200,6 +224,91 @@ export function Range(
     const { mix, ...props } = handle.props;
     return (
       <input {...props} type="range" mix={[rangeStyles, focusStyles, mix]} />
+    );
+  };
+}
+
+type AsyncButtonProps = Omit<NativeButtonProps, "type"> & ButtonActionOptions;
+
+/** Client-owned action, never a replacement for a native submit button. */
+function AsyncButton(handle: Handle<AsyncButtonProps>) {
+  let state: "idle" | "pending" = "idle";
+  let controller: AbortController | undefined;
+  let announcement = "";
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  handle.signal.addEventListener(
+    "abort",
+    () => {
+      controller?.abort();
+      clearTimeout(timer);
+    },
+    { once: true },
+  );
+
+  async function activate(
+    event: MouseEvent & { currentTarget: HTMLButtonElement },
+  ) {
+    if (event.defaultPrevented) return;
+    if (
+      state === "pending" ||
+      handle.props.disabled ||
+      handle.props["aria-disabled"] === true ||
+      handle.props["aria-disabled"] === "true" ||
+      event.currentTarget.matches(":disabled")
+    ) {
+      event.preventDefault();
+      return;
+    }
+    state = "pending";
+    const current = new AbortController();
+    controller = current;
+    announcement = "";
+    timer = setTimeout(() => {
+      if (current.signal.aborted) return;
+      announcement = handle.props.pendingLabel;
+      handle.update();
+    }, 1000);
+    handle.update();
+    try {
+      await handle.props.action({ signal: current.signal });
+    } catch (error) {
+      if (!current.signal.aborted) handle.props.onError(error);
+    } finally {
+      clearTimeout(timer);
+      if (!current.signal.aborted) {
+        state = "idle";
+        announcement = "";
+        controller = undefined;
+        handle.update();
+      }
+    }
+  }
+
+  return () => {
+    const {
+      action: _action,
+      pendingLabel,
+      onError: _onError,
+      children,
+      mix,
+      ...props
+    } = handle.props;
+    return (
+      <>
+        <NativeButton
+          {...props}
+          type="button"
+          aria-busy={state === "pending" ? true : undefined}
+          aria-disabled={state === "pending" ? true : props["aria-disabled"]}
+          data-pending={state === "pending" ? "" : undefined}
+          mix={[mix, on("click", activate)]}
+        >
+          {state === "pending" ? pendingLabel : children}
+        </NativeButton>
+        <span role="status" aria-live="polite" mix={visuallyHiddenStyles}>
+          {announcement}
+        </span>
+      </>
     );
   };
 }

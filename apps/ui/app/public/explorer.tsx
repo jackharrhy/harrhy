@@ -14,7 +14,6 @@ import {
   Textarea,
 } from "@harrhy/ui/native";
 import {
-  ActionButton,
   Select,
   Dialog,
   Tabs,
@@ -37,12 +36,6 @@ export const stories = [
     name: "Button",
     group: "Actions",
     summary: "An action, with a clear priority.",
-  },
-  {
-    id: "action",
-    name: "ActionButton",
-    group: "Actions",
-    summary: "Async work with retained focus and cancellation.",
   },
   {
     id: "field",
@@ -459,6 +452,7 @@ function Story(
   let description = true;
   let checked = true;
   let rangeValue = "0.65";
+  let actionMode = false;
   let failAction = false;
   let resultFailed = false;
   let open = false;
@@ -512,29 +506,29 @@ function Story(
           : story === "diff"
             ? '<CodeDiff label="Action label revision" lines={lines} />'
             : story === "button"
-              ? `<Button variant="${variant}"${disabled ? " disabled" : ""}>{${JSON.stringify(label)}}</Button>`
+              ? actionMode
+                ? `// save receives { signal }; honor it before side effects.\n<Button action={save} pendingLabel="Saving…"${disabled ? " disabled" : ""}\n  variant="${variant}" onError={reportError}>{${JSON.stringify(label)}}</Button>`
+                : `<Button variant="${variant}"${disabled ? " disabled" : ""}>{${JSON.stringify(label)}}</Button>`
               : story === "field"
                 ? `<Field id="collection" label="Collection name"${description ? '\n  description="Only visible to you."' : ""}${error ? '\n  error="Enter a collection name."' : ""}>\n  <Input name="name"${disabled ? " disabled" : ""} required />\n</Field>`
-                : story === "action"
-                  ? `// save receives { signal }; honor it before side effects.\n<ActionButton action={save} pendingLabel="Saving…"${disabled ? " disabled" : ""}\n  onError={reportError}>Save changes</ActionButton>`
-                  : story === "dialog"
-                    ? '<Dialog open={open} title="Rename collection"\n  onClose={() => { open = false; handle.update(); }}>\n  {/* labelled form and explicit close actions */}\n</Dialog>'
-                    : story === "tabs"
-                      ? `<Tabs defaultActiveTab="${activeTab}">\n  <TabList aria-label="Collection">\n    <Tab name="overview">Overview</Tab>\n    <Tab name="activity"${disabled ? " disabled" : ""}>Activity</Tab>\n  </TabList>\n  <TabPanel name="overview">Collection details</TabPanel>\n  <TabPanel name="activity">No changes yet.</TabPanel>\n</Tabs>`
-                      : story === "notice"
-                        ? `<Notice tone="${tone}">{${JSON.stringify(label)}}</Notice>`
-                        : story === "badge"
-                          ? `<Badge>{${JSON.stringify(label)}}</Badge>`
-                          : story === "checkbox"
-                            ? `<label mix={checkboxLabelStyles}><Checkbox name="private"${checked ? " defaultChecked" : ""}${disabled ? " disabled" : ""} /> Private collection</label>`
-                            : story === "select"
-                              ? `<Field id="visibility" label="Visibility">\n  <Select name="visibility" defaultValue="private"${disabled ? " disabled" : ""}\n    options={[{ value: "private", label: "Private" }, { value: "shared", label: "Shared" }, { value: "public", label: "Public", disabled: true }]} />\n</Field>`
-                              : story === "textarea"
-                                ? `<Field id="notes" label="Notes">\n  <Textarea name="notes" rows={3}${disabled ? " disabled" : ""} />\n</Field>`
-                                : '<Panel aria-labelledby="collection-title">\n  <Stack>\n    <h2 id="collection-title">Evening sketches</h2>\n    <p>Reference images for the next drawing session.</p>\n  </Stack>\n</Panel>';
+                : story === "dialog"
+                  ? '<Dialog open={open} title="Rename collection"\n  onClose={() => { open = false; handle.update(); }}>\n  {/* labelled form and explicit close actions */}\n</Dialog>'
+                  : story === "tabs"
+                    ? `<Tabs defaultActiveTab="${activeTab}">\n  <TabList aria-label="Collection">\n    <Tab name="overview">Overview</Tab>\n    <Tab name="activity"${disabled ? " disabled" : ""}>Activity</Tab>\n  </TabList>\n  <TabPanel name="overview">Collection details</TabPanel>\n  <TabPanel name="activity">No changes yet.</TabPanel>\n</Tabs>`
+                    : story === "notice"
+                      ? `<Notice tone="${tone}">{${JSON.stringify(label)}}</Notice>`
+                      : story === "badge"
+                        ? `<Badge>{${JSON.stringify(label)}}</Badge>`
+                        : story === "checkbox"
+                          ? `<label mix={checkboxLabelStyles}><Checkbox name="private"${checked ? " defaultChecked" : ""}${disabled ? " disabled" : ""} /> Private collection</label>`
+                          : story === "select"
+                            ? `<Field id="visibility" label="Visibility">\n  <Select name="visibility" defaultValue="private"${disabled ? " disabled" : ""}\n    options={[{ value: "private", label: "Private" }, { value: "shared", label: "Shared" }, { value: "public", label: "Public", disabled: true }]} />\n</Field>`
+                            : story === "textarea"
+                              ? `<Field id="notes" label="Notes">\n  <Textarea name="notes" rows={3}${disabled ? " disabled" : ""} />\n</Field>`
+                              : '<Panel aria-labelledby="collection-title">\n  <Stack>\n    <h2 id="collection-title">Evening sketches</h2>\n    <p>Reference images for the next drawing session.</p>\n  </Stack>\n</Panel>';
     const imports = ["code", "diff"].includes(story)
       ? "@harrhy/ui/code"
-      : ["action", "dialog", "tabs", "select"].includes(story)
+      : ["dialog", "tabs", "select"].includes(story)
         ? "@harrhy/ui/interactive"
         : "@harrhy/ui/native";
     const themeImport =
@@ -602,16 +596,34 @@ function Story(
               {story === "button" && (
                 <Stack>
                   <Inline>
-                    <Button
-                      variant={variant}
-                      disabled={disabled}
-                      mix={on("click", () => {
-                        result = "Changes saved in this fixture.";
-                        handle.update();
-                      })}
-                    >
-                      {label}
-                    </Button>
+                    {actionMode ? (
+                      <Button
+                        variant={variant}
+                        disabled={disabled}
+                        action={run}
+                        pendingLabel="Saving…"
+                        onError={() => {
+                          resultFailed = true;
+                          result =
+                            "Could not save. Turn off simulated failure and try again.";
+                          handle.update();
+                        }}
+                      >
+                        {label}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant={variant}
+                        disabled={disabled}
+                        mix={on("click", () => {
+                          resultFailed = false;
+                          result = "Changes saved in this fixture.";
+                          handle.update();
+                        })}
+                      >
+                        {label}
+                      </Button>
+                    )}
                     <Button
                       variant="quiet"
                       disabled={disabled}
@@ -622,26 +634,6 @@ function Story(
                     >
                       Cancel
                     </Button>
-                  </Inline>
-                  <span role="status">{result}</span>
-                </Stack>
-              )}
-              {story === "action" && (
-                <Stack>
-                  <Inline>
-                    <ActionButton
-                      action={run}
-                      disabled={disabled}
-                      pendingLabel="Saving…"
-                      onError={() => {
-                        resultFailed = true;
-                        result =
-                          "Could not save. Turn off simulated failure and try again.";
-                        handle.update();
-                      }}
-                    >
-                      Save changes
-                    </ActionButton>
                   </Inline>
                   {result && (
                     <Notice
@@ -829,8 +821,8 @@ function Story(
                     value={codeSource}
                     mix={[
                       css({
-                        fontFamily: "var(--hui-font-code)",
-                        fontSize: "0.875rem",
+                        "--hui-font-control": "var(--hui-font-code)",
+                        "--hui-control-text-size": "0.875rem",
                       }),
                       on("input", (event) => {
                         codeSource = event.currentTarget.value;
@@ -984,7 +976,20 @@ function Story(
                 </label>
               </>
             )}
-            {story === "action" && (
+            {story === "button" && (
+              <label>
+                <Checkbox
+                  checked={actionMode}
+                  mix={on("change", (event) => {
+                    actionMode = event.currentTarget.checked;
+                    result = "";
+                    handle.update();
+                  })}
+                />{" "}
+                Async action
+              </label>
+            )}
+            {story === "button" && actionMode && (
               <label>
                 <Checkbox
                   checked={failAction}
@@ -1017,7 +1022,7 @@ function Story(
                     ? "Use arrows, Home and End inside the tab list."
                     : story === "dialog"
                       ? "Escape closes; focus returns to the trigger."
-                      : story === "action"
+                      : story === "button" && actionMode
                         ? "1.2s fixture. Repeated activation is guarded."
                         : story === "select"
                           ? "Arrows or type to choose. Escape closes."

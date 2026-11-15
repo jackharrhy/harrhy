@@ -2,13 +2,13 @@ import * as assert from "remix/assert";
 import { on, type Handle } from "remix/component";
 import { render } from "remix/component/test";
 import { it } from "remix/test";
-import { ActionButton, Dialog, Select } from "@harrhy/ui/interactive";
-import { Field } from "@harrhy/ui/native";
+import { Dialog, Select } from "@harrhy/ui/interactive";
+import { Button, Field } from "@harrhy/ui/native";
 
 it("honors caller preventDefault before starting an action", async (t) => {
   let calls = 0;
   const { $, act, cleanup } = render(
-    <ActionButton
+    <Button
       action={async () => {
         calls++;
       }}
@@ -17,7 +17,7 @@ it("honors caller preventDefault before starting an action", async (t) => {
       mix={on("click", (event) => event.preventDefault())}
     >
       Run
-    </ActionButton>,
+    </Button>,
   );
   t.after(cleanup);
   await act(() => $("button")?.click());
@@ -34,7 +34,7 @@ it("keeps focus pending and aborts unmounted actions without stale errors", asyn
     return () => (
       <div>
         {visible && (
-          <ActionButton
+          <Button
             action={(details) => {
               signal = details.signal;
               return new Promise<void>((_resolve, reject) => {
@@ -47,7 +47,7 @@ it("keeps focus pending and aborts unmounted actions without stale errors", asyn
             }}
           >
             Run
-          </ActionButton>
+          </Button>
         )}
         <button
           id="unmount"
@@ -224,3 +224,140 @@ const dispatchKey = (node: Element, value: string) =>
       cancelable: true,
     }),
   );
+
+it("keeps ordinary Button submit/reset native without entering action mode", async (t) => {
+  let submits = 0;
+  let intent: string | null = null;
+  const { $, act, cleanup } = render(
+    <form
+      mix={on("submit", (event) => {
+        event.preventDefault();
+        submits++;
+        intent = new FormData(event.currentTarget, event.submitter).get(
+          "intent",
+        ) as string | null;
+      })}
+    >
+      <input name="title" defaultValue="Original" />
+      <Button type="submit" name="intent" value="save">
+        Save
+      </Button>
+      <Button type="reset">Reset</Button>
+    </form>,
+  );
+  t.after(cleanup);
+  const input = $("input") as HTMLInputElement;
+  input.value = "Changed";
+  await act(() => ($("button[type=submit]") as HTMLButtonElement).click());
+  assert.equal(submits, 1);
+  assert.equal(intent, "save");
+  assert.equal($("[aria-busy]"), null);
+  await act(() => ($("button[type=reset]") as HTMLButtonElement).click());
+  assert.equal(input.value, "Original");
+  assert.equal(submits, 1);
+});
+
+it("Button action guards repeats, announces a slow wait, reports errors and retries", async (t) => {
+  let calls = 0;
+  let errors = 0;
+  let complete: (() => void) | undefined;
+  let fail: ((reason: unknown) => void) | undefined;
+  const { $, act, cleanup } = render(
+    <Button
+      action={() => {
+        calls++;
+        return new Promise<void>((resolve, reject) => {
+          complete = resolve;
+          fail = reject;
+        });
+      }}
+      pendingLabel="Saving"
+      onError={() => {
+        errors++;
+      }}
+    >
+      Save
+    </Button>,
+  );
+  t.after(cleanup);
+  const button = $("button") as HTMLButtonElement;
+  button.focus();
+  await act(() => {
+    button.click();
+    button.click();
+  });
+  assert.equal(calls, 1);
+  assert.equal(document.activeElement, button);
+  assert.equal(button.disabled, false);
+  assert.equal(button.getAttribute("aria-disabled"), "true");
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 1050)));
+  assert.equal($("[role=status]")?.textContent, "Saving");
+  await act(async () => {
+    fail?.(new Error("Offline"));
+    await Promise.resolve();
+  });
+  assert.equal(errors, 1);
+  assert.equal(button.textContent, "Save");
+  assert.equal(button.getAttribute("aria-busy"), null);
+  assert.equal($("[role=status]")?.textContent, "");
+  await act(() => button.click());
+  assert.equal(calls, 2);
+  await act(async () => {
+    complete?.();
+    await Promise.resolve();
+  });
+  assert.equal(button.textContent, "Save");
+  assert.equal(errors, 1);
+});
+
+it("leaving Button action mode disposes its pending lifecycle", async (t) => {
+  let signal: AbortSignal | undefined;
+  let fail: ((error: unknown) => void) | undefined;
+  let errors = 0;
+  function Fixture(handle: Handle) {
+    let active = true;
+    return () => (
+      <>
+        {active ? (
+          <Button
+            action={(details) => {
+              signal = details.signal;
+              return new Promise<void>((_resolve, reject) => {
+                fail = reject;
+              });
+            }}
+            pendingLabel="Waiting"
+            onError={() => {
+              errors++;
+            }}
+          >
+            Run
+          </Button>
+        ) : (
+          <Button>Run</Button>
+        )}
+        <button
+          id="mode"
+          mix={on("click", () => {
+            active = false;
+            handle.update();
+          })}
+        >
+          Ordinary mode
+        </button>
+      </>
+    );
+  }
+  const { $, act, cleanup } = render(<Fixture />);
+  t.after(cleanup);
+  await act(() => ($("button") as HTMLButtonElement).click());
+  await act(() => ($("#mode") as HTMLButtonElement).click());
+  assert.equal(signal?.aborted, true);
+  assert.equal($("[aria-busy]"), null);
+  await act(async () => {
+    fail?.(new Error("Late failure"));
+    await Promise.resolve();
+  });
+  assert.equal(errors, 0);
+  assert.equal($("button")?.textContent, "Run");
+});

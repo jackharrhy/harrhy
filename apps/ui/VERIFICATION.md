@@ -37,6 +37,10 @@ Fraunces is self-hosted with its OFL/provenance, opsz 14, SOFT 0 and WONK 0, rep
 
 Shiki 4.6.0 now prepares safe TSX tokens for SSR and browser updates through the app-owned adapter, using one grammar, the JavaScript regex engine and contrast-adjusted Github-light accents. No editor, second highlighter, WASM or HTML injection. Exact raw source copying, live language/source updates, escaped tokens, stale-token rejection and CRLF preservation are tested. Large/long-line sources stay complete plain text. A further 54 route/theme/width snapshots (field/select/checkbox/textarea/dialog/code) reported zero axe WCAG A/AA violations and no page overflow; the earlier 27-snapshot Select/Forms/Radio run also passed again. Neither result establishes AT conformance.
 
+The public Button now composes optional async behavior rather than exposing a second action component. Its typed opt-in requires action/pendingLabel/onError together and excludes submit/reset; ordinary Button form behavior remains native. Browser contracts cover native submitter values/reset, repeat guards, slow announcements, error/retry and abort-on-disposal. Explorer's Button story exercises the same API and generates matching source. UI-SDK source paths and the distinction between upstream behavior and our AbortSignal extension are recorded in the package README.
+
+The owner HTTPS URL's watched development path was verified with a real temporary visible source edit and revert: revision `708f7f28bc79` → `a64a16f2ca4e` → original. A deliberate syntax failure retained the working page with an explicit rebuild-failed notice; reverting recovered automatically. Both HTML and JavaScript returned no-store, and the stable leased listener stayed up. These markers/failures were removed; this was a synthetic preview only, not a production change.
+
 ## Interaction checks
 
 - Official Select: Home/End/arrows skip disabled options, typeahead commits the actual hidden form value, disabled hidden values are omitted, Escape dismisses and returns focus. Field label/help/error relationships remain intact.

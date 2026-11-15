@@ -10,6 +10,9 @@ it("explores actual props, matching source, and global themes", async (t) => {
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
   const preview = page.locator('[data-preview="button"]');
   await page.getByRole("button", { name: "Variant", exact: true }).click();
   await page.waitForFunction(
@@ -126,9 +129,13 @@ it("keeps explorer modal, tabs and pending actions keyboard-operable", async (t)
       .getAttribute("aria-selected"),
     "true",
   );
-  await page.goto("/?component=action");
+  await page.goto("/?component=button");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
+  await page.getByLabel("Async action", { exact: true }).check();
   await page
-    .locator('[data-preview="action"]')
+    .locator('[data-preview="button"]')
     .getByRole("button", { name: "Save changes", exact: true })
     .click();
   const pending = page.getByRole("button", { name: "Saving…", exact: true });
@@ -144,6 +151,30 @@ it("keeps explorer modal, tabs and pending actions keyboard-operable", async (t)
   await page
     .getByText("Changes saved in this fixture.", { exact: true })
     .waitFor();
+  await page.getByLabel("Simulate failure", { exact: true }).check();
+  await page
+    .locator('[data-preview="button"]')
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  await page
+    .getByText("Could not save. Turn off simulated failure and try again.", {
+      exact: true,
+    })
+    .waitFor();
+  await page.getByLabel("Simulate failure", { exact: true }).uncheck();
+  await page
+    .locator('[data-preview="button"]')
+    .getByRole("button", { name: "Save changes", exact: true })
+    .click();
+  await page
+    .getByText("Changes saved in this fixture.", { exact: true })
+    .waitFor();
+  assert.match(
+    await page
+      .getByRole("region", { name: "Code example", exact: true })
+      .innerText(),
+    /<Button action=\{save\} pendingLabel="Saving…"/,
+  );
 });
 
 it("filters component navigation with a native GET and without scripts", async (t) => {

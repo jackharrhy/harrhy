@@ -30,6 +30,8 @@ export const buttonStyles = css({
   border: "var(--hui-border-width) solid var(--hui-button-border)",
   borderRadius: "var(--hui-control-radius)",
   fontFamily: "var(--hui-font-control)",
+  fontVariationSettings: "var(--hui-font-variation)",
+  fontOpticalSizing: "var(--hui-font-optical-sizing)",
   fontSize: "var(--hui-button-text-size)",
   fontWeight: "var(--hui-button-weight)",
   lineHeight: "1.25",

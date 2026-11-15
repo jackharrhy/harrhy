@@ -96,7 +96,9 @@ export function Dialog(handle: Handle<DialogProps>) {
             {description}
           </p>
         )}
-        <div mix={css({ marginTop: "1rem" })}>{children}</div>
+        <div mix={css({ marginTop: "1rem", "& > form": { margin: 0 } })}>
+          {children}
+        </div>
       </dialog>
     );
   };

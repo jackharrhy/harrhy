@@ -5,8 +5,8 @@ Reusable Remix 3 native components, scoped semantic themes and part recipes. App
 ## Entry points
 
 - `@harrhy/ui`: compatible legacy styles only, safe for current Worker consumers.
-- `@harrhy/ui/native`: native controls, fields, surfaces and layout.
-- `@harrhy/ui/interactive`: async actions, native modal and official tabs/select compositions.
+- `@harrhy/ui/native`: native controls (including Button with optional async action), fields, surfaces and layout.
+- `@harrhy/ui/interactive`: native modal and official tabs/select compositions.
 - `@harrhy/ui/code`: native SSR code blocks and caller-prepared unified diffs.
 - `@harrhy/ui/theme`: semantic token types, composition and theme mixins.
 - `@harrhy/ui/recipes`: host-element recipes for imperative or custom composition.
@@ -37,6 +37,18 @@ import { Button, Field, Input, Stack } from "@harrhy/ui/native";
 ```
 
 `Button` defaults to `type="button"`; submission must be explicit. `ButtonLink` requires a real `href`; it does not invent disabled-link semantics. Both forward native Remix host props and `mix`. Caller mixins run after recipe mixins; CSS order is **not** an override mechanism. Override theme variables or supply deliberate selectors/layers.
+
+### Optional Button action
+
+There is one public `Button`. Ordinary buttons keep native submit/reset behavior with no pending policy. Inside an app-owned `clientEntry(...)`, opt into an async command with all three props together:
+
+```tsx
+<Button action={save} pendingLabel="Saving…" onError={reportError}>
+  Save changes
+</Button>
+```
+
+`save({signal})` returns a Promise. The props form a typed union: action mode requires `pendingLabel` and `onError`, permits only `type="button"`, and cannot accidentally submit/reset a form. No Promise detection runs on arbitrary native event mixins. A private composition owns idle/pending state, repeat guards, retained focus, `aria-busy`/`aria-disabled`, and a polite announcement after one second. Caller `preventDefault()` vetoes dispatch; a disabled fieldset is respected. Unmounting or leaving action mode aborts the signal and clears timers; late settlements cannot update disposed state. Callers must honor the signal before side effects. Errors go to the required owner's callback and allow retry; business outcomes stay app-owned. Do not throw from `onError`.
 
 `Field` owns one control's ID, label, description and server-error relationships. Use `Input`, `Textarea` or interactive `Select` inside it; the field ID takes precedence over a control's ID. Authored `aria-describedby` IDs are deduplicated and merged with field IDs. A supplied error marks the control invalid; no error preserves caller `aria-invalid`. Errors are not automatic live alerts: server rendering or focused invalid controls should not announce the same error twice. Controllers own validation, error text and focus-on-submit policy. Native required/type validation remains active for Input/Textarea, not the interactive Select. Use `fieldset`/`legend` for groups, and a native wrapping label with `checkboxLabelStyles` from `/recipes` for `Checkbox` (16px visible square, 24px label target, first-line multiline alignment). `Input` is the text-like control recipe; use Range for native sliders and app-owned recipes for file controls rather than applying Input to specialized media controls.
 
@@ -73,7 +85,6 @@ Recipes consume the nearest variables, so subtree overrides inherit naturally. A
 
 Apps must render these inside their own `clientEntry(...)` boundary and boot Remix `run()`. The package does not force hydration on server forms. Include `@harrhy/ui` and its pinned `@remix-run/ui` dependency in your asset server's allowed package graph as required by your host.
 
-- **ActionButton**: `action({signal})`, required `pendingLabel` and `onError(error)`, plus native button props except `type`. This is a client-owned async command, **not** a native submit replacement. Pending retains keyboard focus, marks busy/unavailable, ignores repeat activation and announces after one second. Caller click mixins run before action dispatch; `preventDefault()` vetoes it. A disabled fieldset is respected. Removal aborts the action signal and clears announcements/timers; ignored cancellation cannot update the disposed component. Rejections call the owner's error handler and reset for retry. Business success/error notices stay app-owned. The owner must handle errors in `onError` rather than throwing from it.
 - **Dialog**: controlled `open`, `title`, optional `description`/`initialFocus` selector, `onClose({reason,value})` and children. Uses real `showModal()` for focus containment, inert background and native focus return. Server HTML stays closed, even when `open` is true; browser commit opens it. Owner supplies trigger, close/save actions and changes `open`; Escape requests closure rather than silently changing authoritative state. Native `method="dialog"` close is reported as `native` with its return value. There is no backdrop-dismiss default, async transaction engine, nested-modal stack or busy policy. Owners must prevent native close actions while busy and may veto Escape by keeping `open` true. Do not use `method="dialog"` for an action requiring a cancellable close request. Keep the trigger mounted for native focus return; if it disappears, the owner must focus a suitable fallback. Native dialog props/mixins are forwarded; the title relationship is library-owned.
 - **Tabs**, **TabList**, **Tab**, **TabPanel**: compose official `@remix-run/ui/tabs` 0.13.1. Tabs takes `defaultActiveTab` or controlled `activeTab`/`onActiveTabChange`; each Tab/TabPanel shares a `name`. TabList requires `aria-label`. Arrow/Home/End navigation, disabled registration and active/inert panel relationships remain upstream-owned. These are widgets, not route navigation: use anchors and `aria-current` for routes. Content is present in SSR; interactive switching requires hydration.
 
@@ -87,7 +98,7 @@ Pinned 0.13.1 publishes `accordion`, `anchor`, `animation`, `combobox`, `listbox
 
 - Adapted: official **tabs**, **select**, and select's supporting **popover/listbox** composition. Package tests cover Select SSR relationships, default labels/values and disabled form markup; consuming app browser tests own mounted keyboard/focus/FormData coverage.
 - Not adapted: standalone popover/listbox APIs or other upstream widgets. No blanket upstream coverage is claimed.
-- Dialog remains native HTML dialog: pinned UI 0.13.1 has no official Dialog API. ActionButton and Field are package-owned compositions, not upstream widgets.
+- Dialog remains native HTML dialog: pinned UI 0.13.1 has no official Dialog API. Button action mode and Field are package-owned compositions, not upstream widgets.
 
 ## Code and diffs
 
@@ -99,7 +110,7 @@ The [code research and API guide](CODE.md) inventories actual Atlas/Garden/Lists
 
 Remix 3.2.0 owns rendering/lifecycle and CSS. `@remix-run/ui` is pinned **0.13.1**, MIT, compatible with component ^1.2.0, and independently unstable; review the published subpath APIs and rerun SSR/browser contracts before upgrading. No old `remix/ui` or unpublished form/toast APIs are used.
 
-The behavior design was compared with Vercel UI SDK at immutable commit `220c1a0d7278872286a620a8e4ee4210ca46f9bd`: native/custom button semantics, retained pending focus, delayed announcements, field relationship merging, modal cancellation and stale action completions. Its framework-neutral core is substantial, but the required renderer bridge explicitly declares private/unstable APIs. This slice uses original native Remix implementations, not a vendored SDK kernel/adapter or copied algorithms. Therefore no SDK runtime dependency, copied source, assets or license notices are added. If a future missing utility earns selective adaptation, record exact files/commit/modifications and preserve Apache-2.0 notices at that point. Broad focus/selection engines should use official headless primitives rather than duplicate them.
+The behavior design was compared with Vercel UI SDK at immutable commit `220c1a0d7278872286a620a8e4ee4210ca46f9bd`: native/custom button semantics, retained pending focus, delayed announcements, field relationship merging, modal cancellation and stale action completions. Upstream also exposes one Button: [core state/press](https://github.com/vercel-labs/ui/blob/220c1a0d7278872286a620a8e4ee4210ca46f9bd/packages/core/src/components/button/button.ts), [React adapter](https://github.com/vercel-labs/ui/blob/220c1a0d7278872286a620a8e4ee4210ca46f9bd/packages/react/src/button.tsx), and [action/announcement helper](https://github.com/vercel-labs/ui/blob/220c1a0d7278872286a620a8e4ee4210ca46f9bd/packages/core/src/foundation/kernel/action.ts). Its returned-Promise pending/error state and delayed announcement are the behavior baseline, not a separate action component. Our explicit opt-in maps that behavior to Remix; abort-on-disposal and stale-result suppression are original extensions, not features claimed from upstream's Button action helper. Its framework-neutral core is substantial, but the required renderer bridge explicitly declares private/unstable APIs. This slice uses original native Remix implementations, not a vendored SDK kernel/adapter or copied algorithms. Therefore no SDK runtime dependency, copied source, assets or license notices are added. If a future missing utility earns selective adaptation, record exact files/commit/modifications and preserve Apache-2.0 notices at that point. Broad focus/selection engines should use official headless primitives rather than duplicate them.
 
 ## Checks
 
