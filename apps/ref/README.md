@@ -64,7 +64,7 @@ CELLD_BIN=/absolute/path/to/celld npm run test:celld --workspace @harrhy/ref
 
 `POST /mcp` exposes Ref's shared boards through the official MCP SDK. Resource
 metadata is at `/.well-known/oauth-protected-resource/mcp`. The app-owned
-`app/mcp/` catalog and handlers use `@harrhy/mcp/native`; the SDK owns protocol
+`app/mcp/` catalog and handlers use `@harrhy/mcp`; the SDK owns protocol
 negotiation and transport, including existing SDK 1.32.1 clients. Requests are
 bounded to 28 MB (allowing base64 for one 20 MB image). Browser session cookies
 never authorize MCP.

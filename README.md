@@ -56,7 +56,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/maps-protocol`](packages/maps-protocol/) | Hosted and collaborative map schemas | [README](packages/maps-protocol/README.md) |
 | [`@harrhy/worldview-renderer`](packages/maps-renderer/) | Embeddable WebGPU map renderer and BSP core | [README](packages/maps-renderer/README.md) |
 | [`@harrhy/webmcp`](packages/webmcp/) | Browser-native site tool registration and lifecycle | [README](packages/webmcp/README.md) |
-| [`@harrhy/mcp`](packages/mcp/) | MCP tools, resources, and Streamable HTTP handler | [README](packages/mcp/README.md) |
+| [`@harrhy/mcp`](packages/mcp/) | Official SDK HTTP MCP transport and typed tool bindings | [README](packages/mcp/README.md) |
 | [`@harrhy/pool`](packages/pool/) | Shared pool rules, Box3D physics, and recordings | [README](packages/pool/README.md) |
 | [`@harrhy/pool-protocol`](packages/pool-protocol/) | Versioned pool WebSocket messages | [README](packages/pool-protocol/README.md) |
 | [`@harrhy/pool-simulation`](packages/pool-simulation/) | Hall movement and navigation | [README](packages/pool-simulation/README.md) |

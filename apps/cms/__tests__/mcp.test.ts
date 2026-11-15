@@ -95,10 +95,31 @@ it("keeps MCP disabled without credentials and serves only the selected site's p
       try {
         await connect();
         assert.equal(client.getServerVersion()?.name, "teacms");
-        assert.deepEqual(
-          (await client.listTools()).tools.map((tool) => tool.name),
-          ["list_published_pages", "get_published_page"],
-        );
+        assert.deepEqual((await client.listTools()).tools, [
+          {
+            name: "list_published_pages",
+            description:
+              "List published pages for this TeaCMS site. Draft content is never returned.",
+            inputSchema: {
+              type: "object",
+              properties: {},
+              additionalProperties: false,
+            },
+            annotations: { readOnlyHint: true, openWorldHint: false },
+          },
+          {
+            name: "get_published_page",
+            description:
+              "Read a published page and its content blocks by slug. Use an empty slug for the homepage. Draft content is never returned.",
+            inputSchema: {
+              type: "object",
+              properties: { slug: { type: "string", maxLength: 200 } },
+              required: ["slug"],
+              additionalProperties: false,
+            },
+            annotations: { readOnlyHint: true, openWorldHint: false },
+          },
+        ]);
         const listed = await client.callTool({
           name: "list_published_pages",
           arguments: {},
@@ -112,6 +133,22 @@ it("keeps MCP disabled without credentials and serves only the selected site's p
           arguments: { slug: "example" },
         });
         assert.match(JSON.stringify(page), /Example page/);
+        assert.equal(page.structuredContent, undefined);
+        for (const request of [
+          { name: "list_published_pages", arguments: { extra: true } },
+          { name: "get_published_page", arguments: {} },
+          {
+            name: "get_published_page",
+            arguments: { slug: "example", extra: true },
+          },
+          { name: "get_published_page", arguments: { slug: "x".repeat(201) } },
+        ]) {
+          const rejected = await client.callTool(request);
+          assert.equal(rejected.isError, true);
+          assert.deepEqual(rejected.content, [
+            { type: "text", text: "Unknown tool or invalid arguments." },
+          ]);
+        }
         const draft = await client.callTool({
           name: "get_published_page",
           arguments: { slug: "private-draft" },

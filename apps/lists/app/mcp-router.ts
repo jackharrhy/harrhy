@@ -1,9 +1,5 @@
 import { IdentityError } from "@harrhy/identity";
-import {
-  createNativeHandler,
-  Server,
-  specTypeSchemas,
-} from "@harrhy/mcp/native";
+import { createNativeHandler, Server, specTypeSchemas } from "@harrhy/mcp";
 import { createRouter } from "remix/router";
 
 import type { Config } from "../src/config.ts";
