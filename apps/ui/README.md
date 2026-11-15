@@ -13,7 +13,7 @@ npm run check --workspace @harrhy/ui-app
 
 Default binding: `127.0.0.1:18943`. Configure `HOST` and `PORT`; Docker binds `0.0.0.0`. `UI_HOSTS` replaces the default hostname allowlist: `localhost,127.0.0.1,[::1],harrhy-ui.pi.jackharrhy.dev`. Unknown hosts receive 404 before pages, health or assets. Forwarded host headers do not override the hostname. This is not authentication or deployment authorization.
 
-`npm run dev` runs `dev.mjs`: a stable listener watches app/shared UI source, starts fresh Node candidates, preflights Explorer and Scenes compilation, and hands off only a working revision. Compile failures keep the last working process and show a visible warning; service logs contain the error. Reload the page to see accepted source changes (no HMR claim). Dev HTML/assets use `Cache-Control: no-store`, ignore conditional validators, and expose `X-UI-Preview-Revision`/`X-UI-Preview-State` plus a revision meta tag. Changing supervisor code/environment still requires restarting that supervisor; ordinary app/component edits do not. Production `npm start`/Docker do not use this supervisor or override asset caching. For a leased preview, keep the stable listener running; remove its lease before stopping/reusing its port.
+`npm run dev` runs `dev.mjs`: a stable listener watches app/shared UI source, starts fresh Node candidates, preflights Explorer and Scenes compilation, and hands off only a working revision. Compile failures keep the last working process and show a visible warning; service logs contain the error. Reload the page to see accepted source changes (no HMR claim). Directory watches survive rename-based editor saves. Candidates and the stable listener both enforce the same host allowlist; readiness probes preserve an allowed Host even with a preview-only allowlist. Dev HTML/assets use `Cache-Control: no-store`, ignore conditional validators, and expose `X-UI-Preview-Revision`/`X-UI-Preview-State` plus a revision meta tag. Changing supervisor code/environment still requires restarting that supervisor; ordinary app/component edits do not. Production `npm start`/Docker do not use this supervisor or override asset caching. For a leased preview, keep the stable listener running; remove its lease before stopping/reusing its port.
 
 Tests use temporary loopback servers. Install browser support with `npx playwright install chromium`. The check runs typechecking, router tests, browser component contracts and end-to-end tests. Remix test discovery is anchored at the root to share the hoisted browser harness; the glob remains restricted to this app.
 
@@ -21,7 +21,7 @@ Tests use temporary loopback servers. Install browser support with `npx playwrig
 
 - `server.ts`: Node Fetch adapter, binding and shutdown; dev child IPC reports its ephemeral loopback port.
 - `dev.mjs`: development-only watched candidate compilation, handoff, no-store proxy and last-working failure behavior.
-- `app/routes.ts`, `app/router.tsx`: route, host policy, health and document rendering.
+- `app/routes.ts`, `app/router.tsx`, `app/hosts.ts`: route, shared host policy, health and document rendering.
 - `app/assets.ts`: browser source mounts and package allowlist; excludes tests and server source.
 - `app/public/entry.ts`: browser runtime boot.
 - `app/public/explorer.tsx`: component navigation, live controls, preview and matching code.

@@ -1,14 +1,54 @@
 import { fork } from "node:child_process";
 import { createHash } from "node:crypto";
-import { createServer } from "node:http";
+import { createServer, request as httpRequest } from "node:http";
+import { Readable } from "node:stream";
 import { readdir, readFile } from "node:fs/promises";
 import { watch } from "node:fs";
 import { resolve } from "node:path";
 import { createRequestListener } from "remix/node-fetch-server";
+import { defaultHosts } from "./app/hosts.ts";
 
 // A stable loopback listener keeps the leased route alive while fresh Node
 // processes compile both server modules and the browser graph before handoff.
 const root = import.meta.dirname;
+const allowedHosts =
+  process.env.UI_HOSTS?.split(",")
+    .map((host) => host.trim().toLowerCase())
+    .filter(Boolean) ?? defaultHosts;
+
+// Node fetch rewrites Host to its URL authority; use HTTP directly so probes
+// and forwarding preserve the app's exact hostname boundary on loopback.
+function fetchLocal(url, { method = "GET", headers, body, signal } = {}) {
+  return new Promise((accept, reject) => {
+    const outgoing = httpRequest(
+      url,
+      { method, headers: Object.fromEntries(new Headers(headers)), signal },
+      (incoming) => {
+        const responseHeaders = new Headers();
+        for (let index = 0; index < incoming.rawHeaders.length; index += 2)
+          responseHeaders.append(
+            incoming.rawHeaders[index],
+            incoming.rawHeaders[index + 1],
+          );
+        const empty =
+          method === "HEAD" || [204, 304].includes(incoming.statusCode);
+        if (empty) incoming.resume();
+        accept(
+          new Response(empty ? null : Readable.toWeb(incoming), {
+            status: incoming.statusCode,
+            headers: responseHeaders,
+          }),
+        );
+      },
+    );
+    outgoing.on("error", reject);
+    if (body)
+      Readable.fromWeb(body)
+        .on("error", (error) => outgoing.destroy(error))
+        .pipe(outgoing);
+    else outgoing.end();
+  });
+}
 const sourceDirs = [resolve(root, "app"), resolve(root, "../../packages/ui")];
 const sourceFiles = [resolve(root, "server.ts"), resolve(root, "package.json")];
 let active;
@@ -66,7 +106,8 @@ async function candidate(id) {
     });
     const url = `http://127.0.0.1:${port}`;
     for (const path of ["/", "/?view=scenes&scene=radio"]) {
-      const response = await fetch(url + path, {
+      const response = await fetchLocal(url + path, {
+        headers: { Host: allowedHosts[0] ?? "127.0.0.1" },
         signal: AbortSignal.timeout(20_000),
       });
       const html = await response.text();
@@ -119,6 +160,11 @@ async function rebuild() {
 
 const server = createServer(
   createRequestListener(async (request) => {
+    if (!allowedHosts.includes(new URL(request.url).hostname.toLowerCase()))
+      return new Response("Not found", {
+        status: 404,
+        headers: { "Cache-Control": "no-store" },
+      });
     const current = active;
     const headers = new Headers({
       "Cache-Control": "no-store",
@@ -137,27 +183,22 @@ const server = createServer(
     const incoming = new Headers(request.headers);
     incoming.delete("if-none-match");
     incoming.delete("if-modified-since");
+    incoming.set("accept-encoding", "identity");
     const target = new URL(
       new URL(request.url).pathname + new URL(request.url).search,
       current.url,
     );
-    const response = await fetch(
-      new Request(target, {
-        method: request.method,
-        headers: incoming,
-        body: request.body,
-        duplex: "half",
-      }),
-    );
+    const response = await fetchLocal(target, {
+      method: request.method,
+      headers: incoming,
+      body: request.body,
+      signal: request.signal,
+    });
     for (const [key, value] of response.headers)
       if (
-        ![
-          "cache-control",
-          "etag",
-          "last-modified",
-          "content-length",
-          "content-encoding",
-        ].includes(key)
+        !["cache-control", "etag", "last-modified", "content-length"].includes(
+          key,
+        )
       )
         headers.set(key, value);
     if (response.headers.get("content-type")?.includes("text/html")) {
@@ -183,9 +224,17 @@ server.listen(
   process.env.HOST ?? "127.0.0.1",
 );
 let timer;
-const watchers = [...sourceDirs, ...sourceFiles].map((path) =>
+// Watch directories, not file inodes: editors commonly save via atomic rename.
+const watchers = [root, sourceDirs[1]].map((path) =>
   watch(path, { recursive: true }, (_event, name) => {
     if (name?.includes("__tests__") || name?.endsWith(".md")) return;
+    if (
+      path === root &&
+      name &&
+      !name.startsWith("app/") &&
+      !["server.ts", "package.json"].includes(name)
+    )
+      return;
     clearTimeout(timer);
     timer = setTimeout(() => void rebuild(), 150);
   }),

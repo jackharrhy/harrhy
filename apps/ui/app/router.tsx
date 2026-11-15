@@ -7,12 +7,8 @@ import { Scenes } from "./public/scenes.tsx";
 import type { ThemeName } from "./public/themes.ts";
 import { Explorer, stories } from "./public/explorer.tsx";
 
-export const defaultHosts = [
-  "localhost",
-  "127.0.0.1",
-  "[::1]",
-  "harrhy-ui.pi.jackharrhy.dev",
-];
+import { defaultHosts } from "./hosts.ts";
+export { defaultHosts } from "./hosts.ts";
 export function createApp(hosts: readonly string[] = defaultHosts) {
   const assets = createAssets();
   const router = createRouter();
