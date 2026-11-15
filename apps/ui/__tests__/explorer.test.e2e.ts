@@ -101,6 +101,9 @@ it("keeps explorer modal, tabs and pending actions keyboard-operable", async (t)
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.goto("/?component=dialog");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
   const trigger = page.getByRole("button", {
     name: "Rename collection",
     exact: true,
@@ -120,6 +123,9 @@ it("keeps explorer modal, tabs and pending actions keyboard-operable", async (t)
     true,
   );
   await page.goto("/?component=tabs");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
   await page.getByRole("tab", { name: "Overview", exact: true }).focus();
   await page.keyboard.press("End");
   await page.keyboard.press("Enter");

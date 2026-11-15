@@ -1,5 +1,14 @@
 import { css, type Handle, type RemixNode } from "remix/component";
 
+import {
+  Breadcrumbs,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@harrhy/ui/native";
+
 import { desktopIconStyle, desktopStyle } from "./desktop-styles.ts";
 
 type RadioStatusTone = "offline" | "online" | "syncing";
@@ -16,42 +25,46 @@ export function RadioHeader(
 
     return (
       <header mix={[desktopStyle.titleBar, radioHeaderStyle.header]}>
-        <nav aria-label="Breadcrumb" mix={radioHeaderStyle.breadcrumbs}>
-          <a
-            href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
-            mix={radioHeaderStyle.brandLink}
-          >
-            radio
-          </a>
-          <span aria-hidden="true" mix={radioHeaderStyle.separator}>
-            /
-          </span>
-          {roomName ? (
-            <a
-              href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
-              mix={radioHeaderStyle.roomsLink}
-            >
-              <span aria-hidden="true" mix={radioHeaderStyle.backIcon}>
-                arrow_back
-              </span>
-              <span>rooms</span>
-            </a>
-          ) : (
-            <span aria-current="page" mix={radioHeaderStyle.rootCrumb}>
-              rooms
-            </span>
-          )}
-          {roomName ? (
-            <>
-              <span aria-hidden="true" mix={radioHeaderStyle.separator}>
-                /
-              </span>
-              <span aria-current="page" mix={radioHeaderStyle.currentCrumb}>
-                {roomName}
-              </span>
-            </>
-          ) : null}
-        </nav>
+        <Breadcrumbs mix={css({ minWidth: 0 })}>
+          <BreadcrumbList mix={radioHeaderStyle.breadcrumbs}>
+            <BreadcrumbItem>
+              <BreadcrumbLink
+                href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
+                mix={radioHeaderStyle.brandLink}
+              >
+                radio
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbItem>
+              <BreadcrumbSeparator mix={radioHeaderStyle.separator} />
+              {roomName ? (
+                <BreadcrumbLink
+                  href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
+                  mix={radioHeaderStyle.roomsLink}
+                >
+                  <span aria-hidden="true" mix={radioHeaderStyle.backIcon}>
+                    arrow_back
+                  </span>
+                  <span>rooms</span>
+                </BreadcrumbLink>
+              ) : (
+                <BreadcrumbPage mix={radioHeaderStyle.rootCrumb}>
+                  rooms
+                </BreadcrumbPage>
+              )}
+            </BreadcrumbItem>
+            {roomName ? (
+              <BreadcrumbItem
+                mix={css({ flex: "0 1 auto", overflow: "hidden" })}
+              >
+                <BreadcrumbSeparator mix={radioHeaderStyle.separator} />
+                <BreadcrumbPage mix={radioHeaderStyle.currentCrumb}>
+                  {roomName}
+                </BreadcrumbPage>
+              </BreadcrumbItem>
+            ) : null}
+          </BreadcrumbList>
+        </Breadcrumbs>
         {handle.props.status ?? (
           <RadioStatus label="online" tone="online">
             online
@@ -86,8 +99,10 @@ const radioHeaderStyle = {
     gap: "12px",
   }),
   breadcrumbs: css({
+    "--hui-muted": "#fff",
     minWidth: 0,
     display: "flex",
+    flexWrap: "nowrap",
     alignItems: "center",
     gap: "4px",
     fontSize: "13px",

@@ -30,7 +30,14 @@ import { WorkbenchHeader } from "./workbench.tsx";
 import { themes } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
 
+import {
+  expandedStories,
+  isExpandedStory,
+  ExpandedStory,
+} from "./expanded-stories.tsx";
+
 export const stories = [
+  ...expandedStories,
   {
     id: "button",
     name: "Button",
@@ -488,6 +495,8 @@ function Story(
   }
   return () => {
     const { story, theme } = handle.props;
+    if (isExpandedStory(story))
+      return <ExpandedStory story={story} theme={theme} />;
     const shownSource =
       codeSource +
       (longLine

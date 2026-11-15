@@ -6,7 +6,7 @@ Reusable Remix 3 native components, scoped semantic themes and part recipes. App
 
 - `@harrhy/ui`: compatible legacy styles only, safe for current Worker consumers.
 - `@harrhy/ui/native`: native controls (including Button with optional async action), fields, surfaces and layout.
-- `@harrhy/ui/interactive`: native modal and official tabs/select compositions.
+- `@harrhy/ui/interactive`: native modal and official tabs/select/accordion/menu compositions.
 - `@harrhy/ui/code`: native SSR code blocks and caller-prepared unified diffs.
 - `@harrhy/ui/theme`: semantic token types, composition and theme mixins.
 - `@harrhy/ui/recipes`: host-element recipes for imperative or custom composition.
@@ -56,6 +56,19 @@ There is one public `Button`. Ordinary buttons keep native submit/reset behavior
 
 `Panel`, `Stack`, `Inline`, `Notice` and `Badge` provide small semantic/spacing compositions. `Notice` has no forced live-region role; add `role="status"` or `role="alert"` only when the update needs announcement. Panel renders a section; name it with a heading or ARIA label when it is a navigable region.
 
+## Compositional content and navigation
+
+The native entry also exports:
+
+- `Heading` (`level` 1–6, default 2) and `Text` (`tone="muted"` optionally). They forward native host props/mixins; apps own hierarchy, sizes and content. Compose empty states, item rows and section headings from these parts rather than adopting an app-shaped shared wrapper.
+- `Progress` uses native `<progress>`. Supply an accessible name and `value: number | null`; null/non-finite values omit the value attribute (unknown total). Finite values clamp to 0–max; max defaults to 100 and invalid maxima fall back to 100. Apps own visible labels, units, completion announcements and task state. Native indeterminate behavior works without a client runtime.
+- `Breadcrumbs`, `BreadcrumbList`, `BreadcrumbItem`, `BreadcrumbLink`, `BreadcrumbPage`, `BreadcrumbSeparator` compose nav/ol/li/anchor/current-page/span semantics. Put each separator **inside** the following item; separators are hidden from accessibility APIs. Apps own the path, links and optional truncation. Both Artbin and the Radio showcase use these parts; production Radio is unchanged.
+- `NavigationMenu` and `NavigationMenuLink` are named native route navigation with `aria-current="page"` supplied by the app. They are intentionally ordinary links, **not** a popup navigation-menu/menubar widget or roving-focus toolbar.
+- `TableContainer`, `Table`, `TableCaption`, `TableHeader`, `TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell` retain native table structure. TableHead defaults to column scope; set `scope="row"` for row headers. Container only provides bounded horizontal overflow; add a name, `role="region"` and `tabindex={0}` when keyboard scrolling is needed. Sorting, selection, pagination and data models remain app-owned.
+- `Collapsible`, `CollapsibleTrigger`, `CollapsibleContent` render native details/summary/div. Use native `open`, `name` and toggle events; summary must be the first child. This is not the SDK imperative Collapsible controller. It works without hydration; use Accordion for an interactive grouped widget.
+
+No EmptyState, Item or SectionHeading wrapper is exported. Theme tokens apply to these small parts without installing an app shell.
+
 ## Theme composition
 
 ```tsx
@@ -94,12 +107,18 @@ Apps must render these inside their own `clientEntry(...)` boundary and boot Rem
 
 Select SSR includes a labelled button, closed native popover, options and hidden input with the default value. Without JavaScript it can submit that initial hidden value but cannot change selection; it is **not** a progressively enhanced native select. Disabled excludes its hidden input from submission. There is no native `required` validation or reset synchronization: owners validate values and explicitly remount when resetting. No `required` prop is exposed. Use a host-owned native select when no-JS editing or native constraint/reset behavior is needed. Upstream owns arrows, typeahead, selection, dismissal and Escape focus return. Its listbox intercepts Tab while open rather than providing native-select Tab traversal; this adapter does not replace that policy.
 
+### Accordion and Menu
+
+`Accordion`, `AccordionItem`, `AccordionTrigger`, `AccordionContent` compose official 0.13.1 Accordion contexts/mixins. Accordion accepts the upstream controlled/uncontrolled single/multiple union; items have unique `value` and optional `disabled`. Put each trigger inside an app-selected `Heading` level. Upstream owns arrows/Home/End, disabled skipping, open state and linked ARIA/inert panels; the themed content part hides closed panels with CSS. Multiple mode accepts string arrays; single mode accepts string/null and optional `collapsible={false}`. Switching modes should remount the root when changing default values.
+
+`Menu`, `MenuTrigger`, `MenuContent`, `MenuItem` compose official 0.13.1 menu/popover behavior. Menu takes a label; each item has a stable name and optional upstream value/label/searchValue/disabled/type/checked options. `MenuContent onSelect(item)` reports the upstream selection; owners perform commands and update checked state. Upstream owns popup positioning, arrows/Home/End, typeahead, disabled skipping, Escape, outside dismissal and focus return. This adapter exposes a single button-triggered action menu, not submenus or context menus. Items are commands, not invented links or form submission. Selection and dismissal finish asynchronously; keep the trigger mounted for focus return. Menu needs hydration and is not a no-script action fallback: keep essential actions reachable in native forms/links elsewhere. No new interaction engine or React/Radix/Base UI dependency is introduced.
+
 ### Upstream coverage inventory
 
 Pinned 0.13.1 publishes `accordion`, `anchor`, `animation`, `combobox`, `listbox`, `menu`, `popover`, `select`, `tabs` and `toggle`. The Explorer shows underlying Select/Tabs examples alongside working themed previews; this inventory stays in developer documentation.
 
-- Adapted: official **tabs**, **select**, and select's supporting **popover/listbox** composition. Package tests cover Select SSR relationships, default labels/values and disabled form markup; consuming app browser tests own mounted keyboard/focus/FormData coverage.
-- Not adapted: standalone popover/listbox APIs or other upstream widgets. No blanket upstream coverage is claimed.
+- Adapted: official **accordion**, **menu**, **tabs**, **select**, and supporting **popover/listbox** composition. Package tests cover Select SSR relationships, default labels/values and disabled form markup; consuming app browser tests own mounted keyboard/focus/FormData coverage.
+- Not adapted: standalone popover/listbox, nested/context menus or other upstream widgets. No blanket upstream coverage is claimed.
 - Dialog remains native HTML dialog: pinned UI 0.13.1 has no official Dialog API. Button action mode and Field are package-owned compositions, not upstream widgets.
 
 ## Code and diffs

@@ -11,6 +11,17 @@ import {
   Inline as UiInline,
   Notice,
   Badge as UiBadge,
+  Progress,
+  Table,
+  TableContainer,
+  TableRow as UiTableRow,
+  TableHead,
+  TableCell as UiTableCell,
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+  Heading,
+  Text,
 } from "@harrhy/ui/native";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 
@@ -126,33 +137,12 @@ const emptyActionStyle = css({ marginTop: "1rem" });
 const fullWidthControlStyle = css({ width: "100%" });
 const monoControlStyle = css({ fontFamily: theme.font.mono });
 const requiredStyle = css({ color: theme.color.danger, marginLeft: "0.25rem" });
-const progressTrackStyle = css({
-  background: theme.color.subtle,
-  height: "0.375rem",
-  overflow: "hidden",
-  width: "100%",
-});
-const progressFillStyle = css({
-  background: theme.color.text,
-  height: "100%",
-  transition: "width 150ms",
-});
 const progressMetaStyle = css({
   color: theme.color.muted,
   display: "flex",
   fontSize: "0.75rem",
   justifyContent: "space-between",
   marginTop: "0.25rem",
-});
-const tableFrameStyle = css({
-  background: theme.color.background,
-  border: `1px solid ${theme.color.borderLight}`,
-  overflowX: "auto",
-});
-const tableStyle = css({
-  borderCollapse: "collapse",
-  fontSize: "0.875rem",
-  width: "100%",
 });
 const tableHeaderStyle = css({
   borderBottom: `2px solid ${theme.color.subtle}`,
@@ -161,10 +151,6 @@ const tableHeaderStyle = css({
 const tableRowStyle = css({
   borderBottom: `1px solid ${theme.color.subtle}`,
   "&:last-child": { borderBottom: 0 },
-});
-const tableCellStyle = css({
-  padding: "0.625rem 0.75rem",
-  verticalAlign: "top",
 });
 const tableHeaderCellStyle = css({
   color: theme.color.muted,
@@ -196,17 +182,6 @@ const detailGridStyle = css({
 });
 const detailLabelStyle = css({ color: theme.color.muted });
 const detailValueStyle = css({ margin: 0, overflowWrap: "anywhere" });
-const disclosureStyle = css({
-  background: theme.color.background,
-  border: `1px solid ${theme.color.borderLight}`,
-  padding: "1rem",
-});
-const summaryStyle = css({
-  cursor: "pointer",
-  fontSize: "0.875rem",
-  fontWeight: 500,
-});
-const disclosureBodyStyle = css({ marginTop: "1rem" });
 const stackStyle = css({
   display: "flex",
   flexDirection: "column",
@@ -372,7 +347,9 @@ export function PageHeader(
       <header mix={headerStyle}>
         <div mix={headerCopyStyle}>
           {eyebrow ? <p mix={eyebrowStyle}>{eyebrow}</p> : null}
-          <h1 mix={titleStyle}>{title}</h1>
+          <Heading level={1} mix={titleStyle}>
+            {title}
+          </Heading>
           {description ? <p mix={descriptionStyle}>{description}</p> : null}
         </div>
         {actions ? <div mix={actionsStyle}>{actions}</div> : null}
@@ -389,7 +366,7 @@ export function SectionHeader(
     return (
       <header mix={sectionHeaderStyle}>
         <div>
-          <h2 mix={sectionTitleStyle}>{title}</h2>
+          <Heading mix={sectionTitleStyle}>{title}</Heading>
           {description ? (
             <p mix={sectionDescriptionStyle}>{description}</p>
           ) : null}
@@ -407,8 +384,12 @@ export function EmptyState(
     const { title, description, action } = handle.props;
     return (
       <div mix={emptyStyle}>
-        <p mix={emptyTitleStyle}>{title}</p>
-        {description ? <p mix={emptyBodyStyle}>{description}</p> : null}
+        <Text mix={emptyTitleStyle}>{title}</Text>
+        {description ? (
+          <Text tone="muted" mix={emptyBodyStyle}>
+            {description}
+          </Text>
+        ) : null}
         {action ? <div mix={emptyActionStyle}>{action}</div> : null}
       </div>
     );
@@ -573,64 +554,55 @@ export function CheckboxField(
 }
 
 export function ProgressBar(
-  handle: Handle<{ value: number; label?: string; detail?: string }>,
+  handle: Handle<{ value: number | null; label?: string; detail?: string }>,
 ) {
   return () => {
     const { value, label, detail } = handle.props;
-    const normalized = Math.max(0, Math.min(100, value));
+    const normalized =
+      value === null || !Number.isFinite(value)
+        ? null
+        : Math.max(0, Math.min(100, value));
     return (
       <div>
-        <div
-          role="progressbar"
-          aria-label={label}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={normalized}
-          mix={progressTrackStyle}
-        >
-          <div mix={progressFillStyle} style={{ width: `${normalized}%` }} />
-        </div>
+        <Progress value={normalized} aria-label={label ?? "Progress"} />
         {label || detail ? (
           <div mix={progressMetaStyle}>
             <span>{label}</span>
-            <span>{detail ?? `${normalized}%`}</span>
+            <span>
+              {detail ?? (normalized === null ? "Working…" : `${normalized}%`)}
+            </span>
           </div>
         ) : null}
       </div>
     );
   };
 }
-
 export function DataTable(
   handle: Handle<{ label: string; children?: RemixNode }>,
 ) {
   return () => (
-    <div mix={tableFrameStyle}>
-      <table aria-label={handle.props.label} mix={tableStyle}>
-        {handle.props.children}
-      </table>
-    </div>
+    <TableContainer tabindex={0} role="region" aria-label={handle.props.label}>
+      <Table aria-label={handle.props.label}>{handle.props.children}</Table>
+    </TableContainer>
   );
 }
-
 export function TableHeaderRow(handle: Handle<{ children?: RemixNode }>) {
-  return () => <tr mix={tableHeaderStyle}>{handle.props.children}</tr>;
+  return () => (
+    <UiTableRow mix={tableHeaderStyle}>{handle.props.children}</UiTableRow>
+  );
 }
-
 export function TableRow(handle: Handle<{ children?: RemixNode }>) {
-  return () => <tr mix={tableRowStyle}>{handle.props.children}</tr>;
+  return () => (
+    <UiTableRow mix={tableRowStyle}>{handle.props.children}</UiTableRow>
+  );
 }
-
 export function TableHeaderCell(handle: Handle<{ children?: RemixNode }>) {
   return () => (
-    <th scope="col" mix={[tableCellStyle, tableHeaderCellStyle]}>
-      {handle.props.children}
-    </th>
+    <TableHead mix={tableHeaderCellStyle}>{handle.props.children}</TableHead>
   );
 }
-
 export function TableCell(handle: Handle<{ children?: RemixNode }>) {
-  return () => <td mix={tableCellStyle}>{handle.props.children}</td>;
+  return () => <UiTableCell>{handle.props.children}</UiTableCell>;
 }
 
 export function StatGrid(handle: Handle<{ children?: RemixNode }>) {
@@ -667,10 +639,10 @@ export function Disclosure(
   handle: Handle<{ summary: string; children?: RemixNode; open?: boolean }>,
 ) {
   return () => (
-    <details open={handle.props.open} mix={disclosureStyle}>
-      <summary mix={summaryStyle}>{handle.props.summary}</summary>
-      <div mix={disclosureBodyStyle}>{handle.props.children}</div>
-    </details>
+    <Collapsible open={handle.props.open}>
+      <CollapsibleTrigger>{handle.props.summary}</CollapsibleTrigger>
+      <CollapsibleContent>{handle.props.children}</CollapsibleContent>
+    </Collapsible>
   );
 }
 

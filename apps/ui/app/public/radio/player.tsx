@@ -565,7 +565,7 @@ function TrackList(
     }
 
     return (
-      <ol mix={radioStyle.queueList}>
+      <ol aria-label="Queue" mix={radioStyle.queueList}>
         {state.tracks.map((track, index) => {
           let active = track.id === state.currentTrackId;
           let uploadPercent = track.upload
