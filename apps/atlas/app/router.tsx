@@ -1,6 +1,10 @@
 import { createRouter, createController } from "remix/router";
 import { render } from "remix/middleware/render";
 import { csp } from "remix/middleware/csp";
+import { staticFiles } from "remix/middleware/static";
+import { fileURLToPath } from "node:url";
+import { Button, Field, Input } from "@harrhy/ui/native";
+import { requestTheme } from "./theme.ts";
 import { createCatalog } from "./content/catalog.ts";
 import { routes } from "./routes.ts";
 import { spaces, spacePath } from "./spaces.ts";
@@ -17,12 +21,16 @@ export async function createAtlas(root: string) {
         policy: {
           defaultSrc: ["'none'"],
           scriptSrc: ["'none'"],
-          styleSrc: ["'unsafe-inline'"],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          fontSrc: ["'self'"],
           imgSrc: ["'none'"],
           formAction: ["'self'"],
           baseUri: ["'none'"],
           frameAncestors: ["'none'"],
         },
+      }),
+      staticFiles(fileURLToPath(new URL("../public/", import.meta.url)), {
+        cacheControl: "private, max-age=86400",
       }),
     ],
   });
@@ -60,21 +68,36 @@ export async function createAtlas(root: string) {
     const generation = snapshot.generation!;
     const url = new URL(context.request.url);
     const pathname = url.pathname.replace(/\/$/, "") || "/";
+    const preference = await requestTheme(context.request);
     const headers = {
       "Cache-Control": "private, no-store",
       "X-Content-Type-Options": "nosniff",
       "Referrer-Policy": "no-referrer",
       "X-Robots-Tag": "noindex, nofollow",
+      ...(preference.cookie ? { "Set-Cookie": preference.cookie } : {}),
     };
     const respond = (
       title: string,
       body: Parameters<typeof document>[1],
       status = 200,
     ) =>
-      context.render(document(title, body, snapshot.status === "stale"), {
-        headers,
-        status,
-      });
+      context.render(
+        document(title, body, {
+          stale: snapshot.status === "stale",
+          theme: preference.theme,
+          url,
+          available: spaces.map((space) => ({
+            id: space.id,
+            count: Object.values(generation.pages).filter(
+              (page) => page.author === space.id,
+            ).length,
+          })),
+        }),
+        {
+          headers,
+          status,
+        },
+      );
     const redirect = (location: string) =>
       new Response(null, {
         status: 308,
@@ -151,10 +174,11 @@ export async function createAtlas(root: string) {
           {navigation}
           <h1>Search {owner.name}</h1>
           <form action={`${base}/search/`} method="get">
-            <label htmlFor="query">Words in {owner.name}’s corpus</label>
+            <Field id="query" label={<>Words in {owner.name}’s corpus</>}>
+              <Input name="q" value={query} maxLength={200} />
+            </Field>
             <p>
-              <input id="query" name="q" value={query} maxLength={200} />{" "}
-              <button type="submit">Search</button>
+              <Button type="submit">Search</Button>
             </p>
           </form>
           {query && (

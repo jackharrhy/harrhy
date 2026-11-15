@@ -1,17 +1,22 @@
 import { css, unsafeHTML } from "remix/component";
 import type { RemixNode } from "remix/component";
+import { Button, Notice } from "@harrhy/ui/native";
+import { themeRoot } from "@harrhy/ui/theme";
+import { controlStyles, focusStyles } from "@harrhy/ui/recipes";
+import { themes, themeMixins, type ThemeId } from "./theme.ts";
+import { spaces, spacePath } from "./spaces.ts";
 
 const documentStyles = css({
   colorScheme: "light",
-  fontFamily: "Georgia, 'Times New Roman', serif",
+  fontFamily: "var(--hui-font-ui)",
   fontSize: "18px",
   lineHeight: 1.65,
-  color: "#222",
-  background: "#fff",
+  color: "var(--hui-ink)",
+  background: "var(--hui-canvas)",
   "& *": { boxSizing: "border-box" },
   "& body": { margin: 0 },
   "& main": {
-    maxWidth: "42rem",
+    maxWidth: "72ch",
     margin: "2.5rem auto 5rem",
     padding: "0 1.25rem",
     overflowWrap: "anywhere",
@@ -21,11 +26,17 @@ const documentStyles = css({
   "& h2": { fontSize: "1.35rem", margin: "2rem 0 .75rem" },
   "& h3": { fontSize: "1.1rem", margin: "1.5rem 0 .5rem" },
   "& p": { margin: "0 0 1rem" },
-  "& a": { color: "#0645ad", textUnderlineOffset: ".12em" },
-  "& a:visited": { color: "#59348c" },
+  "& a": { color: "var(--hui-ink)", textUnderlineOffset: ".12em" },
+  "& a:visited": { color: "var(--hui-ink)" },
   "& a:hover": { textDecorationThickness: "2px" },
-  "& :focus-visible": { outline: "2px solid #0645ad", outlineOffset: "4px" },
-  "& ::selection": { background: "#dbe9ff", color: "#222" },
+  "& :focus-visible": {
+    outline: "2px solid var(--hui-focus)",
+    outlineOffset: "4px",
+  },
+  "& ::selection": {
+    background: "var(--hui-selected-surface)",
+    color: "var(--hui-ink)",
+  },
   "& ul, & ol": { paddingLeft: "1.5rem" },
   "& li": { margin: ".25rem 0" },
   "& li > ul": { marginBlock: ".25rem .75rem" },
@@ -38,19 +49,19 @@ const documentStyles = css({
   },
   "& details[open] > summary": { marginBottom: ".75rem" },
   "& blockquote": {
-    borderLeft: "2px solid #aaa",
+    borderLeft: "2px solid var(--hui-border)",
     marginInline: 0,
     paddingLeft: "1rem",
   },
   "& code": {
-    fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
+    fontFamily: "var(--hui-font-mono)",
     fontSize: ".82em",
   },
   "& pre": {
     maxWidth: "100%",
     overflowX: "auto",
     padding: "1rem",
-    border: "1px solid #ddd",
+    border: "1px solid var(--hui-border)",
     lineHeight: 1.6,
     tabSize: 2,
   },
@@ -64,13 +75,13 @@ const documentStyles = css({
   "& th, & td": {
     padding: ".35rem .75rem .35rem 0",
     textAlign: "left",
-    borderBottom: "1px solid #ddd",
+    borderBottom: "1px solid var(--hui-border)",
   },
   "& input, & button": {
     font: "inherit",
     maxWidth: "100%",
     padding: ".3rem .5rem",
-    caretColor: "#0645ad",
+    caretColor: "var(--hui-accent)",
   },
   "@media (max-width: 520px)": {
     "& main": { marginTop: "1.5rem" },
@@ -81,29 +92,129 @@ const skipStyles = css({
   position: "fixed",
   top: "-5rem",
   left: "1rem",
-  background: "white",
+  background: "var(--hui-surface)",
   padding: ".5rem",
   "&:focus": { top: ".5rem" },
 });
 
-export function document(title: string, body: RemixNode, stale = false) {
+const headerStyles = css({
+  maxWidth: "76rem",
+  margin: "0 auto",
+  padding: "1rem 1.25rem 0",
+  "& .preferences": {
+    display: "flex",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: ".6rem",
+    flexWrap: "wrap",
+    fontSize: ".8rem",
+    marginBottom: "1rem",
+  },
+  "& select": { width: "auto", fontSize: ".8rem" },
+  "& nav": {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: ".25rem 1.25rem",
+    borderBottom: "1px solid var(--hui-border)",
+    paddingBottom: ".75rem",
+  },
+  "& nav a": {
+    minHeight: "2.75rem",
+    display: "inline-flex",
+    alignItems: "center",
+    textDecoration: "none",
+    borderBottom: "2px solid transparent",
+    fontSize: ".9rem",
+  },
+  '& nav a[aria-current="page"]': {
+    color: "var(--hui-ink)",
+    fontWeight: "700",
+    borderBottomColor: "var(--hui-ink)",
+  },
+  "& nav a:hover": { textDecoration: "underline" },
+});
+export interface DocumentOptions {
+  stale?: boolean;
+  theme: ThemeId;
+  url: URL;
+  available: readonly { id: string; count: number }[];
+}
+export function document(
+  title: string,
+  body: RemixNode,
+  options: DocumentOptions,
+) {
+  const active = spaces.find((space) =>
+    options.url.pathname.startsWith(`${spacePath(space.id)}/`),
+  );
   return (
-    <html lang="en" mix={documentStyles}>
+    <html
+      lang="en"
+      data-theme={options.theme}
+      mix={[themeMixins[options.theme], themeRoot, documentStyles]}
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
         <meta name="robots" content="noindex, nofollow" />
         <title>{title}</title>
+        {options.theme === "brutalist" && (
+          <link rel="stylesheet" href="/fonts.css" />
+        )}
       </head>
       <body>
         <a mix={skipStyles} href="#main">
           Skip to content
         </a>
+        <header mix={headerStyles}>
+          <form
+            className="preferences"
+            action={options.url.pathname}
+            method="get"
+          >
+            {[...options.url.searchParams]
+              .filter(([key]) => key !== "theme")
+              .map(([key, value]) => (
+                <input type="hidden" name={key} value={value} />
+              ))}
+            <label htmlFor="theme">Theme</label>
+            <select
+              id="theme"
+              name="theme"
+              mix={[
+                controlStyles,
+                focusStyles,
+                css({ width: "auto", minWidth: "8rem", fontSize: ".8rem" }),
+              ]}
+            >
+              {themes.map((theme) => (
+                <option value={theme.id} selected={theme.id === options.theme}>
+                  {theme.name}
+                </option>
+              ))}
+            </select>
+            <Button type="submit">Apply</Button>
+          </form>
+          <nav aria-label="Agent spaces">
+            <a href="/" aria-current={!active ? "page" : undefined}>
+              All spaces
+            </a>
+            {spaces.map((space) => (
+              <a
+                href={`${spacePath(space.id)}/`}
+                aria-current={active?.id === space.id ? "page" : undefined}
+                title={`${options.available.find((entry) => entry.id === space.id)?.count ?? 0} pages`}
+              >
+                {space.name}
+              </a>
+            ))}
+          </nav>
+        </header>
         <main id="main" tabIndex={-1}>
-          {stale && (
-            <p role="status">
+          {options.stale && (
+            <Notice role="status">
               Content update rejected. Showing the last validated version.
-            </p>
+            </Notice>
           )}
           {body}
         </main>
