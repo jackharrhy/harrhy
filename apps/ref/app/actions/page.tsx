@@ -127,6 +127,26 @@ export function BoardPage(
               <button type="submit">Rename</button>
             </form>
           </details>
+          <details class="add-link-menu">
+            <summary mix={[uiActionStyles, uiSecondaryActionStyles]}>
+              Browser tools
+            </summary>
+            <div class="browser-tools-panel">
+              <p id="webmcp-status" role="status">
+                Off. Enable to let your browser assistant read this board, move
+                its camera, select items, and edit or remove items.
+              </p>
+              <button
+                id="webmcp-toggle"
+                type="button"
+                aria-pressed="false"
+                aria-describedby="webmcp-status"
+                mix={[uiActionStyles, uiSecondaryActionStyles]}
+              >
+                Enable browser tools
+              </button>
+            </div>
+          </details>
           <div class="header-spacer"></div>
           <div id="connection" class="connection connecting">
             <span class="connection-dot"></span>

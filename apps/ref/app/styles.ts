@@ -459,6 +459,22 @@ export const refStyles = css({
     "box-shadow": "0 10px 26px #00000018",
     "z-index": "8",
   },
+  "& .browser-tools-panel": {
+    position: "fixed",
+    top: "64px",
+    right: "12px",
+    width: "min(360px, calc(100vw - 24px))",
+    padding: "16px",
+    background: "#fff",
+    "border-radius": "6px",
+    "box-shadow": "0 10px 26px #00000018",
+    "z-index": "8",
+    "font-size": "14px",
+    "line-height": "1.5",
+  },
+  "& .browser-tools-panel p": {
+    margin: "0 0 12px",
+  },
   "& .add-link-menu input": {
     flex: "1",
     width: "100%",

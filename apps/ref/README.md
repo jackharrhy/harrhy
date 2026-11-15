@@ -100,6 +100,33 @@ retention bounds deduplication to roughly the latest 10,000 board edits.
 effort. Write-only tokens cannot list/read boards or receive conflict snapshots.
 The normal archive CLI and browser endpoints retain their separate authorization.
 
+## Browser WebMCP
+
+On an open board, **Browser tools → Enable browser tools** opts this page into
+native WebMCP. This is separate from HTTP MCP: it uses the signed-in browser
+session and the actual canvas, not a remote MCP bridge or delegated token.
+Support is experimental and limited to browsers exposing `document.modelContext`;
+unsupported browsers keep all ordinary board controls. Tools stay off until
+explicitly enabled, do not persist across navigation, and stop on disable,
+page exit, or detected loss of access. Registration failure is shown in the menu.
+
+The app-owned `app/assets/board-webmcp.ts` defines six tools using
+[`@harrhy/webmcp`](../../packages/webmcp/README.md): `ref_board_context` reads
+live camera, selection, revisions, connection and pending-edit state plus pages
+of up to 200 items; `ref_board_select`, `ref_board_focus`, and `ref_board_fit`
+operate the current canvas. This lets an assistant focus an item without guessing
+screen coordinates or reconstructing the viewport from screenshots. Item metadata
+is untrusted content, not instructions.
+
+`ref_item_transform` and `ref_item_remove` use the existing validated WebSocket
+operation path and server authorization. They require a live, settled board and
+its current item revision; removal can reclaim last-use media. Results wait for
+server confirmation. Cancellation, disabling, or a timeout after submission
+cannot undo an edit: read the board before retrying and reuse an operation ID
+only for the same operation. Ordinary uploads and link creation remain human
+controls; no file access, arbitrary JavaScript, or general DOM automation is
+exposed.
+
 ## Back up and restore
 
 The archive commands require a short-lived delegated `REF_ACCESS_TOKEN` or a
