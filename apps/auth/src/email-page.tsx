@@ -14,7 +14,10 @@ type EmailContext = Omit<DocumentProps, "title" | "children"> & {
   };
 };
 
-type FormProps = { mode: "verify" | "forgot" | "reset"; context: EmailContext };
+type FormProps = {
+  mode: "verify" | "forgot" | "reset" | "invitation";
+  context: EmailContext;
+};
 
 function EmailFormPage(handle: Handle<FormProps>) {
   return () => {
@@ -23,16 +26,19 @@ function EmailFormPage(handle: Handle<FormProps>) {
       verify: "Verify email",
       forgot: "Reset password",
       reset: "New password",
+      invitation: "Set your password",
     }[mode];
     const action = {
       verify: "/verify-email",
       forgot: "/forgot-password",
       reset: "/reset-password",
+      invitation: "/invitation",
     }[mode];
     const button = {
       verify: "Verify email",
       forgot: "Send recovery link",
       reset: "Save password",
+      invitation: "Finish account setup",
     }[mode];
     const policy = context.passwordPolicy;
     const composition = policy
@@ -63,7 +69,7 @@ function EmailFormPage(handle: Handle<FormProps>) {
                 spellCheck={false}
               />
             </label>
-          ) : mode === "reset" ? (
+          ) : mode === "reset" || mode === "invitation" ? (
             <>
               <p id="password-requirements">{requirements}</p>
               <label>

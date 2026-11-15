@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import { directoryFor } from "./directory.mjs";
 import { searchAll } from "./applications.mjs";
 import { mediaDiscrepancies } from "./media-identities.mjs";
@@ -26,6 +25,9 @@ export function createAccessRoutes({
   renderSessions,
   renderPeople,
   renderNewPerson,
+  renderOnboarding,
+  provisioningApi,
+  invitationCallbackUrl,
   renderServiceList,
   renderServiceDetail,
   renderIntegrations,
@@ -245,6 +247,75 @@ export function createAccessRoutes({
       }
       throw fail(404, "Media action not found.");
     }
+    if (request.method === "GET" && url.pathname === "/manage/people/new") {
+      await sendRemix((nonce) =>
+        renderNewPerson(
+          { ...context, onboardingEnabled: Boolean(provisioningApi) },
+          nonce,
+        ),
+      );
+      return true;
+    }
+    const onboardingPath = url.pathname.match(
+      /^\/manage\/onboarding(?:\/([a-f0-9-]{36})(?:\/(create|invite))?)?$/,
+    );
+    if (onboardingPath || url.pathname === "/manage/users") {
+      if (request.method === "POST" && !provisioningApi)
+        throw fail(
+          503,
+          "Reviewed identity provisioning is not configured. No native action was attempted.",
+        );
+      if (request.method === "POST" && url.pathname === "/manage/users") {
+        rateLimit(`admin-create:${session.userId}`);
+        const row = access.onboarding.preview({
+          actor: session.userId,
+          issuer,
+          organizationId,
+          username: form.get("username"),
+          name: form.get("name"),
+          email: form.get("email"),
+          reason: form.get("reason"),
+        });
+        redirect(`/manage/onboarding/${row.id}`);
+        return true;
+      }
+      const id = onboardingPath?.[1];
+      if (request.method === "GET" && onboardingPath && !onboardingPath[2]) {
+        const row = id ? access.onboarding.get(id) : null;
+        if (id && !row) throw fail(404, "Identity review not found.");
+        await sendRemix((nonce) =>
+          renderOnboarding(
+            row,
+            access.onboarding.recent(),
+            { ...context, onboardingEnabled: Boolean(provisioningApi) },
+            nonce,
+          ),
+        );
+        return true;
+      }
+      if (request.method === "POST" && id && onboardingPath[2]) {
+        rateLimit(`onboarding:${session.userId}`);
+        const shared = {
+          id,
+          actor: session.userId,
+          issuer,
+          organizationId,
+          confirmed: form.get("confirmed") === "yes",
+          api: provisioningApi,
+        };
+        if (onboardingPath[2] === "create")
+          await access.onboarding.create(shared);
+        else
+          await access.onboarding.invite({
+            ...shared,
+            recipient: form.get("recipient"),
+            callbackUrl: invitationCallbackUrl,
+          });
+        redirect(`/manage/onboarding/${id}`);
+        return true;
+      }
+      throw fail(405, "Method not allowed.");
+    }
     access.observeUnmanaged(await native.list());
     const model = access.read();
     const domains = access.domains();
@@ -261,10 +332,6 @@ export function createAccessRoutes({
       await sendRemix((nonce) =>
         renderPeople(users, model, context, filter, nonce),
       );
-      return true;
-    }
-    if (request.method === "GET" && url.pathname === "/manage/people/new") {
-      await sendRemix((nonce) => renderNewPerson(context, nonce));
       return true;
     }
     const person = url.pathname.match(
@@ -529,49 +596,6 @@ export function createAccessRoutes({
           nonce,
         ),
       );
-      return true;
-    }
-    if (request.method === "POST" && url.pathname === "/manage/users") {
-      const username = form.get("username"),
-        name = form.get("name"),
-        email = form.get("email"),
-        password = form.get("password");
-      if (
-        !/^[a-z0-9_-]{2,32}$/.test(username || "") ||
-        !name ||
-        name.length > 100 ||
-        !password ||
-        password.length < 12 ||
-        password.length > 200 ||
-        (email && email.length > 250)
-      )
-        throw fail(
-          400,
-          "Check the account fields. Passwords need between 12 and 200 characters.",
-        );
-      rateLimit(`admin-create:${session.userId}`);
-      const userId = randomUUID();
-      await api("/v2/users/human", {
-        method: "POST",
-        management: true,
-        body: {
-          userId,
-          username,
-          organization: { orgId: organizationId },
-          profile: {
-            givenName: name.split(" ")[0],
-            familyName: name.split(" ").slice(1).join(" ") || "User",
-            displayName: name,
-          },
-          email: {
-            email: email || `${username}@pending.invalid`,
-            isVerified: false,
-          },
-          password: { password, changeRequired: false },
-        },
-      });
-      access.recordAccount(session.userId, userId, "account.created");
-      redirect("/manage/people");
       return true;
     }
     throw fail(404, "Administration page not found.");

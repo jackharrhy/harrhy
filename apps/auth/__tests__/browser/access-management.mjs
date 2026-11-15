@@ -71,6 +71,7 @@ for (const [id, role] of [
   });
 }
 let writes = 0;
+let identityWrites = 0;
 const sessions = new Map();
 const store = createAccessStore({
   filename: `${directory}/access.sqlite`,
@@ -128,7 +129,23 @@ const provider = createServer(async (request, response) => {
       ? null
       : request.url.match(/^\/v2\/sessions\/([^/]+)$/);
   const userPath = request.url.match(/^\/management\/v1\/users\/([^/]+)$/);
-  if (request.url === "/v2/sessions" && request.method === "POST") {
+  if (request.url === "/v2/users/new" && request.method === "POST") {
+    assert.equal(data.human.password, undefined);
+    assert.deepEqual(data.human.email.returnCode, {});
+    assert.equal(data.organizationId, "org");
+    identityWrites++;
+    users.push({
+      id: data.userId,
+      userName: data.username,
+      state: "USER_STATE_ACTIVE",
+      human: {
+        profile: data.human.profile,
+        email: { email: data.human.email.email },
+      },
+      details: { resourceOwner: "org" },
+    });
+    result = { id: data.userId };
+  } else if (request.url === "/v2/sessions" && request.method === "POST") {
     const user = users.find(
       (candidate) => candidate.userName === data.checks.user.loginName,
     );
@@ -245,6 +262,7 @@ const server = spawn(process.execPath, ["src/server.mjs"], {
     ZITADEL_API_URL: `http://127.0.0.1:${provider.address().port}`,
     LOGIN_TOKEN_FILE: `${directory}/key.json`,
     MANAGEMENT_TOKEN_FILE: `${directory}/key.json`,
+    AUTH_PROVISIONING_TOKEN_FILE: `${directory}/key.json`,
     ACCESS_DB_FILE: `${directory}/access.sqlite`,
     AUTH_MEDIA_INSTANCES_FILE: `${directory}/media-instances.json`,
     ORGANIZATION_ID: "org",
@@ -566,6 +584,52 @@ try {
     await page.getByText("This browser", { exact: true }).count(),
     1,
   );
+  await page.goto(origin + "/manage/people/new");
+  await page.getByLabel("Username", { exact: true }).fill("new-person");
+  await page
+    .getByLabel("Display name", { exact: true })
+    .fill("Synthetic New Person");
+  await page
+    .getByLabel("Invitation recipient", { exact: true })
+    .fill("synthetic@example.invalid");
+  await page
+    .getByLabel("Reason", { exact: true })
+    .fill("Explicit synthetic onboarding review");
+  assert.equal(await page.locator('input[type="password"]').count(), 0);
+  await page
+    .getByRole("button", { name: "Review person", exact: true })
+    .click();
+  await page.getByText("Awaiting creation review", { exact: true }).waitFor();
+  assert.equal(identityWrites, 0);
+  await capture(page, "identity-review-desktop");
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Create identity", exact: true })
+    .click();
+  await page
+    .getByText("Identity created; invitation not sent", { exact: true })
+    .waitFor();
+  assert.equal(identityWrites, 1);
+  await page.getByLabel("Retype the exact invitation recipient").waitFor();
+  await capture(page, "identity-created-desktop");
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  );
+  await capture(page, "identity-created-mobile");
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  assert.equal(
+    (
+      await context.request.post(origin + "/invitation", {
+        headers: { origin: "https://wrong.invalid" },
+        form: { csrf: "wrong" },
+      })
+    ).status(),
+    403,
+  );
+  assert.equal(identityWrites, 1);
   const memberContext = await browser.newContext();
   const memberPage = await memberContext.newPage();
   await memberPage.goto(origin + "/login");
@@ -587,6 +651,10 @@ try {
         origin + "/manage/media/jellyfin/synthetic-server",
       )
     ).status(),
+    403,
+  );
+  assert.equal(
+    (await memberContext.request.get(origin + "/manage/onboarding")).status(),
     403,
   );
   const denied = await memberContext.request.get(origin + "/manage/people");

@@ -11,6 +11,7 @@ import {
 
 type AccessContext = Omit<DocumentProps, "title" | "children"> & {
   csrf: string;
+  onboardingEnabled?: boolean;
 };
 
 type Session = { id: string; expirationDate: string };
@@ -201,47 +202,52 @@ function NewPersonPage(handle: Handle<{ context: AccessContext }>) {
           </p>
         </div>
       </div>
-      <form method="post" action="/manage/users" class="form-stack">
-        <input type="hidden" name="csrf" value={handle.props.context.csrf} />
-        <label>
-          Username
-          <input
-            name="username"
-            required
-            pattern="[a-z0-9_-]{2,32}"
-            maxLength={32}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-          />
-        </label>
-        <label>
-          Display name
-          <input name="name" required maxLength={100} />
-        </label>
-        <label>
-          Email (optional)
-          <input name="email" type="email" maxLength={250} />
-        </label>
-        <label>
-          Initial password
-          <input
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            minLength={12}
-            maxLength={200}
-            required
-          />
-        </label>
-        <p class="muted">
-          No invitation is sent. Share the initial password privately. Creating
-          a person does not grant app access.
+      <p>
+        <a href="/manage/onboarding">Identity reviews and invitations</a>
+      </p>
+      {!handle.props.context.onboardingEnabled ? (
+        <p role="status">
+          Reviewed identity provisioning is not configured. Ask the operator to
+          configure a dedicated provisioning credential before creating a
+          person.
         </p>
-        <button class="primary" mix={uiPrimaryActionStyles}>
-          Create person
-        </button>
-      </form>
+      ) : (
+        <form method="post" action="/manage/users" class="form-stack">
+          <input type="hidden" name="csrf" value={handle.props.context.csrf} />
+          <label>
+            Username
+            <input
+              name="username"
+              required
+              pattern="[a-z0-9_-]{2,32}"
+              maxLength={32}
+              autoComplete="off"
+              autoCapitalize="none"
+              spellCheck={false}
+            />
+          </label>
+          <label>
+            Display name
+            <input name="name" required maxLength={100} />
+          </label>
+          <label>
+            Invitation recipient
+            <input name="email" type="email" maxLength={200} required />
+          </label>
+          <label>
+            Reason
+            <textarea name="reason" maxLength={1000} required />
+          </label>
+          <p class="muted">
+            Review the identity before creating it. No password or invitation is
+            created here. Sending an invitation is a separate confirmation;
+            service access is assigned separately.
+          </p>
+          <button class="primary" mix={uiPrimaryActionStyles}>
+            Review person
+          </button>
+        </form>
+      )}
     </Document>
   );
 }

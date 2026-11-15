@@ -8,6 +8,7 @@ import { createNativeAccess } from "./native-access.mjs";
 import { createAccessStore } from "./access-store.mjs";
 import { createAccessRoutes } from "./access-routes.mjs";
 import { createMediaInventory } from "./media-inventory.mjs";
+import { createInvitationRoute } from "./invitation-routes.mjs";
 import { createAccountRoutes } from "./account-routes.mjs";
 import { createOAuthBrowserRoutes } from "./oauth-browser-routes.mjs";
 import { createEmailRoutes } from "./email-routes.mjs";
@@ -44,6 +45,7 @@ const { renderAccessForm, renderChangePreview } =
   await import("./access-pages.tsx");
 const { renderPerson } = await import("./person-page.tsx");
 const { renderMedia, renderMediaReview } = await import("./media-pages.tsx");
+const { renderOnboarding } = await import("./onboarding-page.tsx");
 import { createEmailActions } from "./email.mjs";
 import { applicationForClient, searchAll } from "./applications.mjs";
 import { createAccountActions } from "./accounts.mjs";
@@ -70,6 +72,16 @@ const api = createZitadel({
     process.env.MANAGEMENT_TOKEN_FILE || "/run/secrets/management-token.json",
   organizationId,
 });
+// Provisioning authority is explicit and separate from the management reader.
+const provisioningApi = process.env.AUTH_PROVISIONING_TOKEN_FILE
+  ? createZitadel({
+      baseUrl: process.env.ZITADEL_API_URL || origin,
+      loginTokenFile:
+        process.env.LOGIN_TOKEN_FILE || "/run/secrets/login-token.json",
+      managementTokenFile: process.env.AUTH_PROVISIONING_TOKEN_FILE,
+      organizationId,
+    })
+  : null;
 const emailActions = createEmailActions(api, origin);
 const accountActions = createAccountActions(api, organizationId);
 const applications = JSON.parse(
@@ -139,6 +151,9 @@ const accessRoutes = createAccessRoutes({
   renderSessions,
   renderPeople,
   renderNewPerson,
+  renderOnboarding,
+  provisioningApi,
+  invitationCallbackUrl: new URL("/invitation", origin).href,
   renderServiceList,
   renderServiceDetail,
   renderIntegrations,
@@ -364,6 +379,17 @@ const oauthRoutes = createOAuthBrowserRoutes({
   renderDevice,
   renderDeviceCode,
   renderDeviceResult,
+});
+const invitationRoute = createInvitationRoute({
+  ledger: accessStore.onboarding,
+  issuer: origin,
+  organizationId,
+  provisioningApi,
+  loginApi: api,
+  emailActions,
+  rateLimit,
+  renderEmailForm,
+  renderEmailResult,
 });
 const supportBrowserRoute = (input) => supportRoutes?.browser(input) ?? false;
 
@@ -620,6 +646,7 @@ const browserRouter = createBrowserRouter(handleBrowser, {
   accountRoutes,
   oauthRoutes,
   emailRoutes,
+  invitationRoute,
   accessRoutes,
   supportRoutes: supportBrowserRoute,
   loginRoutes,
