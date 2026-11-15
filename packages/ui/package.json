@@ -4,12 +4,18 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./styles.ts"
+    ".": "./styles.ts",
+    "./native": "./components.tsx",
+    "./interactive": "./interactive.ts",
+    "./styles": "./styles.ts",
+    "./theme": "./theme.ts",
+    "./recipes": "./recipes.ts"
   },
   "scripts": {
     "check": "tsrs --noEmit && node --test __tests__/*.test.mjs"
   },
   "dependencies": {
+    "@remix-run/ui": "0.13.1",
     "remix": "3.2.0"
   }
 }

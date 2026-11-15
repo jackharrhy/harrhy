@@ -6,7 +6,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 [WORLD_CINEMA_IDEA.md](WORLD_CINEMA_IDEA.md) explores an access-controlled cinema room within that world.
 
 [npm publication](docs/npm-publication.md) describes the two public `@harrhy` packages and their release boundary.
-[Shared UI direction](docs/ui.md) explains the small control foundation being proven in Ref.
+[Shared UI direction](docs/ui.md) records the original control foundation; the [UI package guide](packages/ui/README.md) covers native components, theme composition and compatibility.
 
 ### Apps
 
@@ -15,6 +15,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | --- | --- | --- |
 | [`@harrhy/8mb`](apps/8mb/) | Browser video compression and opt-in aggregate diagnostics | [README](apps/8mb/README.md) |
 | [`@harrhy/atlas`](apps/atlas/) | Private agent-owned Markdown spaces | [README](apps/atlas/README.md) |
+| [`@harrhy/ui-app`](apps/ui/) | Internal component showcase, theme comparisons and synthetic Auth/Ref patterns | [README](apps/ui/README.md) |
 | [`@harrhy/auth`](apps/auth/) | Jack Auth browser login, consent, directory, and access management | [README](apps/auth/README.md) |
 | [`@harrhy/artbin-app`](apps/artbin/) | Game asset archive, uploads, previews, and API | [README](apps/artbin/README.md) |
 | [`@harrhy/artbin`](apps/artbin-cli/) | Game asset command-line client | [README](apps/artbin-cli/README.md) |
@@ -61,7 +62,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/request-body`](packages/request-body/) | Bounded Web request-body reading | [README](packages/request-body/README.md) |
 | [`@harrhy/result`](packages/result/) | Success and failure values and helpers | [README](packages/result/README.md) |
 | [`@harrhy/rich-text`](packages/rich-text/) | Inline document format and rich text editor | [README](packages/rich-text/README.md) |
-| [`@harrhy/ui`](packages/ui/) | Themeable Remix control styles, starting with Ref | [README](packages/ui/README.md) |
+| [`@harrhy/ui`](packages/ui/) | Native Remix components, semantic themes and compatible Ref/Auth control styles | [README](packages/ui/README.md) |
 
 ## Working in the repo
 
