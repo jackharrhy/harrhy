@@ -1,4 +1,4 @@
-import rehypeShiki from "@shikijs/rehype";
+import { rehypeHighlight } from "@harrhy/ui/rehype-highlight";
 import type { Root } from "hast";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -10,7 +10,7 @@ import remarkRehype from "remark-rehype";
 import { unified } from "unified";
 import { visit } from "unist-util-visit";
 
-// Author HTML is restricted before Shiki adds trusted presentation styles.
+// Author HTML is restricted before Pierre adds trusted presentation styles.
 const processor = unified()
   .use(remarkParse)
   .use(remarkGfm)
@@ -105,11 +105,8 @@ const processor = unified()
   .use(rehypeSlug, { prefix: "heading-" });
 
 const stringify = unified()
-  .use(rehypeShiki, {
+  .use(rehypeHighlight, {
     theme: "github-light",
-    lazy: true,
-    defaultLanguage: "text",
-    fallbackLanguage: "text",
   })
   .use(rehypeStringify);
 

@@ -34,6 +34,8 @@ export function highlightCode(
         tokens.push({ text: source.slice(offset, token.offset) });
       tokens.push({
         text: token.content,
+        italic: Boolean((token.fontStyle ?? 0) & 1),
+        bold: Boolean((token.fontStyle ?? 0) & 2),
         color:
           token.color && /^#[0-9a-f]{6}$/i.test(token.color)
             ? token.color
@@ -60,17 +62,41 @@ function escapeHtml(value: string): string {
   );
 }
 
+export function highlightPresentation(options: HighlightOptions = {}) {
+  const dark = options.theme === "github-dark";
+  return {
+    className: ["hui-highlight", dark ? "github-dark" : "github-light"],
+    style: dark
+      ? "color:#e1e4e8;background-color:#24292e"
+      : "color:#24292e;background-color:#ffffff",
+  };
+}
+
+export function highlightTokenStyle(token: CodeToken): string {
+  return [
+    token.color && /^#[0-9a-f]{6}$/i.test(token.color)
+      ? `color:${token.color}`
+      : "",
+    token.italic === true ? "font-style:italic" : "",
+    token.bold === true ? "font-weight:bold" : "",
+  ]
+    .filter(Boolean)
+    .join(";");
+}
+
 /** Safe standalone source HTML, not an author-HTML sanitizer. */
 export function highlightCodeHtml(
   source: string,
   options: HighlightOptions = {},
 ): string {
   const tokens = highlightCode(source, options);
-  return `<pre class="hui-highlight ${options.theme === "github-dark" ? "github-dark" : "github-light"}"><code>${tokens
-    .map((token) =>
-      token.color
-        ? `<span style="color:${token.color}">${escapeHtml(token.text)}</span>`
-        : escapeHtml(token.text),
-    )
+  const presentation = highlightPresentation(options);
+  return `<pre class="${presentation.className.join(" ")}" style="${presentation.style}"><code>${tokens
+    .map((token) => {
+      const style = highlightTokenStyle(token);
+      return style
+        ? `<span style="${style}">${escapeHtml(token.text)}</span>`
+        : escapeHtml(token.text);
+    })
     .join("")}</code></pre>`;
 }

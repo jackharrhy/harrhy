@@ -26,7 +26,7 @@ import {
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { CodeDiff } from "@harrhy/ui/code";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
-import { HighlightedCode } from "./highlight.tsx";
+import { HighlightedCode, prepareCode } from "./highlight.tsx";
 import type { DiffLine } from "@harrhy/ui/code";
 import { WorkbenchHeader } from "./workbench.tsx";
 import { themes } from "./themes.ts";
@@ -110,7 +110,7 @@ export const stories = [
     id: "code",
     name: "CodeBlock",
     group: "Code",
-    summary: "Selectable source with Shiki syntax highlighting.",
+    summary: "Selectable source with Pierre Highlights syntax highlighting.",
   },
   {
     id: "diff",
@@ -507,8 +507,12 @@ function Story(
     const diffLines: readonly DiffLine[] = emptyDiff
       ? []
       : lineNumbers
-        ? demoDiff
-        : demoDiff.map((line) => ({ kind: line.kind, text: line.text }));
+        ? demoDiff.map((line) => ({ ...line, tokens: prepareCode(line.text) }))
+        : demoDiff.map((line) => ({
+            kind: line.kind,
+            text: line.text,
+            tokens: prepareCode(line.text),
+          }));
     const content =
       story === "range"
         ? `<label>Volume<Range name="volume" min="0" max="1" step="0.01" defaultValue="${rangeValue}"${disabled ? " disabled" : ""} /></label>`
@@ -1057,7 +1061,7 @@ function Story(
             )}
             <p mix={descriptionCss}>
               {story === "code"
-                ? "Shiki TSX highlighting; text stays plain. Large sources fall back to complete plain text."
+                ? "Pierre Highlights TSX syntax; text stays plain. Large sources fall back to complete plain text."
                 : story === "diff"
                   ? "Caller-prepared rows. Changes remain readable without color."
                   : story === "tabs"

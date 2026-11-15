@@ -57,3 +57,7 @@ The local container is opt-in: set `GARDEN_VAULT_ROOT` to the external vault roo
 The canonical origin defaults to <https://jackharrhy.dev>; the existing `.com` and other host aliases remain infrastructure concerns. Analytics are production-only. Debug pages and Raindrop authoring tools are development-only. Host configuration, secrets, persistent snapshot transfer, and production cutover belong in the infrastructure repository. Keep the original deployment available until parity and the production smoke checks pass.
 
 Do not rewrite Jack's vault prose. Preserve source wording and existing URL conventions during migration. Do not commit notes, media, credentials, generated manifests, or snapshots.
+
+## Fenced source rendering
+
+Markdown uses `@harrhy/ui/rehype-highlight` with standalone Pierre Highlights 0.5.1 and GitHub Dark, server-side only. It emits escaped HAST spans under `pre.hui-highlight`; no engine enters the browser asset graph or changes CSP. Component-fence segmentation, Obsidian extensions and promise caching stay app-owned. Unknown languages render as text; sources over 20k characters or lines over 2k retain complete plain source without syntax work. Final newlines remain in code text. The existing author-HTML policy is unchanged; this adapter is not a sanitizer. Docker includes the shared UI workspace for its optional entry. See [engine boundaries and notices](../../packages/ui/CODE.md).

@@ -5,6 +5,8 @@ export interface CodeToken {
   text: string;
   /** Optional caller-prepared six-digit sRGB color. No HTML or arbitrary CSS. */
   color?: string;
+  italic?: boolean;
+  bold?: boolean;
 }
 
 export interface CodeBlockProps {
@@ -15,10 +17,11 @@ export interface CodeBlockProps {
   language?: string;
 }
 
-export type DiffLine =
+export type DiffLine = (
   | { kind: "context"; text: string; oldLine?: number; newLine?: number }
   | { kind: "remove"; text: string; oldLine?: number }
-  | { kind: "add"; text: string; newLine?: number };
+  | { kind: "add"; text: string; newLine?: number }
+) & { tokens?: readonly CodeToken[] };
 
 export interface CodeDiffProps {
   label: string;
@@ -93,10 +96,6 @@ const numberStyles = css({
 export function CodeBlock(handle: Handle<CodeBlockProps>) {
   return () => {
     const { label, source, language, tokens } = handle.props;
-    const prepared =
-      tokens?.map((token) => token.text).join("") === source
-        ? tokens
-        : undefined;
     return (
       <figure mix={figureStyles}>
         <figcaption mix={captionStyles}>
@@ -109,21 +108,7 @@ export function CodeBlock(handle: Handle<CodeBlockProps>) {
           tabIndex={0}
           mix={[preStyles, focusStyles]}
         >
-          <code>
-            {prepared
-              ? prepared.map((token) => (
-                  <span
-                    style={
-                      token.color && /^#[0-9a-f]{6}$/i.test(token.color)
-                        ? { color: token.color }
-                        : undefined
-                    }
-                  >
-                    {token.text}
-                  </span>
-                ))
-              : source}
-          </code>
+          <code>{renderTokens(source, tokens)}</code>
         </pre>
       </figure>
     );
@@ -174,7 +159,7 @@ export function CodeDiff(handle: Handle<CodeDiffProps>) {
                     {newLine !== undefined && ` new line ${newLine}`}
                     {": "}
                   </span>
-                  {line.text}
+                  {renderTokens(line.text, line.tokens)}
                   {"\n"}
                 </span>
               );
@@ -184,4 +169,23 @@ export function CodeDiff(handle: Handle<CodeDiffProps>) {
       </figure>
     );
   };
+}
+
+function renderTokens(source: string, tokens?: readonly CodeToken[]) {
+  if (!tokens || tokens.map((token) => token.text).join("") !== source)
+    return source;
+  return tokens.map((token) => (
+    <span
+      style={{
+        color:
+          token.color && /^#[0-9a-f]{6}$/i.test(token.color)
+            ? token.color
+            : undefined,
+        fontStyle: token.italic === true ? "italic" : undefined,
+        fontWeight: token.bold === true ? "bold" : undefined,
+      }}
+    >
+      {token.text}
+    </span>
+  ));
 }

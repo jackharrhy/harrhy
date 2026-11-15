@@ -3,6 +3,7 @@ WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
 COPY package.json package-lock.json ./
 COPY apps/lists/package.json apps/lists/package.json
+COPY packages/ui/package.json packages/ui/package.json
 COPY packages/identity/package.json packages/identity/package.json
 COPY packages/mcp/package.json packages/mcp/package.json
 COPY packages/request-body/package.json packages/request-body/package.json
@@ -11,6 +12,7 @@ COPY packages/logger/package.json packages/logger/package.json
 COPY packages/result/package.json packages/result/package.json
 RUN npm ci --workspace @harrhy/lists --include-workspace-root=false
 COPY apps/lists apps/lists
+COPY packages/ui packages/ui
 COPY packages/identity packages/identity
 COPY packages/mcp packages/mcp
 COPY packages/request-body packages/request-body
@@ -26,6 +28,7 @@ ENV NODE_ENV=production DB_PATH=/data/lists.db PORT=8080
 WORKDIR /app
 COPY --from=build --chown=bun:bun /app/node_modules ./node_modules
 COPY --from=build --chown=bun:bun /app/apps/lists ./apps/lists
+COPY --from=build --chown=bun:bun /app/packages/ui ./packages/ui
 COPY --from=build --chown=bun:bun /app/packages/identity ./packages/identity
 COPY --from=build --chown=bun:bun /app/packages/mcp ./packages/mcp
 COPY --from=build --chown=bun:bun /app/packages/request-body ./packages/request-body

@@ -83,7 +83,7 @@ test("Markdown preserves links, media dimensions, code, legacy list rendering, a
   assert.match(html, /width="200"/);
   assert.match(html, /height="100"/);
   const code = await render(snapshot.byId.get("visible")!.body);
-  assert.match(JSON.stringify(code), /astro-code/);
+  assert.match(JSON.stringify(code), /hui-highlight/);
   assert.doesNotMatch(JSON.stringify(code), /<ul>/);
   const emphasis = await render("un**_it_**");
   assert.equal(
