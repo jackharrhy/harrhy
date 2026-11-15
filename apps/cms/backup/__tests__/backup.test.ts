@@ -260,14 +260,20 @@ test("reject nested backup roots and symlink dataset files", async () => {
 });
 test("disabled by default, bounded explicit config", () => {
   assert.equal(backupConfig({}), undefined);
-  assert.equal(backupConfig({ TEA_BACKUP_DIR: "/backups" })?.retention, 7);
-  assert.throws(() =>
-    backupConfig({ TEA_BACKUP_DIR: "/backups", TEA_BACKUP_KEEP: "0" }),
+  assert.equal(
+    backupConfig({ HARRHY_CMS_BACKUP_DIR: "/backups" })?.retention,
+    7,
   );
   assert.throws(() =>
     backupConfig({
-      TEA_BACKUP_DIR: "/backups",
-      TEA_BACKUP_INTERVAL_SECONDS: "NaN",
+      HARRHY_CMS_BACKUP_DIR: "/backups",
+      HARRHY_CMS_BACKUP_KEEP: "0",
+    }),
+  );
+  assert.throws(() =>
+    backupConfig({
+      HARRHY_CMS_BACKUP_DIR: "/backups",
+      HARRHY_CMS_BACKUP_INTERVAL_SECONDS: "NaN",
     }),
   );
   assert.equal(createBackupService("/unused", []).status().enabled, false);

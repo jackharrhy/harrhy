@@ -2,7 +2,7 @@
 
 One container and Node process serve all sites. Each site has its own database and upload tree, so it can be backed up and restored separately. A process restart or failure affects every site, and code in that process shares a security boundary.
 
-Each `apps/cms/sites/<id>/site.json` sets the site's name, canonical origin, aliases, preview status, and optional features. An ignored `site.local.json` beside it can override those settings locally or for a deployment. The optional operator dashboard uses process-level `TEA_OPERATOR_ORIGIN`. The server finds site folders at startup; each needs a manifest and `app/site.ts` presentation.
+Each `apps/cms/sites/<id>/site.json` sets the site's name, canonical origin, aliases, preview status, and optional features. An ignored `site.local.json` beside it can override those settings locally or for a deployment. The optional operator dashboard uses process-level `HARRHY_CMS_OPERATOR_ORIGIN`. The server finds site folders at startup; each needs a manifest and `app/site.ts` presentation.
 
 ## Local Docker stack
 
@@ -25,7 +25,7 @@ Infra owns off-host replication and the tested transition from its old cron.
 
 Compose labels give each site an HTTP router pointing to the same CMS service. Keep the labels and inline local origins in sync. Traefik forwards the original Host; TeaCMS selects the site and redirects aliases. Unknown hosts get 404.
 
-The local stack does not enable the optional operator dashboard. If you set `TEA_OPERATOR_ORIGIN`, add a Traefik router label for that host. The dashboard handles authenticated site entry, health, and metadata. It does not provision domains, change DNS, or access the Docker socket.
+The local stack does not enable the optional operator dashboard. If you set `HARRHY_CMS_OPERATOR_ORIGIN`, add a Traefik router label for that host. The dashboard handles authenticated site entry, health, and metadata. It does not provision domains, change DNS, or access the Docker socket.
 
 References: [Traefik Docker routing](https://doc.traefik.io/traefik/reference/routing-configuration/other-providers/docker/), [HTTP routers](https://doc.traefik.io/traefik/reference/routing-configuration/http/routing/router/).
 
@@ -75,7 +75,7 @@ reviewed private registry with only CMS hold false and the exact owner ID allowe
 ### Schema initialization without starting a server
 
 Stop CMS before modifying links. Use the exact checked new CMS image, its existing
-reviewed site manifests, data mount and `TEA_OPERATOR_ORIGIN`; do not start the normal
+reviewed site manifests, data mount and `HARRHY_CMS_OPERATOR_ORIGIN`; do not start the normal
 server or create replacement databases. From `/app/apps/cms`, this recipe checks every
 configured database exists as a regular file **before** opening any for migration:
 
@@ -88,9 +88,9 @@ import { openDatabase } from './app/data/database.ts';
 import { createOperatorStore } from './operator/store.ts';
 
 const sites = await loadSites();
-if (!parseOperatorOrigin(process.env.TEA_OPERATOR_ORIGIN, sites))
+if (!parseOperatorOrigin(process.env.HARRHY_CMS_OPERATOR_ORIGIN, sites))
   throw new Error('The reviewed operator origin is required');
-const root = resolve(process.env.TEA_DATA_DIR ?? 'data');
+const root = resolve(process.env.HARRHY_CMS_DATA_DIR ?? 'data');
 const sitePaths = sites.map(site => join(root, site.id, 'tea.db'));
 const operatorPath = join(root, 'operator', 'operator.db');
 for (const path of [...sitePaths, operatorPath])

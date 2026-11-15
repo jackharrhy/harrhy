@@ -28,7 +28,7 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
     HARRHY_AUTH_LUKE_CLIENT_ID: "luke-client",
     HARRHY_AUTH_INTROSPECTION_CLIENT_ID: "resource-client",
     HARRHY_AUTH_INTROSPECTION_SECRET: "fixture-secret",
-    TEA_MCP_TOKEN: "legacy-must-not-work",
+    HARRHY_CMS_MCP_TOKEN: "legacy-must-not-work",
   };
   const previous = Object.fromEntries(
     Object.keys(values).map((key) => [key, process.env[key]]),
@@ -301,7 +301,7 @@ it("binds one-use owner login to the host/client, preserves local links, and lim
       ["service", 403],
       ["acted", 403],
       ["wrong-issuer", 401],
-      [values.TEA_MCP_TOKEN, 401],
+      [values.HARRHY_CMS_MCP_TOKEN, 401],
     ] as const) {
       const response = await app.fetch(
         new Request("https://andrew.example.test/tea/mcp", {

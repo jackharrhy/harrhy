@@ -74,8 +74,8 @@ services:
       context: .
       dockerfile: apps/cms/Dockerfile
     environment:
-      TEA_DATA_DIR: /app/data
-      TEA_BACKUP_DIR: /app/backups
+      HARRHY_CMS_DATA_DIR: /app/data
+      HARRHY_CMS_BACKUP_DIR: /app/backups
     volumes:
       - cms-data:/app/data
       - cms-backups:/app/backups

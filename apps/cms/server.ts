@@ -8,14 +8,18 @@ import { resolve } from "node:path";
 import { createLogger } from "@harrhy/logger";
 const sites = await loadSites();
 const operatorOrigin = parseOperatorOrigin(
-  process.env.TEA_OPERATOR_ORIGIN,
+  process.env.HARRHY_CMS_OPERATOR_ORIGIN,
   sites,
 );
 const operator = operatorOrigin
   ? {
       origin: operatorOrigin,
       store: createOperatorStore(
-        resolve(process.env.TEA_DATA_DIR ?? "data", "operator", "operator.db"),
+        resolve(
+          process.env.HARRHY_CMS_DATA_DIR ?? "data",
+          "operator",
+          "operator.db",
+        ),
         Boolean(process.env.HARRHY_AUTH_ISSUER),
       ),
     }
@@ -23,7 +27,7 @@ const operator = operatorOrigin
 const { createBackupService, backupConfig } =
   await import("./backup/service.ts");
 const backups = createBackupService(
-  resolve(process.env.TEA_DATA_DIR ?? "data"),
+  resolve(process.env.HARRHY_CMS_DATA_DIR ?? "data"),
   [
     ...sites.map((site) => ({
       id: site.id,

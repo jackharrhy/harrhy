@@ -42,7 +42,7 @@ it("keeps MCP disabled without credentials and serves only the selected site's p
   } finally {
     database.sqlite.close();
   }
-  const previous = process.env.TEA_MCP_TOKEN;
+  const previous = process.env.HARRHY_CMS_MCP_TOKEN;
   const call = (authorization?: string, origin?: string) =>
     app.fetch(
       new Request("https://one.example.test/tea/mcp", {
@@ -57,9 +57,9 @@ it("keeps MCP disabled without credentials and serves only the selected site's p
       }),
     );
   try {
-    delete process.env.TEA_MCP_TOKEN;
+    delete process.env.HARRHY_CMS_MCP_TOKEN;
     assert.equal((await call()).status, 404);
-    process.env.TEA_MCP_TOKEN = "fixture-secret";
+    process.env.HARRHY_CMS_MCP_TOKEN = "fixture-secret";
     assert.equal((await call()).status, 401);
     assert.equal((await call("Bearer incorrect")).status, 401);
     assert.equal(
@@ -150,8 +150,8 @@ it("keeps MCP disabled without credentials and serves only the selected site's p
       404,
     );
   } finally {
-    if (previous === undefined) delete process.env.TEA_MCP_TOKEN;
-    else process.env.TEA_MCP_TOKEN = previous;
+    if (previous === undefined) delete process.env.HARRHY_CMS_MCP_TOKEN;
+    else process.env.HARRHY_CMS_MCP_TOKEN = previous;
     app.close();
     await rm(dir, { recursive: true, force: true });
   }

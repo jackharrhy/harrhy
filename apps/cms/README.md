@@ -34,7 +34,7 @@ Host tests and fixtures live in `__tests__/`; feature tests live in `__tests__/`
 ## App-owned backups
 
 `backup/` owns the optional daily scheduler, SQLite/media snapshots, seven-generation
-retention and private status receipts. Set `TEA_BACKUP_DIR` to a distinct persistent
+retention and private status receipts. Set `HARRHY_CMS_BACKUP_DIR` to a distinct persistent
 mount (local Compose uses `cms-backups:/app/backups`). The authenticated operator
 dashboard shows status; public health does not expose it. All configured site
 DB/uploads/public trees and the optional operator DB are included. See
@@ -73,7 +73,7 @@ is enabled. Login transactions are bounded, server-held, ten-minute and one-use,
 bound to the browser cookie and exact host/client callback. A restart invalidates
 pending sign-ins. Log out clears the local session.
 
-Auth mode also replaces the shared read-only `TEA_MCP_TOKEN` with a human
+Auth mode also replaces the shared read-only `HARRHY_CMS_MCP_TOKEN` with a human
 CMS-admin resource token for the pinned owner (no acted or service tokens). Configure `HARRHY_AUTH_INTROSPECTION_CLIENT_ID` and
 `HARRHY_AUTH_INTROSPECTION_SECRET` for that endpoint; the site resource metadata
 is at `/.well-known/oauth-protected-resource/tea/mcp`. Production identity

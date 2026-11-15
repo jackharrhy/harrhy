@@ -44,7 +44,7 @@ export function centralAuth(
   env: Bindings,
 ): { config: IdentityConfig; origin: string; ownerSubject: string } | null {
   if (!env.HARRHY_AUTH_ISSUER) return null;
-  const origin = env.TEA_EDITOR_ORIGIN;
+  const origin = env.HARRHY_CMS_EDITOR_ORIGIN;
   if (
     !env.HARRHY_AUTH_CLIENT_ID ||
     !env.HARRHY_AUTH_PROJECT_ID ||
@@ -73,9 +73,9 @@ export function requireSecrets(
   previewSecret = true,
 ) {
   if (
-    (previewSecret && !env.TEA_PREVIEW_SECRET) ||
-    (signedSession && !env.TEA_SESSION_SECRET) ||
-    (passwordLogin && !env.TEA_ADMIN_PASSWORD)
+    (previewSecret && !env.HARRHY_CMS_PREVIEW_SECRET) ||
+    (signedSession && !env.HARRHY_CMS_SESSION_SECRET) ||
+    (passwordLogin && !env.HARRHY_CMS_ADMIN_PASSWORD)
   )
     throw new Error(
       "CMS Edge authentication and preview secrets are incomplete.",
@@ -176,14 +176,17 @@ export async function finishCentralLogin(request: Request, env: Bindings) {
 }
 
 export async function passwordMatches(input: string, env: Bindings) {
-  return equal(await digest(input), await digest(env.TEA_ADMIN_PASSWORD));
+  return equal(
+    await digest(input),
+    await digest(env.HARRHY_CMS_ADMIN_PASSWORD),
+  );
 }
 
 export async function sessionCookie(request: Request, env: Bindings) {
   const expiry = String(Date.now() + 12 * 60 * 60 * 1000);
-  const value = `${expiry}.${await signature(expiry, env.TEA_SESSION_SECRET)}`;
+  const value = `${expiry}.${await signature(expiry, env.HARRHY_CMS_SESSION_SECRET)}`;
   const secure =
-    env.TEA_EDITOR_ORIGIN?.startsWith("https://") ||
+    env.HARRHY_CMS_EDITOR_ORIGIN?.startsWith("https://") ||
     new URL(request.url).protocol === "https:";
   return `${cookieName}=${value}; Path=/tea; HttpOnly; SameSite=Strict; Max-Age=43200${secure ? "; Secure" : ""}`;
 }
@@ -199,9 +202,9 @@ export async function centralSessionCookie(
     .replace(/\//g, "_")
     .replace(/=+$/, "");
   const value = `v2.${identity}.${expiry}`;
-  const signatureValue = await signature(value, env.TEA_SESSION_SECRET);
+  const signatureValue = await signature(value, env.HARRHY_CMS_SESSION_SECRET);
   const secure =
-    env.TEA_EDITOR_ORIGIN?.startsWith("https://") ||
+    env.HARRHY_CMS_EDITOR_ORIGIN?.startsWith("https://") ||
     new URL(request.url).protocol === "https:";
   return `${cookieName}=${value}.${signatureValue}; Path=/tea; HttpOnly; SameSite=Lax; Max-Age=3600${secure ? "; Secure" : ""}`;
 }
@@ -232,7 +235,7 @@ export async function isEditor(request: Request, env: Bindings) {
     if (subject !== central.ownerSubject) return false;
     return equal(
       mac,
-      await signature(`v2.${encoded}.${expiry}`, env.TEA_SESSION_SECRET),
+      await signature(`v2.${encoded}.${expiry}`, env.HARRHY_CMS_SESSION_SECRET),
     );
   }
   const [expiry, mac] = match[1].split(".");
@@ -240,7 +243,7 @@ export async function isEditor(request: Request, env: Bindings) {
     !!expiry &&
     !!mac &&
     Number(expiry) > Date.now() &&
-    equal(mac, await signature(expiry, env.TEA_SESSION_SECRET))
+    equal(mac, await signature(expiry, env.HARRHY_CMS_SESSION_SECRET))
   );
 }
 
@@ -252,12 +255,14 @@ export function sameOrigin(request: Request, env: Bindings) {
   const origin = request.headers.get("origin");
   return (
     !!origin &&
-    (origin === new URL(request.url).origin || origin === env.TEA_EDITOR_ORIGIN)
+    (origin === new URL(request.url).origin ||
+      origin === env.HARRHY_CMS_EDITOR_ORIGIN)
   );
 }
 
 export function previewAllowed(request: Request, env: Bindings) {
   return (
-    request.headers.get("authorization") === `Bearer ${env.TEA_PREVIEW_SECRET}`
+    request.headers.get("authorization") ===
+    `Bearer ${env.HARRHY_CMS_PREVIEW_SECRET}`
   );
 }

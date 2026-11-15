@@ -324,7 +324,7 @@ export function createEdgeRouter(
             ? await createPreviewToken(
                 collection.name,
                 params.slug,
-                env.TEA_PREVIEW_SECRET,
+                env.HARRHY_CMS_PREVIEW_SECRET,
               )
             : "";
           return render(
@@ -604,7 +604,7 @@ export function createEdgeRouter(
             ? await createPreviewToken(
                 collection.name,
                 params.slug,
-                env.TEA_PREVIEW_SECRET,
+                env.HARRHY_CMS_PREVIEW_SECRET,
               )
             : "";
           return json({

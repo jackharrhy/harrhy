@@ -172,7 +172,7 @@ export function createTeaRouter(
             }
             return createMcpHandler(content).fetch(context.request);
           }
-          const token = process.env.TEA_MCP_TOKEN;
+          const token = process.env.HARRHY_CMS_MCP_TOKEN;
           if (!token) return new Response("Not found", { status: 404 });
           if (
             !validMcpToken(context.request.headers.get("authorization"), token)

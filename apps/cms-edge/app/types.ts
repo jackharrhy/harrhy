@@ -58,10 +58,10 @@ type R2Bucket = {
 export type Bindings = {
   DB: D1Database;
   MEDIA: R2Bucket;
-  TEA_ADMIN_PASSWORD: string;
-  TEA_SESSION_SECRET: string;
-  TEA_PREVIEW_SECRET: string;
-  TEA_EDITOR_ORIGIN?: string;
+  HARRHY_CMS_ADMIN_PASSWORD: string;
+  HARRHY_CMS_SESSION_SECRET: string;
+  HARRHY_CMS_PREVIEW_SECRET: string;
+  HARRHY_CMS_EDITOR_ORIGIN?: string;
   HARRHY_AUTH_ISSUER?: string;
   HARRHY_AUTH_CLIENT_ID?: string;
   HARRHY_AUTH_PROJECT_ID?: string;

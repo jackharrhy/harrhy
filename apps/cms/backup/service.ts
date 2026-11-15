@@ -38,7 +38,7 @@ export interface BackupConfig {
   reserveBytes: number;
 }
 export function backupConfig(env = process.env): BackupConfig | undefined {
-  if (!env.TEA_BACKUP_DIR) return undefined;
+  if (!env.HARRHY_CMS_BACKUP_DIR) return undefined;
   const integer = (key: string, fallback: number, minimum: number) => {
     const value = env[key] === undefined ? fallback : Number(env[key]);
     if (!Number.isSafeInteger(value) || value < minimum)
@@ -46,10 +46,14 @@ export function backupConfig(env = process.env): BackupConfig | undefined {
     return value;
   };
   return {
-    directory: resolve(env.TEA_BACKUP_DIR),
-    intervalSeconds: integer("TEA_BACKUP_INTERVAL_SECONDS", 86400, 60),
-    retention: integer("TEA_BACKUP_KEEP", 7, 1),
-    reserveBytes: integer("TEA_BACKUP_RESERVE_BYTES", 268435456, 1048576),
+    directory: resolve(env.HARRHY_CMS_BACKUP_DIR),
+    intervalSeconds: integer("HARRHY_CMS_BACKUP_INTERVAL_SECONDS", 86400, 60),
+    retention: integer("HARRHY_CMS_BACKUP_KEEP", 7, 1),
+    reserveBytes: integer(
+      "HARRHY_CMS_BACKUP_RESERVE_BYTES",
+      268435456,
+      1048576,
+    ),
   };
 }
 const generationPattern =

@@ -158,7 +158,7 @@ if (
   const reviewed = parseReviewedManifest(
     JSON.parse(readFileSync(input, "utf8")),
   );
-  const root = resolve(process.env.TEA_DATA_DIR ?? "data");
+  const root = resolve(process.env.HARRHY_CMS_DATA_DIR ?? "data");
   const targets = [
     {
       name: "operator",
