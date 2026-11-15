@@ -3,6 +3,13 @@
   // Celld is a host/container tool; Wrangler is provided by app workspaces in CI.
   "ignoreBinaries": ["celld", "wrangler"],
   "workspaces": {
+    "apps/ui": {
+      "entry": [
+        "app/public/entry.ts",
+        "__tests__/*.test.e2e.ts",
+        "__tests__/*.test.browser.tsx",
+      ],
+    },
     "apps/4orm": {
       // HTTPS issuer fixtures generate local ephemeral certificates.
       "ignoreBinaries": ["openssl"],

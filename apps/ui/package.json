@@ -1,0 +1,23 @@
+{
+  "name": "@harrhy/ui-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=26.13.0 <27"
+  },
+  "scripts": {
+    "dev": "node --watch --import remix/node-tsx server.ts",
+    "start": "node --import remix/node-tsx server.ts",
+    "typecheck": "tsrs --noEmit",
+    "test": "cd ../.. && remix test 'apps/ui/__tests__/*.test{,.browser,.e2e}.{ts,tsx}'",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "@harrhy/ui": "*",
+    "remix": "3.2.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.61.1"
+  }
+}

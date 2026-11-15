@@ -1,4 +1,21 @@
 services:
+  ui:
+    profiles: [ui]
+    build:
+      context: .
+      dockerfile: apps/ui/Dockerfile
+    environment:
+      HOST: 0.0.0.0
+      PORT: "18943"
+      UI_HOSTS: ui.localhost,127.0.0.1,localhost
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.ui.rule: "Host(`ui.localhost`)"
+      traefik.http.routers.ui.entrypoints: web
+      traefik.http.services.ui.loadbalancer.server.port: "18943"
+    networks:
+      - web
+
   auth:
     profiles: [auth]
     build:

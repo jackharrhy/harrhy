@@ -1,9 +1,85 @@
 # @harrhy/ui
 
-Small Remix 3 style mixins for controls shared by independent Harrhy apps. Apps call `createUiTheme` with their colors and optional control radius, then choose where to apply the mixins. The package does not choose a product font, layout, icon set, or visual theme. It contains styles only; form behavior and validation stay with the app and native HTML.
+Reusable Remix 3 native components, scoped semantic themes and part recipes. Apps own routing, validation, authentication, mutations, typography choices and client-entry boundaries. The [internal showcase](../../apps/ui/README.md) exercises components without connecting to production Auth or Ref.
 
-Import `createUiTheme` and `uiControlStyles` on an app root. Apply `uiActionStyles` together with `uiPrimaryActionStyles` or `uiSecondaryActionStyles` to native action links, buttons, or disclosure summaries. Apps can override `--ui-action-min-height`, `--ui-action-padding`, and `--ui-action-font-size` on specific controls without competing with Remix mixin layer order. The shared base gives links and buttons the same target size and alignment; the app keeps its own layout and copy. The first consumer is Ref; its neutral board palette remains in `apps/ref/app/styles.ts`. Radio, Pool, and Worldview can supply their own palettes and control shapes when they adopt these mixins.
+## Entry points
 
-Use native controls for straightforward forms. Add `@remix-run/ui` headless primitives in an app only when a control needs managed keyboard, focus, or dismissal behavior; it is currently versioned independently from `remix`. The package's variables are a contract for colors and control shape, not a universal aesthetic. Ref's quiet board, Radio's compact desktop, Pool's wood hall, and Worldview's map tools can use distinct values.
+- `@harrhy/ui`: compatible legacy styles only, safe for current Worker consumers.
+- `@harrhy/ui/native`: native controls, fields, surfaces and layout.
+- `@harrhy/ui/interactive`: async actions, native modal and official tabs compositions.
+- `@harrhy/ui/theme`: semantic token types, composition and theme mixins.
+- `@harrhy/ui/recipes`: host-element recipes for imperative or custom composition.
+- `@harrhy/ui/styles`: original `createUiTheme` and `ui*Styles` exports.
 
-Run `npm run check --workspace @harrhy/ui` from the repository root. The package has no browser entry or runtime state. `uiPrimaryActionStyles` remains usable alone for existing consumers (including Auth); the new base is opt-in and does not change their geometry.
+Existing Auth/Ref imports retain their original CSS and geometry. Separate native/interactive subpaths keep browser DOM host types and headless interactions out of current Cloudflare Worker consumers; the package root does not eagerly import a component barrel. The new `--hui-*` contract is deliberately independent of legacy `--ui-*` variables. No global control reset, font download, icon set or app shell is installed.
+
+## Native forms
+
+```tsx
+import { Button, Field, Input, Stack } from "@harrhy/ui/native";
+
+<form method="post" action="/account/email">
+  <Stack>
+    <Field
+      id="email"
+      label="Email"
+      description="Used for recovery."
+      error={errors.email}
+    >
+      <Input name="email" type="email" autocomplete="email" required />
+    </Field>
+    <Button type="submit" name="intent" value="save" variant="primary">
+      Save email
+    </Button>
+  </Stack>
+</form>;
+```
+
+`Button` defaults to `type="button"`; submission must be explicit. `ButtonLink` requires a real `href`; it does not invent disabled-link semantics. Both forward native Remix host props and `mix`. Caller mixins run after recipe mixins; CSS order is **not** an override mechanism. Override theme variables or supply deliberate selectors/layers.
+
+`Field` owns one control's ID, label, description and server-error relationships. Use `Input`, `Textarea` or native `Select` inside it; the field ID takes precedence over a control's ID. Authored `aria-describedby` IDs are deduplicated and merged with field IDs. A supplied error marks the control invalid; no error preserves caller `aria-invalid`. Errors are not automatic live alerts: server rendering or focused invalid controls should not announce the same error twice. Controllers own validation, error text and focus-on-submit policy. Native required/type validation remains active. Use `fieldset`/`legend` for groups, and a native wrapping label for `Checkbox`. `Input` is the text-like control recipe; use native range/file controls with dedicated app recipes rather than applying it to specialized media controls.
+
+`Panel`, `Stack`, `Inline`, `Notice` and `Badge` provide small semantic/spacing compositions. `Notice` has no forced live-region role; add `role="status"` or `role="alert"` only when the update needs announcement. Panel renders a section; name it with a heading or ARIA label when it is a navigable region.
+
+## Theme composition
+
+```tsx
+import {
+  cleanTheme,
+  composeTheme,
+  themeRoot,
+  themeStyles,
+} from "@harrhy/ui/theme";
+
+const accountTheme = themeStyles(
+  composeTheme(cleanTheme, {
+    fontBody: '"My local font", system-ui, sans-serif',
+    accent: "#244753",
+    controlHeight: "2.75rem",
+  }),
+);
+
+<section mix={[accountTheme, themeRoot]}>{/* components */}</section>;
+```
+
+Compose **data first**, emit one theme mixin per scope. `ThemeTokens` describes semantic canvas/surface/elevated/ink/muted/border/accent/focus/danger/success roles, body/control/code typography, spacing and density, control and panel geometry, motion and component-part treatments. Background images have their own tokens: never put a gradient in a border-color token. `cleanTheme`, Radio-inspired `tactileTheme` and Artbin-inspired `brutalistTheme` are independent expressions, not behavior switches. Subtrees may each choose a theme; state and accessibility semantics do not change with appearance. Tactile textures/gradients and brutalist offset relief are intentional references to those existing app identities, not a universal UI default. None copies external fonts/assets or changes Radio/Artbin themselves.
+
+Recipes consume the nearest variables, so subtree overrides inherit naturally. Apply `themeRoot` for scoped typography/canvas/selection and reduced-motion tokens. Theme mixins alone only set variables. No theme provider or browser script is required. Prefer one composed theme per element: stacking conflicting `css()` mixins does not guarantee precedence. Native inputs retain browser forced-colors treatment; focus uses an outline rather than a shadow alone.
+
+## Interactive components
+
+Apps must render these inside their own `clientEntry(...)` boundary and boot Remix `run()`. The package does not force hydration on server forms. Include `@harrhy/ui` and its pinned `@remix-run/ui` dependency in your asset server's allowed package graph as required by your host.
+
+- **ActionButton**: `action({signal})`, required `pendingLabel` and `onError(error)`, plus native button props except `type`. This is a client-owned async command, **not** a native submit replacement. Pending retains keyboard focus, marks busy/unavailable, ignores repeat activation and announces after one second. Caller click mixins run before action dispatch; `preventDefault()` vetoes it. A disabled fieldset is respected. Removal aborts the action signal and clears announcements/timers; ignored cancellation cannot update the disposed component. Rejections call the owner's error handler and reset for retry. Business success/error notices stay app-owned. The owner must handle errors in `onError` rather than throwing from it.
+- **Dialog**: controlled `open`, `title`, optional `description`/`initialFocus` selector, `onClose({reason,value})` and children. Uses real `showModal()` for focus containment, inert background and native focus return. Server HTML stays closed, even when `open` is true; browser commit opens it. Owner supplies trigger, close/save actions and changes `open`; Escape requests closure rather than silently changing authoritative state. Native `method="dialog"` close is reported as `native` with its return value. There is no backdrop-dismiss default, async transaction engine, nested-modal stack or busy policy. Owners must prevent native close actions while busy and may veto Escape by keeping `open` true. Do not use `method="dialog"` for an action requiring a cancellable close request. Keep the trigger mounted for native focus return; if it disappears, the owner must focus a suitable fallback. Native dialog props/mixins are forwarded; the title relationship is library-owned.
+- **Tabs**, **TabList**, **Tab**, **TabPanel**: compose official `@remix-run/ui/tabs` 0.13.1. Tabs takes `defaultActiveTab` or controlled `activeTab`/`onActiveTabChange`; each Tab/TabPanel shares a `name`. TabList requires `aria-label`. Arrow/Home/End navigation, disabled registration and active/inert panel relationships remain upstream-owned. These are widgets, not route navigation: use anchors and `aria-current` for routes. Content is present in SSR; interactive switching requires hydration.
+
+## Upstream and maintenance
+
+Remix 3.2.0 owns rendering/lifecycle and CSS. `@remix-run/ui` is pinned **0.13.1**, MIT, compatible with component ^1.2.0, and independently unstable; review the published subpath APIs and rerun SSR/browser contracts before upgrading. No old `remix/ui` or unpublished form/toast APIs are used.
+
+The behavior design was compared with Vercel UI SDK at immutable commit `220c1a0d7278872286a620a8e4ee4210ca46f9bd`: native/custom button semantics, retained pending focus, delayed announcements, field relationship merging, modal cancellation and stale action completions. Its framework-neutral core is substantial, but the required renderer bridge explicitly declares private/unstable APIs. This slice uses original native Remix implementations, not a vendored SDK kernel/adapter or copied algorithms. Therefore no SDK runtime dependency, copied source, assets or license notices are added. If a future missing utility earns selective adaptation, record exact files/commit/modifications and preserve Apache-2.0 notices at that point. Broad focus/selection engines should use official headless primitives rather than duplicate them.
+
+## Checks
+
+From the root, `npm ci`, then `npm run check --workspace @harrhy/ui`. Checks typecheck actual Remix props, render SSR form/field/theme/dialog/tab contracts, and retain legacy action compatibility tests. `npm run check --workspace @harrhy/ui-app` checks the consuming browser fixture, keyboard and responsive behavior. Run Auth and Ref checks for package changes. Automated checks do not establish assistive-technology or WCAG conformance.
