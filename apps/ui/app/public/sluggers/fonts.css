@@ -1,5 +1,11 @@
 /* Private Sluggers review: original fonts, rights unresolved; see README.md. */
 @font-face {
+  font-family: SluggersHappiness;
+  src: url("./fonts/happiness.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
   font-family: SluggersCezanne;
   src: url("./fonts/cezanne.woff2") format("woff2");
   font-weight: 500;

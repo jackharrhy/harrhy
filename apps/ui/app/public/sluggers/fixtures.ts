@@ -6,6 +6,7 @@ export const leagues = [
     season: "Season 1",
     teams: [
       {
+        conference: "Mushroom",
         id: "lil-fire",
         name: "Fireballs",
         manager: "Rowan",
@@ -15,6 +16,7 @@ export const leagues = [
         color: "#ad2831",
       },
       {
+        conference: "Mushroom",
         id: "lil-shell",
         name: "Shell Club",
         manager: "Alex",
@@ -24,6 +26,7 @@ export const leagues = [
         color: "#176b4a",
       },
       {
+        conference: "Mushroom",
         id: "lil-star",
         name: "Star Nine",
         manager: "Sam",
@@ -31,6 +34,26 @@ export const leagues = [
         losses: 2,
         rd: -4,
         color: "#785515",
+      },
+      {
+        conference: "Flower",
+        id: "lil-garden",
+        name: "Garden Party",
+        manager: "Jules",
+        wins: 1,
+        losses: 0,
+        rd: 3,
+        color: "#8b3c69",
+      },
+      {
+        conference: "Flower",
+        id: "lil-barrel",
+        name: "Barrel Runners",
+        manager: "Morgan",
+        wins: 0,
+        losses: 1,
+        rd: -3,
+        color: "#775324",
       },
     ],
   },
@@ -41,6 +64,7 @@ export const leagues = [
     season: "Spring season",
     teams: [
       {
+        conference: "Harbor",
         id: "harbor-fire",
         name: "Fireballs",
         manager: "Alex",
@@ -50,6 +74,7 @@ export const leagues = [
         color: "#78498e",
       },
       {
+        conference: "Harbor",
         id: "harbor-tide",
         name: "The Very Long Named Harbor Tidal Wave Club",
         manager: "Casey",

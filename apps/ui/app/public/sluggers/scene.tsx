@@ -3,6 +3,7 @@ import { themeRoot } from "@harrhy/ui/theme";
 import {
   Badge,
   Button,
+  Checkbox,
   Field,
   Heading,
   Inline,
@@ -120,7 +121,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
     handle.queueTask(() =>
       root
         ?.querySelector<HTMLButtonElement>(
-          `[data-character="${character}"] [data-direction="${delta}"]`,
+          `[data-character="${character}"] [data-direction="${next === 0 ? 1 : next === 8 ? -1 : delta}"]`,
         )
         ?.focus(),
     );
@@ -206,7 +207,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                   {(pitching
                     ? [
                         innings(i === 0 ? 12 : 2),
-                        stat(i === 0 ? 2 : null),
+                        stat(i === 0 ? 2 : incomplete ? null : 1),
                         "0",
                         "3",
                       ]
@@ -240,6 +241,9 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
       <section
         aria-label="Sluggers fixture"
         data-sluggers
+        data-league-id={league.id}
+        data-season-id={league.seasonId}
+        data-match-id={`${league.id}-match-${view === "match" ? "2" : "3"}`}
         mix={[
           sluggersTheme,
           themeRoot,
@@ -277,6 +281,8 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
               <Heading
                 level={2}
                 mix={css({
+                  fontFamily:
+                    "SluggersHappiness, SluggersBolt, system-ui, sans-serif",
                   fontSize: "36px",
                   margin: 0,
                   color: "#fff",
@@ -337,7 +343,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                 </Inline>
                 <div mix={columns}>
                   <section aria-label="Conference standings">
-                    <Heading level={4}>Mushroom conference</Heading>
+                    <Heading level={4}>Conference standings</Heading>
                     {empty ? (
                       <Notice>
                         No completed matches this season. The next fixture is
@@ -362,49 +368,63 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                               ))}
                             </TableRow>
                           </TableHeader>
-                          <TableBody>
-                            {league.teams.map((row, teamIndex) => (
+                          {Array.from(
+                            new Set(league.teams.map((t) => t.conference)),
+                          ).map((conference) => (
+                            <TableBody>
                               <TableRow>
-                                <TableHead scope="row" mix={cellName}>
-                                  <button
-                                    type="button"
-                                    mix={[
-                                      css({
-                                        border: 0,
-                                        background: "transparent",
-                                        color: row.color,
-                                        padding: 0,
-                                        font: "inherit",
-                                        textAlign: "left",
-                                        textDecoration: "underline",
-                                        textUnderlineOffset: "3px",
-                                        cursor: "pointer",
-                                      }),
-                                      on("click", () => {
-                                        lineupTeamIndex = teamIndex;
-                                        reset();
-                                        changeView("lineup");
-                                      }),
-                                    ]}
-                                  >
-                                    {row.name}
-                                  </button>
-                                  <div mix={quiet}>{row.manager}</div>
+                                <TableHead scope="rowgroup" colSpan={5}>
+                                  {conference} conference
                                 </TableHead>
-                                {[
-                                  row.wins,
-                                  row.losses,
-                                  row.wins - row.losses,
-                                  row.rd,
-                                ].map((value, i) => (
-                                  <TableCell mix={number}>
-                                    {i > 1 && value > 0 ? "+" : ""}
-                                    {value}
-                                  </TableCell>
-                                ))}
                               </TableRow>
-                            ))}
-                          </TableBody>
+                              {league.teams
+                                .filter((t) => t.conference === conference)
+                                .map((row) => (
+                                  <TableRow>
+                                    <TableHead scope="row" mix={cellName}>
+                                      <button
+                                        type="button"
+                                        mix={[
+                                          css({
+                                            border: 0,
+                                            background: "transparent",
+                                            color: row.color,
+                                            padding: 0,
+                                            font: "inherit",
+                                            textAlign: "left",
+                                            textDecoration: "underline",
+                                            textUnderlineOffset: "3px",
+                                            cursor: "pointer",
+                                          }),
+                                          on("click", () => {
+                                            lineupTeamIndex =
+                                              league.teams.findIndex(
+                                                (t) => t.id === row.id,
+                                              );
+                                            reset();
+                                            changeView("lineup");
+                                          }),
+                                        ]}
+                                      >
+                                        {row.name}
+                                      </button>
+                                      <div mix={quiet}>{row.manager}</div>
+                                    </TableHead>
+                                    {[
+                                      row.wins,
+                                      row.losses,
+                                      row.wins - row.losses,
+                                      row.rd,
+                                    ].map((value, i) => (
+                                      <TableCell mix={number}>
+                                        {i > 1 && value > 0 ? "+" : ""}
+                                        {value}
+                                      </TableCell>
+                                    ))}
+                                  </TableRow>
+                                ))}
+                            </TableBody>
+                          ))}
                         </Table>
                       </TableContainer>
                     )}
@@ -854,9 +874,16 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                     already has a published result. Previous evidence would be
                     retained.
                     <p>
-                      <label>
-                        <input
-                          type="checkbox"
+                      <label
+                        mix={css({
+                          display: "flex",
+                          gap: "10px",
+                          alignItems: "start",
+                          minHeight: "24px",
+                          cursor: "pointer",
+                        })}
+                      >
+                        <Checkbox
                           checked={acknowledged}
                           mix={on("change", (event) => {
                             acknowledged = (event.target as HTMLInputElement)
