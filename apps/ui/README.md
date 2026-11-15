@@ -1,38 +1,39 @@
 # @harrhy/ui-app
 
-Internal component workbench for [@harrhy/ui](../../packages/ui/README.md), not a marketing site or a production app migration.
+Internal explorer and composition workbench for [@harrhy/ui](../../packages/ui/README.md). Not a production app migration.
 
 ## Run and check
 
-From the repository root after `npm ci`:
+From the root after `npm ci`:
 
 ```sh
 npm run dev --workspace @harrhy/ui-app
 npm run check --workspace @harrhy/ui-app
 ```
 
-The server defaults to `127.0.0.1:18943`. `HOST` and `PORT` configure binding; Docker sets `HOST=0.0.0.0`. `UI_HOSTS` is a comma-separated hostname allowlist (no scheme or port), replacing the defaults: `localhost,127.0.0.1,[::1],harrhy-ui.pi.jackharrhy.dev`. Unknown hosts receive 404 before health, assets, or pages. Forwarded host headers do not override the request hostname. This hostname configuration is not authentication; it does not make a service private or authorize deployment.
+Default binding: `127.0.0.1:18943`. Configure `HOST` and `PORT`; Docker binds `0.0.0.0`. `UI_HOSTS` replaces the default hostname allowlist: `localhost,127.0.0.1,[::1],harrhy-ui.pi.jackharrhy.dev`. Unknown hosts receive 404 before pages, health or assets. Forwarded host headers do not override the hostname. This is not authentication or deployment authorization.
 
-Tests use temporary loopback test servers only. Browser tests require Playwright Chromium (`npx playwright install chromium`); no preview server is needed. The check runs typechecking, router tests, browser component contracts, and browser end-to-end tests. The test script anchors Remix discovery at the repository root because the browser harness must share a root with hoisted dependencies; its glob remains restricted to this app.
+Tests use temporary loopback servers. Install browser support with `npx playwright install chromium`. The check runs typechecking, router tests, browser component contracts and end-to-end tests. Remix test discovery is anchored at the root to share the hoisted browser harness; the glob remains restricted to this app.
 
 ## Entry points
 
-- `server.ts`: Node Fetch adapter, binding, shutdown.
-- `app/routes.ts`, `app/router.tsx`: native Remix route, document rendering, host policy, health.
-- `app/assets.ts`: narrow browser source mounts and package allowlist; server and test files are not exposed.
+- `server.ts`: Node Fetch adapter, binding and shutdown.
+- `app/routes.ts`, `app/router.tsx`: route, host policy, health and document rendering.
+- `app/assets.ts`: browser source mounts and package allowlist; excludes tests and server source.
 - `app/public/entry.ts`: browser runtime boot.
-- `app/public/showcase.tsx`: clientEntry workbench, patterns and theme specimens.
-- `__tests__/`: host/source rejection, native GET, browser interactions, focus, tabs, pending guard and responsive overflow checks.
-- `PRODUCT.md` / `DESIGN.md`: pinned scope and visual direction, with explicit assumptions.
+- `app/public/explorer.tsx`: component navigation, live controls, preview and matching code.
+- `app/public/scenes.tsx`: scene navigation, composed form fixtures and theme comparison.
+- `app/public/radio/`: source-derived Radio room presentation, synthetic action model and scenario fixtures; its README records source and font provenance.
+- `app/public/themes.ts`: showcase theme catalogue.
+- `__tests__/`: host/source rejection, native GET, interactions, focus, pending guards, scope isolation and responsive overflow.
+- `PRODUCT.md`, `DESIGN.md`: scope, pinned references and verification boundaries.
 
-## Scope
+## Behavior and boundaries
 
-Controls import from `@harrhy/ui/native`, tokens from `@harrhy/ui/theme`, and ActionButton/Dialog/Tabs from `@harrhy/ui/interactive`. The package root remains legacy styles for Worker consumers; the browser graph does not import a root barrel.
+Explorer is the default route. `?component=field&theme=brutalist` opens a specimen directly; `q` filters navigation using native GET. Theme changes update the URL and scope only the specimen. Controls drive actual library props; source changes alongside them. Code remains selectable; clipboard failure is reported. Component behavior requires hydration, but navigation and search remain useful without scripts.
 
-Clean Auth/Ref, tactile Radio/PictoChat, and brutalist Artbin expressions come from package theme tokens. The same controls are shown side by side. Working consent and board forms are explicitly local fixtures: no real account, persistence, authorization, or uploads. The GET filter reloads a server-rendered document and works without scripts. The modal uses controlled native dialog behavior; tabs use the package's official Remix UI adapter. The async export is an abortable 1.2-second fixture, not a download. Code snippets are selectable and clipboard-copyable in a secure context; clipboard failures are reported.
+`?view=scenes` opens composed fixtures; `&scene=themes` compares the supplied themes. `&scene=radio` opens the actual Radio player/queue/listener layout adapted to synthetic data: transport, seek, volume, calibration, rename, delete, queue-next and keyboard/drag reorder. Scenario controls expose empty/offline/syncing/upload/failed/buffering states. Playing only changes local fixture state; no audio, file selection, WebSocket, browser storage or backend client is initialized. The local Radio Material Symbols font preserves its Apache-2.0 license; Pretext uses Radio's existing fitter, not a second implementation. Consent and board creation use local memory only. Native required validation remains enabled. Reload clears state. Artbin follows its actual kitchen sink, not generic neobrutalism. The workbench chrome does not restyle package controls or theme recipes.
 
-Disabled/loading/error states include labelled static specimens. Interactive examples demonstrate real local success, denial, empty and pending states. This app does not change Auth, Ref, Radio, Artbin, PictoChat, or any production configuration.
+Imports use explicit `@harrhy/ui/native`, `/interactive`, `/theme` and `/code` subpaths. Every Explorer source panel uses the shared CodeBlock; dedicated code/diff stories exercise safe live source, long lines and prepared row states. Language labels do not promise highlighting. Existing Shiki consumers remain unchanged. The package root remains legacy styles for existing Worker consumers. No Storybook dependency, remote fonts, secrets, storage or production configuration. No account, backend or playback requests. Docker builds from the root lockfile; deployment and routing are outside the app.
 
-Contract tests additionally cover caller `preventDefault()` veto, retained pending-action focus, abort on unmount with stale rejection suppression, changing/removing Field descriptions and errors after hydration, and native `method="dialog"` close callback values. Native dialog close has already happened when `onClose` runs: controlled owners must reconcile `open=false`; that notification cannot veto the native close. Action owners must honor their abort signal before their own side effects—ActionButton cannot undo arbitrary caller work.
-
-The Dockerfile expects the root workspace lockfile to include this app. Build from repository root; deployment/routing is outside this app. No external fonts, images, secrets, storage, or build step.
+Browser contracts cover caller veto, pending-action focus/repeat guards, abort and stale-result suppression, dynamic Field ARIA, controlled dialog Escape/focus return, native `method="dialog"` return values, official tab keyboard behavior and 390/768/1440px overflow. They do not establish assistive-technology conformance. Action owners must honor abort signals before side effects; dialog owners must reconcile `open=false` after native close notifications.

@@ -88,7 +88,12 @@ export function CodeBlock(handle: Handle<CodeBlockProps>) {
           <span>{label}</span>
           {language && <span mix={metadataStyles}>{language}</span>}
         </figcaption>
-        <pre role="region" aria-label={label} tabIndex={0} mix={[preStyles, focusStyles]}>
+        <pre
+          role="region"
+          aria-label={label}
+          tabIndex={0}
+          mix={[preStyles, focusStyles]}
+        >
           <code>{source}</code>
         </pre>
       </figure>
@@ -105,7 +110,12 @@ export function CodeDiff(handle: Handle<CodeDiffProps>) {
           <span>{label}</span>
           <span mix={metadataStyles}>Unified diff · − removed · + added</span>
         </figcaption>
-        <pre role="region" aria-label={label} tabIndex={0} mix={[preStyles, focusStyles]}>
+        <pre
+          role="region"
+          aria-label={label}
+          tabIndex={0}
+          mix={[preStyles, focusStyles]}
+        >
           <code>
             {lines.map((line) => {
               const oldLine = line.kind === "add" ? undefined : line.oldLine;
@@ -119,10 +129,18 @@ export function CodeDiff(handle: Handle<CodeDiffProps>) {
                     {newLine}
                   </span>
                   <span aria-hidden="true">
-                    {line.kind === "add" ? "+ " : line.kind === "remove" ? "− " : "  "}
+                    {line.kind === "add"
+                      ? "+ "
+                      : line.kind === "remove"
+                        ? "− "
+                        : "  "}
                   </span>
                   <span mix={visuallyHiddenStyles}>
-                    {line.kind === "add" ? "Added" : line.kind === "remove" ? "Removed" : "Context"}
+                    {line.kind === "add"
+                      ? "Added"
+                      : line.kind === "remove"
+                        ? "Removed"
+                        : "Context"}
                     {oldLine !== undefined && ` old line ${oldLine}`}
                     {newLine !== undefined && ` new line ${newLine}`}
                     {": "}

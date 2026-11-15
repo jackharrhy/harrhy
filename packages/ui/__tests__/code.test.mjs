@@ -56,12 +56,18 @@ test("CodeDiff keeps change semantics and caller-owned line numbers without colo
 });
 
 test("empty and large input remain honest: no invented content or silent truncation", async () => {
-  const empty = await renderToString(h(CodeBlock, { label: "Empty file", source: "" }));
+  const empty = await renderToString(
+    h(CodeBlock, { label: "Empty file", source: "" }),
+  );
   assert.match(empty, /<code><\/code>/);
-  const diff = await renderToString(h(CodeDiff, { label: "No changes", lines: [] }));
+  const diff = await renderToString(
+    h(CodeDiff, { label: "No changes", lines: [] }),
+  );
   assert.doesNotMatch(diff, /data-change=/);
   const source = `${"x".repeat(100_000)}\nTHE_END\n`;
-  const large = await renderToString(h(CodeBlock, { label: "Long line", source }));
+  const large = await renderToString(
+    h(CodeBlock, { label: "Long line", source }),
+  );
   assert.ok(large.includes(source));
   assert.doesNotMatch(large, /truncated|omitted/);
 });

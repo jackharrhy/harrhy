@@ -1,0 +1,84 @@
+import { css, on, ref } from "remix/component";
+import type { Handle } from "remix/component";
+import { Button, Inline, Select } from "@harrhy/ui/native";
+import { RadioPlayerView } from "./player.tsx";
+import { desktopThemeStyle } from "./theme.ts";
+import { createRadioDemo, scenarios } from "./model.ts";
+import type { Scenario } from "./model.ts";
+
+export function RadioScene(handle: Handle) {
+  let scenario: Scenario = "paused";
+  let width = 960;
+  const demo = createRadioDemo(() => {
+    handle.update();
+  });
+  return () => (
+    <section
+      aria-label="Radio fixture"
+      mix={css({ display: "grid", gap: "20px", minWidth: 0 })}
+    >
+      <Inline>
+        <label htmlFor="radio-scenario">Scenario</label>
+        <Select
+          id="radio-scenario"
+          value={scenario}
+          mix={[
+            css({ width: "auto" }),
+            on("change", (event) => {
+              scenario = event.currentTarget.value as Scenario;
+              demo.reset(scenario);
+            }),
+          ]}
+        >
+          {scenarios.map((name) => (
+            <option value={name}>
+              {name === "calibrated"
+                ? "Offset +20ms"
+                : name[0]!.toUpperCase() + name.slice(1)}
+            </option>
+          ))}
+        </Select>
+        <Button mix={on("click", () => demo.reset(scenario))}>
+          Reset scene
+        </Button>
+        <span mix={css({ color: "#59616b", fontSize: "13px" })}>
+          Synthetic room · no audio, files or network
+        </span>
+      </Inline>
+      <div
+        mix={[
+          desktopThemeStyle,
+          ref((node, signal) => {
+            const observer = new ResizeObserver((entries) => {
+              const next = Math.floor(entries[0]?.contentRect.width ?? 960);
+              if (next !== width) {
+                width = next;
+                handle.update();
+              }
+            });
+            observer.observe(node);
+            signal.addEventListener("abort", () => observer.disconnect(), {
+              once: true,
+            });
+          }),
+        ]}
+      >
+        <RadioPlayerView
+          state={demo.state}
+          client={demo.actions}
+          preview
+          roomName="evening-radio"
+          viewportWidth={width}
+          onAddTrack={() => demo.addTrack()}
+        />
+      </div>
+      <p
+        role="status"
+        mix={css({ color: "#59616b", fontSize: "13px", minHeight: "20px" })}
+      >
+        {demo.announcement ||
+          "Try transport, track actions, keyboard reorder and calibration."}
+      </p>
+    </section>
+  );
+}

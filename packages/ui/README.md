@@ -7,6 +7,7 @@ Reusable Remix 3 native components, scoped semantic themes and part recipes. App
 - `@harrhy/ui`: compatible legacy styles only, safe for current Worker consumers.
 - `@harrhy/ui/native`: native controls, fields, surfaces and layout.
 - `@harrhy/ui/interactive`: async actions, native modal and official tabs compositions.
+- `@harrhy/ui/code`: native SSR code blocks and caller-prepared unified diffs.
 - `@harrhy/ui/theme`: semantic token types, composition and theme mixins.
 - `@harrhy/ui/recipes`: host-element recipes for imperative or custom composition.
 - `@harrhy/ui/styles`: original `createUiTheme` and `ui*Styles` exports.
@@ -73,6 +74,12 @@ Apps must render these inside their own `clientEntry(...)` boundary and boot Rem
 - **ActionButton**: `action({signal})`, required `pendingLabel` and `onError(error)`, plus native button props except `type`. This is a client-owned async command, **not** a native submit replacement. Pending retains keyboard focus, marks busy/unavailable, ignores repeat activation and announces after one second. Caller click mixins run before action dispatch; `preventDefault()` vetoes it. A disabled fieldset is respected. Removal aborts the action signal and clears announcements/timers; ignored cancellation cannot update the disposed component. Rejections call the owner's error handler and reset for retry. Business success/error notices stay app-owned. The owner must handle errors in `onError` rather than throwing from it.
 - **Dialog**: controlled `open`, `title`, optional `description`/`initialFocus` selector, `onClose({reason,value})` and children. Uses real `showModal()` for focus containment, inert background and native focus return. Server HTML stays closed, even when `open` is true; browser commit opens it. Owner supplies trigger, close/save actions and changes `open`; Escape requests closure rather than silently changing authoritative state. Native `method="dialog"` close is reported as `native` with its return value. There is no backdrop-dismiss default, async transaction engine, nested-modal stack or busy policy. Owners must prevent native close actions while busy and may veto Escape by keeping `open` true. Do not use `method="dialog"` for an action requiring a cancellable close request. Keep the trigger mounted for native focus return; if it disappears, the owner must focus a suitable fallback. Native dialog props/mixins are forwarded; the title relationship is library-owned.
 - **Tabs**, **TabList**, **Tab**, **TabPanel**: compose official `@remix-run/ui/tabs` 0.13.1. Tabs takes `defaultActiveTab` or controlled `activeTab`/`onActiveTabChange`; each Tab/TabPanel shares a `name`. TabList requires `aria-label`. Arrow/Home/End navigation, disabled registration and active/inert panel relationships remain upstream-owned. These are widgets, not route navigation: use anchors and `aria-current` for routes. Content is present in SSR; interactive switching requires hydration.
+
+## Code and diffs
+
+`CodeBlock({label, source, language?})` renders escaped, selectable text with a visible caption and a named keyboard-scrollable region. Language is descriptive metadata, not a highlighter. `CodeDiff({label, lines})` renders caller-prepared context/remove/add rows with optional old/new line numbers, textual change markers and accessible row descriptions. Both consume the nearest semantic theme and preserve long lines without silently truncating input. They have no client lifecycle or runtime dependencies beyond Remix. Apps own source limits, diff computation, syntax preparation and clipboard actions.
+
+The [code research and API guide](CODE.md) inventories actual Atlas/Garden/Lists highlighting and editor consumers, compares pinned Pierre packages, records licensing/notices, Worker and client boundaries, and explains the dependency-free choice. Existing Shiki pipelines are not migrated or duplicated. The code subpath stays separate from the legacy root and does not claim optional upstream highlighters run in Workers. The Explorer uses CodeBlock for every story's current source and includes dedicated CodeBlock/CodeDiff controls.
 
 ## Upstream and maintenance
 

@@ -1,17 +1,17 @@
-# UI workbench
+# UI explorer
 
-## Purpose
+An internal workbench for @harrhy/ui, implemented with native Remix 3 on a Node host. No Storybook or second UI framework.
 
-An internal component showcase for the shared Harrhy UI foundation. It demonstrates native Auth/Ref patterns, copyable code, theme comparison, and control states without changing production apps.
+## Explorer
 
-## Platform and stack
+Select a component, change its actual props, inspect native and managed behavior, and copy matching source. Component and theme have shareable query URLs. Search is a native GET form and works without scripts. Mobile has a component selector instead of the desktop rail.
 
-Web, native Remix 3 components and routing, Node host, Remix asset server. No additional UI framework.
+## Scenes
+
+Keep full compositions separate from individual component controls. Auth consent and Ref board creation are local fixtures, not production screens. Theme comparison preserves each theme's supplied geometry and typography. The Radio scene adapts the actual room presentation and queue/transport behaviors to a synthetic local model, with meaningful scenario controls and keyboard/mobile behavior. No production runtime is imported.
 
 ## Boundaries
 
-All examples are labelled fixtures. No real authorization, accounts, persistence, or production mutations. Default loopback binding; explicit hostname allowlist. No public preview claim.
+No real authorization, accounts, persistence, playback, uploads or backend mutations. No production Radio/Auth/Ref cutover. Loopback binding and hostname allowlisting are not authentication. All preview data must be synthetic.
 
-## Assumptions inferred only from the pinned brief
-
-The primary user is a Harrhy contributor evaluating components and expressions. Success means comparing the same controls, exercising local interactions and a native GET form, then copying a useful starting point. These are product assumptions, not usage evidence.
+Assumption from the owner's brief: contributors need a practical component explorer and useful complex app previews, not marketing or long explanations.

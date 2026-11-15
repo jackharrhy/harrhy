@@ -3,8 +3,9 @@ import { ImportMap, renderToStream } from "remix/component/server";
 import { css } from "remix/component";
 import { routes } from "./routes.ts";
 import { createAssets } from "./assets.ts";
-import { Showcase } from "./public/showcase.tsx";
-import type { ThemeName } from "./public/showcase.tsx";
+import { Scenes } from "./public/scenes.tsx";
+import type { ThemeName } from "./public/themes.ts";
+import { Explorer, stories } from "./public/explorer.tsx";
 
 export const defaultHosts = [
   "localhost",
@@ -37,6 +38,9 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="robots" content="noindex, nofollow" />
           <title>Harrhy UI workbench</title>
+          {url.searchParams.get("scene") === "radio" && (
+            <link rel="stylesheet" href="/assets/ui/radio/fonts.css" />
+          )}
           <ImportMap value={entry.importMap} />
           {entry.preloads.map((href) => (
             <link rel="modulepreload" href={href} />
@@ -44,11 +48,28 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
           <script type="module" src={entry.href} />
         </head>
         <body mix={css({ margin: 0 })}>
-          <Showcase
-            theme={theme}
-            query={(url.searchParams.get("q") ?? "").slice(0, 100)}
-            submitted={url.searchParams.has("q")}
-          />
+          {url.searchParams.get("view") === "scenes" ? (
+            <Scenes
+              theme={theme}
+              scene={
+                url.searchParams.get("scene") === "radio"
+                  ? "radio"
+                  : url.searchParams.get("scene") === "themes"
+                    ? "themes"
+                    : "forms"
+              }
+            />
+          ) : (
+            <Explorer
+              theme={theme}
+              story={
+                stories.find(
+                  (story) => story.id === url.searchParams.get("component"),
+                )?.id ?? "button"
+              }
+              query={(url.searchParams.get("q") ?? "").slice(0, 100)}
+            />
+          )}
         </body>
       </html>,
       {

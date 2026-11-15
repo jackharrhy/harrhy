@@ -14,7 +14,8 @@ export function createAssets() {
       "packages/ui/*.ts",
       "packages/ui/*.tsx",
     ],
-    allowPackages: ["remix", "@harrhy/ui"],
+    allowPackages: ["remix", "@harrhy/ui", "@chenglou/pretext"],
+    files: { extensions: [".woff2"] },
     denyFiles: ["**/__tests__/**", "**/*.server.*"],
     watch: false,
   });

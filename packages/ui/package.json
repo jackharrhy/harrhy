@@ -7,6 +7,7 @@
     ".": "./styles.ts",
     "./native": "./components.tsx",
     "./interactive": "./interactive.ts",
+    "./code": "./code.tsx",
     "./styles": "./styles.ts",
     "./theme": "./theme.ts",
     "./recipes": "./recipes.ts"

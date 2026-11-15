@@ -2,7 +2,7 @@
 
 ## Scope and decision checkpoint
 
-This work is an additive shared UI explorer slice, not an editor, Markdown pipeline replacement or production migration. Existing consumers remain unchanged. The preferred baseline is native Remix SSR rendering with escaped text and optional caller-prepared tokens/rows. No new highlighter, diff algorithm, client runtime, worker pool or WebAssembly dependency is justified for that baseline. The reconciled implementation is `code.tsx`, exported by the integrating workspace as `@harrhy/ui/code`. It adds no dependencies.
+This work is an additive shared UI explorer slice, not an editor, Markdown pipeline replacement or production migration. Existing consumers remain unchanged. The baseline is native Remix SSR rendering with escaped source text and caller-prepared diff rows. No new highlighter, diff algorithm, client runtime, worker pool or WebAssembly dependency is justified for that baseline. The reconciled implementation is `code.tsx`, exported by the integrating workspace as `@harrhy/ui/code`. It adds no dependencies.
 
 ## Actual Harrhy inventory
 
@@ -69,7 +69,7 @@ A future Pierre client island is justified by concrete needs such as large virtu
 
 ## Public API and Explorer integration
 
-The parent integration owns package.json: add `"./code": "./code.tsx"` to exports, with no dependency or lockfile changes. Do not add this module to the legacy package root. The host asset graph already allows `@harrhy/ui` and `remix`; no worker/WASM or additional package allowlist is necessary.
+`package.json` exports `"./code": "./code.tsx"` without new dependencies. The legacy package root does not import it. The host asset graph allows `@harrhy/ui` and `remix`; no worker/WASM or additional package allowlist is necessary for code views.
 
 ```tsx
 import { CodeBlock, CodeDiff } from "@harrhy/ui/code";
