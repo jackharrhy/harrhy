@@ -87,6 +87,11 @@ function MediaPage(
             Services
           </a>
         </div>
+        <p>
+          <a class="text-link" href="/manage/media/provisioning">
+            Create a new native account · separate review
+          </a>
+        </p>
         {instances.length === 0 ? (
           <p>
             No media inventory instances are configured. Ask the operator to

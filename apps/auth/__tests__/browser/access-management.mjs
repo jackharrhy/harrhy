@@ -153,7 +153,19 @@ await writeFile(
   ]),
 );
 let nativeWrites = 0;
+let nativeCreations = 0;
+let createdNative;
+const selectedLibrary = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+const createdNativeId = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 let seerrDeletes = 0;
+let seerrImports = 0;
+const importedSeerrUser = {
+  id: 73,
+  jellyfinUserId: createdNativeId,
+  jellyfinUsername: "synthetic-recipient",
+  permissions: 160,
+  userType: 3,
+};
 let nativePolicy = {
   IsAdministrator: false,
   IsDisabled: false,
@@ -162,6 +174,45 @@ let nativePolicy = {
   EnableAllFolders: true,
 };
 const nativeServer = createServer(async (request, response) => {
+  if (
+    [
+      "/api/v1/settings/main",
+      "/api/v1/settings/jellyfin/users",
+      `/api/v1/user/jellyfin/${createdNativeId}`,
+      "/api/v1/user/import-from-jellyfin",
+      "/api/v1/user/73",
+    ].includes(request.url)
+  ) {
+    assert.equal(request.headers["x-api-key"], "synthetic-write-only");
+    response.setHeader("Content-Type", "application/json");
+    if (request.url === "/api/v1/settings/main")
+      response.end(
+        JSON.stringify({
+          mediaServerType: 2,
+          defaultPermissions: 160,
+          apiKey: "private-never-retained",
+        }),
+      );
+    else if (request.url === "/api/v1/settings/jellyfin/users")
+      response.end(
+        JSON.stringify([
+          { id: createdNativeId, username: "synthetic-recipient" },
+        ]),
+      );
+    else if (request.url === `/api/v1/user/jellyfin/${createdNativeId}`)
+      response.writeHead(404).end();
+    else if (request.url === "/api/v1/user/import-from-jellyfin") {
+      assert.equal(request.method, "POST");
+      let body = "";
+      for await (const chunk of request) body += chunk;
+      assert.deepEqual(JSON.parse(body), {
+        jellyfinUserIds: [createdNativeId],
+      });
+      seerrImports++;
+      response.writeHead(201).end(JSON.stringify([importedSeerrUser]));
+    } else response.end(JSON.stringify(importedSeerrUser));
+    return;
+  }
   if (request.url.startsWith("/api/v1/user/")) {
     assert.equal(request.headers["x-api-key"], "synthetic-write-only");
     assert(
@@ -198,6 +249,67 @@ const nativeServer = createServer(async (request, response) => {
     request.headers.authorization,
     'MediaBrowser Token="synthetic-write-only"',
   );
+  const json = (value) => {
+    response.setHeader("Content-Type", "application/json");
+    response.end(JSON.stringify(value));
+  };
+  if (request.url === "/Library/VirtualFolders" && request.method === "GET") {
+    json([{ ItemId: selectedLibrary, Name: "Synthetic Movies" }]);
+    return;
+  }
+  if (request.url === "/Users" && request.method === "GET") {
+    json([
+      { Id: nativeSnapshot.accounts[0].nativeId, Name: "Morgan Native" },
+      ...(createdNative ? [createdNative] : []),
+    ]);
+    return;
+  }
+  if (request.url === "/Users/New" && request.method === "POST") {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    const input = JSON.parse(body);
+    assert.equal(input.Name, "synthetic-recipient");
+    assert(input.Password.length >= 48);
+    assert.notEqual(input.Password, "Synthetic-native-passphrase-42");
+    nativeCreations++;
+    createdNative = {
+      Id: createdNativeId,
+      Name: input.Name,
+      Policy: { ...nativePolicy, IsDisabled: false },
+    };
+    json(createdNative);
+    return;
+  }
+  if (request.url === `/Users/${createdNativeId}` && request.method === "GET") {
+    json(createdNative);
+    return;
+  }
+  if (
+    request.url === `/Users/${createdNativeId}/Policy` &&
+    request.method === "POST"
+  ) {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    createdNative.Policy = JSON.parse(body);
+    assert.equal(createdNative.Policy.IsAdministrator, false);
+    assert.deepEqual(createdNative.Policy.EnabledFolders, [selectedLibrary]);
+    response.writeHead(204).end();
+    return;
+  }
+  if (
+    request.url === `/Users/Password?userId=${createdNativeId}` &&
+    request.method === "POST"
+  ) {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    assert.deepEqual(JSON.parse(body), {
+      NewPw: "Synthetic-native-passphrase-42",
+      ResetPassword: false,
+    });
+    assert.equal(createdNative.Policy.EnableAllFolders, false);
+    response.writeHead(204).end();
+    return;
+  }
   const userPath = `/Users/${nativeSnapshot.accounts[0].nativeId}`;
   if (request.method === "GET" && request.url === userPath) {
     response.setHeader("Content-Type", "application/json");
@@ -1045,6 +1157,191 @@ try {
     ),
   );
   await recipientContext.close();
+  await page.goto(origin + "/manage/media");
+  await page
+    .getByRole("link", {
+      name: "Create a new native account · separate review",
+      exact: true,
+    })
+    .click();
+  await capture(page, "media-provisioning-initial");
+  assert.equal(
+    await page
+      .getByRole("heading", { name: "Create native account", exact: true })
+      .count(),
+    1,
+    await page.locator("main").innerText(),
+  );
+  await page
+    .getByLabel("Jellyfin instance", { exact: true })
+    .selectOption("synthetic-server");
+  await page
+    .getByRole("button", { name: "Load available libraries", exact: true })
+    .click();
+  await page
+    .getByLabel("Existing Auth identity", { exact: true })
+    .selectOption(users.at(-1).id);
+  await page
+    .getByLabel("New native username", { exact: true })
+    .fill("synthetic-recipient");
+  await page.getByLabel("Synthetic Movies", { exact: true }).check();
+  await page
+    .getByLabel("Reason", { exact: true })
+    .fill("Explicit synthetic new-account review; no incumbent changes.");
+  await capture(page, "media-provisioning-form");
+  await page
+    .getByRole("button", { name: "Review new native account", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Review native creation", exact: true })
+    .waitFor();
+  assert.equal(nativeCreations, 0);
+  const creationUrl = page.url();
+  const creationCsrf = await page.locator("main input[name=csrf]").inputValue();
+  const forgedCreation = await context.request.post(`${creationUrl}/confirm`, {
+    headers: { origin: "https://wrong.example" },
+    form: {
+      csrf: creationCsrf,
+      confirmed: "true",
+      password: "Synthetic-native-passphrase-42",
+    },
+  });
+  assert.equal(forgedCreation.status(), 403);
+  assert.equal(nativeCreations, 0);
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await capture(page, `media-provisioning-review-${width}`);
+  }
+  await page
+    .getByLabel("Separate native password", { exact: true })
+    .fill("Synthetic-native-passphrase-42");
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Create native account", exact: true })
+    .click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Creation status: created" })
+    .waitFor();
+  assert.equal(nativeCreations, 1);
+  await context.request.post(`${creationUrl}/confirm`, {
+    headers: { origin },
+    form: {
+      csrf: creationCsrf,
+      confirmed: "true",
+      password: "Synthetic-native-passphrase-42",
+    },
+  });
+  assert.equal(nativeCreations, 1);
+  assert.equal(
+    grants.filter((grant) => grant.userId === users.at(-1).id).length,
+    0,
+  );
+  assert(!logs.includes("Synthetic-native-passphrase-42"));
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  nativeSnapshot.accounts.push({
+    nativeId: createdNativeId,
+    name: "synthetic-recipient",
+    disabled: false,
+    administrator: false,
+  });
+  await writeFile(
+    `${directory}/media-snapshot.json`,
+    JSON.stringify(nativeSnapshot),
+  );
+  await page.goto(origin + "/manage/media/jellyfin/synthetic-server");
+  const createdMappingForm = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", {
+        name: "synthetic-recipient",
+        exact: true,
+      }),
+    })
+    .locator("form");
+  await createdMappingForm
+    .getByLabel("Existing Auth identity")
+    .selectOption(users.at(-1).id);
+  await createdMappingForm
+    .getByLabel("Reason")
+    .fill("Separate explicit exact-ID mapping after new native creation.");
+  await createdMappingForm
+    .getByRole("button", { name: "Review identity link", exact: true })
+    .click();
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Record reviewed identity link", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Identity link recorded", exact: true })
+    .waitFor();
+  await page.goto(origin + "/manage/media/provisioning");
+  await page
+    .getByLabel("Seerr instance", { exact: true })
+    .selectOption("synthetic-server");
+  await page
+    .getByLabel("Confirmed Jellyfin mapping", { exact: true })
+    .selectOption(
+      JSON.stringify([
+        "synthetic-server",
+        createdNativeId,
+        origin,
+        users.at(-1).id,
+      ]),
+    );
+  await page
+    .getByLabel("Import reason", { exact: true })
+    .fill(
+      "Explicit one-account import with reviewed request and auto-approve 160.",
+    );
+  await page
+    .getByRole("button", { name: "Review Seerr exact-ID import", exact: true })
+    .click();
+  await page
+    .getByRole("heading", {
+      name: "Seerr request and auto-approve · 160",
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(seerrImports, 0);
+  assert.equal(await page.locator("input[type=password]").count(), 0);
+  const importUrl = page.url();
+  const importCsrf = await page.locator("main input[name=csrf]").inputValue();
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await capture(page, `media-seerr-import-${width}`);
+  }
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Create native account", exact: true })
+    .click();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Creation status: created" })
+    .waitFor();
+  assert.equal(seerrImports, 1);
+  await context.request.post(`${importUrl}/confirm`, {
+    headers: { origin },
+    form: { csrf: importCsrf, confirmed: "true" },
+  });
+  assert.equal(seerrImports, 1);
+  assert.equal(importedSeerrUser.permissions, 160);
+  assert(!logs.includes("private-never-retained"));
+  assert.equal(
+    grants.filter((grant) => grant.userId === users.at(-1).id).length,
+    0,
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
   const memberContext = await browser.newContext({ ignoreHTTPSErrors: true });
   const memberPage = await memberContext.newPage();
   await memberPage.goto(origin + "/login");

@@ -5,6 +5,8 @@ import { createMediaIdentityLedger } from "./media-identities.mjs";
 import { createIdentityOnboardingLedger } from "./identity-onboarding.mjs";
 import { createMediaServiceActions } from "./media-service-actions.mjs";
 import { createMediaLifecycle } from "./media-lifecycle.mjs";
+import { createMediaProvisioningLedger } from "./media-provisioning.mjs";
+import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.mjs";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const active = (value) => value?.state === "USER_GRANT_STATE_ACTIVE";
@@ -23,6 +25,8 @@ export function createAccessStore({
   native,
   onIssued = async () => {},
   mediaLifecycle = createMediaLifecycle(),
+  mediaProvisioning = createMediaProvisioningAdapters(),
+  mediaPeople = async () => [],
 }) {
   const db = new DatabaseSync(filename);
   if (filename !== ":memory:") chmodSync(filename, 0o600);
@@ -37,6 +41,11 @@ export function createAccessStore({
   const mediaActions = createMediaServiceActions(db, {
     mappings: media.mappings,
     lifecycle: mediaLifecycle,
+  });
+  const provisioning = createMediaProvisioningLedger(db, {
+    people: mediaPeople,
+    mappings: media.mappings,
+    provisioning: mediaProvisioning,
   });
   const onboarding = createIdentityOnboardingLedger(db);
   const nativeDomains = services
@@ -364,6 +373,7 @@ export function createAccessStore({
     close: () => db.close(),
     media,
     mediaActions,
+    provisioning,
     onboarding,
     initialized: () => Boolean(readModel()),
     read: () => {
@@ -395,7 +405,10 @@ export function createAccessStore({
                 [
                   "member",
                   ...(app.id === "fourm" ? app.apiRoles || [] : []),
-                ].map((role) => ({ application: app.id, role })),
+                ].map((role) => ({
+                  application: app.id,
+                  role,
+                })),
               ),
           },
           {

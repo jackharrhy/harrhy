@@ -145,3 +145,59 @@ test("fresh active Auth identity, unlinked target and five-minute review remain 
     db.close();
   }
 });
+
+test("Seerr import requires a fresh exact source mapping and blocks duplicate native-source claims", async () => {
+  const db = new DatabaseSync(":memory:");
+  const source = { ...target, nativeId: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" };
+  const links = [source];
+  const seerrTarget = {
+    ...target,
+    service: "seerr",
+    sourceInstance: source.instance,
+    sourceNativeId: source.nativeId,
+  };
+  let writes = 0;
+  const ledger = createMediaProvisioningLedger(db, {
+    people: async () => [{ ...target, active: true }],
+    mappings: () => links,
+    provisioning: () => ({
+      preview: async ({ jellyfinNativeId }) => ({
+        username: `new-name-${writes}`,
+        jellyfinNativeId,
+      }),
+      provision: async (_review, { claimEffect, recordNativeId }) => {
+        await claimEffect();
+        writes++;
+        await recordNativeId("73");
+        return { state: "created", nativeId: "73" };
+      },
+    }),
+  });
+  try {
+    const review = await ledger.preview({
+      actor: "reviewer",
+      reason: "Explicit import",
+      target: seerrTarget,
+    });
+    links.pop();
+    await assert.rejects(ledger.confirm({ id: review.id, actor: "reviewer" }));
+    assert.equal(writes, 0);
+    links.push(source);
+    assert.equal(
+      (await ledger.confirm({ id: review.id, actor: "reviewer" })).state,
+      "created",
+    );
+    const duplicate = await ledger.preview({
+      actor: "reviewer",
+      reason: "No duplicate",
+      target: seerrTarget,
+    });
+    await assert.rejects(
+      ledger.confirm({ id: duplicate.id, actor: "reviewer" }),
+      { status: 409 },
+    );
+    assert.equal(writes, 1);
+  } finally {
+    db.close();
+  }
+});

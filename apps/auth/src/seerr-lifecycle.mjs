@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { createSeerrApi } from "./seerr-api.mjs";
 import { isDeepStrictEqual } from "node:util";
 
 const invalid = () =>
@@ -9,49 +9,8 @@ const exactId = (value) =>
   Number.isSafeInteger(Number(value));
 
 // Removal intentionally deletes requests. It is not disable or session revocation.
-export function createSeerrLifecycle(
-  { baseUrl, writeTokenFile },
-  { fetcher = fetch, readToken = readFile } = {},
-) {
-  const base = new URL(baseUrl);
-  if (
-    !["http:", "https:"].includes(base.protocol) ||
-    base.username ||
-    base.password ||
-    base.search ||
-    base.hash ||
-    typeof writeTokenFile !== "string" ||
-    !writeTokenFile.startsWith("/")
-  )
-    throw invalid();
-  async function request(path, method = "GET") {
-    const token = (await readToken(writeTokenFile, "utf8")).trim();
-    if (!/^[A-Za-z0-9._~-]{1,4096}$/.test(token)) throw invalid();
-    const response = await fetcher(
-      new URL(`${base.pathname.replace(/\/$/, "")}/${path}`, base),
-      {
-        method,
-        redirect: "error",
-        signal: AbortSignal.timeout(5000),
-        headers: { Accept: "application/json", "X-Api-Key": token },
-      },
-    );
-    if (!response.ok) throw invalid();
-    if (method !== "GET") return;
-    if (
-      !response.body ||
-      !response.headers.get("content-type")?.includes("application/json")
-    )
-      throw invalid();
-    const chunks = [];
-    let size = 0;
-    for await (const chunk of response.body) {
-      size += chunk.byteLength;
-      if (size > 1024 * 1024) throw invalid();
-      chunks.push(Buffer.from(chunk));
-    }
-    return JSON.parse(Buffer.concat(chunks).toString("utf8"));
-  }
+export function createSeerrLifecycle(config, dependencies = {}) {
+  const request = createSeerrApi(config, dependencies);
   async function inspect(nativeId) {
     if (!exactId(nativeId) || nativeId === "1") throw invalid();
     const user = await request(`user/${nativeId}`);
@@ -120,7 +79,7 @@ export function createSeerrLifecycle(
       // No conditional native delete exists: a concurrent request can arrive after review.
       await claimEffect();
       try {
-        await request(`user/${review.nativeId}`, "DELETE");
+        await request(`user/${review.nativeId}`, { method: "DELETE" });
         return { state: "removed", sessionRevocation: "not-claimed" };
       } catch {
         // Native route is not transactional; even a failed response can mean partial removal.

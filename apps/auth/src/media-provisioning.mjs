@@ -44,6 +44,7 @@ export function createMediaProvisioningLedger(
       return result;
     } catch (error) {
       db.exec("ROLLBACK");
+      if (error?.code?.startsWith("ERR_SQLITE")) throw fail();
       throw error;
     }
   }
@@ -54,7 +55,22 @@ export function createMediaProvisioningLedger(
         text(target[key]),
       ]),
     );
-    if (exact.service !== "jellyfin") throw fail();
+    if (!["jellyfin", "seerr"].includes(exact.service)) throw fail();
+    if (exact.service === "seerr") {
+      exact.sourceInstance = text(target.sourceInstance);
+      exact.sourceNativeId = text(target.sourceNativeId);
+      if (
+        !mappings().some(
+          (item) =>
+            item.service === "jellyfin" &&
+            item.instance === exact.sourceInstance &&
+            item.nativeId === exact.sourceNativeId &&
+            item.issuer === exact.issuer &&
+            item.subject === exact.subject,
+        )
+      )
+        throw fail();
+    }
     if (
       !(await people()).some(
         (person) =>
@@ -77,6 +93,11 @@ export function createMediaProvisioningLedger(
     return exact;
   };
   return {
+    libraries: (target) =>
+      provisioning({
+        service: text(target.service),
+        instance: text(target.instance),
+      }).libraries(),
     get,
     list: () =>
       db
@@ -102,7 +123,13 @@ export function createMediaProvisioningLedger(
       text(actor);
       text(reason);
       const exact = await validateTarget(target);
-      const review = await provisioning(exact).preview({ username, folderIds });
+      const review = await provisioning(exact).preview({
+        username,
+        folderIds,
+        ...(exact.service === "seerr"
+          ? { jellyfinNativeId: exact.sourceNativeId }
+          : {}),
+      });
       const id = randomUUID();
       transaction(() => {
         db.prepare(
@@ -143,7 +170,9 @@ export function createMediaProvisioningLedger(
                 JSON.stringify([
                   target.service,
                   target.instance,
-                  action.body.review.username.toLowerCase(),
+                  target.service === "seerr"
+                    ? target.sourceNativeId.replaceAll("-", "").toLowerCase()
+                    : action.body.review.username.toLowerCase(),
                 ]),
                 id,
               );

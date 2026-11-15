@@ -17,6 +17,8 @@ export function createAccessRoutes({
   renderMedia,
   renderMediaReview,
   renderMediaAction,
+  renderMediaProvisioning,
+  renderMediaProvisioningReview,
   accountActions,
   endUserSessions,
   rateLimit,
@@ -153,6 +155,134 @@ export function createAccessRoutes({
       url.pathname === "/manage/media" ||
       url.pathname.startsWith("/manage/media/")
     ) {
+      const creationPath = url.pathname.match(
+        /^\/manage\/media\/provisioning\/([a-f0-9-]{36})(?:\/(confirm))?$/,
+      );
+      if (creationPath) {
+        const action = access.provisioning.get(creationPath[1]);
+        if (!action || action.actor !== session.userId)
+          throw fail(404, "Creation review not found.");
+        if (request.method === "GET" && !creationPath[2]) {
+          await sendRemix((nonce) =>
+            renderMediaProvisioningReview(action, context, nonce),
+          );
+          return true;
+        }
+        if (request.method === "POST" && creationPath[2] === "confirm") {
+          rateLimit(`media-provisioning:${session.userId}`);
+          if (form.get("confirmed") !== "true")
+            throw fail(
+              400,
+              "Confirm the exact new-account permission profile.",
+            );
+          if (new URL(issuer).protocol !== "https:")
+            throw fail(503, "Native password submission requires HTTPS.");
+          await access.provisioning.confirm({
+            id: action.id,
+            actor: session.userId,
+            password: form.get("password"),
+          });
+          redirect(`/manage/media/provisioning/${action.id}`);
+          return true;
+        }
+        throw fail(404, "Creation action not found.");
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/provisioning/seerr-preview"
+      ) {
+        rateLimit(`media-provisioning:${session.userId}`);
+        const source = access.media
+          .mappings()
+          .find(
+            (item) =>
+              item.service === "jellyfin" &&
+              JSON.stringify([
+                item.instance,
+                item.nativeId,
+                item.issuer,
+                item.subject,
+              ]) === form.get("sourceMapping"),
+          );
+        if (!source)
+          throw fail(409, "A confirmed exact-ID Jellyfin mapping is required.");
+        const action = await access.provisioning.preview({
+          actor: session.userId,
+          reason: form.get("reason"),
+          target: {
+            service: "seerr",
+            instance: form.get("instance"),
+            issuer: source.issuer,
+            subject: source.subject,
+            sourceInstance: source.instance,
+            sourceNativeId: source.nativeId,
+          },
+        });
+        redirect(`/manage/media/provisioning/${action.id}`);
+        return true;
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/provisioning/preview"
+      ) {
+        rateLimit(`media-provisioning:${session.userId}`);
+        const action = await access.provisioning.preview({
+          actor: session.userId,
+          reason: form.get("reason"),
+          target: {
+            service: "jellyfin",
+            instance: form.get("instance"),
+            issuer,
+            subject: form.get("subject"),
+          },
+          username: form.get("username"),
+          folderIds: form.getAll("folderId"),
+        });
+        redirect(`/manage/media/provisioning/${action.id}`);
+        return true;
+      }
+      if (
+        request.method === "GET" &&
+        url.pathname === "/manage/media/provisioning"
+      ) {
+        const instances = mediaInventory
+          .instances()
+          .filter((item) => item.service === "jellyfin");
+        const instance = url.searchParams.get("instance");
+        const selected = instances.find((item) => item.instance === instance);
+        if (instance && !selected)
+          throw fail(404, "Jellyfin instance not found.");
+        const libraries = selected
+          ? await access.provisioning.libraries(selected)
+          : [];
+        const identities = (await people()).map((user) => ({
+          subject: user.id,
+          name: user.human?.profile?.displayName || user.userName || user.id,
+          active: user.state === "USER_STATE_ACTIVE",
+        }));
+        await sendRemix((nonce) =>
+          renderMediaProvisioning(
+            {
+              instances,
+              seerrInstances: mediaInventory
+                .instances()
+                .filter((item) => item.service === "seerr"),
+              sourceMappings: access.media
+                .mappings()
+                .filter((item) => item.service === "jellyfin"),
+              selected,
+              libraries,
+              people: identities,
+              actions: access.provisioning
+                .list()
+                .filter((action) => action.actor === session.userId),
+              context,
+            },
+            nonce,
+          ),
+        );
+        return true;
+      }
       const actionPath = url.pathname.match(
         /^\/manage\/media\/actions\/([a-f0-9-]{36})(?:\/(confirm|recover))?$/,
       );

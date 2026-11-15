@@ -9,6 +9,7 @@ import { createAccessStore } from "./access-store.mjs";
 import { createAccessRoutes } from "./access-routes.mjs";
 import { createMediaInventory } from "./media-inventory.mjs";
 import { createMediaLifecycle } from "./media-lifecycle.mjs";
+import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.mjs";
 import { createInvitationRoute } from "./invitation-routes.mjs";
 import { createAccountRoutes } from "./account-routes.mjs";
 import { createOAuthBrowserRoutes } from "./oauth-browser-routes.mjs";
@@ -47,6 +48,8 @@ const { renderAccessForm, renderChangePreview } =
 const { renderPerson } = await import("./person-page.tsx");
 const { renderMedia, renderMediaReview, renderMediaAction } =
   await import("./media-pages.tsx");
+const { renderMediaProvisioning, renderMediaProvisioningReview } =
+  await import("./media-provisioning-pages.tsx");
 const { renderOnboarding } = await import("./onboarding-page.tsx");
 import { createEmailActions } from "./email.mjs";
 import { applicationForClient, searchAll } from "./applications.mjs";
@@ -118,17 +121,27 @@ const accessFilename =
   (process.env.RADIO_ENROLLMENT_DB_FILE
     ? join(dirname(process.env.RADIO_ENROLLMENT_DB_FILE), "access.sqlite")
     : ":memory:");
+const mediaWriteInstances = process.env.AUTH_MEDIA_WRITES_FILE
+  ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_WRITES_FILE, "utf8"))
+  : [];
 let radioEnrollment;
 const accessStore = createAccessStore({
   filename: accessFilename,
   applications,
   services,
   native: nativeAccess,
-  mediaLifecycle: createMediaLifecycle(
-    process.env.AUTH_MEDIA_WRITES_FILE
-      ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_WRITES_FILE, "utf8"))
-      : [],
-  ),
+  mediaLifecycle: createMediaLifecycle(mediaWriteInstances),
+  mediaProvisioning: createMediaProvisioningAdapters(mediaWriteInstances),
+  mediaPeople: async () =>
+    (await searchAll(api, "/management/v1/users/_search"))
+      .filter(
+        (user) => user.human && user.details?.resourceOwner === organizationId,
+      )
+      .map((user) => ({
+        issuer: origin,
+        subject: user.id,
+        active: user.state === "USER_STATE_ACTIVE",
+      })),
   onIssued: async ({ after }) => {
     const radio = applications.find((app) => app.id === "radio");
     if (after.projectId !== radio?.projectId || !radioEnrollment) return;
@@ -150,6 +163,8 @@ const accessRoutes = createAccessRoutes({
   renderMedia,
   renderMediaReview,
   renderMediaAction,
+  renderMediaProvisioning,
+  renderMediaProvisioningReview,
   accountActions,
   endUserSessions,
   rateLimit,
