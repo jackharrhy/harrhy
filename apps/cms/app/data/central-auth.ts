@@ -7,7 +7,24 @@ import {
   type LoginTransaction,
 } from "@harrhy/identity";
 
-export type CentralAuth = { config: IdentityConfig; origin: string };
+export type CentralAuth = {
+  config: IdentityConfig;
+  origin: string;
+  ownerSubject: string;
+};
+
+const pending = new WeakMap<
+  CentralAuth,
+  Map<
+    string,
+    {
+      transaction: LoginTransaction;
+      callbackPath: string;
+      cookieName: string;
+      expires: number;
+    }
+  >
+>();
 
 export function centralAuth(
   origin: string,
@@ -17,9 +34,14 @@ export function centralAuth(
   if (!issuer) return null;
   const projectId = process.env.TEA_AUTH_PROJECT_ID;
   const organizationId = process.env.TEA_AUTH_ORGANIZATION_ID;
-  if (!clientId || !projectId || !organizationId)
+  const ownerSubject = process.env.TEA_AUTH_OWNER_SUBJECT;
+  if (!clientId || !projectId || !organizationId || !ownerSubject)
     throw new Error("CMS Central Auth is incomplete");
-  return { config: { issuer, clientId, projectId, organizationId }, origin };
+  return {
+    config: { issuer, clientId, projectId, organizationId },
+    origin,
+    ownerSubject,
+  };
 }
 
 function transactionCookie(
@@ -47,14 +69,32 @@ export async function beginCentralLogin(
   callbackPath: string,
   cookieName: string,
 ) {
+  let transactions = pending.get(auth);
+  if (!transactions) pending.set(auth, (transactions = new Map()));
+  for (const [key, item] of transactions)
+    if (item.expires <= Date.now()) transactions.delete(key);
+  if (transactions.size >= 1000)
+    return new Response("Sign-in is busy. Try again later.", { status: 503 });
   const transaction = createLoginTransaction();
-  const authorization = await createIdentityClient(
-    auth.config,
-  ).authorizationUrl(transaction, `${auth.origin}${callbackPath}`);
-  const encoded = btoa(JSON.stringify(transaction))
-    .replace(/\+/g, "-")
-    .replace(/\//g, "_")
-    .replace(/=+$/, "");
+  const encoded = transaction.state;
+  transactions.set(encoded, {
+    transaction,
+    callbackPath,
+    cookieName,
+    expires: Date.now() + 600_000,
+  });
+  let authorization: string;
+  try {
+    authorization = await createIdentityClient(auth.config).authorizationUrl(
+      transaction,
+      `${auth.origin}${callbackPath}`,
+    );
+  } catch {
+    transactions.delete(encoded);
+    return new Response("Sign-in is unavailable. Try again later.", {
+      status: 503,
+    });
+  }
   return new Response(null, {
     status: 303,
     headers: {
@@ -73,20 +113,19 @@ export async function finishCentralLogin(
 ) {
   const cleared = transactionCookie(cookieName, "", auth.origin, 0);
   const encoded = cookieValue(request, cookieName);
-  let transaction: LoginTransaction | null = null;
-  if (encoded.length && encoded.length <= 4096) {
-    try {
-      transaction = JSON.parse(
-        atob(encoded.replace(/-/g, "+").replace(/_/g, "/")),
-      );
-    } catch {
-      transaction = null;
-    }
-  }
+  const transactions = pending.get(auth);
+  const item = transactions?.get(encoded);
+  transactions?.delete(encoded);
+  const transaction = item?.transaction;
   const params = new URL(request.url).searchParams;
   const code = params.get("code");
   if (
     !transaction ||
+    !item ||
+    item.expires <= Date.now() ||
+    item.callbackPath !== callbackPath ||
+    item.cookieName !== cookieName ||
+    new URL(request.url).origin !== auth.origin ||
     !validLoginTransaction(transaction, params.get("state")) ||
     !code
   )
@@ -103,6 +142,14 @@ export async function finishCentralLogin(
       transaction,
       `${auth.origin}${callbackPath}`,
     );
+    if (profile.subject !== auth.ownerSubject)
+      return {
+        ok: false as const,
+        response: new Response("CMS access is not assigned", {
+          status: 403,
+          headers: { "Set-Cookie": cleared, "Cache-Control": "no-store" },
+        }),
+      };
     return { ok: true as const, profile, cleared };
   } catch (error) {
     return {

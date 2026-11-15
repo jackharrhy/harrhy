@@ -1,5 +1,10 @@
 import { it } from "remix/test";
-import { LATEST_PROTOCOL_VERSION, MetaKey } from "@harrhy/mcp";
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import { Client as LegacyClient } from "@modelcontextprotocol/sdk/client/index.js";
+import { StreamableHTTPClientTransport as LegacyTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import * as assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { join } from "node:path";
@@ -10,159 +15,139 @@ import { seedFixture } from "./fixture.ts";
 import { openDatabase } from "../app/data/database.ts";
 import { createContentStore } from "../app/data/content.ts";
 
-it("keeps the per-site MCP endpoint disabled until configured and requires its bearer token", async () => {
+it("keeps MCP disabled without credentials and serves only the selected site's published reads to both SDK generations", async () => {
   const dir = await mkdtemp(join(tmpdir(), "teacms-mcp-"));
-  const [site] = parseFixtureSites(
-    [
-      {
-        id: "one",
-        template: "andrew",
-        name: "MCP fixture",
-        origin: "https://one.example.test",
-        aliases: [],
-        preview: false,
-      },
-    ],
+  const sites = parseFixtureSites(
+    ["one", "two"].map((id) => ({
+      id,
+      template: "andrew",
+      name: id,
+      origin: `https://${id}.example.test`,
+      aliases: [],
+      preview: false,
+    })),
     dir,
   );
-  const app = await createApp([site]);
-  await seedFixture(site);
-  const draftDatabase = await openDatabase(join(site.dataDir, "tea.db"));
+  const app = await createApp(sites);
+  for (const site of sites) await seedFixture(site);
+  const database = await openDatabase(join(sites[0].dataDir, "tea.db"));
   try {
-    const draft = createContentStore(draftDatabase.sqlite).createPage(
-      "Private Draft",
-      "private-draft",
+    assert.equal(
+      createContentStore(database.sqlite).createPage(
+        "Private Draft",
+        "private-draft",
+      ).ok,
+      true,
     );
-    assert.equal(draft.ok, true);
   } finally {
-    draftDatabase.sqlite.close();
+    database.sqlite.close();
   }
   const previous = process.env.TEA_MCP_TOKEN;
-  const request = (authorization?: string) =>
+  const call = (authorization?: string, origin?: string) =>
     app.fetch(
       new Request("https://one.example.test/tea/mcp", {
         method: "POST",
         headers: {
           Accept: "application/json, text/event-stream",
           "Content-Type": "application/json",
-          "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
-          "Mcp-Method": "tools/list",
           ...(authorization ? { Authorization: authorization } : {}),
+          ...(origin ? { Origin: origin } : {}),
         },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/list",
-          params: {
-            _meta: {
-              [MetaKey.ProtocolVersion]: LATEST_PROTOCOL_VERSION,
-              [MetaKey.ClientCapabilities]: {},
-            },
-          },
-        }),
+        body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" }),
       }),
     );
   try {
     delete process.env.TEA_MCP_TOKEN;
-    assert.equal((await request()).status, 404);
+    assert.equal((await call()).status, 404);
     process.env.TEA_MCP_TOKEN = "fixture-secret";
-    assert.equal((await request()).status, 401);
-    const response = await request("Bearer fixture-secret");
-    const body = await response.text();
-    assert.equal(response.status, 200, body);
-    const result = JSON.parse(body);
-    assert.deepEqual(
-      result.result.tools.map((tool: { name: string }) => tool.name),
-      ["list_published_pages", "get_published_page"],
+    assert.equal((await call()).status, 401);
+    assert.equal((await call("Bearer incorrect")).status, 401);
+    assert.equal(
+      (await call("Bearer fixture-secret", "https://attacker.example")).status,
+      403,
     );
-    const pageResponse = await app.fetch(
-      new Request("https://one.example.test/tea/mcp", {
-        method: "POST",
-        headers: {
-          Accept: "application/json, text/event-stream",
-          "Content-Type": "application/json",
-          "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
-          "Mcp-Method": "tools/call",
-          "Mcp-Name": "get_published_page",
-          Authorization: "Bearer fixture-secret",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 2,
-          method: "tools/call",
-          params: {
-            name: "get_published_page",
-            arguments: { slug: "example" },
-            _meta: {
-              [MetaKey.ProtocolVersion]: LATEST_PROTOCOL_VERSION,
-              [MetaKey.ClientCapabilities]: {},
-            },
-          },
-        }),
-      }),
+    const options = {
+      fetch: (input: string | URL | Request, init?: RequestInit) =>
+        app.fetch(new Request(input, init)),
+      requestInit: { headers: { Authorization: "Bearer fixture-secret" } },
+    };
+    const legacy = new LegacyClient({
+      name: "executor-interop",
+      version: "1.0.0",
+    });
+    const modern = new Client(
+      { name: "modern-interop", version: "1.0.0" },
+      { versionNegotiation: { mode: { pin: "2026-07-28" } } },
     );
-    assert.equal(pageResponse.status, 200);
-    assert.match(await pageResponse.text(), /Example page/);
-    const listResponse = await app.fetch(
-      new Request("https://one.example.test/tea/mcp", {
-        method: "POST",
-        headers: {
-          Accept: "application/json, text/event-stream",
-          "Content-Type": "application/json",
-          "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
-          "Mcp-Method": "tools/call",
-          "Mcp-Name": "list_published_pages",
-          Authorization: "Bearer fixture-secret",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 3,
-          method: "tools/call",
-          params: {
-            name: "list_published_pages",
-            arguments: {},
-            _meta: {
-              [MetaKey.ProtocolVersion]: LATEST_PROTOCOL_VERSION,
-              [MetaKey.ClientCapabilities]: {},
-            },
-          },
-        }),
-      }),
-    );
-    assert.equal(listResponse.status, 200);
-    assert.doesNotMatch(
-      await listResponse.text(),
-      /Private Draft|private-draft/,
-    );
-    const draftResponse = await app.fetch(
-      new Request("https://one.example.test/tea/mcp", {
-        method: "POST",
-        headers: {
-          Accept: "application/json, text/event-stream",
-          "Content-Type": "application/json",
-          "MCP-Protocol-Version": LATEST_PROTOCOL_VERSION,
-          "Mcp-Method": "tools/call",
-          "Mcp-Name": "get_published_page",
-          Authorization: "Bearer fixture-secret",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 4,
-          method: "tools/call",
-          params: {
-            name: "get_published_page",
-            arguments: { slug: "private-draft" },
-            _meta: {
-              [MetaKey.ProtocolVersion]: LATEST_PROTOCOL_VERSION,
-              [MetaKey.ClientCapabilities]: {},
-            },
-          },
-        }),
-      }),
-    );
-    assert.doesNotMatch(
-      await draftResponse.text(),
-      /Private Draft|private-draft/,
+    const endpoint = new URL("https://one.example.test/tea/mcp");
+    const clients = [
+      {
+        client: legacy,
+        connect: () => legacy.connect(new LegacyTransport(endpoint, options)),
+      },
+      {
+        client: modern,
+        connect: () =>
+          modern.connect(new StreamableHTTPClientTransport(endpoint, options)),
+      },
+    ];
+    for (const { client, connect } of clients) {
+      try {
+        await connect();
+        assert.equal(client.getServerVersion()?.name, "teacms");
+        assert.deepEqual(
+          (await client.listTools()).tools.map((tool) => tool.name),
+          ["list_published_pages", "get_published_page"],
+        );
+        const listed = await client.callTool({
+          name: "list_published_pages",
+          arguments: {},
+        });
+        assert.doesNotMatch(
+          JSON.stringify(listed),
+          /Private Draft|private-draft/,
+        );
+        const page = await client.callTool({
+          name: "get_published_page",
+          arguments: { slug: "example" },
+        });
+        assert.match(JSON.stringify(page), /Example page/);
+        const draft = await client.callTool({
+          name: "get_published_page",
+          arguments: { slug: "private-draft" },
+        });
+        assert.equal(draft.isError, true);
+        assert.doesNotMatch(
+          JSON.stringify(draft),
+          /Private Draft|private-draft/,
+        );
+        assert.equal(
+          (
+            await client.callTool({
+              name: "get_published_page",
+              arguments: { slug: 1 },
+            })
+          ).isError,
+          true,
+        );
+        assert.equal(
+          (await client.callTool({ name: "write_page", arguments: {} }))
+            .isError,
+          true,
+        );
+      } finally {
+        await client.close();
+      }
+    }
+    assert.equal(
+      (
+        await app.fetch(
+          new Request("https://unknown.example.test/tea/mcp", {
+            method: "POST",
+          }),
+        )
+      ).status,
+      404,
     );
   } finally {
     if (previous === undefined) delete process.env.TEA_MCP_TOKEN;

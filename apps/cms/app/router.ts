@@ -150,7 +150,11 @@ export function createTeaRouter(
                 clientId: process.env.TEA_AUTH_INTROSPECTION_CLIENT_ID,
                 clientSecret: process.env.TEA_AUTH_INTROSPECTION_SECRET,
               });
-              if (principal.principalType !== "user")
+              if (
+                principal.principalType !== "user" ||
+                principal.subject !== central.ownerSubject ||
+                principal.actor
+              )
                 return new Response("Human authorization required", {
                   status: 403,
                 });
@@ -166,7 +170,7 @@ export function createTeaRouter(
                     : undefined,
               });
             }
-            return createMcpHandler().fetch(context);
+            return createMcpHandler(content).fetch(context.request);
           }
           const token = process.env.TEA_MCP_TOKEN;
           if (!token) return new Response("Not found", { status: 404 });
@@ -177,7 +181,7 @@ export function createTeaRouter(
               status: 401,
               headers: { "WWW-Authenticate": "Bearer" },
             });
-          return createMcpHandler().fetch(context);
+          return createMcpHandler(content).fetch(context.request);
         },
       },
     }),

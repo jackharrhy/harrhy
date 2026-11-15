@@ -46,14 +46,43 @@ it("reserves login attempts before asynchronous password checks", async () => {
   }
 });
 
-it("links a central subject to the existing user and rejects password sessions in central mode", async () => {
+it("links only the reviewed owner subject and rejects legacy or other linked sessions in central mode", async () => {
+  const previous = process.env.TEA_AUTH_OWNER_SUBJECT;
+  const previousIssuer = process.env.TEA_AUTH_ISSUER;
+  process.env.TEA_AUTH_ISSUER = "https://issuer.example.test";
+  process.env.TEA_AUTH_OWNER_SUBJECT = "reviewed-subject";
   const { sqlite } = await openDatabase(":memory:");
   try {
     sqlite
       .prepare(
-        "INSERT INTO users(email,password_hash,auth_subject) VALUES(?,?,?)",
+        "INSERT INTO users(email,password_hash,auth_subject,auth_issuer) VALUES(?,?,?,?)",
       )
-      .run("editor@test.local", "unused", "reviewed-subject");
+      .run(
+        "editor@test.local",
+        "unused",
+        "reviewed-subject",
+        process.env.TEA_AUTH_ISSUER,
+      );
+    sqlite
+      .prepare(
+        "INSERT INTO users(email,password_hash,auth_subject,auth_issuer) VALUES(?,?,?,?)",
+      )
+      .run(
+        "other@test.local",
+        "unused",
+        "other-subject",
+        process.env.TEA_AUTH_ISSUER,
+      );
+    const otherSession = createAuthStore(sqlite).createSession(
+      2,
+      1000,
+      "other-subject",
+    );
+    assert.equal(
+      createAuthStore(sqlite, true).bySubject("other-subject"),
+      null,
+    );
+    assert.equal(createAuthStore(sqlite, true).resolve(otherSession.id), null);
     const user = createAuthStore(sqlite, true).bySubject("reviewed-subject");
     assert.ok(user);
     const passwordSession = createAuthStore(sqlite).createSession(user.id);
@@ -64,11 +93,37 @@ it("links a central subject to the existing user and rejects password sessions i
     );
     const session = central.createSession(user.id, 1000, "reviewed-subject");
     assert.equal(central.resolve(session.id)?.id, user.id);
+    for (const issuer of [null, "https://other-issuer.example.test"]) {
+      sqlite
+        .prepare("UPDATE sessions SET auth_issuer=? WHERE id=?")
+        .run(issuer, session.id);
+      assert.equal(central.resolve(session.id), null);
+    }
+    sqlite
+      .prepare("UPDATE sessions SET auth_issuer=? WHERE id=?")
+      .run(process.env.TEA_AUTH_ISSUER!, session.id);
+    for (const issuer of [null, "https://other-issuer.example.test"]) {
+      sqlite
+        .prepare("UPDATE users SET auth_issuer=? WHERE id=?")
+        .run(issuer, user.id);
+      assert.equal(central.bySubject("reviewed-subject"), null);
+      assert.equal(central.resolve(session.id), null);
+      assert.throws(() =>
+        central.createSession(user.id, 1000, "reviewed-subject"),
+      );
+    }
+    sqlite
+      .prepare("UPDATE users SET auth_issuer=? WHERE id=?")
+      .run(process.env.TEA_AUTH_ISSUER!, user.id);
     sqlite
       .prepare("UPDATE users SET auth_subject=NULL WHERE id=?")
       .run(user.id);
     assert.equal(central.resolve(session.id), null);
   } finally {
     sqlite.close();
+    if (previous === undefined) delete process.env.TEA_AUTH_OWNER_SUBJECT;
+    else process.env.TEA_AUTH_OWNER_SUBJECT = previous;
+    if (previousIssuer === undefined) delete process.env.TEA_AUTH_ISSUER;
+    else process.env.TEA_AUTH_ISSUER = previousIssuer;
   }
 });

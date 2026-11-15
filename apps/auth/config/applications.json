@@ -212,6 +212,7 @@
       "399097845992456212": ["member", "admin"]
     },
     "delegatedRoles": ["admin"],
+    "allowedUserIds": [],
     "authorizationHold": true
   },
   {

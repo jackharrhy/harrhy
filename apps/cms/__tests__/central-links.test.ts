@@ -16,7 +16,7 @@ it("preflights every local ID before applying reviewed subject links", async () 
   for (const path of [first, second]) {
     const database = new DatabaseSync(path);
     database.exec(
-      "CREATE TABLE users(id INTEGER PRIMARY KEY, auth_subject TEXT); INSERT INTO users(id) VALUES (1)",
+      "CREATE TABLE users(id INTEGER PRIMARY KEY, auth_subject TEXT, auth_issuer TEXT); INSERT INTO users(id) VALUES (1)",
     );
     database.close();
   }
@@ -26,7 +26,7 @@ it("preflights every local ID before applying reviewed subject links", async () 
       { name: "site", path: second, rows: [{ id: 2, subject: "editor" }] },
     ];
     assert.throws(
-      () => applyReviewedLinks(targets, true),
+      () => applyReviewedLinks(targets, true, "https://issuer.example.test"),
       /Unknown local user ID/,
     );
     const database = new DatabaseSync(first);
@@ -37,18 +37,43 @@ it("preflights every local ID before applying reviewed subject links", async () 
     );
     database.close();
     targets[1].rows[0].id = 1;
-    assert.deepEqual(applyReviewedLinks(targets, false), [
-      { target: "operator", links: 1 },
-      { target: "site", links: 1 },
-    ]);
-    assert.deepEqual(applyReviewedLinks(targets, true), [
-      { target: "operator", links: 1 },
-      { target: "site", links: 1 },
-    ]);
-    assert.deepEqual(applyReviewedLinks(targets, true), [
-      { target: "operator", links: 1 },
-      { target: "site", links: 1 },
-    ]);
+    assert.deepEqual(
+      applyReviewedLinks(targets, false, "https://issuer.example.test"),
+      [
+        { target: "operator", links: 1 },
+        { target: "site", links: 1 },
+      ],
+    );
+    assert.deepEqual(
+      applyReviewedLinks(targets, true, "https://issuer.example.test"),
+      [
+        { target: "operator", links: 1 },
+        { target: "site", links: 1 },
+      ],
+    );
+    assert.deepEqual(
+      applyReviewedLinks(targets, true, "https://issuer.example.test"),
+      [
+        { target: "operator", links: 1 },
+        { target: "site", links: 1 },
+      ],
+    );
+    assert.throws(
+      () =>
+        applyReviewedLinks(
+          targets,
+          true,
+          "https://different-issuer.example.test",
+        ),
+      /another issuer/,
+    );
+    const linked = new DatabaseSync(first);
+    assert.equal(
+      linked.prepare("SELECT auth_issuer FROM users WHERE id=1").get()
+        ?.auth_issuer,
+      "https://issuer.example.test",
+    );
+    linked.close();
   } finally {
     await rm(dir, { recursive: true, force: true });
   }
@@ -61,17 +86,23 @@ it("links the operator while leaving unreviewed site users unlinked", async () =
   for (const path of [operatorPath, sitePath]) {
     const database = new DatabaseSync(path);
     database.exec(
-      "CREATE TABLE users(id INTEGER PRIMARY KEY, auth_subject TEXT); INSERT INTO users(id) VALUES (1)",
+      "CREATE TABLE users(id INTEGER PRIMARY KEY, auth_subject TEXT, auth_issuer TEXT); INSERT INTO users(id) VALUES (1)",
     );
     database.close();
   }
   try {
     const reviewed = parseReviewedManifest({
+      issuer: "https://issuer.example.test",
       operator: [{ id: 1, subject: "owner" }],
       sites: { andrew: [], luke: [] },
     });
     assert.throws(
-      () => parseReviewedManifest({ operator: [], sites: { andrew: [] } }),
+      () =>
+        parseReviewedManifest({
+          issuer: "https://issuer.example.test",
+          operator: [],
+          sites: { andrew: [] },
+        }),
       /operator link is required/,
     );
     assert.deepEqual(
@@ -81,6 +112,7 @@ it("links the operator while leaving unreviewed site users unlinked", async () =
           { name: "andrew", path: sitePath, rows: reviewed.sites.andrew },
         ],
         true,
+        reviewed.issuer,
       ),
       [
         { target: "operator", links: 1 },

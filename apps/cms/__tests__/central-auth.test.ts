@@ -11,6 +11,7 @@ import { parseFixtureSites } from "./sites.ts";
 
 it("requires reviewed local links and rejects old CMS password sessions in Central mode", async () => {
   const names = [
+    "TEA_AUTH_OWNER_SUBJECT",
     "TEA_AUTH_ISSUER",
     "TEA_AUTH_PROJECT_ID",
     "TEA_AUTH_ORGANIZATION_ID",
@@ -19,6 +20,7 @@ it("requires reviewed local links and rejects old CMS password sessions in Centr
   ] as const;
   const previous = names.map((name) => process.env[name]);
   Object.assign(process.env, {
+    TEA_AUTH_OWNER_SUBJECT: "operator-subject",
     TEA_AUTH_ISSUER: "https://auth.example.test",
     TEA_AUTH_PROJECT_ID: "cms-project",
     TEA_AUTH_ORGANIZATION_ID: "cms-org",
