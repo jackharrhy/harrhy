@@ -2,7 +2,7 @@
 
 ## Scope and decision checkpoint
 
-This work is an additive shared UI explorer slice, not an editor, Markdown pipeline replacement or production migration. Existing consumers remain unchanged. The preferred baseline is native Remix SSR rendering with escaped text and optional caller-prepared tokens/rows. No new highlighter, diff algorithm, client runtime, worker pool or WebAssembly dependency is justified for that baseline. The API is pending integration reconciliation.
+This work is an additive shared UI explorer slice, not an editor, Markdown pipeline replacement or production migration. Existing consumers remain unchanged. The preferred baseline is native Remix SSR rendering with escaped text and optional caller-prepared tokens/rows. No new highlighter, diff algorithm, client runtime, worker pool or WebAssembly dependency is justified for that baseline. The reconciled implementation is `code.tsx`, exported by the integrating workspace as `@harrhy/ui/code`. It adds no dependencies.
 
 ## Actual Harrhy inventory
 
@@ -66,3 +66,52 @@ Both Apache-2.0 according to manifests and license files; Theme also distributes
 A lean native component should render safe text, use existing `--hui-*` theme values, preserve tabs/newlines, expose focusable named overflow and avoid hidden browser work. The app owns syntax preparation, diff computation/parsing, source limits and raw-file downloads. Large input must never be silently truncated by shared UI; callers should choose a small preview with an explicit omission notice and a full-source link. Scrolling bounds geometry, not CPU/DOM memory.
 
 A future Pierre client island is justified by concrete needs such as large virtualized diffs, inline word differences, annotation/line selection or editable files. It needs its own opt-in entry, measured chunk sizes, SSR/Worker integration proof, disposal tests and manual AT verification before production adoption. Existing Atlas/Garden/Lists pipelines should not migrate merely because a shared display component exists.
+
+## Public API and Explorer integration
+
+The parent integration owns package.json: add `"./code": "./code.tsx"` to exports, with no dependency or lockfile changes. Do not add this module to the legacy package root. The host asset graph already allows `@harrhy/ui` and `remix`; no worker/WASM or additional package allowlist is necessary.
+
+```tsx
+import { CodeBlock, CodeDiff } from "@harrhy/ui/code";
+import type { CodeBlockProps, CodeDiffProps, DiffLine } from "@harrhy/ui/code";
+
+// Every Explorer story passes the exact current source, including current props.
+<CodeBlock label="Button example source" language="tsx" source={storySource} />;
+
+// Dedicated CodeBlock story; source is text, never HTML to execute.
+<CodeBlock
+  label="Button example"
+  language="tsx"
+  source={`<Button type="submit" variant="primary">Save</Button>\n`}
+/>;
+
+// Dedicated CodeDiff story. Rows are prepared by the caller, not computed here.
+const exampleLines = [
+  { kind: "context", text: "export {", oldLine: 1, newLine: 1 },
+  { kind: "remove", text: "  OldButton,", oldLine: 2 },
+  { kind: "add", text: "  Button,", newLine: 2 },
+  { kind: "context", text: "};", oldLine: 3, newLine: 3 },
+] satisfies readonly DiffLine[];
+<CodeDiff label="Native action export" lines={exampleLines} />;
+```
+
+`CodeBlockProps` requires string `label` and string `source`; optional string `language` is **descriptive metadata**, not syntax highlighting or grammar loading. `CodeDiffProps` requires string `label` and readonly `lines`. `DiffLine` is a discriminated union:
+
+- `context`: `text`, optional `oldLine` and `newLine`.
+- `remove`: `text`, optional `oldLine` only.
+- `add`: `text`, optional `newLine` only.
+
+Each diff row describes one line without its line terminator; the renderer adds a newline for readable selection. Line numbers should be positive integers prepared by the caller; omitted numbers leave the gutter blank. Text is escaped by Remix, including code that resembles HTML. No trusted-HTML or arbitrary CSS/token callback is accepted. Optional token support was considered and deferred because there is no prepared-token consumer in this iteration; a future real consumer should drive that contract rather than a speculative second highlighting model.
+
+Labels must be meaningful, nonempty names; visible captions and named keyboard-focusable overflow remain useful without client scripts. Callers own surrounding spacing and the nearest semantic theme. Both views cap scroll height at 28rem and preserve long lines/tabs; they never truncate input, so callers must bound expensive workloads before rendering. Diff gutters are visually readable old/new columns and hidden from AT in favor of explicit per-row context/added/removed and line-number text. A displayed diff is not a machine-applicable patch or a source-only clipboard format. Use CodeBlock for exact source copying; applications own clipboard controls and any empty-state explanation. Both components read live handle.props, so Explorer control updates can change source or rows without a special lifecycle API.
+
+No browser APIs are accessed at import/render; no events, timers, requests, workers or external instances exist to dispose. This is SSR-safe native Remix, not proof that all optional upstream highlighters run in Workers.
+
+## Validation evidence
+
+- UI workspace typecheck and all 13 package tests pass, including escaped code/metadata, native SSR without hydration markers, changed-line semantics without color, caller input immutability, empty input, and a preserved 100k-character long line.
+- Headless Chromium renders clean/tactile/brutalist at 375px and 1280px: no document horizontal overflow, named pre can receive focus, long source scrolls internally, height stays bounded, and diff rows stay single-line height. Screenshots inspected for the clean narrow fixture; Explorer integration still owns final in-app visual/interactive checks.
+- Neutral-platform minified esbuild bundle of `code.tsx`: approximately 9.8 KiB including its Remix runtime graph. This is an isolated prototype measurement, not incremental app transfer cost; app graph deduplication and compression will differ. No new dependency, Node builtin, WASM or browser worker asset is required.
+- Impeccable mechanical detector reports no findings for `code.tsx`. Automated checks do not establish screen-reader/WCAG conformance.
+- Ref consumer check passes: build, generated Worker types, typecheck, 22 tests and Wrangler deploy **dry-run**. No live backend writes.
+- Auth typecheck and 104 tests pass. Its full browser sequence exceeded the 120-second command budget after the authorization, Radio, access-management and WebGL-gallery fixtures passed; final ui-polish completion is not claimed.
