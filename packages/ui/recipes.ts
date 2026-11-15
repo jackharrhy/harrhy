@@ -29,7 +29,9 @@ export const buttonStyles = css({
   padding: "var(--hui-button-padding)",
   border: "var(--hui-border-width) solid var(--hui-button-border)",
   borderRadius: "var(--hui-control-radius)",
-  fontFamily: "var(--hui-font-control)",
+  fontFamily: "var(--hui-font-ui)",
+  fontVariationSettings: "normal",
+  fontOpticalSizing: "auto",
   fontSize: "var(--hui-button-text-size)",
   fontWeight: "var(--hui-button-weight)",
   lineHeight: "1.25",
@@ -66,7 +68,9 @@ export const buttonStyles = css({
   "&:disabled, &[aria-disabled=true]": {
     cursor: "not-allowed",
     boxShadow: "none",
-    opacity: "0.65",
+    color: "var(--hui-muted)",
+    backgroundColor: "var(--hui-disabled-surface)",
+    backgroundImage: "none",
   },
 });
 
@@ -81,16 +85,23 @@ export const controlStyles = css({
   background: "var(--hui-surface)",
   color: "var(--hui-ink)",
   font: "inherit",
-  fontFamily: "var(--hui-font-control)",
+  fontFamily: "var(--hui-font-ui)",
   fontSize: "var(--hui-control-text-size)",
+  lineHeight: "1.4",
   boxShadow: "var(--hui-control-shadow)",
   "&::placeholder": { color: "var(--hui-muted)", opacity: 1 },
   '&[aria-invalid="true"]': { borderColor: "var(--hui-danger)" },
-  "&:disabled": { opacity: "0.65", cursor: "not-allowed" },
+  "&:disabled": {
+    color: "var(--hui-muted)",
+    backgroundColor: "var(--hui-disabled-surface)",
+    backgroundImage: "none",
+    cursor: "not-allowed",
+  },
 });
 export const checkStyles = css({
-  width: "1.25rem",
-  height: "1.25rem",
+  width: "1rem",
+  height: "1rem",
+  flexShrink: 0,
   margin: 0,
   verticalAlign: "middle",
   accentColor: "var(--hui-accent)",
@@ -101,6 +112,7 @@ export const fieldStyles = css({
   minWidth: "0",
 });
 export const labelStyles = css({
+  fontFamily: "var(--hui-font-detail)",
   fontSize: "var(--hui-label-size)",
   fontWeight: "var(--hui-label-weight)",
   textTransform: "var(--hui-label-transform)",
@@ -152,6 +164,7 @@ export const noticeStyles = css({
   },
 });
 export const badgeStyles = css({
+  fontFamily: "var(--hui-font-detail)",
   display: "inline-block",
   flex: "none",
   whiteSpace: "nowrap",
@@ -160,4 +173,25 @@ export const badgeStyles = css({
   color: "var(--hui-muted)",
   border: "var(--hui-border-width) solid var(--hui-border)",
   borderRadius: "var(--hui-control-radius)",
+});
+
+export const rangeStyles = css({
+  boxSizing: "border-box",
+  minWidth: 0,
+  minHeight: "24px",
+  margin: 0,
+  accentColor: "var(--hui-accent)",
+  cursor: "pointer",
+  "&:disabled": { cursor: "not-allowed", opacity: "0.65" },
+});
+
+/** Wrap Checkbox and label text; first-line alignment also works for multiline text. */
+export const checkboxLabelStyles = css({
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "0.625rem",
+  minHeight: "24px",
+  lineHeight: "24px",
+  cursor: "pointer",
+  "& input[type=checkbox]": { marginBlockStart: "4px" },
 });

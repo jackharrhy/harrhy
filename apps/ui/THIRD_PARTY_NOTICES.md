@@ -1,0 +1,10 @@
+# Third-party font notices
+
+The showcase redistributes these font assets, separately licensed from application source:
+
+- **Fraunces** — Copyright 2018 The Fraunces Project Authors. SIL Open Font License 1.1: [license](app/public/fonts/OFL.txt).
+- **IBM Plex Sans** — Copyright © 2017 IBM Corp., Reserved Font Name “Plex”. SIL Open Font License 1.1: [license](app/public/fonts/IBM-Plex-Sans-OFL.txt).
+- **IBM Plex Mono** — Copyright © 2017 IBM Corp., Reserved Font Name “Plex”. SIL Open Font License 1.1: [license](app/public/fonts/IBM-Plex-Mono-OFL.txt).
+- **Material Symbols** in the synthetic Radio scene — Apache License 2.0: [preserved license](app/public/radio/MATERIAL-SYMBOLS-LICENSE.txt).
+
+[Font provenance](app/public/fonts/README.md) records exact immutable sources, transformations, sizes and variable axes. [Radio provenance](app/public/radio/README.md) records the scene's source and icon boundary. JavaScript package licenses remain with their installed distributions; no UI-SDK/Pierre implementation is vendored.

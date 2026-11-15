@@ -88,8 +88,17 @@ export function Dialog(handle: Handle<DialogProps>) {
         <h2 id={titleId} mix={titleStyles}>
           {title}
         </h2>
-        {description && <p id={descriptionId}>{description}</p>}
-        {children}
+        {description && (
+          <p
+            id={descriptionId}
+            mix={css({ margin: "0.5rem 0 0", color: "var(--hui-muted)" })}
+          >
+            {description}
+          </p>
+        )}
+        <div mix={css({ marginTop: "1rem", "& > form": { margin: 0 } })}>
+          {children}
+        </div>
       </dialog>
     );
   };
@@ -100,7 +109,7 @@ const dialogStyles = css({
   width: "min(32rem, calc(100vw - 2rem))",
   maxHeight: "calc(100dvh - 2rem)",
   overflow: "auto",
-  padding: "var(--hui-panel-padding)",
+  padding: "1.25rem",
   border: "var(--hui-border-width) solid var(--hui-border)",
   borderRadius: "var(--hui-panel-radius)",
   backgroundColor: "var(--hui-elevated)",
