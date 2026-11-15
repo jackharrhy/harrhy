@@ -1,3 +1,4 @@
+import { Button as UiButton, Input, Textarea } from "@harrhy/ui/native";
 import {
   clientEntry,
   css,
@@ -17,11 +18,9 @@ import { routes } from "../../routes.ts";
 import { ModalFrame } from "../modal.tsx";
 import { Alert, Button, Disclosure, ProgressBar } from "../primitives.tsx";
 import {
-  buttonStyle,
   inputStyle,
   modalActionsStyle,
   modalCloseStyle,
-  primaryButtonStyle,
   smallButtonStyle,
   theme,
   visuallyHiddenStyle,
@@ -249,11 +248,10 @@ export const UploadControl = clientEntry(
 
       return (
         <>
-          <button
+          <UiButton
+            variant="primary"
             type="button"
             mix={[
-              buttonStyle,
-              primaryButtonStyle,
               on("click", () => {
                 open = true;
                 handle.update();
@@ -261,7 +259,7 @@ export const UploadControl = clientEntry(
             ]}
           >
             {props.label ?? (atRoot ? "Add" : "Upload")}
-          </button>
+          </UiButton>
           {open ? (
             <ModalFrame
               title={
@@ -277,13 +275,13 @@ export const UploadControl = clientEntry(
               }
               onDismiss={close}
               closeControl={
-                <button
+                <UiButton
                   type="button"
                   aria-label="Close"
                   mix={[modalCloseStyle, on("click", close)]}
                 >
                   ×
-                </button>
+                </UiButton>
               }
             >
               {error ? <Alert tone="danger">{error}</Alert> : null}
@@ -305,6 +303,8 @@ export const UploadControl = clientEntry(
                   <div mix={uploadZoneStyle}>
                     <input
                       type="file"
+                      aria-label="Select files"
+                      tabIndex={-1}
                       multiple
                       mix={[
                         visuallyHiddenStyle,
@@ -348,6 +348,8 @@ export const UploadControl = clientEntry(
                     />
                     <input
                       type="file"
+                      aria-label="Select folder"
+                      tabIndex={-1}
                       multiple
                       mix={[
                         visuallyHiddenStyle,
@@ -379,10 +381,9 @@ export const UploadControl = clientEntry(
                         <div mix={fileListHeaderStyle}>
                           {files.length} file{files.length === 1 ? "" : "s"}{" "}
                           selected
-                          <button
+                          <UiButton
                             type="button"
                             mix={[
-                              buttonStyle,
                               smallButtonStyle,
                               on("click", () => {
                                 files = [];
@@ -391,7 +392,7 @@ export const UploadControl = clientEntry(
                             ]}
                           >
                             Clear
-                          </button>
+                          </UiButton>
                         </div>
                         <div mix={fileListItemsStyle}>
                           {files.slice(0, 10).map((selected, index) => (
@@ -429,16 +430,15 @@ export const UploadControl = clientEntry(
                             <p mix={archiveNoteStyle}>
                               Supports PAK, PK3, and ZIP.
                             </p>
-                            <button
+                            <UiButton
                               type="button"
                               mix={[
-                                buttonStyle,
                                 topSpacedButtonStyle,
                                 on("click", () => fileInput?.click()),
                               ]}
                             >
                               Select archive
-                            </button>
+                            </UiButton>
                           </>
                         ) : atRoot ? (
                           <p>Open a folder before uploading files.</p>
@@ -446,24 +446,20 @@ export const UploadControl = clientEntry(
                           <>
                             <p>Select files or a folder to upload.</p>
                             <div mix={uploadButtonsStyle}>
-                              <button
+                              <UiButton
                                 type="button"
-                                mix={[
-                                  buttonStyle,
-                                  on("click", () => fileInput?.click()),
-                                ]}
+                                mix={[on("click", () => fileInput?.click())]}
                               >
                                 Select files
-                              </button>
-                              <button
+                              </UiButton>
+                              <UiButton
                                 type="button"
                                 mix={[
-                                  buttonStyle,
                                   on("click", () => directoryInput?.click()),
                                 ]}
                               >
                                 Select folder
-                              </button>
+                              </UiButton>
                             </div>
                           </>
                         )}
@@ -473,12 +469,11 @@ export const UploadControl = clientEntry(
 
                   <div mix={modalActionsStyle}>
                     {files.length && currentFolder ? (
-                      <button
+                      <UiButton
+                        variant="primary"
                         type="button"
                         disabled={busy}
                         mix={[
-                          buttonStyle,
-                          primaryButtonStyle,
                           on("click", async (_event, signal) => {
                             busy = true;
                             error = null;
@@ -554,13 +549,12 @@ export const UploadControl = clientEntry(
                         {busy
                           ? "Uploading..."
                           : `Upload ${files.length} file${files.length === 1 ? "" : "s"}`}
-                      </button>
+                      </UiButton>
                     ) : null}
                     {props.isAdmin ? (
-                      <button
+                      <UiButton
                         type="button"
                         mix={[
-                          buttonStyle,
                           on("click", () => {
                             view = "folder";
                             error = null;
@@ -569,7 +563,7 @@ export const UploadControl = clientEntry(
                         ]}
                       >
                         Create folder
-                      </button>
+                      </UiButton>
                     ) : null}
                   </div>
 
@@ -623,7 +617,8 @@ export const UploadControl = clientEntry(
                         Paste GameBanana or SCMapDB pages, or direct HTTPS
                         archive links.
                       </p>
-                      <textarea
+                      <Textarea
+                        aria-label="Import source URLs"
                         name="sourceUrls"
                         rows={4}
                         required
@@ -640,13 +635,14 @@ export const UploadControl = clientEntry(
                         .
                       </p>
                       <div mix={[modalActionsStyle, endActionsStyle]}>
-                        <button
+                        <UiButton
+                          variant="primary"
                           type="submit"
-                          mix={[buttonStyle, primaryButtonStyle]}
+
                           disabled={busy}
                         >
                           {busy ? "Adding to queue..." : "Import"}
-                        </button>
+                        </UiButton>
                       </div>
                     </form>
                   ) : null}
@@ -688,8 +684,14 @@ export const UploadControl = clientEntry(
                     handle.update();
                   })}
                 >
-                  <label mix={formLabelStyle}>Folder name</label>
-                  <input
+                  <label
+                    htmlFor={`${handle.id}-folder-name`}
+                    mix={formLabelStyle}
+                  >
+                    Folder name
+                  </label>
+                  <Input
+                    id={`${handle.id}-folder-name`}
                     name="name"
                     value={folderName}
                     required
@@ -704,10 +706,14 @@ export const UploadControl = clientEntry(
                       }),
                     ]}
                   />
-                  <label mix={formLabelStyle}>
+                  <label
+                    htmlFor={`${handle.id}-folder-slug`}
+                    mix={formLabelStyle}
+                  >
                     Folder URL slug (from the folder name)
                   </label>
-                  <input
+                  <Input
+                    id={`${handle.id}-folder-slug`}
                     name="slug"
                     value={folderSlug}
                     pattern="[a-z0-9\-]+"
@@ -730,10 +736,9 @@ export const UploadControl = clientEntry(
                     <Button type="submit" variant="primary" disabled={busy}>
                       {busy ? "Creating..." : "Create folder"}
                     </Button>
-                    <button
+                    <UiButton
                       type="button"
                       mix={[
-                        buttonStyle,
                         on("click", () => {
                           view = "main";
                           handle.update();
@@ -741,7 +746,7 @@ export const UploadControl = clientEntry(
                       ]}
                     >
                       Back
-                    </button>
+                    </UiButton>
                   </div>
                 </form>
               ) : null}
@@ -769,8 +774,14 @@ export const UploadControl = clientEntry(
                       </div>
                     </Disclosure>
                   </div>
-                  <label mix={formLabelStyle}>Folder name</label>
-                  <input
+                  <label
+                    htmlFor={`${handle.id}-archive-name`}
+                    mix={formLabelStyle}
+                  >
+                    Folder name
+                  </label>
+                  <Input
+                    id={`${handle.id}-archive-name`}
                     value={archiveName}
                     required
                     mix={[
@@ -784,10 +795,14 @@ export const UploadControl = clientEntry(
                       }),
                     ]}
                   />
-                  <label mix={formLabelStyle}>
+                  <label
+                    htmlFor={`${handle.id}-archive-slug`}
+                    mix={formLabelStyle}
+                  >
                     Folder URL slug (from the folder name)
                   </label>
-                  <input
+                  <Input
+                    id={`${handle.id}-archive-slug`}
                     value={archiveSlug}
                     pattern="[a-z0-9\-]+"
                     required
@@ -801,12 +816,11 @@ export const UploadControl = clientEntry(
                     ]}
                   />
                   <div mix={modalActionsStyle}>
-                    <button
+                    <UiButton
+                      variant="primary"
                       type="button"
                       disabled={busy}
                       mix={[
-                        buttonStyle,
-                        primaryButtonStyle,
                         on("click", async (_event, signal) => {
                           if (!analysis) return;
                           busy = true;
@@ -848,11 +862,10 @@ export const UploadControl = clientEntry(
                       ]}
                     >
                       {busy ? "Starting..." : "Extract archive"}
-                    </button>
-                    <button
+                    </UiButton>
+                    <UiButton
                       type="button"
                       mix={[
-                        buttonStyle,
                         on("click", () => {
                           analysis = null;
                           view = "main";
@@ -861,7 +874,7 @@ export const UploadControl = clientEntry(
                       ]}
                     >
                       Back
-                    </button>
+                    </UiButton>
                   </div>
                 </>
               ) : null}

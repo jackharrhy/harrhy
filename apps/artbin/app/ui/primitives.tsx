@@ -1,13 +1,23 @@
 import { css, type Handle, type RemixNode } from "remix/component";
+import {
+  Button as UiButton,
+  ButtonLink as UiButtonLink,
+  Input,
+  Textarea,
+  Checkbox,
+  Field,
+  Panel as UiPanel,
+  Stack as UiStack,
+  Inline as UiInline,
+  Notice,
+  Badge as UiBadge,
+} from "@harrhy/ui/native";
+import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 
 import {
   alertStyle,
-  buttonStyle,
-  cardStyle,
-  dangerButtonStyle,
   errorAlertStyle,
   inputStyle,
-  primaryButtonStyle,
   smallButtonStyle,
   successAlertStyle,
   theme,
@@ -36,11 +46,17 @@ const badgeStyle = css({
   padding: "0.125rem 0.5rem",
   textTransform: "uppercase",
 });
-const neutralBadgeStyle = css({ background: "#e2e3e5" });
+const neutralBadgeStyle = css({ background: "var(--hui-hover-surface)" });
 const infoBadgeStyle = css({ background: "#d8eaff", color: "#174a7e" });
-const successBadgeStyle = css({ background: "#dff3df", color: "#176117" });
+const successBadgeStyle = css({
+  background: "var(--hui-success-surface)",
+  color: "var(--hui-success)",
+});
 const warningBadgeStyle = css({ background: "#fff0bd", color: "#745900" });
-const dangerBadgeStyle = css({ background: "#f8d7da", color: "#8a101d" });
+const dangerBadgeStyle = css({
+  background: "var(--hui-danger-surface)",
+  color: "var(--hui-danger)",
+});
 const headerStyle = css({
   alignItems: "flex-start",
   borderBottom: `1px solid ${theme.color.borderLight}`,
@@ -107,35 +123,9 @@ const emptyTitleStyle = css({
 });
 const emptyBodyStyle = css({ margin: 0 });
 const emptyActionStyle = css({ marginTop: "1rem" });
-const fieldStyle = css({ marginBottom: "1rem" });
 const fullWidthControlStyle = css({ width: "100%" });
 const monoControlStyle = css({ fontFamily: theme.font.mono });
-const labelStyle = css({
-  display: "block",
-  fontSize: "0.75rem",
-  fontWeight: 500,
-  letterSpacing: "0.025em",
-  marginBottom: "0.25rem",
-  textTransform: "uppercase",
-});
 const requiredStyle = css({ color: theme.color.danger, marginLeft: "0.25rem" });
-const hintStyle = css({
-  color: theme.color.muted,
-  fontSize: "0.75rem",
-  margin: "0 0 0.5rem",
-});
-const fieldErrorStyle = css({
-  color: theme.color.danger,
-  fontSize: "0.75rem",
-  margin: "0.25rem 0 0",
-});
-const checkboxLabelStyle = css({
-  alignItems: "flex-start",
-  display: "flex",
-  fontSize: "0.875rem",
-  gap: "0.5rem",
-});
-const checkboxStyle = css({ marginTop: "0.15rem" });
 const progressTrackStyle = css({
   background: theme.color.subtle,
   height: "0.375rem",
@@ -229,16 +219,6 @@ const inlineStyle = css({
   gap: "0.5rem",
 });
 
-function buttonMix(variant: ButtonVariant, size: ButtonSize, block: boolean) {
-  return [
-    buttonStyle,
-    variant === "primary" ? primaryButtonStyle : undefined,
-    variant === "danger" ? dangerButtonStyle : undefined,
-    size === "small" ? smallButtonStyle : undefined,
-    block ? blockStyle : undefined,
-  ];
-}
-
 export function Button(
   handle: Handle<{
     children?: RemixNode;
@@ -265,16 +245,20 @@ export function Button(
       title,
     } = handle.props;
     return (
-      <button
+      <UiButton
+        variant={variant === "default" ? "secondary" : variant}
         type={type}
         disabled={disabled}
         name={name}
         value={value}
         title={title}
-        mix={buttonMix(variant, size, block)}
+        mix={[
+          size === "small" ? smallButtonStyle : undefined,
+          block ? blockStyle : undefined,
+        ]}
       >
         {children}
-      </button>
+      </UiButton>
     );
   };
 }
@@ -307,17 +291,21 @@ export function ButtonLink(
       document = false,
     } = handle.props;
     return (
-      <a
+      <UiButtonLink
+        variant={variant === "default" ? "secondary" : variant}
         href={href}
         download={download}
         target={target}
         rel={rel}
         title={title}
         data-rmx-document={document ? "" : undefined}
-        mix={buttonMix(variant, size, block)}
+        mix={[
+          size === "small" ? smallButtonStyle : undefined,
+          block ? blockStyle : undefined,
+        ]}
       >
         {children}
-      </a>
+      </UiButtonLink>
     );
   };
 }
@@ -328,7 +316,8 @@ export function Alert(
   return () => {
     const { children, title, tone = "neutral" } = handle.props;
     return (
-      <div
+      <Notice
+        tone={tone === "danger" || tone === "success" ? tone : "neutral"}
         role={tone === "danger" ? "alert" : "status"}
         mix={[
           alertStyle,
@@ -340,7 +329,7 @@ export function Alert(
       >
         {title ? <p mix={alertTitleStyle}>{title}</p> : null}
         <div mix={alertBodyStyle}>{children}</div>
-      </div>
+      </Notice>
     );
   };
 }
@@ -349,7 +338,7 @@ export function Badge(handle: Handle<{ children?: RemixNode; tone?: Tone }>) {
   return () => {
     const { children, tone = "neutral" } = handle.props;
     return (
-      <span
+      <UiBadge
         mix={[
           badgeStyle,
           tone === "neutral" ? neutralBadgeStyle : undefined,
@@ -360,13 +349,13 @@ export function Badge(handle: Handle<{ children?: RemixNode; tone?: Tone }>) {
         ]}
       >
         {children}
-      </span>
+      </UiBadge>
     );
   };
 }
 
 export function Panel(handle: Handle<{ children?: RemixNode }>) {
-  return () => <div mix={cardStyle}>{handle.props.children}</div>;
+  return () => <UiPanel>{handle.props.children}</UiPanel>;
 }
 
 export function PageHeader(
@@ -439,23 +428,23 @@ export function FormField(
   return () => {
     const { label, htmlFor, hint, error, required, children } = handle.props;
     return (
-      <div mix={fieldStyle}>
-        <label htmlFor={htmlFor} mix={labelStyle}>
-          {label}
-          {required ? (
-            <span aria-hidden="true" mix={requiredStyle}>
-              *
-            </span>
-          ) : null}
-        </label>
-        {hint ? <p mix={hintStyle}>{hint}</p> : null}
+      <Field
+        id={htmlFor ?? `${handle.id}-control`}
+        label={
+          <>
+            {label}
+            {required ? (
+              <span aria-hidden="true" mix={requiredStyle}>
+                *
+              </span>
+            ) : null}
+          </>
+        }
+        description={hint}
+        error={error ? <span role="alert">{error}</span> : undefined}
+      >
         {children}
-        {error ? (
-          <p role="alert" mix={fieldErrorStyle}>
-            {error}
-          </p>
-        ) : null}
-      </div>
+      </Field>
     );
   };
 }
@@ -475,7 +464,7 @@ export function TextInput(
   }>,
 ) {
   return () => (
-    <input
+    <Input
       id={handle.props.id}
       name={handle.props.name}
       type="text"
@@ -486,7 +475,6 @@ export function TextInput(
       disabled={handle.props.disabled}
       readOnly={handle.props.readOnly}
       mix={[
-        inputStyle,
         handle.props.fullWidth ? fullWidthControlStyle : undefined,
         handle.props.mono ? monoControlStyle : undefined,
       ]}
@@ -505,21 +493,29 @@ export function SelectInput(
     children?: RemixNode;
   }>,
 ) {
-  return () => (
-    <select
-      id={handle.props.id}
-      name={handle.props.name}
-      value={handle.props.value}
-      required={handle.props.required}
-      disabled={handle.props.disabled}
-      mix={[
-        inputStyle,
-        handle.props.fullWidth ? fullWidthControlStyle : undefined,
-      ]}
-    >
-      {handle.props.children}
-    </select>
-  );
+  return () => {
+    const field = handle.context.get(Field);
+    return (
+      <select
+        id={field?.controlId ?? handle.props.id}
+        aria-describedby={
+          [field?.descriptionId, field?.errorId].filter(Boolean).join(" ") ||
+          undefined
+        }
+        aria-invalid={field?.errorId ? true : undefined}
+        name={handle.props.name}
+        value={handle.props.value}
+        required={handle.props.required}
+        disabled={handle.props.disabled}
+        mix={[
+          inputStyle,
+          handle.props.fullWidth ? fullWidthControlStyle : undefined,
+        ]}
+      >
+        {handle.props.children}
+      </select>
+    );
+  };
 }
 
 export function TextArea(
@@ -537,7 +533,7 @@ export function TextArea(
   }>,
 ) {
   return () => (
-    <textarea
+    <Textarea
       id={handle.props.id}
       name={handle.props.name}
       value={handle.props.value}
@@ -547,7 +543,6 @@ export function TextArea(
       disabled={handle.props.disabled}
       readOnly={handle.props.readOnly}
       mix={[
-        inputStyle,
         handle.props.fullWidth ? fullWidthControlStyle : undefined,
         handle.props.mono ? monoControlStyle : undefined,
       ]}
@@ -565,14 +560,12 @@ export function CheckboxField(
   }>,
 ) {
   return () => (
-    <label mix={checkboxLabelStyle}>
-      <input
-        type="checkbox"
+    <label mix={checkboxLabelStyles}>
+      <Checkbox
         name={handle.props.name}
         value={handle.props.value}
         checked={handle.props.checked}
         disabled={handle.props.disabled}
-        mix={checkboxStyle}
       />
       <span>{handle.props.children}</span>
     </label>
@@ -682,9 +675,9 @@ export function Disclosure(
 }
 
 export function Stack(handle: Handle<{ children?: RemixNode }>) {
-  return () => <div mix={stackStyle}>{handle.props.children}</div>;
+  return () => <UiStack mix={stackStyle}>{handle.props.children}</UiStack>;
 }
 
 export function Inline(handle: Handle<{ children?: RemixNode }>) {
-  return () => <div mix={inlineStyle}>{handle.props.children}</div>;
+  return () => <UiInline mix={inlineStyle}>{handle.props.children}</UiInline>;
 }

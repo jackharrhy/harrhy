@@ -8,8 +8,8 @@ import { formatSize } from "../ui/file-collection.tsx";
 import { MediaCard } from "../ui/media-card.tsx";
 import { Tabs } from "../ui/navigation.tsx";
 import { Page } from "../ui/page.tsx";
-import { EmptyState, PageHeader } from "../ui/primitives.tsx";
-import { buttonStyle, pageStyle, theme } from "../ui/styles.ts";
+import { ButtonLink, EmptyState, PageHeader } from "../ui/primitives.tsx";
+import { pageStyle, theme } from "../ui/styles.ts";
 
 const groupStyle = css({ marginBottom: "1.5rem" });
 const folderLabelStyle = css({
@@ -112,12 +112,11 @@ export function MyUploadsPage(
               )}
               {data.nextCursor ? (
                 <div mix={moreStyle}>
-                  <a
+                  <ButtonLink
                     href={`${routes.myUploads.href()}?status=${data.status}&cursor=${data.nextCursor}`}
-                    mix={buttonStyle}
                   >
                     Load more
-                  </a>
+                  </ButtonLink>
                 </div>
               ) : null}
             </>

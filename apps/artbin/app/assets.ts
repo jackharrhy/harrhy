@@ -18,8 +18,13 @@ export const assetServer = createAssetServer({
     shared: "packages/artbin-core/src",
     renderer: "packages/maps-renderer/dist",
     npm: "node_modules",
+    hui: "packages/ui",
   },
   allowFiles: [
+    "packages/ui/*.ts",
+    "packages/ui/*.tsx",
+    "packages/ui/fonts.css",
+    "packages/ui/fonts/*.woff2",
     "apps/artbin/app/routes.ts",
     "apps/artbin/app/ui/styles.ts",
     "apps/artbin/app/ui/modal.tsx",
@@ -29,6 +34,8 @@ export const assetServer = createAssetServer({
     "apps/artbin/app/**/public/**",
   ],
   allowPackages: [
+    "@harrhy/ui",
+    "@remix-run/ui",
     "@harrhy/artbin-core",
     "@harrhy/worldview-renderer",
     "remix",

@@ -21,7 +21,8 @@ let server: ChildProcess;
 // Test fixture directory -- created in beforeAll, cleaned up in afterAll
 const FIXTURE_DIR = join(process.cwd(), "public", "uploads", "_test");
 
-async function waitForServer(url: string, timeoutMs = 10_000): Promise<void> {
+// Source-served package graphs compile on cold start alongside parallel unit suites.
+async function waitForServer(url: string, timeoutMs = 30_000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
@@ -78,7 +79,7 @@ describe("HTTP integration tests", () => {
     });
 
     await waitForServer(BASE);
-  }, 15_000);
+  }, 35_000);
 
   afterAll(() => {
     server?.kill("SIGTERM");
@@ -163,7 +164,27 @@ describe("HTTP integration tests", () => {
 
       expect(entryPath).toBeTruthy();
       expect(page).toContain("<style data-rmx");
-      expect(page).not.toContain('rel="stylesheet"');
+      expect(page.match(/<link rel="stylesheet"[^>]+>/g)).toEqual([
+        '<link rel="stylesheet" href="/assets/hui/fonts.css" />',
+      ]);
+      const fontCss = await fetch(`${BASE}/assets/hui/fonts.css`);
+      expect(fontCss.status).toBe(200);
+      const fonts = await fontCss.text();
+      expect(fonts.match(/@font-face/g)).toHaveLength(3);
+      expect(fonts).not.toMatch(/https?:/);
+      for (const family of [
+        "fraunces-variable",
+        "ibm-plex-sans-latin",
+        "ibm-plex-mono-latin",
+      ]) {
+        const font = await fetch(`${BASE}/assets/hui/fonts/${family}.woff2`);
+        expect(font.status).toBe(200);
+        expect(
+          Buffer.from(await font.arrayBuffer())
+            .subarray(0, 4)
+            .toString(),
+        ).toBe("wOF2");
+      }
       expect(page).toContain("@layer rmx");
       expect(page).toContain("max-width: 360px");
 

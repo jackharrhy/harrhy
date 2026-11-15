@@ -203,6 +203,6 @@ test("repository Dockerfiles and lock preserve whole-context inputs and actual U
       afterLock: lock,
       dockerfiles,
     }),
-    ordered(...broad, "auth"),
+    ordered(...broad, "auth", "artbin"),
   );
 });

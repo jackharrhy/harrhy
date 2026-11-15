@@ -1,3 +1,4 @@
+import { CodeBlock } from "@harrhy/ui/code";
 import { css, type Handle } from "remix/component";
 
 import type { User } from "#db";
@@ -73,23 +74,13 @@ const audioPreviewStyle = css({
   width: "100%",
 });
 const largeIconStyle = css({ fontSize: "3rem", marginBottom: "1rem" });
-const audioStyle = css({ minWidth: "300px", width: "100%" });
+const audioStyle = css({ minWidth: 0, width: "100%" });
 const textPreviewStyle = css({
   background: theme.color.background,
   margin: "1rem",
   maxHeight: "600px",
   overflow: "auto",
   width: "100%",
-});
-const preStyle = css({
-  color: theme.color.text,
-  fontFamily: theme.font.mono,
-  fontSize: "0.8125rem",
-  lineHeight: 1.625,
-  margin: 0,
-  overflowWrap: "anywhere",
-  padding: "0.5rem",
-  whiteSpace: "pre-wrap",
 });
 const detailsStyle = css({ alignSelf: "start" });
 const fileNameStyle = css({
@@ -257,7 +248,7 @@ function StandardFilePage(
                 </div>
               ) : text && data.textContent !== null ? (
                 <div mix={textPreviewStyle}>
-                  <pre mix={preStyle}>{data.textContent}</pre>
+                  <CodeBlock label={file.name} source={data.textContent} />
                 </div>
               ) : (
                 <DownloadFallback

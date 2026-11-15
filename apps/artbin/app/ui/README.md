@@ -1,6 +1,6 @@
 # artbin UI system
 
-The shared UI layer is the source of truth for recurring interface patterns. The live reference is available at `/dev/kitchen-sink`.
+This app-owned composition layer is the source of truth for recurring archive interface patterns. It consumes `@harrhy/ui` native components, recipes and semantic theme tokens; archive behavior stays here. The live reference is available at `/dev/kitchen-sink`.
 
 ## Foundations
 
@@ -8,7 +8,10 @@ The shared UI layer is the source of truth for recurring interface patterns. The
 - `primitives.tsx` owns actions, feedback, fields, layout headers, status, progress, tables, metadata, and disclosure components.
 - `navigation.tsx` owns tabs and breadcrumbs.
 - `media-card.tsx` owns folder and asset cards.
-- `modal.tsx` owns the dialog frame used by upload flows.
+- `modal.tsx` composes the shared native Dialog for upload flows, including backdrop dismissal and focus restoration when the app unmounts it.
+- Optional self-hosted font CSS/binaries and OFL provenance live in `packages/ui`; the app document loads them explicitly. No app imports assets from the showcase.
+
+Route tabs remain native links with `aria-current`. Form selects remain native for no-script editing, validation and reset. Do not replace either with a widget solely for visual consistency.
 
 ## Composition rules
 
