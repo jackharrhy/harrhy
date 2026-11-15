@@ -40,6 +40,7 @@ requirements above.
    Keep this clone local and untracked. Verify the worktree's ignore rules;
    use a worktree-local exclusion if necessary rather than committing the clone.
    Do not use another agent's reference clone or the machine's shared `/tmp`.
+
 3. Read the reference repo's `AGENTS.md` and the original app's local guidance.
    Record the reference commit you actually inspect; it may have advanced since
    this handoff. The planning reference was Sluggers `main` at `3c60135`.
