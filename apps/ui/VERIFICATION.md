@@ -47,7 +47,7 @@ The owner's Android theme-menu screenshot prompted a mobile placement fix: narro
 
 - Official Select: Home/End/arrows skip disabled options, typeahead commits the actual hidden form value, disabled hidden values are omitted, Escape dismisses and returns focus. Field label/help/error relationships remain intact.
 - Open-list Tab interception is upstream policy and remains a known limitation. Dismiss with Escape, then Tab advances normally; native select traversal/reset/required/no-JavaScript equivalence is not claimed.
-- Radio scenario list scrolls to its last highlighted option with End: 288px viewport, 424px content, last row visible at all three widths. No page-level horizontal scrolling.
+- Radio scenario list scrolls to its last highlighted option with End in its bounded viewport; the last row stays visible at all three widths with both desktop and touch row sizes. No page-level horizontal scrolling.
 - Native Range: End reaches 1 and updates the live 100% output; native arrows and application seek commit remain intact. Range and calibration targets are at least 24px high. Physical touch gestures and screen-reader behavior remain untested.
 - Radio safety tests reject non-asset network requests, playback, sockets and persistent storage. Rename/reorder/delete retain local keyboard focus behavior.
 
