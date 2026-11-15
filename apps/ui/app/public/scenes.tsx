@@ -1,3 +1,4 @@
+import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { clientEntry, css, on } from "remix/component";
 import type { Handle } from "remix/component";
 import {
@@ -222,7 +223,7 @@ export const Scenes = clientEntry(
                           placeholder="What belongs on this board?"
                         />
                       </Field>
-                      <label>
+                      <label mix={checkboxLabelStyles}>
                         <Checkbox name="private" defaultChecked /> Keep this
                         board private
                       </label>

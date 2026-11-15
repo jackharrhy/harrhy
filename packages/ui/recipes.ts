@@ -85,6 +85,7 @@ export const controlStyles = css({
   font: "inherit",
   fontFamily: "var(--hui-font-control)",
   fontSize: "var(--hui-control-text-size)",
+  lineHeight: "1.4",
   boxShadow: "var(--hui-control-shadow)",
   "&::placeholder": { color: "var(--hui-muted)", opacity: 1 },
   '&[aria-invalid="true"]': { borderColor: "var(--hui-danger)" },
@@ -96,8 +97,9 @@ export const controlStyles = css({
   },
 });
 export const checkStyles = css({
-  width: "1.25rem",
-  height: "1.25rem",
+  width: "1rem",
+  height: "1rem",
+  flexShrink: 0,
   margin: 0,
   verticalAlign: "middle",
   accentColor: "var(--hui-accent)",
@@ -177,4 +179,15 @@ export const rangeStyles = css({
   accentColor: "var(--hui-accent)",
   cursor: "pointer",
   "&:disabled": { cursor: "not-allowed", opacity: "0.65" },
+});
+
+/** Wrap Checkbox and label text; first-line alignment also works for multiline text. */
+export const checkboxLabelStyles = css({
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "0.625rem",
+  minHeight: "24px",
+  lineHeight: "24px",
+  cursor: "pointer",
+  "& input[type=checkbox]": { marginBlockStart: "4px" },
 });

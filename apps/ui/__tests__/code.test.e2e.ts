@@ -10,6 +10,14 @@ it("integrates shared code views, safe live source, copy and prepared diff state
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/?component=code");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
+  const initial = page.getByRole("region", {
+    name: "Collection action",
+    exact: true,
+  });
+  assert.equal((await initial.locator("code span[style]").count()) > 3, true);
   const sample =
     '<script>throw new Error("must stay text")</script>\n\t<Button>Save</Button>';
   await page.getByLabel("Source", { exact: true }).fill(sample);
@@ -17,9 +25,34 @@ it("integrates shared code views, safe live source, copy and prepared diff state
     name: "Collection action",
     exact: true,
   });
+  await page.waitForFunction(
+    (text) =>
+      document.querySelector('[aria-label="Collection action"] code')
+        ?.textContent === text,
+    sample,
+  );
   assert.equal(await region.textContent(), sample);
+  assert.equal((await region.locator("code span[style]").count()) > 3, true);
+  await page.getByRole("button", { name: "Language", exact: true }).click();
+  await page.getByRole("option", { name: "text", exact: true }).click();
+  await page.waitForFunction(
+    () =>
+      document.querySelectorAll(
+        '[aria-label="Collection action"] code span[style]',
+      ).length === 0,
+  );
+  assert.equal(await region.textContent(), sample);
+  await page.getByRole("button", { name: "Language", exact: true }).click();
+  await page.getByRole("option", { name: "tsx", exact: true }).click();
+  await region.locator("code span[style]").first().waitFor();
   assert.equal(await region.locator("script, button").count(), 0);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copy source", exact: true }).click();
+  await page.getByText("Source copied exactly.", { exact: true }).waitFor();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    sample,
+  );
   await page.getByRole("button", { name: "Copy code", exact: true }).click();
   await page.getByText("Copied.", { exact: true }).waitFor();
   assert.match(

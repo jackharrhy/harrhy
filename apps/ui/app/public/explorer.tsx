@@ -23,7 +23,9 @@ import {
   TabPanel,
 } from "@harrhy/ui/interactive";
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
-import { CodeBlock, CodeDiff } from "@harrhy/ui/code";
+import { CodeDiff } from "@harrhy/ui/code";
+import { checkboxLabelStyles } from "@harrhy/ui/recipes";
+import { HighlightedCode } from "./highlight.tsx";
 import type { DiffLine } from "@harrhy/ui/code";
 import { WorkbenchHeader } from "./workbench.tsx";
 import { themes } from "./themes.ts";
@@ -106,7 +108,7 @@ export const stories = [
     id: "code",
     name: "CodeBlock",
     group: "Code",
-    summary: "Selectable source. No runtime highlighter.",
+    summary: "Selectable source with Shiki syntax highlighting.",
   },
   {
     id: "diff",
@@ -243,7 +245,9 @@ const controls = css({
   "& label:has(input[type=checkbox])": {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: "10px",
+    minHeight: "24px",
+    cursor: "pointer",
   },
   "@media (max-width: 1100px)": {
     borderLeft: 0,
@@ -522,7 +526,7 @@ function Story(
                         : story === "badge"
                           ? `<Badge>{${JSON.stringify(label)}}</Badge>`
                           : story === "checkbox"
-                            ? `<label><Checkbox name="private"${checked ? " defaultChecked" : ""}${disabled ? " disabled" : ""} /> Private collection</label>`
+                            ? `<label mix={checkboxLabelStyles}><Checkbox name="private"${checked ? " defaultChecked" : ""}${disabled ? " disabled" : ""} /> Private collection</label>`
                             : story === "select"
                               ? `<Field id="visibility" label="Visibility">\n  <Select name="visibility" defaultValue="private"${disabled ? " disabled" : ""}\n    options={[{ value: "private", label: "Private" }, { value: "shared", label: "Shared" }, { value: "public", label: "Public", disabled: true }]} />\n</Field>`
                               : story === "textarea"
@@ -545,7 +549,7 @@ function Story(
 
 `
         : "";
-    const example = `import { ${stories.find((item) => item.id === story)!.name}${story === "diff" ? ", type DiffLine" : story === "field" ? ", Input" : story === "textarea" ? ", Field" : story === "panel" ? ", Stack" : story === "tabs" ? ", TabList, Tab, TabPanel" : ""} } from "${imports}";\n${story === "select" ? 'import { Field } from "@harrhy/ui/native";\n' : ""}import { ${themeImport}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n\n${declaration}<section mix={[themeStyles(${themeImport}), themeRoot]}>\n${content
+    const example = `import { ${stories.find((item) => item.id === story)!.name}${story === "diff" ? ", type DiffLine" : story === "field" ? ", Input" : story === "textarea" ? ", Field" : story === "panel" ? ", Stack" : story === "tabs" ? ", TabList, Tab, TabPanel" : ""} } from "${imports}";\n${story === "select" ? 'import { Field } from "@harrhy/ui/native";\n' : ""}${story === "checkbox" ? 'import { checkboxLabelStyles } from "@harrhy/ui/recipes";\n' : ""}import { ${themeImport}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n\n${declaration}<section mix={[themeStyles(${themeImport}), themeRoot]}>\n${content
       .split("\n")
       .map((line) => `  ${line}`)
       .join("\n")}\n</section>`;
@@ -566,11 +570,28 @@ function Story(
               }}
             >
               {story === "code" && (
-                <CodeBlock
-                  label="Collection action"
-                  language={language}
-                  source={shownSource}
-                />
+                <Stack>
+                  <HighlightedCode
+                    label="Collection action"
+                    language={language}
+                    source={shownSource}
+                  />
+                  <Inline>
+                    <Button
+                      mix={on("click", async () => {
+                        try {
+                          await navigator.clipboard.writeText(shownSource);
+                          copied = "Source copied exactly.";
+                        } catch {
+                          copied = "Select the source to copy.";
+                        }
+                        handle.update();
+                      })}
+                    >
+                      Copy source
+                    </Button>
+                  </Inline>
+                </Stack>
               )}
               {story === "diff" && (
                 <Stack>
@@ -690,7 +711,7 @@ function Story(
                 </Field>
               )}
               {story === "checkbox" && (
-                <label>
+                <label mix={checkboxLabelStyles}>
                   <Checkbox
                     name="private"
                     disabled={disabled}
@@ -806,10 +827,16 @@ function Story(
                     aria-label="Source"
                     rows={6}
                     value={codeSource}
-                    mix={on("input", (event) => {
-                      codeSource = event.currentTarget.value;
-                      handle.update();
-                    })}
+                    mix={[
+                      css({
+                        fontFamily: "var(--hui-font-code)",
+                        fontSize: "0.875rem",
+                      }),
+                      on("input", (event) => {
+                        codeSource = event.currentTarget.value;
+                        handle.update();
+                      }),
+                    ]}
                   />
                 </label>
                 <div
@@ -983,7 +1010,7 @@ function Story(
             )}
             <p mix={descriptionCss}>
               {story === "code"
-                ? "Language is metadata, not a highlighter."
+                ? "Shiki TSX highlighting; text stays plain. Large sources fall back to complete plain text."
                 : story === "diff"
                   ? "Caller-prepared rows. Changes remain readable without color."
                   : story === "tabs"
@@ -1017,7 +1044,7 @@ function Story(
                 Official pattern and examples
               </a>
             </p>
-            <CodeBlock
+            <HighlightedCode
               label={`Official ${story === "select" ? "Select" : "Tabs"} composition`}
               language="tsx"
               source={
@@ -1045,7 +1072,11 @@ function Story(
             </Button>
           </div>
           <div mix={css({ padding: "20px", minWidth: 0 })}>
-            <CodeBlock label="Code example" language="tsx" source={example} />
+            <HighlightedCode
+              label="Code example"
+              language="tsx"
+              source={example}
+            />
           </div>
           <span role="status">{copied}</span>
         </div>

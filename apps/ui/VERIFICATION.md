@@ -25,9 +25,17 @@ Measured sRGB contrast ratios, not a claim of full WCAG conformance:
 | Focus / selected surface | 4.69 | 5.18 | 11.71 |
 | Focus / highlight surface | 5.06 | 5.75 | 13.71 |
 
-Artbin retains square geometry, Times typography, compact density and pale panel separators. Essential input boundaries are deliberately darker than the original #ccc (1.61:1 on white); #888 now clears 3:1. Selection is not color-only: a persistent checkmark distinguishes it from the moving highlight. Popup padding, inner/outer radius and row gap are separate tokens rather than a global radius adjustment.
+Artbin retains square geometry, Fraunces serif typography, slightly relaxed Artbin-only density and pale panel separators. Essential input boundaries are deliberately darker than the original #ccc (1.61:1 on white); #888 now clears 3:1. Selection is not color-only: a persistent checkmark distinguishes it from the moving highlight. Popup padding, inner/outer radius and row gap are separate tokens rather than a global radius adjustment.
 
 Axe-core 4.11.0 was run externally (not added to app dependencies) against Select-open, Forms and Radio at all nine theme/width combinations: 27 snapshots, zero reported WCAG A/AA violations after fixes. It initially found low-contrast Radio index text and an inaccessible narrow-screen listeners scroll region; text was darkened and the named list made keyboard-focusable with the shared focus recipe. Incomplete checks remain: closed upstream popup `aria-controls` relationships and gradient/image contrast in Radio require manual review; zero reported violations is not conformance certification.
+
+## Latest owner-directed refinement
+
+Clean/Radio controls and Select rows are now 36px high (Artbin rows 34px); Select rows use border-box sizing so padding cannot inflate their minimum height. Checkboxes have a 16px visible square with a 24px wrapping-label target and 10px gap; textarea line height/padding and dialog header/body/action spacing are explicit. Artbin alone has slightly more breathing room than its earlier compact version.
+
+Fraunces is self-hosted with its OFL/provenance, opsz 14, SOFT 0 and WONK 0, replacing only the shared Artbin-inspired serif role. Actual 390/768/1440px Artbin routes load the font; observed layout-shift score was zero in these Chromium runs. Production Artbin is unchanged.
+
+Shiki 4.6.0 now prepares safe TSX tokens for SSR and browser updates through the app-owned adapter, using one grammar, the JavaScript regex engine and contrast-adjusted Github-light accents. No editor, second highlighter, WASM or HTML injection. Exact raw source copying, live language/source updates, escaped tokens, stale-token rejection and CRLF preservation are tested. Large/long-line sources stay complete plain text. A further 54 route/theme/width snapshots (field/select/checkbox/textarea/dialog/code) reported zero axe WCAG A/AA violations and no page overflow; the earlier 27-snapshot Select/Forms/Radio run also passed again. Neither result establishes AT conformance.
 
 ## Interaction checks
 

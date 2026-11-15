@@ -51,13 +51,13 @@ it("explores actual props, matching source, and global themes", async (t) => {
   });
   assert.equal(
     await button.evaluate((node) => getComputedStyle(node).fontFamily),
-    '"Times New Roman", Georgia, serif',
+    "Fraunces, Georgia, serif",
   );
   assert.equal(
     await page
       .getByRole("heading", { name: "Button", exact: true })
       .evaluate((node) =>
-        getComputedStyle(node).fontFamily.includes("Times New Roman"),
+        getComputedStyle(node).fontFamily.includes("Fraunces"),
       ),
     true,
   );
@@ -236,9 +236,7 @@ it("separates selected, highlighted and disabled options and keeps global theme 
     await page
       .locator("header")
       .first()
-      .evaluate((n) =>
-        getComputedStyle(n).fontFamily.includes("Times New Roman"),
-      ),
+      .evaluate((n) => getComputedStyle(n).fontFamily.includes("Fraunces")),
     true,
   );
   await page.getByRole("button", { name: "Theme", exact: true }).click();

@@ -2,7 +2,7 @@
 
 ## Scope and decision checkpoint
 
-This work is an additive shared UI explorer slice, not an editor, Markdown pipeline replacement or production migration. Existing consumers remain unchanged. The baseline is native Remix SSR rendering with escaped source text and caller-prepared diff rows. No new highlighter, diff algorithm, client runtime, worker pool or WebAssembly dependency is justified for that baseline. The reconciled implementation is `code.tsx`, exported by the integrating workspace as `@harrhy/ui/code`. It adds no dependencies.
+This work is an additive shared UI explorer slice, not an editor, Markdown pipeline replacement or production migration. Existing consumers remain unchanged. The baseline is native Remix SSR rendering with escaped source text and caller-prepared diff rows. The owner-requested live highlighting consumer now justifies an optional safe prepared-token contract. The Explorer uses the existing Shiki 4.6.0 family through an app-owned synchronous SSR/browser adapter; no second highlighter, editor platform, diff algorithm, worker pool or WebAssembly is added. The reconciled implementation is `code.tsx`, exported by the integrating workspace as `@harrhy/ui/code`. It adds no dependencies.
 
 ## Actual Harrhy inventory
 
@@ -69,7 +69,7 @@ A future Pierre client island is justified by concrete needs such as large virtu
 
 ## Public API and Explorer integration
 
-`package.json` exports `"./code": "./code.tsx"` without new dependencies. The legacy package root does not import it. The host asset graph allows `@harrhy/ui` and `remix`; no worker/WASM or additional package allowlist is necessary for code views.
+`package.json` exports `"./code": "./code.tsx"` without new dependencies. The legacy package root does not import it. The renderer needs only `@harrhy/ui` and `remix`. The Explorer additionally allows its four pinned Shiki packages, with transitive browser dependencies resolved by the asset server. Only TSX and Github-light are imported, not a full grammar bundle.
 
 ```tsx
 import { CodeBlock, CodeDiff } from "@harrhy/ui/code";
@@ -77,6 +77,11 @@ import type { CodeBlockProps, CodeDiffProps, DiffLine } from "@harrhy/ui/code";
 
 // Every Explorer story passes the exact current source, including current props.
 <CodeBlock label="Button example source" language="tsx" source={storySource} />;
+
+// Optional caller-prepared syntax tokens must exactly reproduce source.
+// The Explorer prepares these with its app-owned Shiki adapter.
+const tokens = [{ text: "const", color: "#b92d3b" }, { text: " x = 1;" }];
+<CodeBlock label="Prepared example" source="const x = 1;" tokens={tokens} />;
 
 // Dedicated CodeBlock story; source is text, never HTML to execute.
 <CodeBlock
@@ -95,7 +100,7 @@ const exampleLines = [
 <CodeDiff label="Native action export" lines={exampleLines} />;
 ```
 
-`CodeBlockProps` requires string `label` and string `source`; optional string `language` is **descriptive metadata**, not syntax highlighting or grammar loading. `CodeDiffProps` requires string `label` and readonly `lines`. `DiffLine` is a discriminated union:
+`CodeBlockProps` requires string `label` and string `source`; optional string `language` is descriptive metadata. Optional readonly `tokens: {text: string; color?: string}[]` accepts caller-prepared syntax tokens only when concatenation exactly equals `source`; stale/mismatched tokens fall back to complete plain text. Colors are restricted to six-digit hex. The Explorer adapter uses Shiki offsets to preserve CRLF/tabs/final newlines, a 64-source cache, 20k-character/2k-line limits with complete plain fallback, and darker Github-light accents for all three global light theme surfaces. SSR and live browser rendering share this adapter, so there are no out-of-order asynchronous results. `CodeDiffProps` requires string `label` and readonly `lines`. `DiffLine` is a discriminated union:
 
 - `context`: `text`, optional `oldLine` and `newLine`.
 - `remove`: `text`, optional `oldLine` only.
@@ -109,7 +114,7 @@ No browser APIs are accessed at import/render; no events, timers, requests, work
 
 ## Validation evidence
 
-- UI workspace typecheck and all 13 package tests pass, including escaped code/metadata, native SSR without hydration markers, changed-line semantics without color, caller input immutability, empty input, and a preserved 100k-character long line.
+- UI workspace typecheck and all 17 package tests pass, including escaped code/metadata, native SSR without hydration markers, changed-line semantics without color, caller input immutability, empty input, and a preserved 100k-character long line.
 - Headless Chromium renders clean/tactile/brutalist at 375px and 1280px: no document horizontal overflow, named pre can receive focus, long source scrolls internally, height stays bounded, and diff rows stay single-line height. Screenshots inspected for the clean narrow fixture; Explorer integration still owns final in-app visual/interactive checks.
 - Neutral-platform minified esbuild bundle of `code.tsx`: approximately 9.8 KiB including its Remix runtime graph. This is an isolated prototype measurement, not incremental app transfer cost; app graph deduplication and compression will differ. No new dependency, Node builtin, WASM or browser worker asset is required.
 - Impeccable mechanical detector reports no findings for `code.tsx`. Automated checks do not establish screen-reader/WCAG conformance.

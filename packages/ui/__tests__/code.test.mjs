@@ -71,3 +71,29 @@ test("empty and large input remain honest: no invented content or silent truncat
   assert.ok(large.includes(source));
   assert.doesNotMatch(large, /truncated|omitted/);
 });
+
+test("prepared tokens are escaped, exact-source checked, and restricted to safe colors", async () => {
+  const source = "<unsafe>\r\n";
+  const html = await renderToString(
+    h(CodeBlock, {
+      label: "Prepared",
+      source,
+      tokens: [
+        { text: "<unsafe>", color: "#a54205" },
+        { text: "\r\n", color: "red;background:url(https://invalid.test)" },
+      ],
+    }),
+  );
+  assert.match(html, /color: ?#a54205/);
+  assert.match(html, /&lt;unsafe&gt;/);
+  assert.doesNotMatch(html, /<unsafe>|invalid.test|background:url/);
+  const stale = await renderToString(
+    h(CodeBlock, {
+      label: "Stale",
+      source,
+      tokens: [{ text: "old source", color: "#a54205" }],
+    }),
+  );
+  assert.match(stale, /<code>&lt;unsafe&gt;\r\n<\/code>/);
+  assert.doesNotMatch(stale, /old source|#a54205/);
+});

@@ -1,10 +1,17 @@
 import { css, type Handle } from "remix/component";
 import { focusStyles, visuallyHiddenStyles } from "./recipes.ts";
 
+export interface CodeToken {
+  text: string;
+  /** Optional caller-prepared six-digit sRGB color. No HTML or arbitrary CSS. */
+  color?: string;
+}
+
 export interface CodeBlockProps {
   label: string;
   source: string;
-  /** Descriptive metadata only; this component does not run a highlighter. */
+  /** Caller-prepared tokens are used only when they exactly reproduce source. */
+  tokens?: readonly CodeToken[];
   language?: string;
 }
 
@@ -81,7 +88,11 @@ const numberStyles = css({
 
 export function CodeBlock(handle: Handle<CodeBlockProps>) {
   return () => {
-    const { label, source, language } = handle.props;
+    const { label, source, language, tokens } = handle.props;
+    const prepared =
+      tokens?.map((token) => token.text).join("") === source
+        ? tokens
+        : undefined;
     return (
       <figure mix={figureStyles}>
         <figcaption mix={captionStyles}>
@@ -94,7 +105,21 @@ export function CodeBlock(handle: Handle<CodeBlockProps>) {
           tabIndex={0}
           mix={[preStyles, focusStyles]}
         >
-          <code>{source}</code>
+          <code>
+            {prepared
+              ? prepared.map((token) => (
+                  <span
+                    style={
+                      token.color && /^#[0-9a-f]{6}$/i.test(token.color)
+                        ? { color: token.color }
+                        : undefined
+                    }
+                  >
+                    {token.text}
+                  </span>
+                ))
+              : source}
+          </code>
         </pre>
       </figure>
     );

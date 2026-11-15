@@ -27,7 +27,7 @@ it("keeps Artbin reference geometry and visible focus scoped at desktop and mobi
         ];
       }),
       [
-        '"Times New Roman", Georgia, serif',
+        "Fraunces, Georgia, serif",
         "14px",
         "rgb(17, 17, 17)",
         "rgb(255, 255, 255)",
@@ -66,7 +66,7 @@ it("keeps Artbin reference geometry and visible focus scoped at desktop and mobi
       .locator('[data-comparison="clean"] button')
       .first()
       .evaluate((node) =>
-        getComputedStyle(node).fontFamily.includes("Times New Roman"),
+        getComputedStyle(node).fontFamily.includes("Fraunces"),
       ),
     false,
   );

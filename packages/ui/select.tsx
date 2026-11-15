@@ -167,6 +167,9 @@ const listStyles = css({
   },
 });
 const optionStyles = css({
+  boxSizing: "border-box",
+  fontSize: "var(--hui-control-text-size)",
+  lineHeight: "1.4",
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
