@@ -7,6 +7,7 @@ import { createSupportRoutes } from "./support-routes.mjs";
 import { createNativeAccess } from "./native-access.mjs";
 import { createAccessStore } from "./access-store.mjs";
 import { createAccessRoutes } from "./access-routes.mjs";
+import { createMediaInventory } from "./media-inventory.mjs";
 import { createAccountRoutes } from "./account-routes.mjs";
 import { createOAuthBrowserRoutes } from "./oauth-browser-routes.mjs";
 import { createEmailRoutes } from "./email-routes.mjs";
@@ -42,6 +43,7 @@ const { renderGroups, renderGroupForm } = await import("./group-pages.tsx");
 const { renderAccessForm, renderChangePreview } =
   await import("./access-pages.tsx");
 const { renderPerson } = await import("./person-page.tsx");
+const { renderMedia, renderMediaReview } = await import("./media-pages.tsx");
 import { createEmailActions } from "./email.mjs";
 import { applicationForClient, searchAll } from "./applications.mjs";
 import { createAccountActions } from "./accounts.mjs";
@@ -92,6 +94,11 @@ const integrations = JSON.parse(
   ),
 );
 const nativeAccess = createNativeAccess(api, organizationId);
+const mediaInventory = createMediaInventory(
+  process.env.AUTH_MEDIA_INSTANCES_FILE
+    ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_INSTANCES_FILE, "utf8"))
+    : [],
+);
 const accessFilename =
   process.env.ACCESS_DB_FILE ||
   (process.env.RADIO_ENROLLMENT_DB_FILE
@@ -119,6 +126,10 @@ const accessRoutes = createAccessRoutes({
   access: accessStore,
   native: nativeAccess,
   organizationId,
+  issuer: origin,
+  mediaInventory,
+  renderMedia,
+  renderMediaReview,
   accountActions,
   endUserSessions,
   rateLimit,

@@ -53,9 +53,14 @@ function ServiceListPage(
               A catalogue of products, not a list of OAuth client IDs.
             </p>
           </div>
-          <a class="button" href="/manage/integrations">
-            Technical integrations
-          </a>
+          <div class="actions">
+            <a class="button" href="/manage/media">
+              Media identities
+            </a>
+            <a class="button" href="/manage/integrations">
+              Technical integrations
+            </a>
+          </div>
         </div>
         <div class="table-frame">
           <table>

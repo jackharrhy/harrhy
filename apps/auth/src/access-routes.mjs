@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { directoryFor } from "./directory.mjs";
 import { searchAll } from "./applications.mjs";
+import { mediaDiscrepancies } from "./media-identities.mjs";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
@@ -12,6 +13,10 @@ export function createAccessRoutes({
   access,
   native,
   organizationId,
+  issuer,
+  mediaInventory,
+  renderMedia,
+  renderMediaReview,
   accountActions,
   endUserSessions,
   rateLimit,
@@ -140,6 +145,105 @@ export function createAccessRoutes({
         }
       }
       return true;
+    }
+    if (
+      url.pathname === "/manage/media" ||
+      url.pathname.startsWith("/manage/media/")
+    ) {
+      const identities = async () =>
+        (await people()).map((user) => ({
+          issuer,
+          subject: user.id,
+          name: user.human?.profile?.displayName || user.userName || user.id,
+          active: user.state === "USER_STATE_ACTIVE",
+        }));
+      const instances = mediaInventory.instances();
+      if (request.method === "GET" && url.pathname === "/manage/media") {
+        await sendRemix((nonce) =>
+          renderMedia(
+            instances,
+            undefined,
+            undefined,
+            [],
+            context,
+            nonce,
+            access.media.reviews(),
+          ),
+        );
+        return true;
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/confirm"
+      ) {
+        if (form.get("confirmed") !== "true")
+          throw fail(400, "Confirm the exact identity correspondence.");
+        const review = access.media.review(form.get("operation"));
+        if (!review || review.actor !== session.userId)
+          throw fail(404, "Mapping review not found.");
+        const { service, instance } = review.body.mapping;
+        const result = access.media.confirm({
+          id: review.id,
+          actor: session.userId,
+          inventory: await mediaInventory.read(service, instance),
+          people: await identities(),
+        });
+        await sendRemix((nonce) => renderMediaReview(result, context, nonce));
+        return true;
+      }
+      const audit = url.pathname.match(
+        /^\/manage\/media\/reviews\/([A-Za-z0-9-]{1,200})$/,
+      );
+      if (request.method === "GET" && audit) {
+        const review = access.media.review(audit[1]);
+        if (!review) throw fail(404, "Mapping review not found.");
+        await sendRemix((nonce) => renderMediaReview(review, context, nonce));
+        return true;
+      }
+      const target = url.pathname.match(
+        /^\/manage\/media\/([a-z-]+)\/([A-Za-z0-9-]{1,100})(\/preview)?$/,
+      );
+      const selected =
+        target &&
+        instances.find(
+          (item) => item.service === target[1] && item.instance === target[2],
+        );
+      if (!selected) throw fail(404, "Media instance not found.");
+      const inventory = await mediaInventory.read(
+        selected.service,
+        selected.instance,
+      );
+      const current = await identities();
+      if (request.method === "GET" && !target[3]) {
+        const result = mediaDiscrepancies({
+          snapshot: inventory,
+          mappings: access.media.mappings(),
+          people: current,
+        });
+        await sendRemix((nonce) =>
+          renderMedia(instances, selected, result, current, context, nonce),
+        );
+        return true;
+      }
+      if (request.method === "POST" && target[3] === "/preview") {
+        rateLimit(`media-link:${session.userId}`);
+        const review = access.media.preview({
+          actor: session.userId,
+          reason: form.get("reason"),
+          mapping: {
+            service: selected.service,
+            instance: selected.instance,
+            issuer,
+            subject: form.get("subject"),
+            nativeId: form.get("nativeId"),
+          },
+          inventory,
+          people: current,
+        });
+        await sendRemix((nonce) => renderMediaReview(review, context, nonce));
+        return true;
+      }
+      throw fail(404, "Media action not found.");
     }
     access.observeUnmanaged(await native.list());
     const model = access.read();

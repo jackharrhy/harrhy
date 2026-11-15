@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
-import { mkdtemp, writeFile, rm, mkdir } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { spawn } from "node:child_process";
 import { once } from "node:events";
@@ -83,6 +83,41 @@ store.close();
 await writeFile(`${directory}/key.json`, '{"token":"synthetic-only"}', {
   mode: 0o600,
 });
+const nativeSnapshot = {
+  service: "jellyfin",
+  instance: "synthetic-server",
+  state: "available",
+  observedAt: new Date().toISOString(),
+  accounts: [
+    {
+      nativeId: "synthetic-native-a",
+      name: "Morgan Native",
+      disabled: false,
+      administrator: false,
+    },
+    {
+      nativeId: "synthetic-native-b",
+      name: "Taylor Native",
+      disabled: false,
+      administrator: false,
+    },
+  ],
+};
+await writeFile(
+  `${directory}/media-snapshot.json`,
+  JSON.stringify(nativeSnapshot),
+);
+await writeFile(
+  `${directory}/media-instances.json`,
+  JSON.stringify([
+    {
+      service: "jellyfin",
+      instance: "synthetic-server",
+      name: "Synthetic Jellyfin",
+      snapshotFile: `${directory}/media-snapshot.json`,
+    },
+  ]),
+);
 const provider = createServer(async (request, response) => {
   let body = "";
   for await (const chunk of request) body += chunk;
@@ -211,6 +246,7 @@ const server = spawn(process.execPath, ["src/server.mjs"], {
     LOGIN_TOKEN_FILE: `${directory}/key.json`,
     MANAGEMENT_TOKEN_FILE: `${directory}/key.json`,
     ACCESS_DB_FILE: `${directory}/access.sqlite`,
+    AUTH_MEDIA_INSTANCES_FILE: `${directory}/media-instances.json`,
     ORGANIZATION_ID: "org",
     LORE_PROJECT_ID: "unused",
     LORE_CLIENT_ID: "unused",
@@ -299,6 +335,113 @@ try {
     .getByRole("link", { name: "Services", exact: true })
     .last()
     .click();
+  await page
+    .getByRole("link", { name: "Media identities", exact: true })
+    .click();
+  await page
+    .getByRole("link", { name: "Synthetic Jellyfin", exact: true })
+    .click();
+  assert.equal(
+    await page.getByText("Native only · needs review", { exact: true }).count(),
+    2,
+  );
+  await capture(page, "media-desktop");
+  for (const width of [768, 390]) {
+    await page.setViewportSize({ width, height: 900 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await capture(page, `media-${width}`);
+  }
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  const mediaForm = page
+    .locator("section")
+    .filter({
+      has: page.getByRole("heading", { name: "Morgan Native", exact: true }),
+    })
+    .locator("form");
+  await mediaForm.getByLabel("Existing Auth identity").selectOption("member");
+  await mediaForm
+    .getByLabel("Reason")
+    .fill(
+      "Verified synthetic exact IDs; preserve the other native-only account.",
+    );
+  await mediaForm
+    .getByRole("button", { name: "Review identity link", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Review identity link", exact: true })
+    .waitFor();
+  await capture(page, "media-review");
+  const mediaCsrf = await page.locator("input[name=csrf]").first().inputValue();
+  const mediaOperation = await page
+    .locator("input[name=operation]")
+    .inputValue();
+  const forgedMedia = await context.request.post(
+    origin + "/manage/media/confirm",
+    {
+      headers: { origin: "https://wrong.example" },
+      form: { csrf: mediaCsrf, operation: mediaOperation, confirmed: "true" },
+    },
+  );
+  assert.equal(forgedMedia.status(), 403);
+  await page.getByRole("checkbox").check();
+  await page
+    .getByRole("button", { name: "Record reviewed identity link", exact: true })
+    .click();
+  await page
+    .getByRole("heading", { name: "Identity link recorded", exact: true })
+    .waitFor();
+  await page
+    .getByRole("link", { name: "Return to native inventory", exact: true })
+    .click();
+  assert.equal(
+    await page.getByText("Native only · needs review", { exact: true }).count(),
+    1,
+  );
+  assert.equal(
+    await page
+      .getByText("Linked identity · access is separate", { exact: true })
+      .count(),
+    1,
+  );
+  assert.equal(writes, 0);
+  assert.deepEqual(
+    JSON.parse(await readFile(`${directory}/media-snapshot.json`, "utf8")),
+    nativeSnapshot,
+  );
+  await writeFile(
+    `${directory}/media-snapshot.json`,
+    JSON.stringify({ ...nativeSnapshot, observedAt: "2000-01-01T00:00:00Z" }),
+  );
+  await page.reload();
+  await page
+    .getByRole("status")
+    .filter({ hasText: "Inventory is stale" })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Review identity link", exact: true })
+      .count(),
+    0,
+  );
+  await writeFile(
+    `${directory}/media-snapshot.json`,
+    JSON.stringify(nativeSnapshot),
+  );
+  await page.goto(origin + "/manage/media");
+  await page
+    .getByRole("link", {
+      name: "Verified synthetic exact IDs; preserve the other native-only account.",
+      exact: true,
+    })
+    .click();
+  await page
+    .getByRole("heading", { name: "Identity link recorded", exact: true })
+    .waitFor();
+  await page.goto(origin + "/manage/services");
   await page.getByRole("link", { name: "Technical integrations" }).click();
   await page.getByRole("heading", { name: "Technical integrations" }).waitFor();
   await page.getByRole("link", { name: "People", exact: true }).first().click();
@@ -353,7 +496,10 @@ try {
   assert.equal(await page.locator("form").count(), 0);
   const readonly = await context.request.post(
     origin + "/manage/people/member/preview",
-    { headers: { origin }, form: { csrf: previewCsrf } },
+    {
+      headers: { origin },
+      form: { csrf: previewCsrf },
+    },
   );
   assert.equal(readonly.status(), 403);
   assert.equal(writes, beforePreviewWrites);
@@ -434,6 +580,14 @@ try {
   assert.equal(
     await memberPage.getByRole("link", { name: "People", exact: true }).count(),
     0,
+  );
+  assert.equal(
+    (
+      await memberContext.request.get(
+        origin + "/manage/media/jellyfin/synthetic-server",
+      )
+    ).status(),
+    403,
   );
   const denied = await memberContext.request.get(origin + "/manage/people");
   assert.equal(denied.status(), 403);

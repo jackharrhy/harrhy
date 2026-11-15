@@ -1,6 +1,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { chmodSync } from "node:fs";
 import { randomUUID } from "node:crypto";
+import { createMediaIdentityLedger } from "./media-identities.mjs";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const active = (value) => value?.state === "USER_GRANT_STATE_ACTIVE";
@@ -28,6 +29,7 @@ export function createAccessStore({
   db.prepare(
     "UPDATE operations SET state='unknown' WHERE state='applying'",
   ).run();
+  const media = createMediaIdentityLedger(db);
   const nativeDomains = services
     .filter((service) => service.eligibility)
     .map((service) => ({
@@ -351,6 +353,7 @@ export function createAccessStore({
   }
   return {
     close: () => db.close(),
+    media,
     initialized: () => Boolean(readModel()),
     read: () => {
       assertReady();
