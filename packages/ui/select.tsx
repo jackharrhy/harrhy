@@ -179,7 +179,7 @@ const surfaceStyles = css({
   border: "var(--hui-border-width) solid var(--hui-control-border)",
   borderRadius: "var(--hui-popup-radius)",
   boxShadow: "var(--hui-overlay-shadow)",
-  fontFamily: "var(--hui-font-control)",
+  fontFamily: "var(--hui-font-ui)",
 });
 const listStyles = css({
   display: "grid",

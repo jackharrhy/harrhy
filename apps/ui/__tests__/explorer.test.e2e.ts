@@ -54,7 +54,7 @@ it("explores actual props, matching source, and global themes", async (t) => {
   });
   assert.equal(
     await button.evaluate((node) => getComputedStyle(node).fontFamily),
-    "Fraunces, Georgia, serif",
+    '"IBM Plex Sans", Arial, sans-serif',
   );
   assert.equal(
     await page
@@ -267,7 +267,9 @@ it("separates selected, highlighted and disabled options and keeps global theme 
     await page
       .locator("header")
       .first()
-      .evaluate((n) => getComputedStyle(n).fontFamily.includes("Fraunces")),
+      .evaluate((n) =>
+        getComputedStyle(n).fontFamily.includes("IBM Plex Sans"),
+      ),
     true,
   );
   await page.getByRole("button", { name: "Theme", exact: true }).click();

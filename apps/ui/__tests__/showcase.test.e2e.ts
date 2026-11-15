@@ -27,7 +27,7 @@ it("keeps Artbin reference geometry and visible focus scoped at desktop and mobi
         ];
       }),
       [
-        "Fraunces, Georgia, serif",
+        '"IBM Plex Sans", Arial, sans-serif',
         "14px",
         "rgb(17, 17, 17)",
         "rgb(255, 255, 255)",

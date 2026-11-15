@@ -29,9 +29,9 @@ export const buttonStyles = css({
   padding: "var(--hui-button-padding)",
   border: "var(--hui-border-width) solid var(--hui-button-border)",
   borderRadius: "var(--hui-control-radius)",
-  fontFamily: "var(--hui-font-control)",
-  fontVariationSettings: "var(--hui-font-variation)",
-  fontOpticalSizing: "var(--hui-font-optical-sizing)",
+  fontFamily: "var(--hui-font-ui)",
+  fontVariationSettings: "normal",
+  fontOpticalSizing: "auto",
   fontSize: "var(--hui-button-text-size)",
   fontWeight: "var(--hui-button-weight)",
   lineHeight: "1.25",
@@ -85,7 +85,7 @@ export const controlStyles = css({
   background: "var(--hui-surface)",
   color: "var(--hui-ink)",
   font: "inherit",
-  fontFamily: "var(--hui-font-control)",
+  fontFamily: "var(--hui-font-ui)",
   fontSize: "var(--hui-control-text-size)",
   lineHeight: "1.4",
   boxShadow: "var(--hui-control-shadow)",
@@ -112,6 +112,7 @@ export const fieldStyles = css({
   minWidth: "0",
 });
 export const labelStyles = css({
+  fontFamily: "var(--hui-font-detail)",
   fontSize: "var(--hui-label-size)",
   fontWeight: "var(--hui-label-weight)",
   textTransform: "var(--hui-label-transform)",
@@ -163,6 +164,7 @@ export const noticeStyles = css({
   },
 });
 export const badgeStyles = css({
+  fontFamily: "var(--hui-font-detail)",
   display: "inline-block",
   flex: "none",
   whiteSpace: "nowrap",

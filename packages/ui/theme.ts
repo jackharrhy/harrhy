@@ -36,11 +36,12 @@ export interface ThemeTokens {
   dangerSurface: string;
   success: string;
   successSurface: string;
-  fontBody: string;
-  fontControl: string;
-  fontCode: string;
-  fontVariation: string;
-  fontOpticalSizing: string;
+  fontDisplay: string;
+  fontUi: string;
+  fontDetail: string;
+  fontMono: string;
+  fontDisplayVariation: string;
+  fontDisplayOpticalSizing: string;
   textSize: string;
   lineHeight: string;
   space: string;
@@ -94,11 +95,12 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   dangerSurface: "#fff0f1",
   success: "#17613c",
   successSurface: "#eaf6ee",
-  fontBody: "system-ui, sans-serif",
-  fontControl: "inherit",
-  fontCode: "ui-monospace, monospace",
-  fontVariation: "normal",
-  fontOpticalSizing: "auto",
+  fontDisplay: "var(--hui-font-ui)",
+  fontUi: "system-ui, sans-serif",
+  fontDetail: "var(--hui-font-ui)",
+  fontMono: "ui-monospace, monospace",
+  fontDisplayVariation: "normal",
+  fontDisplayOpticalSizing: "auto",
   textSize: "1rem",
   lineHeight: "1.5",
   space: "0.75rem",
@@ -180,10 +182,12 @@ export const brutalistTheme = composeTheme(cleanTheme, {
   dangerSurface: "#fff0f0",
   success: "#008700",
   successSurface: "#f0fff0",
-  fontBody: '"Fraunces", Georgia, serif',
-  fontCode: '"Courier New", Courier, monospace',
-  fontVariation: '"opsz" 14, "SOFT" 0, "WONK" 0',
-  fontOpticalSizing: "none",
+  fontDisplay: '"Fraunces", Georgia, serif',
+  fontUi: '"IBM Plex Sans", Arial, sans-serif',
+  fontMono: '"IBM Plex Mono", "Courier New", monospace',
+  fontDetail: "var(--hui-font-mono)",
+  fontDisplayVariation: '"SOFT" 30, "WONK" 1',
+  fontDisplayOpticalSizing: "auto",
   lineHeight: "1.45",
   space: "0.625rem",
   controlHeight: "2.125rem",
@@ -217,13 +221,22 @@ export function themeStyles(theme: Readonly<ThemeTokens>) {
   );
 }
 
+const displayTypography = {
+  fontFamily: "var(--hui-font-display)",
+  fontVariationSettings: "var(--hui-font-display-variation)",
+  fontOpticalSizing: "var(--hui-font-display-optical-sizing)",
+};
+/** Short expressive headings/callouts, never a long-reading body default. */
+export const displayStyles = css(displayTypography);
+
 export const themeRoot = css({
   color: "var(--hui-ink)",
   backgroundColor: "var(--hui-canvas)",
-  fontFamily: "var(--hui-font-body)",
+  fontFamily: "var(--hui-font-ui)",
   fontSize: "var(--hui-text-size)",
-  fontOpticalSizing: "var(--hui-font-optical-sizing)",
-  fontVariationSettings: "var(--hui-font-variation)",
+  fontOpticalSizing: "auto",
+  fontVariationSettings: "normal",
+  "& h1, & h2, & h3": displayTypography,
   lineHeight: "var(--hui-line-height)",
   accentColor: "var(--hui-accent)",
   caretColor: "var(--hui-ink)",

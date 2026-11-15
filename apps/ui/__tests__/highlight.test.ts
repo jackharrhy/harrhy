@@ -26,7 +26,7 @@ it("server renders real syntax tokens and serves only local Fraunces assets", as
   );
   const html = await response.text();
   assert.match(html, /<span style="color:/);
-  assert.match(html, /fraunces-variable\.woff2/);
+  assert.match(html, /ibm-plex-sans-latin\.woff2/);
   assert.ok(!html.includes("fonts.googleapis.com"));
   const font = await app.fetch(
     new Request("http://localhost/assets/ui/fonts/fraunces-variable.woff2"),

@@ -115,7 +115,7 @@ const chrome = css({
   color: "var(--hui-ink)",
   background: "var(--hui-canvas)",
   minHeight: "100vh",
-  fontFamily: "var(--hui-font-body)",
+  fontFamily: "var(--hui-font-ui)",
   fontSize: "14px",
   lineHeight: "1.5",
   "& *": { boxSizing: "border-box" },
@@ -140,7 +140,7 @@ const chrome = css({
   "& h2": { fontSize: "14px", margin: 0, fontWeight: 600 },
   "& p": { margin: 0 },
   "& code, & pre": {
-    fontFamily: "ui-monospace, SFMono-Regular, Consolas, monospace",
+    fontFamily: "var(--hui-font-mono)",
   },
 });
 const workspace = css({
@@ -821,7 +821,7 @@ function Story(
                     value={codeSource}
                     mix={[
                       css({
-                        "--hui-font-control": "var(--hui-font-code)",
+                        "--hui-font-ui": "var(--hui-font-mono)",
                         "--hui-control-text-size": "0.875rem",
                       }),
                       on("input", (event) => {

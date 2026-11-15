@@ -110,7 +110,7 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   );
   assert.match(html, /--hui-control-height: 3rem/);
   assert.match(html, /--hui-button-image:/);
-  assert.match(html, /--hui-font-body:/);
+  assert.match(html, /--hui-font-ui:/);
 });
 
 function luminance(hex) {

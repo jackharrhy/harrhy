@@ -27,7 +27,7 @@ test("CodeBlock is escaped, complete native SSR with named keyboard scrolling", 
   assert.doesNotMatch(html, /<script|rmx:h:|language-tsx/);
   assert.match(html, /overflow:\s*auto/);
   assert.match(html, /max-height:\s*28rem/);
-  assert.match(html, /--hui-font-code/);
+  assert.match(html, /--hui-font-mono/);
 });
 
 test("CodeDiff keeps change semantics and caller-owned line numbers without color", async () => {

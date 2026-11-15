@@ -44,8 +44,8 @@ export const radioControlsTheme = themeStyles(
     buttonWeight: "400",
     buttonShadow: "0 1px #fff inset",
     buttonImage: "linear-gradient(#fff, #d9e1e4)",
-    fontBody: DESKTOP_FONT_FAMILY,
-    fontControl: DESKTOP_FONT_FAMILY,
+    fontDisplay: DESKTOP_FONT_FAMILY,
+    fontUi: DESKTOP_FONT_FAMILY,
     buttonTextSize: "14px",
   }),
 );

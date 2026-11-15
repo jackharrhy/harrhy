@@ -35,13 +35,15 @@ export function createApp(hosts: readonly string[] = defaultHosts) {
           <meta name="robots" content="noindex, nofollow" />
           <title>@harrhy/ui workbench</title>
           <link rel="stylesheet" href="/assets/ui/fonts.css" />
-          <link
-            rel="preload"
-            href="/assets/ui/fonts/fraunces-variable.woff2"
-            as="font"
-            type="font/woff2"
-            crossOrigin="anonymous"
-          />
+          {theme === "brutalist" && (
+            <link
+              rel="preload"
+              href="/assets/ui/fonts/ibm-plex-sans-latin.woff2"
+              as="font"
+              type="font/woff2"
+              crossOrigin="anonymous"
+            />
+          )}
           {url.searchParams.get("scene") === "radio" && (
             <link rel="stylesheet" href="/assets/ui/radio/fonts.css" />
           )}

@@ -14,7 +14,7 @@ import {
   Textarea,
 } from "@harrhy/ui/native";
 import { WorkbenchHeader } from "./workbench.tsx";
-import { themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { displayStyles, themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { themes } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
 import { RadioScene } from "./radio/scene.tsx";
@@ -129,7 +129,9 @@ export const Scenes = clientEntry(
                       <p mix={muted}>Auth composition · synthetic account</p>
                     </div>
                     <div>
-                      <strong>Ref wants to access your profile</strong>
+                      <strong mix={displayStyles}>
+                        Ref wants to access your profile
+                      </strong>
                       <p>
                         Share your display name with this app. Your email stays
                         private.

@@ -38,9 +38,13 @@ const captionStyles = css({
   justifyContent: "space-between",
   gap: "var(--hui-space)",
   marginBottom: "0.5em",
-  fontFamily: "var(--hui-font-body)",
+  fontFamily: "var(--hui-font-ui)",
 });
-const metadataStyles = css({ color: "var(--hui-muted)", fontSize: "0.85em" });
+const metadataStyles = css({
+  color: "var(--hui-muted)",
+  fontSize: "0.85em",
+  fontFamily: "var(--hui-font-detail)",
+});
 const preStyles = css({
   boxSizing: "border-box",
   margin: 0,
@@ -52,7 +56,7 @@ const preStyles = css({
   borderRadius: "var(--hui-panel-radius)",
   backgroundColor: "var(--hui-surface)",
   color: "var(--hui-ink)",
-  fontFamily: "var(--hui-font-code)",
+  fontFamily: "var(--hui-font-mono)",
   fontSize: "0.875em",
   lineHeight: 1.6,
   tabSize: 2,
