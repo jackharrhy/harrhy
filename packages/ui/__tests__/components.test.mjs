@@ -7,7 +7,7 @@ const { Button, ButtonLink, Field, Input, Select, Textarea } =
   await import("../components.tsx");
 const { Dialog, Tabs, TabList, Tab, TabPanel } =
   await import("../interactive.ts");
-const { composeTheme, cleanTheme, tactileTheme, themeStyles } =
+const { composeTheme, cleanTheme, tactileTheme, brutalistTheme, themeStyles } =
   await import("../theme.ts");
 
 test("native actions keep native form and navigation contracts without a client boundary", async () => {
@@ -111,6 +111,29 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   assert.match(html, /--hui-control-height: 3rem/);
   assert.match(html, /--hui-button-image:/);
   assert.match(html, /--hui-font-body:/);
+});
+
+test("Artbin feedback ink preserves readable contrast on its source surfaces", () => {
+  function luminance(hex) {
+    const [r, g, b] = hex
+      .slice(1)
+      .match(/../g)
+      .map((part) => {
+        const value = Number.parseInt(part, 16) / 255;
+        return value <= 0.04045
+          ? value / 12.92
+          : ((value + 0.055) / 1.055) ** 2.4;
+      });
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  }
+  for (const [ink, surface] of [
+    [brutalistTheme.ink, brutalistTheme.surface],
+    [brutalistTheme.muted, brutalistTheme.canvas],
+    [brutalistTheme.success, brutalistTheme.successSurface],
+    [brutalistTheme.danger, brutalistTheme.dangerSurface],
+  ]) {
+    assert.ok((luminance(surface) + 0.05) / (luminance(ink) + 0.05) >= 4.5);
+  }
 });
 
 test("Dialog SSR stays closed with labelled content and no browser access", async () => {

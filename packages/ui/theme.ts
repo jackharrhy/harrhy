@@ -9,6 +9,17 @@ export interface ThemeTokens {
   muted: string;
   border: string;
   controlBorder: string;
+  buttonBorder: string;
+  buttonPrimaryBorder: string;
+  buttonHeight: string;
+  buttonPadding: string;
+  buttonTextSize: string;
+  controlTextSize: string;
+  labelSize: string;
+  labelWeight: string;
+  labelTransform: string;
+  labelTracking: string;
+  fieldGap: string;
   accent: string;
   onAccent: string;
   focus: string;
@@ -46,6 +57,17 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   muted: "#536169",
   border: "#d8dfe2",
   controlBorder: "#87959d",
+  buttonBorder: "var(--hui-control-border)",
+  buttonPrimaryBorder: "var(--hui-button-border)",
+  buttonHeight: "var(--hui-control-height)",
+  buttonPadding: "var(--hui-control-padding)",
+  buttonTextSize: "inherit",
+  controlTextSize: "inherit",
+  labelSize: "inherit",
+  labelWeight: "600",
+  labelTransform: "none",
+  labelTracking: "normal",
+  fieldGap: "0.5rem",
   accent: "#243f4d",
   onAccent: "#ffffff",
   focus: "#006c9c",
@@ -106,22 +128,46 @@ export const tactileTheme = composeTheme(cleanTheme, {
   controlShadow: "inset 0 1px 2px rgb(0 45 58 / 0.15)",
 });
 
+/** Artbin app/ui/styles.ts: flat archive-catalog surfaces, not neobrutalism. */
 export const brutalistTheme = composeTheme(cleanTheme, {
-  canvas: "#eeeeec",
+  canvas: "#f0f0f0",
   surface: "#ffffff",
   elevated: "#ffffff",
-  ink: "#161616",
-  muted: "#50504d",
-  border: "#161616",
-  controlBorder: "#161616",
-  accent: "#d8ff3e",
-  onAccent: "#161616",
-  focus: "#0756bd",
+  ink: "#111111",
+  muted: "#666666",
+  border: "#cccccc",
+  controlBorder: "#cccccc",
+  buttonBorder: "#222222",
+  buttonPrimaryBorder: "#111111",
+  accent: "#111111",
+  onAccent: "#ffffff",
+  focus: "#222222",
+  danger: "#cc0000",
+  dangerSurface: "#fff0f0",
+  success: "#008700",
+  successSurface: "#f0fff0",
+  fontBody: '"Times New Roman", Georgia, serif',
+  fontCode: '"Courier New", Courier, monospace',
+  lineHeight: "normal",
+  space: "0.5rem",
+  controlHeight: "2rem",
+  controlPadding: "0.5rem",
+  controlTextSize: "0.875rem",
+  buttonHeight: "1.875rem",
+  buttonPadding: "0.375rem 0.75rem",
+  buttonTextSize: "0.875rem",
+  labelSize: "0.75rem",
+  labelWeight: "500",
+  labelTransform: "uppercase",
+  labelTracking: "0.025em",
+  fieldGap: "0.25rem",
   controlRadius: "0",
   panelRadius: "0",
-  borderWidth: "2px",
-  buttonWeight: "750",
-  buttonShadow: "3px 3px 0 #161616",
+  panelPadding: "1rem",
+  borderWidth: "1px",
+  buttonWeight: "400",
+  buttonShadow: "none",
+  overlayShadow: "none",
 });
 
 export function themeStyles(theme: Readonly<ThemeTokens>) {

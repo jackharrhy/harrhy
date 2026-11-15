@@ -25,12 +25,12 @@ export const buttonStyles = css({
   alignItems: "center",
   justifyContent: "center",
   gap: "0.5rem",
-  minHeight: "var(--hui-control-height)",
-  padding: "var(--hui-control-padding)",
-  border: "var(--hui-border-width) solid var(--hui-control-border)",
+  minHeight: "var(--hui-button-height)",
+  padding: "var(--hui-button-padding)",
+  border: "var(--hui-border-width) solid var(--hui-button-border)",
   borderRadius: "var(--hui-control-radius)",
   fontFamily: "var(--hui-font-control)",
-  fontSize: "inherit",
+  fontSize: "var(--hui-button-text-size)",
   fontWeight: "var(--hui-button-weight)",
   lineHeight: "1.25",
   backgroundColor: "var(--hui-surface)",
@@ -42,6 +42,7 @@ export const buttonStyles = css({
   textAlign: "center",
   transition: "filter var(--hui-motion)",
   '&[data-variant="primary"]': {
+    borderColor: "var(--hui-button-primary-border)",
     backgroundColor: "var(--hui-accent)",
     color: "var(--hui-on-accent)",
   },
@@ -80,6 +81,8 @@ export const controlStyles = css({
   background: "var(--hui-surface)",
   color: "var(--hui-ink)",
   font: "inherit",
+  fontFamily: "var(--hui-font-control)",
+  fontSize: "var(--hui-control-text-size)",
   boxShadow: "var(--hui-control-shadow)",
   "&::placeholder": { color: "var(--hui-muted)", opacity: 1 },
   '&[aria-invalid="true"]': { borderColor: "var(--hui-danger)" },
@@ -94,10 +97,15 @@ export const checkStyles = css({
 });
 export const fieldStyles = css({
   display: "grid",
-  gap: "0.5rem",
+  gap: "var(--hui-field-gap)",
   minWidth: "0",
 });
-export const labelStyles = css({ fontWeight: "600" });
+export const labelStyles = css({
+  fontSize: "var(--hui-label-size)",
+  fontWeight: "var(--hui-label-weight)",
+  textTransform: "var(--hui-label-transform)",
+  letterSpacing: "var(--hui-label-tracking)",
+});
 export const descriptionStyles = css({
   margin: 0,
   fontSize: "0.875rem",
