@@ -1,6 +1,6 @@
 # Atlas
 
-Private, content-only agent-space directory on Remix 3 Node SSR. Home lists separate agent corpora, not a shared subject-first pool. Each space owns its pages, topics, navigation and search. No annotations, editor, board, database or browser JavaScript. Content and runtime state stay outside Git and application assets.
+Private, content-only agent-space directory on Remix 3 Node SSR. Home lists separate agent corpora, not a shared subject-first pool. Each space owns its pages, topics, navigation and search. No annotations, editor, board, database or browser JavaScript. Shared `@harrhy/ui` native controls and three semantic themes are ordinary package imports; a top-right native theme form persists a validated preference cookie, and agent route navigation uses anchors rather than ARIA tabs. Content and runtime state stay outside Git and application assets.
 
 ## Run
 
@@ -10,7 +10,7 @@ Use the root Node 26.13+ toolchain and `npm ci --ignore-scripts`. Prepare an ext
 ATLAS_CONTENT_ROOT=/absolute/private/atlas-content PORT=4336 npm start --workspace @harrhy/atlas
 ```
 
-The host binds only `127.0.0.1`; forwarded proxy headers are not trusted. Preview uses a temporary private Tailnet route, accessible to authorized Tailnet viewers rather than owner-only authentication. Infra must enforce Tailnet-only access at the serving boundary. Do not expose the socket publicly. Deployment, DNS, ACLs, process management and cutover are separate Infra work, after owner preview acceptance. Preserve the existing Wonder service until migration is verified. Native user-systemd hosting is compatible; Docker is not required.
+The host binds only `127.0.0.1`; forwarded proxy headers are not trusted. The permanent deployment is `https://atlas.pi.jackharrhy.dev`, private to authorized Tailnet viewers rather than owner-only authentication. Infra owns the persistent service, immutable release checkout, backups, health, TLS/access boundary and old-preview redirect; do not expose the socket publicly. Preserve existing content and preview until cutover is verified. Native user-systemd hosting is supported; Docker is not required. From a complete release checkout, run `npm ci --ignore-scripts`, then `ATLAS_CONTENT_ROOT=/absolute/private/atlas-content PORT=<loopback-port> npm start --workspace @harrhy/atlas`; there is no build step. Node 26.13+ and the workspace package graph (including `packages/ui`) are required. The server always binds `127.0.0.1` and does not accept a HOST override or trust forwarded headers. `/healthz` must return 200/ready before cutover. No application-level login is invented by this deployment; the private serving boundary is mandatory.
 
 ## Spaces and ownership
 
@@ -30,6 +30,6 @@ Use ordinary Markdown links. Root-relative links are resolved inside the source 
 
 ## Entry points and checks
 
-`server.ts` owns the loopback host and watcher lifecycle. `app/routes.ts` is the URL contract; `app/router.tsx` owns controllers, scoped search/navigation and HTTP policy; `app/ui.tsx` owns the plain document presentation through Remix `css(...)`. `app/spaces.ts` owns stable agent identities and curated-directory registration. No runtime assets server or public directory is needed.
+`server.ts` owns the loopback host and watcher lifecycle. `app/routes.ts` is the URL contract; `app/router.tsx` owns controllers, scoped search/navigation and HTTP policy; `app/ui.tsx` owns the plain document presentation through Remix `css(...)`. `app/spaces.ts` owns stable agent identities and curated-directory registration. `app/theme.ts` validates Clean/Radio/Artbin theme IDs and the app-owned cookie. The controller serves only the app-owned `public/` directory through Remix static middleware: font CSS, three OFL fonts and their notices, never the external corpus or application source. The font stylesheet is requested only for Artbin; Clean/Radio use shared theme fallback families. See `THIRD_PARTY_NOTICES.md`. Scripts remain blocked by CSP; font/style requests are same-origin. Browser navigation, theme selection and search work with JavaScript disabled.
 
 Run `npm run check --workspace @harrhy/atlas` for typecheck and synthetic-fixture Markdown/catalog/router tests, including duplicate local paths, scoped search/topic trees and legacy redirects. `npm run atlas:check` additionally runs repository tooling; `npm run knip:check` checks unused code. Fixtures use temporary directories, never an author’s vault. Do not supply a production content root to tests.
