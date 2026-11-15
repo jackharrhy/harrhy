@@ -311,8 +311,8 @@ try {
   });
   const recipient = await recipientContext.newPage();
   const referrers = [];
-  recipient.on("request", (request) =>
-    referrers.push(request.headers().referer || ""),
+  recipient.on("request", (outgoing) =>
+    referrers.push(outgoing.headers().referer || ""),
   );
   await recipient.goto(link);
   await recipient.waitForURL(origin + "/invitation");
@@ -360,8 +360,8 @@ try {
   console.log(
     "PASS isolated ZITADEL HTTPS browser creation → native SMTP capture → recipient proof/password → normal sign-in; no service grants",
   );
-} catch (error) {
-  record.failure = `Failed at ${record.phase} (${error.name})`;
+} catch {
+  record.failure = `Failed at ${record.phase}`;
   save();
   throw new Error(record.failure);
 } finally {

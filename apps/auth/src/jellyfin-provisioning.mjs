@@ -84,7 +84,7 @@ export function createJellyfinProvisioning(config, dependencies = {}) {
           throw invalid();
         return { id: row.ItemId, name: row.Name };
       })
-      .sort((a, b) => a.id.localeCompare(b.id));
+      .toSorted((a, b) => a.id.localeCompare(b.id));
     if (new Set(rows.map((row) => row.id)).size !== rows.length)
       throw invalid();
     return rows;
@@ -105,7 +105,7 @@ export function createJellyfinProvisioning(config, dependencies = {}) {
         if (!row) throw invalid();
         return row;
       })
-      .sort((a, b) => a.id.localeCompare(b.id));
+      .toSorted((a, b) => a.id.localeCompare(b.id));
     const accounts = await request("Users");
     if (
       !Array.isArray(accounts) ||

@@ -15,6 +15,19 @@ const guid = (value) => {
 };
 const numericId = (value) => Number.isSafeInteger(value) && value > 0;
 
+function verify(user, review, nativeId) {
+  if (
+    !numericId(user?.id) ||
+    user.id === 1 ||
+    String(user.id) !== nativeId ||
+    guid(user.jellyfinUserId) !== guid(review.jellyfinNativeId) ||
+    user.jellyfinUsername !== review.username ||
+    user.permissions !== 160 ||
+    user.userType !== 3
+  )
+    throw invalid();
+}
+
 // Import one reviewed native ID only; never create a local/password account.
 export function createSeerrProvisioning(config, dependencies = {}) {
   const request = createSeerrApi(config, dependencies);
@@ -50,18 +63,6 @@ export function createSeerrProvisioning(config, dependencies = {}) {
       profile: "exact-jellyfin-import-v1",
       mapping: "separate-exact-id-review",
     };
-  }
-  function verify(user, review, nativeId) {
-    if (
-      !numericId(user?.id) ||
-      user.id === 1 ||
-      String(user.id) !== nativeId ||
-      guid(user.jellyfinUserId) !== guid(review.jellyfinNativeId) ||
-      user.jellyfinUsername !== review.username ||
-      user.permissions !== 160 ||
-      user.userType !== 3
-    )
-      throw invalid();
   }
   return {
     preview,

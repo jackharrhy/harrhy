@@ -7,11 +7,9 @@ import { normalizeJellyfinUsers } from "../src/jellyfin-inventory.mjs";
 
 let fixture;
 let phase = "start";
-let lastStatus;
 try {
   fixture = await createJellyfinNativeFixture();
-  const { baseUrl, api, session, token, password, libraries, adapter } =
-    fixture;
+  const { baseUrl, api, session, token, libraries, adapter } = fixture;
   phase = "review";
   const review = await adapter.preview({
     username: "synthetic-recipient",
@@ -63,7 +61,7 @@ try {
   );
 } catch {
   throw new Error(
-    `Isolated Jellyfin provisioning contract failed during ${phase} (last HTTP status ${lastStatus ?? "none"}); no provider response or credentials are logged.`,
+    `Isolated Jellyfin provisioning contract failed during ${phase}; no provider response or credentials are logged.`,
   );
 } finally {
   fixture?.close();

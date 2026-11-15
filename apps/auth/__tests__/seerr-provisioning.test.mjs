@@ -68,10 +68,10 @@ function fixture() {
     },
   };
 }
-const confirm = (fixture, review) =>
-  fixture.adapter.provision(review, {
-    claimEffect: async () => fixture.effects.push("claim"),
-    recordNativeId: async (id) => fixture.effects.push(`receipt:${id}`),
+const confirm = (subject, review) =>
+  subject.adapter.provision(review, {
+    claimEffect: async () => subject.effects.push("claim"),
+    recordNativeId: async (id) => subject.effects.push(`receipt:${id}`),
   });
 test("Seerr import selects one exact configured-server native ID with reviewed 160 and checkpoints returned ID", async () => {
   const f = fixture();

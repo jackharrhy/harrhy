@@ -4,17 +4,18 @@ import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createJellyfinProvisioning } from "../../src/jellyfin-provisioning.mjs";
 
+const docker = (...args) =>
+  execFileSync("docker", args, {
+    encoding: "utf8",
+    timeout: 30000,
+    maxBuffer: 1024 * 1024,
+    stdio: ["ignore", "pipe", "pipe"],
+  }).trim();
+
 export async function createJellyfinNativeFixture({ network } = {}) {
   const image =
     "jellyfin/jellyfin@sha256:fea863d0cd9ec445985d9c75fc6ed64e38a1d2766cf0c250a33d553f4fc1b771";
   const name = `harrhy-jellyfin-provision-test-${randomBytes(6).toString("hex")}`;
-  const docker = (...args) =>
-    execFileSync("docker", args, {
-      encoding: "utf8",
-      timeout: 30000,
-      maxBuffer: 1024 * 1024,
-      stdio: ["ignore", "pipe", "pipe"],
-    }).trim();
   let owned = false;
   let phase = "start";
   let lastStatus;
