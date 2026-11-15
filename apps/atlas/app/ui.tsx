@@ -4,6 +4,7 @@ import { Button, Notice } from "@harrhy/ui/native";
 import { themeRoot } from "@harrhy/ui/theme";
 import { controlStyles, focusStyles } from "@harrhy/ui/recipes";
 import { themes, themeMixins, type ThemeId } from "./theme.ts";
+import type { Widget } from "./widgets.ts";
 import { type Space, spacePath } from "./spaces.ts";
 
 const documentStyles = css({
@@ -296,8 +297,31 @@ export function topicTree(
     </ul>
   ) : null;
 }
-export function article(html: string) {
-  return <div innerHTML={unsafeHTML(html)} />;
+export function article(
+  html: string,
+  widgets: readonly Widget[] = [],
+  nonce?: string,
+) {
+  const enhanced = html.replace(
+    /<p>\[\[widget:([a-z][a-z0-9-]{0,63})\]\]<\/p>/g,
+    (marker, id: string) => {
+      const widget = widgets.find((candidate) => candidate.id === id);
+      if (!widget) return marker;
+      return `<section aria-label="Interactive content"><p id="atlas-widget-notice-${widget.id}" role="status">Interactive content requires JavaScript. The surrounding article remains readable.</p><div id="atlas-widget-${widget.id}"></div></section>`;
+    },
+  );
+  return (
+    <>
+      <div innerHTML={unsafeHTML(enhanced)} />
+      {widgets.map((widget) => (
+        <script
+          type="module"
+          nonce={nonce}
+          src={`/_atlas/widgets/${widget.digest}.js`}
+        />
+      ))}
+    </>
+  );
 }
 export function trail(owner?: { id: string; name: string }) {
   return (
