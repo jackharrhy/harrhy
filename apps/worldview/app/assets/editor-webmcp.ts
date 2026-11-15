@@ -1,10 +1,10 @@
+import { registerWebMcpTools } from "@harrhy/webmcp";
 import { editEditorWebMcpTools } from "./editor-webmcp-edit.ts";
 import { readEditorWebMcpTools } from "./editor-webmcp-read.ts";
 import { documentEditorWebMcpTools } from "./editor-webmcp-document.ts";
 import type {
   EditorActions,
   EditorState,
-  WebMcpModelContext,
   WebMcpTool,
 } from "./editor-webmcp-contract.ts";
 
@@ -25,27 +25,18 @@ export async function registerEditorWebMcpTools(
   actions: EditorActions,
 ): Promise<void> {
   const root = document.documentElement;
-  const modelContext = (
-    document as Document & { readonly modelContext?: WebMcpModelContext }
-  ).modelContext;
-  if (!modelContext?.registerTool) {
+  const tools = editorWebMcpTools(state, actions);
+  const registration = registerWebMcpTools(document, tools);
+  if (!registration.supported) {
     root.dataset.teaMapsSiteTools = "unsupported";
     return;
   }
-  const controller = new AbortController();
-  window.addEventListener("pagehide", () => controller.abort(), { once: true });
-  const tools = editorWebMcpTools(state, actions);
-  const registrations = await Promise.allSettled(
-    tools.map(async (entry) =>
-      modelContext.registerTool(entry, { signal: controller.signal }),
-    ),
-  );
-  root.dataset.teaMapsSiteToolCount = String(
-    registrations.filter((result) => result.status === "fulfilled").length,
-  );
-  root.dataset.teaMapsSiteTools = registrations.some(
-    (result) => result.status === "rejected",
-  )
-    ? "error"
-    : "ready";
+  try {
+    await registration.ready;
+    root.dataset.teaMapsSiteToolCount = String(tools.length);
+    root.dataset.teaMapsSiteTools = "ready";
+  } catch {
+    root.dataset.teaMapsSiteToolCount = "0";
+    root.dataset.teaMapsSiteTools = "error";
+  }
 }

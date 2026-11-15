@@ -82,7 +82,18 @@ try {
   await page.addInitScript(() => {
     const tools = new Map();
     Object.defineProperty(document, "modelContext", {
-      value: { registerTool: (tool) => tools.set(tool.name, tool) },
+      value: {
+        registerTool: async (tool, { signal }) => {
+          tools.set(tool.name, {
+            ...tool,
+            execute: (input) =>
+              tool.execute(input, { signal: new AbortController().signal }),
+          });
+          signal.addEventListener("abort", () => tools.delete(tool.name), {
+            once: true,
+          });
+        },
+      },
     });
     window.teaMapsTestTools = tools;
   });

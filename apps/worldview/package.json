@@ -28,7 +28,8 @@
     "@harrhy/worldview-renderer": "0.2.0",
     "fflate": "^0.8.3",
     "idb": "^8.0.4",
-    "remix": "3.2.0"
+    "remix": "3.2.0",
+    "@harrhy/webmcp": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
