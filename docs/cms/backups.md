@@ -8,7 +8,7 @@ all configured tenant databases and waits for an active run on graceful shutdown
 
 ## Configuration and storage
 
-Backups are disabled unless `TEA_BACKUP_DIR` is explicitly configured. The local
+Backups are disabled unless `HARRHY_CMS_BACKUP_DIR` is explicitly configured. The local
 Compose example mounts the distinct named `cms-backups` volume at `/app/backups`;
 production may use a clearly named persistent bind at the same container path.
 Keep it outside `/app/data`, static/public roots and the container writable layer.
@@ -19,10 +19,10 @@ of protection; operators must verify the actual persistent mount.
 <!-- prettier-ignore -->
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `TEA_BACKUP_DIR` | unset | Explicit separate persistent backup root; enables scheduler |
-| `TEA_BACKUP_INTERVAL_SECONDS` | 86400 | Minimum60; interval from latest verified snapshot start |
-| `TEA_BACKUP_KEEP` | 7 | Retain latest seven completed daily generations, not new hourly/monthly tiers |
-| `TEA_BACKUP_RESERVE_BYTES` | 268435456 | Minimum1MiB; free-space floor checked before database/file copies |
+| `HARRHY_CMS_BACKUP_DIR` | unset | Explicit separate persistent backup root; enables scheduler |
+| `HARRHY_CMS_BACKUP_INTERVAL_SECONDS` | 86400 | Minimum60; interval from latest verified snapshot start |
+| `HARRHY_CMS_BACKUP_KEEP` | 7 | Retain latest seven completed daily generations, not new hourly/monthly tiers |
+| `HARRHY_CMS_BACKUP_RESERVE_BYTES` | 268435456 | Minimum1MiB; free-space floor checked before database/file copies |
 | `APP_REVISION` | unknown locally | Publisher embeds source commit in image and each manifest |
 
 Initial/startup work is one coalesced due run, not one run per missed day. Subsequent

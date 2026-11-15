@@ -85,7 +85,10 @@ export function createOperatorRouter(
   sites: SiteRow[],
   backupStatus?: () => BackupStatus,
 ) {
-  const central = centralAuth(origin, process.env.TEA_AUTH_OPERATOR_CLIENT_ID);
+  const central = centralAuth(
+    origin,
+    process.env.HARRHY_AUTH_OPERATOR_CLIENT_ID,
+  );
   const transactionCookie = "tea-operator-oauth";
   const byId = new Map(sites.map(({ site }) => [site.id, site]));
   const router = createRouter({

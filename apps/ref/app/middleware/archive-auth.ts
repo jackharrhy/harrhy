@@ -18,6 +18,15 @@ export function authorizeArchive(
     !principal.scopes.has(roleScope("admin"))
   )
     throw new IdentityError("Archive requires an admin scope", 403);
+  if (
+    ["boards-read", "boards-write"].some((role) =>
+      principal.scopes.has(roleScope(role)),
+    )
+  )
+    throw new IdentityError(
+      "Board and archive authorization must be separate",
+      403,
+    );
   requireTokenRole(principal, projectId, "admin");
   const permissions =
     operation === "read"

@@ -58,17 +58,17 @@ type R2Bucket = {
 export type Bindings = {
   DB: D1Database;
   MEDIA: R2Bucket;
-  TEA_ADMIN_PASSWORD: string;
-  TEA_SESSION_SECRET: string;
-  TEA_PREVIEW_SECRET: string;
-  TEA_EDITOR_ORIGIN?: string;
-  TEA_AUTH_ISSUER?: string;
-  TEA_AUTH_CLIENT_ID?: string;
-  TEA_AUTH_PROJECT_ID?: string;
-  TEA_AUTH_ORGANIZATION_ID?: string;
-  TEA_AUTH_OWNER_SUBJECT?: string;
-  TEA_AUTH_INTROSPECTION_CLIENT_ID?: string;
-  TEA_AUTH_INTROSPECTION_SECRET?: string;
+  HARRHY_CMS_ADMIN_PASSWORD: string;
+  HARRHY_CMS_SESSION_SECRET: string;
+  HARRHY_CMS_PREVIEW_SECRET: string;
+  HARRHY_CMS_EDITOR_ORIGIN?: string;
+  HARRHY_AUTH_ISSUER?: string;
+  HARRHY_AUTH_CLIENT_ID?: string;
+  HARRHY_AUTH_PROJECT_ID?: string;
+  HARRHY_AUTH_ORGANIZATION_ID?: string;
+  HARRHY_AUTH_OWNER_SUBJECT?: string;
+  HARRHY_AUTH_INTROSPECTION_CLIENT_ID?: string;
+  HARRHY_AUTH_INTROSPECTION_SECRET?: string;
 };
 
 export type EdgeConfig = {

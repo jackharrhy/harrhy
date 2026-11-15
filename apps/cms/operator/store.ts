@@ -55,6 +55,10 @@ export function createOperatorStore(path: string, central = false) {
     .all() as { name: string }[];
   if (!sessionColumns.some((column) => column.name === "auth_subject"))
     sqlite.exec("ALTER TABLE sessions ADD COLUMN auth_subject TEXT");
+  if (!columns.some((column) => column.name === "auth_issuer"))
+    sqlite.exec("ALTER TABLE users ADD COLUMN auth_issuer TEXT");
+  if (!sessionColumns.some((column) => column.name === "auth_issuer"))
+    sqlite.exec("ALTER TABLE sessions ADD COLUMN auth_issuer TEXT");
   const auth = createAuthStore(sqlite, central);
 
   function issueTicket(operatorSessionId: string, siteId: string) {
@@ -99,14 +103,14 @@ export function createOperatorStore(path: string, central = false) {
     if (!/^[a-f0-9]{64}$/.test(id)) return null;
     const row = sqlite
       .prepare(
-        `SELECT u.id,u.email FROM site_sessions ss
+        `SELECT s.id AS operator_session_id FROM site_sessions ss
          JOIN sessions s ON s.id=ss.session_id
          JOIN users u ON u.id=s.user_id
          WHERE ss.id=? AND ss.site_id=? AND ss.expires_at>? AND s.expires_at>?
            ${central ? "AND s.auth_subject=u.auth_subject AND s.auth_subject IS NOT NULL" : ""}`,
       )
       .get(id, siteId, new Date().toISOString(), new Date().toISOString());
-    return row ? { id: Number(row.id), email: String(row.email) } : null;
+    return row ? auth.resolve(String(row.operator_session_id)) : null;
   }
 
   function revokeSiteSession(siteId: string, id: string) {

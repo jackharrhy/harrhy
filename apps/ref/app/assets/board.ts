@@ -12,6 +12,9 @@ import {
 } from "./inspector.ts";
 import { boardImages } from "./board-images.ts";
 import { wheelNavigation } from "./board-navigation.ts";
+import { registerWebMcpTools } from "@harrhy/webmcp";
+import type { WebMcpRegistration } from "@harrhy/webmcp";
+import { boardWebMcpTools, copyBoardItem } from "./board-webmcp.ts";
 
 const app = document.querySelector<HTMLElement>("#board-app");
 if (!app) throw new Error("Board root is missing");
@@ -95,6 +98,156 @@ let viewFrame = 0;
 let zoomLabelTimer = 0;
 let lastZoomLabelAt = -Infinity;
 let imageDetailTimer = 0;
+let snapshotReady = false;
+const toolOperations = new Map<
+  string,
+  {
+    resolve(value: unknown): void;
+    reject(reason: Error): void;
+  }
+>();
+let browserTools: WebMcpRegistration | null = null;
+let pageHidden = false;
+
+function disposeBrowserTools() {
+  browserTools?.dispose();
+  browserTools = null;
+}
+
+function requireToolBoard() {
+  if (!snapshotReady || socket?.readyState !== WebSocket.OPEN)
+    throw new Error("Board is not live. Wait for reconnection and try again.");
+  if (drag || pending.size)
+    throw new Error(
+      "Board has an active gesture or unsaved edits. Wait before trying again.",
+    );
+}
+
+function requireToolItem(id: string): BoardItem {
+  const item = items.get(id);
+  if (!item) throw new Error("Item is not on this board");
+  return item;
+}
+
+const browserToolCatalog = boardWebMcpTools({
+  context: (offset) => ({
+    boardId,
+    sequence,
+    live: snapshotReady && socket?.readyState === WebSocket.OPEN,
+    pendingEdits: pending.size,
+    interaction: drag?.kind ?? null,
+    selectedItemId: selectedId,
+    camera: {
+      offsetX,
+      offsetY,
+      scale,
+      width: viewport.clientWidth,
+      height: viewport.clientHeight,
+    },
+    totalItems: items.size,
+    offset,
+    nextOffset: offset + 200 < items.size ? offset + 200 : null,
+    items: [...items.values()].slice(offset, offset + 200).map(copyBoardItem),
+  }),
+  select(id) {
+    requireToolBoard();
+    if (id) requireToolItem(id);
+    select(id);
+  },
+  focus(id) {
+    requireToolBoard();
+    const item = requireToolItem(id);
+    const radians = (item.rotation * Math.PI) / 180;
+    const width =
+      Math.abs(item.width * Math.cos(radians)) +
+      Math.abs(item.height * Math.sin(radians));
+    const height =
+      Math.abs(item.width * Math.sin(radians)) +
+      Math.abs(item.height * Math.cos(radians));
+    scale = Math.max(
+      0.1,
+      Math.min(
+        5,
+        (viewport.clientWidth - 64) / width,
+        (viewport.clientHeight - 64) / height,
+      ),
+    );
+    offsetX = viewport.clientWidth / 2 - (item.x + item.width / 2) * scale;
+    offsetY = viewport.clientHeight / 2 - (item.y + item.height / 2) * scale;
+    applyView();
+  },
+  fit() {
+    requireToolBoard();
+    fitBoard();
+  },
+  mutate(operation, signal) {
+    requireToolBoard();
+    if (operation.kind === "create")
+      throw new Error("Creating resources is not supported by browser tools");
+    signal.throwIfAborted();
+    return new Promise((resolve, reject) => {
+      const timeout = window.setTimeout(
+        () =>
+          finish(
+            new Error(
+              "Edit submitted; confirmation timed out. Read the board before retrying.",
+            ),
+          ),
+        15_000,
+      );
+      function finish(error?: Error, value?: unknown) {
+        clearTimeout(timeout);
+        signal.removeEventListener("abort", abort);
+        toolOperations.delete(operation.operationId);
+        if (error) reject(error);
+        else resolve(value);
+      }
+      function abort() {
+        finish(
+          new Error(
+            "Edit submitted; cancellation cannot undo it. Read the board to check its outcome.",
+          ),
+        );
+      }
+      toolOperations.set(operation.operationId, {
+        resolve: (value) => finish(undefined, value),
+        reject: (error) => finish(error),
+      });
+      signal.addEventListener("abort", abort, { once: true });
+      submit(operation);
+    });
+  },
+});
+
+function registerBrowserTools() {
+  if (browserTools || pageHidden) return;
+  const registration = registerWebMcpTools(document, browserToolCatalog);
+  if (!registration.supported) {
+    registration.dispose();
+    return;
+  }
+  browserTools = registration;
+  void registration.ready.catch(() => {
+    if (browserTools === registration) {
+      disposeBrowserTools();
+      console.warn(
+        "Ref browser tool registration failed; ordinary board controls remain available.",
+      );
+    }
+  });
+}
+window.addEventListener("pagehide", () => {
+  pageHidden = true;
+  snapshotReady = false;
+  disposeBrowserTools();
+  clearTimeout(reconnectTimer);
+  socket?.close();
+});
+window.addEventListener("pageshow", (event) => {
+  if (!event.persisted) return;
+  pageHidden = false;
+  connect();
+});
 
 function required<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -123,6 +276,8 @@ function toast(message: string) {
 }
 
 function connect() {
+  if (pageHidden) return;
+  snapshotReady = false;
   clearTimeout(reconnectTimer);
   clearInterval(heartbeatTimer);
   setConnection("connecting");
@@ -140,6 +295,8 @@ function connect() {
       if (Date.now() - lastHeard > 12_000) {
         if (socket === ws) {
           socket = null;
+          snapshotReady = false;
+          disposeBrowserTools();
           clearInterval(heartbeatTimer);
           setConnection("offline");
           void scheduleReconnect();
@@ -165,6 +322,8 @@ function connect() {
     if (socket !== ws) return;
     clearInterval(heartbeatTimer);
     socket = null;
+    snapshotReady = false;
+    disposeBrowserTools();
     setConnection("offline");
     void scheduleReconnect();
   });
@@ -172,11 +331,13 @@ function connect() {
 }
 
 async function scheduleReconnect() {
+  if (pageHidden) return;
   try {
     const response = await fetch(`/api/boards/${boardId}/snapshot`, {
       cache: "no-store",
     });
     if (response.status === 404 || response.status === 401) {
+      disposeBrowserTools();
       required<HTMLElement>(".connection-text").textContent = "Access ended";
       toast("Your board access ended. Return to your boards.");
       return;
@@ -184,6 +345,7 @@ async function scheduleReconnect() {
   } catch {
     /* network may recover */
   }
+  if (pageHidden) return;
   reconnectTimer = window.setTimeout(connect, reconnectDelay);
   reconnectDelay = Math.min(reconnectDelay * 1.8, 8000);
 }
@@ -191,6 +353,7 @@ async function scheduleReconnect() {
 function receive(frame: BoardServerFrame) {
   if (frame.type === "ready") {
     loadSnapshot(frame.snapshot);
+    registerBrowserTools();
     if (!didInitialFit) {
       didInitialFit = true;
       fitBoard();
@@ -210,8 +373,14 @@ function receive(frame: BoardServerFrame) {
   if (frame.type === "pong") return;
   if (frame.type === "applied") {
     pending.delete(frame.operationId);
+    toolOperations.get(frame.operationId)?.resolve({
+      status: "applied",
+      sequence: frame.sequence,
+      item: frame.item ? copyBoardItem(frame.item) : null,
+    });
     if (frame.sequence <= sequence) return;
     if (frame.sequence > sequence + 1) {
+      snapshotReady = false;
       void refreshSnapshot();
       return;
     }
@@ -230,14 +399,17 @@ function receive(frame: BoardServerFrame) {
   }
   if (frame.type === "rejected") {
     pending.delete(frame.operationId);
+    toolOperations.get(frame.operationId)?.reject(new Error(frame.reason));
     loadSnapshot(frame.snapshot);
     toast(frame.reason);
     return;
   }
   if (frame.type === "error") {
     toast(frame.message);
-    if (frame.message.includes("Session ended"))
+    if (frame.message.includes("Session ended")) {
+      disposeBrowserTools();
       socket?.close(4001, "Session ended");
+    }
   }
 }
 
@@ -252,6 +424,7 @@ async function refreshSnapshot() {
 
 function loadSnapshot(snapshot: BoardSnapshot) {
   if (snapshot.sequence < sequence) return;
+  snapshotReady = true;
   sequence = snapshot.sequence;
   items.clear();
   for (const item of snapshot.items) items.set(item.id, item);

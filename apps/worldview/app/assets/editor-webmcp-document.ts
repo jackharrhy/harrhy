@@ -26,7 +26,7 @@ export function documentEditorWebMcpTools(
         description:
           "Open a known map from the authorized local project folder. Unsaved work requires explicit discard confirmation.",
         annotations: destructive,
-        async execute(input) {
+        async execute(input, { signal }) {
           const current = assertDocument(state, input);
           if (!current.project?.maps.some((map) => map.path === input.path))
             throw new Error(`Unknown project map ${input.path}`);
@@ -35,6 +35,7 @@ export function documentEditorWebMcpTools(
             input.discardUnsavedChanges,
             input.expectedDocumentId,
             input.expectedRevision,
+            signal,
           );
           const opened = state();
           actions.status(`opened project map ${input.path}`);
@@ -60,13 +61,14 @@ export function documentEditorWebMcpTools(
         description:
           "Replace the current map from source as a detached local copy, resetting editor history and file binding. Requires explicit destructive confirmation.",
         annotations: destructive,
-        async execute(input) {
+        async execute(input, { signal }) {
           assertDocument(state, input);
           await actions.replaceMapSource(
             input.source,
             input.name,
             input.expectedDocumentId,
             input.expectedRevision,
+            signal,
           );
           const opened = state();
           actions.status(`replaced the document with ${input.name}`);

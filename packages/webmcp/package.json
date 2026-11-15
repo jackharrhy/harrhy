@@ -1,0 +1,17 @@
+{
+  "name": "@harrhy/webmcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsrs --noEmit",
+    "test": "node --import remix/node-tsx --test __tests__/*.test.ts",
+    "check": "npm run typecheck && npm test"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6"
+  }
+}

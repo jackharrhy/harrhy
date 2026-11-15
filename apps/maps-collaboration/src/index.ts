@@ -47,7 +47,7 @@ async function handleMap(
   const ticket = ticketValue
     ? await verifyHostedRealtimeTicket(
         ticketValue,
-        env.TEA_MAPS_REALTIME_TICKET_SECRET,
+        env.HARRHY_MAPS_REALTIME_TICKET_SECRET,
       )
     : null;
   if (!ticket || ticket.mapId !== mapId) {

@@ -324,7 +324,7 @@ export function createEdgeRouter(
             ? await createPreviewToken(
                 collection.name,
                 params.slug,
-                env.TEA_PREVIEW_SECRET,
+                env.HARRHY_CMS_PREVIEW_SECRET,
               )
             : "";
           return render(
@@ -604,7 +604,7 @@ export function createEdgeRouter(
             ? await createPreviewToken(
                 collection.name,
                 params.slug,
-                env.TEA_PREVIEW_SECRET,
+                env.HARRHY_CMS_PREVIEW_SECRET,
               )
             : "";
           return json({
@@ -637,8 +637,8 @@ export function createEdgeRouter(
           if (!bearer?.startsWith("Bearer "))
             return new Response("Unauthorized", { status: 401 });
           if (
-            !env.TEA_AUTH_INTROSPECTION_CLIENT_ID ||
-            !env.TEA_AUTH_INTROSPECTION_SECRET
+            !env.HARRHY_AUTH_INTROSPECTION_CLIENT_ID ||
+            !env.HARRHY_AUTH_INTROSPECTION_SECRET
           )
             return new Response("Preview authentication unavailable", {
               status: 503,
@@ -647,8 +647,8 @@ export function createEdgeRouter(
             const principal = await createIdentityClient(
               central.config,
             ).introspect(bearer.slice(7), {
-              clientId: env.TEA_AUTH_INTROSPECTION_CLIENT_ID,
-              clientSecret: env.TEA_AUTH_INTROSPECTION_SECRET,
+              clientId: env.HARRHY_AUTH_INTROSPECTION_CLIENT_ID,
+              clientSecret: env.HARRHY_AUTH_INTROSPECTION_SECRET,
             });
             if (principal.principalType !== "user")
               return new Response("Human preview authorization required", {

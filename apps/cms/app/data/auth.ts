@@ -23,6 +23,10 @@ export function createAuthStore(
   sqlite: DatabaseSync,
   central = false,
 ): AuthStore {
+  const ownerSubject = central
+    ? process.env.HARRHY_AUTH_OWNER_SUBJECT
+    : undefined;
+  const issuer = process.env.HARRHY_AUTH_ISSUER;
   const attempts = new Map<string, { count: number; until: number }>();
   let checking = 0;
 
@@ -64,10 +68,17 @@ export function createAuthStore(
   }
 
   function bySubject(subject: string): User | null {
-    if (!subject || subject.length > 512) return null;
+    if (
+      !subject ||
+      subject.length > 512 ||
+      (central && subject !== ownerSubject)
+    )
+      return null;
     const row = sqlite
-      .prepare("SELECT id,email FROM users WHERE auth_subject=?")
-      .get(subject);
+      .prepare(
+        `SELECT id,email FROM users WHERE auth_subject=? ${central ? "AND auth_issuer=?" : ""}`,
+      )
+      .get(...(central ? [subject, issuer ?? ""] : [subject]));
     return row ? { id: Number(row.id), email: String(row.email) } : null;
   }
 
@@ -77,14 +88,20 @@ export function createAuthStore(
     subject?: string,
   ) {
     if (central && (!subject || bySubject(subject)?.id !== userId))
-      throw new Error("CMS Central Auth subject is not linked to this user");
+      throw new Error("CMS Auth subject is not linked to this user");
     const id = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + durationMs);
     sqlite
       .prepare(
-        "INSERT INTO sessions (id,user_id,expires_at,auth_subject) VALUES (?,?,?,?)",
+        "INSERT INTO sessions (id,user_id,expires_at,auth_subject,auth_issuer) VALUES (?,?,?,?,?)",
       )
-      .run(id, userId, expiresAt.toISOString(), subject ?? null);
+      .run(
+        id,
+        userId,
+        expiresAt.toISOString(),
+        subject ?? null,
+        subject ? (issuer ?? null) : null,
+      );
     return { id, expiresAt };
   }
 
@@ -92,11 +109,20 @@ export function createAuthStore(
     if (!id || id.length > 128) return null;
     const row = sqlite
       .prepare(
-        `SELECT u.id,u.email,s.expires_at FROM sessions s JOIN users u ON u.id=s.user_id
-         WHERE s.id=? ${central ? "AND s.auth_subject=u.auth_subject AND s.auth_subject IS NOT NULL" : ""}`,
+        `SELECT u.id,u.email,s.expires_at,s.auth_subject,s.auth_issuer FROM sessions s JOIN users u ON u.id=s.user_id
+         WHERE s.id=? ${central ? "AND s.auth_subject=u.auth_subject AND s.auth_subject IS NOT NULL AND s.auth_issuer=u.auth_issuer" : ""}`,
       )
       .get(id);
-    if (!row || !(Date.parse(String(row.expires_at)) > Date.now())) return null;
+    if (
+      !row ||
+      !(Date.parse(String(row.expires_at)) > Date.now()) ||
+      (central &&
+        (!ownerSubject ||
+          !issuer ||
+          row.auth_subject !== ownerSubject ||
+          row.auth_issuer !== issuer))
+    )
+      return null;
     return { id: Number(row.id), email: String(row.email) };
   }
 

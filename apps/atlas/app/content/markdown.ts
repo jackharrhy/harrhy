@@ -134,6 +134,25 @@ export async function renderMarkdown(
     }
     if (node.type === "text") words.push(node.value);
   });
+  visit(tree, "element", (node) => {
+    if (node.tagName === "th") node.properties.scope = "col";
+  });
+  visit(tree, "element", (node, index, parent) => {
+    if (node.tagName === "table" && parent && index !== undefined) {
+      parent.children[index] = {
+        type: "element",
+        tagName: "div",
+        properties: {
+          className: ["atlas-table"],
+          role: "region",
+          ariaLabel: "Markdown table",
+          tabIndex: 0,
+        },
+        children: [node],
+      };
+      return "skip";
+    }
+  });
   const highlighted = await stringify.run(tree);
   return {
     html: stringify.stringify(highlighted),

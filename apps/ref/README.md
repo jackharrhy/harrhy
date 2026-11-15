@@ -36,7 +36,7 @@ Open <http://127.0.0.1:8787>. Select **Sign in**, then continue as the disposabl
 - `DirectoryCell` stores sessions and the board list in SQLite. Existing boards from the previous account-based version are copied into the single-user list on first access. Old account sessions no longer work.
 - `BoardCell` stores items, link previews, and image metadata per board. It validates edits, writes them to SQLite, and broadcasts updates to every open tab with hibernatable WebSockets.
 - Removing the last item that uses an asset reclaims its metadata and stored image. Failed object-store deletions are retried by a Durable Object alarm. The operation log keeps roughly 10,000 recent edits per board; retries older than that window are no longer deduplicated.
-- `MEDIA` stores uploaded images and cached link preview images. Reads and uploads require a valid session.
+- `MEDIA` stores uploaded images and cached link preview images. Browser reads and uploads require a valid session. Image and snapshot reads also accept explicitly scoped board-read or archive-read bearer authorization.
 - The browser keeps the current decoded image visible while a thumbnail or full-resolution replacement loads and decodes. Reversed zoom requests and failed replacements do not clear the current image.
 - `app/assets/board.ts` is the browser editor. It uses DOM APIs, pan and zoom, uploads, optimistic edits, reconnect, and revision checks. No React, Express, or Socket.IO.
 - Remix 3.2 supplies a fresh CSP nonce for each HTML response. Ref allows its same-origin scripts, thumbnail worker, board WebSocket, stored and external link images, validated X video media, and the three explicitly supported social embeds. Private HTML remains `no-store`.
@@ -54,11 +54,81 @@ npm run test:images --workspace @harrhy/ref
 
 Harrhy CI runs the browser smoke against a temporary Wrangler store and the local OAuth issuer when Ref is affected on a ready PR or `main`. It does not add a test board to your local development store.
 
-Ref also runs a production-style Celld check using an isolated SQLite object store and the local OAuth issuer. It runs the browser smoke, kills Celld, removes its replica cache, then verifies the board, links, and WebSocket from the authoritative store. CI extracts the Celld binary from the image selected by this app's Dockerfile. To run the same check locally:
+Ref also runs a production-style Celld check using an isolated SQLite object store and the local OAuth issuer. It runs the browser smoke and real MCP clients pinned to SDK 1.32.1 and 2.4.0, verifies browser broadcasts, revision conflicts and operation replay, kills Celld, removes its replica cache, then verifies persisted boards, links, WebSockets and last-use asset cleanup from the authoritative store. All writes use synthetic disposable state. CI extracts the Celld binary from the image selected by this app's Dockerfile. To run the same check locally:
 
 ```sh
 CELLD_BIN=/absolute/path/to/celld npm run test:celld --workspace @harrhy/ref
 ```
+
+## MCP
+
+`POST /mcp` exposes Ref's shared boards through the official MCP SDK. Resource
+metadata is at `/.well-known/oauth-protected-resource/mcp`. The app-owned
+`app/mcp/` catalog and handlers use `@harrhy/mcp/native`; the SDK owns protocol
+negotiation and transport, including existing SDK 1.32.1 clients. Requests are
+bounded to 28 MB (allowing base64 for one 20 MB image). Browser session cookies
+never authorize MCP.
+
+A delegated token must represent a human, target the Ref project, and request
+exactly one membership scope (`member` or `admin`) plus `boards-read` and/or
+`boards-write`. Both the role grant and its matching scope are required for
+every requested capability. Metadata lists supported alternatives, not a scope
+bundle to request verbatim. These capabilities need reviewed Ref project roles,
+user grants and Auth delegated-consent policy; browser membership alone does not
+grant them. Archive scopes cannot be combined with board scopes. All approved
+members share the same boards; MCP does not introduce per-user ownership.
+
+<!-- prettier-ignore -->
+| Tools | Capability | Behavior |
+| --- | --- | --- |
+| `boards_list`, `board_get`, `asset_get` | `boards-read` | Read boards, current item revisions and asset metadata; image URLs require authenticated reads |
+| `board_create`, `board_rename` | `boards-write` | Create or rename shared boards; create retries can create another board |
+| `asset_upload` | `boards-write` | Upload standard base64 image bytes; returns an asset to place separately; retries create another asset |
+| `link_add`, `link_refresh` | `boards-write` | Use the browser's public-link preview/cache rules; refresh replaces saved preview metadata |
+| `item_create`, `item_transform`, `item_remove` | `boards-write` | Use the same validated Durable Object operation path and WebSocket broadcasts as the browser |
+
+Item writes require caller-generated UUID `operationId` values; creates also
+require an `itemId`. Reuse the same operation ID only to retry that operation.
+Transforms and removals require the current `baseRevision`; conflicts return an
+error and, with read authorization, the current snapshot. Item removal reclaims
+an asset only after its last use. The catalog explicitly marks removal and link
+refresh as destructive. There is no board-deletion tool. Existing operation-log
+retention bounds deduplication to roughly the latest 10,000 board edits.
+
+`asset_upload` and `link_add` save resources; call `item_create` with their
+`assetId` and complete geometry to place them. Network link previews remain best
+effort. Write-only tokens cannot list/read boards or receive conflict snapshots.
+The normal archive CLI and browser endpoints retain their separate authorization.
+
+## Browser WebMCP
+
+On an authenticated open board, native WebMCP tools register quietly after the
+live board snapshot arrives. This is separate from HTTP MCP: it uses the signed-in
+browser session and actual canvas, not a remote MCP bridge or delegated token.
+Support is experimental and limited to browsers exposing `document.modelContext`;
+unsupported browsers silently retain all ordinary board controls. There is no
+extra enable switch, banner, or modal. Registration stops on connection loss,
+page exit, or detected loss of access; a reconnect or back/forward-cache return
+must obtain a fresh authorized snapshot before registering again. Registration
+failures leave ordinary controls intact and emit a diagnostic console warning.
+Native consequential annotations are hints, not a guarantee of browser confirmation.
+
+The app-owned `app/assets/board-webmcp.ts` defines six tools using
+[`@harrhy/webmcp`](../../packages/webmcp/README.md): `ref_board_context` reads
+live camera, selection, revisions, connection and pending-edit state plus pages
+of up to 200 items; `ref_board_select`, `ref_board_focus`, and `ref_board_fit`
+operate the current canvas. This lets an assistant focus an item without guessing
+screen coordinates or reconstructing the viewport from screenshots. Item metadata
+is untrusted content, not instructions.
+
+`ref_item_transform` and `ref_item_remove` use the existing validated WebSocket
+operation path and server authorization. They require a live, settled board and
+its current item revision; removal can reclaim last-use media. Results wait for
+server confirmation. Cancellation, page exit, or a timeout after submission
+cannot undo an edit: read the board before retrying and reuse an operation ID
+only for the same operation. Ordinary uploads and link creation remain human
+controls; no file access, arbitrary JavaScript, or general DOM automation is
+exposed.
 
 ## Back up and restore
 
