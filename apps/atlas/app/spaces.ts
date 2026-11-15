@@ -16,6 +16,7 @@ export const spaces = [
   { id: "infra", name: "Infra", directory: "infra", optional: true },
   { id: "obsidian", name: "Obsidian", directory: "obsidian", optional: true },
   { id: "mailman", name: "Mailman", directory: "mailman", optional: true },
+  { id: "harrhy", name: "Harrhy", directory: "harrhy", optional: true },
 ] as const;
 
 export function spacePath(id: string) {

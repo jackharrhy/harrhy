@@ -8,7 +8,7 @@ import { createAtlas } from "../app/router.tsx";
 test("agent corpora own duplicate local paths, search, navigation and topic context", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "atlas-spaces-"));
   t.after(() => rm(root, { recursive: true, force: true }));
-  for (const id of ["wonder", "infra"]) {
+  for (const id of ["wonder", "infra", "harrhy"]) {
     await mkdir(path.join(root, id));
     await writeFile(
       path.join(root, id, "topic.md"),
@@ -25,6 +25,7 @@ test("agent corpora own duplicate local paths, search, navigation and topic cont
   const directory = await html("/");
   assert.match(directory, /Agent spaces/);
   assert.match(directory, /\/spaces\/pi-handyman\//);
+  assert.match(directory, /\/spaces\/harrhy\//);
   assert.doesNotMatch(directory, /wonder topic|infra topic/);
   const wonder = await html("/spaces/wonder/");
   assert.match(wonder, /wonder topic/);
@@ -61,7 +62,14 @@ test("agent corpora own duplicate local paths, search, navigation and topic cont
       `/spaces/wonder/${legacy === "/old/" ? "pi/" : legacy.slice(1)}?q=keep`,
     );
   }
-  assert.equal(Object.keys(catalog.read().generation!.pages).length, 4);
+  const harrhy = await html("/spaces/harrhy/pi/");
+  assert.match(harrhy, /aria-current="page"[^>]*>Harrhy<\/a>/);
+  assert.match(harrhy, /href="\/spaces\/harrhy\/pi\/tools\/"/);
+  const harrhyResults = await html("/spaces/harrhy/search/?q=Shared");
+  assert.match(harrhyResults, /harrhy topic/);
+  assert.doesNotMatch(harrhyResults, /wonder topic|infra topic/);
+  assert.doesNotMatch(results, /harrhy topic/);
+  assert.equal(Object.keys(catalog.read().generation!.pages).length, 6);
   assert.equal(
     (await router.fetch("http://localhost/spaces/unknown/")).status,
     404,

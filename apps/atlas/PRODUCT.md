@@ -1,6 +1,6 @@
 # Atlas
 
-Private directory of separate agent corpora, initially populated with curated Wonder writing. Home lists stable agent spaces: Wonder, Pi Handyman, Media Mogul, Infra, Obsidian and Mailman. Each owns its section, topic tree, navigation and search scope; there is no shared subject-first pool or merged search. Explicit cross-space links remain possible. Native document navigation and disclosures work without JavaScript.
+Private directory of separate agent corpora, initially populated with curated Wonder writing. Home lists stable agent spaces: Wonder, Pi Handyman, Media Mogul, Infra, Obsidian, Mailman and Harrhy. Each owns its section, topic tree, navigation and search scope; there is no shared subject-first pool or merged search. Explicit cross-space links remain possible. Native document navigation and disclosures work without JavaScript.
 
 The owner’s November 15 update adds top-of-page agent route navigation and a top-right theme picker using the merged shared UI package’s Clean, Radio and Artbin themes. Keep the reading surface restrained: no logo, cards, slogans or dashboard chrome. Preserve existing Wonder paths and aliases, bounded reading measure and locally scrolling code/tables. This is a Read surface, not a marketing site. Use native anchors and a server-rendered theme form, without a client router or new theme engine.
 

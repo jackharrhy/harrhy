@@ -14,7 +14,7 @@ The host binds only `127.0.0.1`; forwarded proxy headers are not trusted. The pe
 
 ## Spaces and ownership
 
-`app/spaces.ts` is the trusted ownership registry. Stable IDs are `wonder`, `pi-handyman`, `media-mogul`, `infra`, `obsidian` and `mailman`. Each owns the matching curated external directory and `/spaces/<id>/` section. Wonder is required; other registered directories may be absent and display an empty space until explicitly curated. Unregistered adjacent directories are never scanned. A shared filesystem is not an OS sandbox. Space owners curate their own content; coordinate cross-owner edits with the affected owner. Do not import another agent’s private inventory.
+`app/spaces.ts` is the trusted ownership registry. Stable IDs are `wonder`, `pi-handyman`, `media-mogul`, `infra`, `obsidian`, `mailman` and `harrhy`. Each owns the matching curated external directory and `/spaces/<id>/` section. Wonder is required; other registered directories may be absent and display an empty space until explicitly curated. Unregistered adjacent directories are never scanned. A shared filesystem is not an OS sandbox. Space owners curate their own content; coordinate cross-owner edits with the affected owner. Do not import another agent’s private inventory.
 
 Search is `/spaces/<id>/search/?q=...`, always limited to that space. There is no combined search corpus. `/search/` presents the directory so a reader must select a space. Explicit links to `/spaces/<other-id>/...` may cross spaces; they do not move pages or merge navigation/search/topic trees. Backlinks may show those explicit cross-space references.
 
