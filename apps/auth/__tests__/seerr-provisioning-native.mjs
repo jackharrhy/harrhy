@@ -3,12 +3,10 @@ import assert from "node:assert/strict";
 import { createSeerrProvisioning } from "../src/seerr-provisioning.mjs";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { createJellyfinProvisioning } from "../src/jellyfin-provisioning.mjs";
+import { createJellyfinNativeFixture } from "./fixtures/jellyfin-native.mjs";
 import { createJellyfinLifecycle } from "../src/jellyfin-lifecycle.mjs";
 import { normalizeJellyfinUsers } from "../src/jellyfin-inventory.mjs";
 
-const image =
-  "jellyfin/jellyfin@sha256:fea863d0cd9ec445985d9c75fc6ed64e38a1d2766cf0c250a33d553f4fc1b771";
 const name = `harrhy-seerr-import-test-${randomBytes(6).toString("hex")}`;
 const docker = (...args) =>
   execFileSync("docker", args, {
@@ -21,115 +19,15 @@ const network = `${name}-network`;
 const seerrName = `${name}-seerr`;
 let networkOwned = false;
 let seerrOwned = false;
-let owned = false;
+let fixture;
 let phase = "start";
 let lastStatus;
 try {
   docker("network", "create", network);
   networkOwned = true;
-  docker(
-    "run",
-    "--detach",
-    "--rm",
-    "--name",
-    name,
-    "--network",
-    network,
-    "--publish",
-    "127.0.0.1::8096",
-    "--tmpfs",
-    "/config",
-    "--tmpfs",
-    "/cache",
-    "--tmpfs",
-    "/synthetic-media",
-    image,
-  );
-  owned = true;
-  const bindings = JSON.parse(
-    docker(
-      "inspect",
-      "--format",
-      '{{json (index .NetworkSettings.Ports "8096/tcp")}}',
-      name,
-    ),
-  );
-  assert.equal(bindings.length, 1);
-  assert.equal(bindings[0].HostIp, "127.0.0.1");
-  const baseUrl = `http://127.0.0.1:${bindings[0].HostPort}`;
-  async function api(path, { method = "GET", body, token, json = true } = {}) {
-    const response = await fetch(`${baseUrl}/${path}`, {
-      method,
-      redirect: "error",
-      signal: AbortSignal.timeout(5000),
-      headers: {
-        Accept: 'application/json; profile="PascalCase"',
-        ...(body ? { "Content-Type": "application/json" } : {}),
-        Authorization: `MediaBrowser Client="Auth isolated contract", Device="Synthetic", DeviceId="synthetic-contract", Version="1"${token ? `, Token="${token}"` : ""}`,
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-    lastStatus = response.status;
-    assert.ok(response.ok, `native request failed in ${phase}`);
-    return json ? response.json() : undefined;
-  }
-  phase = "startup";
-  let ready = false;
-  for (let attempt = 0; attempt < 120; attempt++) {
-    try {
-      await api("Startup/Configuration");
-      ready = true;
-      break;
-    } catch {
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  }
-  assert.ok(ready, "isolated provider startup timed out");
-  assert.equal((await api("System/Info/Public")).Version, "12.4.0");
-  const password = randomBytes(32).toString("base64url");
-  phase = "startup-configuration";
-  await api("Startup/Configuration", {
-    method: "POST",
-    body: {
-      ServerName: "Synthetic provisioning contract",
-      UICulture: "en-US",
-      MetadataCountryCode: "US",
-      PreferredMetadataLanguage: "en",
-    },
-    json: false,
-  });
-  phase = "startup-user";
-  await api("Startup/User");
-  await api("Startup/User", {
-    method: "POST",
-    body: { Name: "synthetic-owner", Password: password },
-    json: false,
-  });
-  phase = "startup-complete";
-  await api("Startup/Complete", { method: "POST", json: false });
-  phase = "owner-sign-in";
-  const session = await api("Users/AuthenticateByName", {
-    method: "POST",
-    body: { Username: "synthetic-owner", Pw: password },
-  });
-  assert.ok(session.AccessToken);
-  const token = session.AccessToken;
-  phase = "library";
-  await api(
-    "Library/VirtualFolders?name=Synthetic&collectionType=movies&refreshLibrary=false",
-    {
-      method: "POST",
-      body: { LibraryOptions: { PathInfos: [{ Path: "/synthetic-media" }] } },
-      token,
-      json: false,
-    },
-  );
-  const libraries = await api("Library/VirtualFolders", { token });
-  assert.equal(libraries.length, 1);
-  const adapter = createJellyfinProvisioning(
-    { baseUrl, writeTokenFile: "/synthetic/in-memory-only" },
-    { readToken: async () => token },
-  );
+  fixture = await createJellyfinNativeFixture({ network });
+  const { baseUrl, api, session, token, password, libraries, adapter } =
+    fixture;
   phase = "review";
   const review = await adapter.preview({
     username: "synthetic-recipient",
@@ -229,7 +127,7 @@ try {
     body: {
       username: "synthetic-owner",
       password,
-      hostname: name,
+      hostname: fixture.name,
       port: 8096,
       useSsl: false,
       urlBase: "",
@@ -299,7 +197,8 @@ try {
     "disabled",
   );
   assert.equal(
-    users.find((user) => user.Id === session.User.Id).Policy.IsAdministrator,
+    (await api("Users", { token })).find((user) => user.Id === session.User.Id)
+      .Policy.IsAdministrator,
     true,
   );
   console.log(
@@ -310,7 +209,13 @@ try {
     `Isolated Seerr/Jellyfin provisioning contract failed during ${phase} (last HTTP status ${lastStatus ?? "none"}); no provider response or credentials are logged.`,
   );
 } finally {
-  if (seerrOwned) docker("stop", "--time", "5", seerrName);
-  if (owned) docker("stop", "--time", "5", name);
-  if (networkOwned) docker("network", "rm", network);
+  try {
+    if (seerrOwned) docker("stop", "--time", "5", seerrName);
+  } finally {
+    try {
+      fixture?.close();
+    } finally {
+      if (networkOwned) docker("network", "rm", network);
+    }
+  }
 }

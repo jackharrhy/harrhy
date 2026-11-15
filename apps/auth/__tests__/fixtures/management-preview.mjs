@@ -34,7 +34,9 @@ const fixture = await createManagementFixture({
   port,
 });
 try {
-  console.log(`Synthetic management preview ready: ${origin.origin}`);
+  console.log(
+    `Synthetic management preview ready: ${origin.origin} (backend 127.0.0.1:${fixture.listenPort})`,
+  );
   await new Promise((resolve) => {
     const finish = () => {
       clearTimeout(timer);

@@ -4,23 +4,41 @@ import { createServer as createHttpsServer } from "node:https";
 import { execFileSync, spawn } from "node:child_process";
 import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { once } from "node:events";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createAccessStore } from "../../src/access-store.mjs";
+
+function listenLoopback(listener, port = 0) {
+  return new Promise((resolve, reject) => {
+    const failed = (error) => reject(error);
+    listener.once("error", failed);
+    listener.listen(port, "127.0.0.1", () => {
+      listener.off("error", failed);
+      resolve();
+    });
+  });
+}
 
 export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
   const directory = await mkdtemp(`${tmpdir()}/auth-management-`);
   let server, provider, nativeServer, proxy;
   async function close() {
-    if (server && server.exitCode === null && server.signalCode === null) {
-      const exited = once(server, "exit");
-      server.kill();
-      await exited;
+    if (server?.pid && server.exitCode === null && server.signalCode === null) {
+      await new Promise((resolve) => {
+        const timer = setTimeout(() => server.kill("SIGKILL"), 5000);
+        server.once("exit", () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        server.kill();
+      });
     }
     for (const listener of [proxy, provider, nativeServer])
-      if (listener?.listening)
-        await new Promise((resolve) => listener.close(resolve));
+      if (listener?.listening) {
+        const closed = new Promise((resolve) => listener.close(resolve));
+        listener.closeAllConnections();
+        await closed;
+      }
     await rm(directory, { recursive: true, force: true });
   }
   try {
@@ -356,9 +374,7 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
         response.writeHead(204).end();
       } else response.writeHead(404).end();
     });
-    await new Promise((resolve) =>
-      nativeServer.listen(0, "127.0.0.1", resolve),
-    );
+    await listenLoopback(nativeServer);
     await writeFile(`${directory}/native-write-token`, "synthetic-write-only", {
       mode: 0o600,
     });
@@ -548,11 +564,9 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
       response.setHeader("content-type", "application/json");
       response.end(JSON.stringify(result));
     });
-    await new Promise((resolve) => provider.listen(0, "127.0.0.1", resolve));
+    await listenLoopback(provider);
     const reservation = createServer();
-    await new Promise((resolve) =>
-      reservation.listen(port, "127.0.0.1", resolve),
-    );
+    await listenLoopback(reservation, port);
     const listenPort = reservation.address().port;
     await new Promise((resolve) => reservation.close(resolve));
     if (!publicOrigin) {
@@ -601,7 +615,7 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
           incoming.pipe(upstream);
         },
       );
-      await new Promise((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+      await listenLoopback(proxy);
     }
     const origin = publicOrigin || `https://127.0.0.1:${proxy?.address().port}`;
     server = spawn(process.execPath, ["src/server.mjs"], {
@@ -651,6 +665,7 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
     });
     return {
       origin,
+      listenPort,
       directory,
       users,
       recipientEffects,
