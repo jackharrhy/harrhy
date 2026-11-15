@@ -23,14 +23,16 @@ export function normalizeJellyfinUsers(value) {
     const disabled = field(policy, "IsDisabled");
     if (
       typeof nativeId !== "string" ||
-      !/^[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12}$/i.test(nativeId) ||
-      ids.has(nativeId.toLowerCase()) ||
+      !/^(?:[a-f0-9]{32}|[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})$/i.test(
+        nativeId,
+      ) ||
+      ids.has(nativeId.replaceAll("-", "").toLowerCase()) ||
       (name !== null && (typeof name !== "string" || name.length > 200)) ||
       typeof administrator !== "boolean" ||
       typeof disabled !== "boolean"
     )
       throw invalid();
-    ids.add(nativeId.toLowerCase());
+    ids.add(nativeId.replaceAll("-", "").toLowerCase());
     return {
       nativeId,
       name: name ?? "Unnamed native account",

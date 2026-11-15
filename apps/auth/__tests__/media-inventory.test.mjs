@@ -24,6 +24,12 @@ test("installed Jellyfin top-level array contract accepts explicit casing but ne
     },
   ];
   assert.deepEqual(normalizeJellyfinUsers([user]), expected);
+  const compact = user.Id.replaceAll("-", "");
+  assert.equal(
+    normalizeJellyfinUsers([{ ...user, Id: compact }])[0].nativeId,
+    compact,
+  );
+  assert.throws(() => normalizeJellyfinUsers([user, { ...user, Id: compact }]));
   assert.deepEqual(
     normalizeJellyfinUsers([
       {
