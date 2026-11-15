@@ -23,6 +23,9 @@ WebSockets, media, and recovery with a signed disposable session. It does not cl
 
 Each OAuth start keeps its state and PKCE verifier in a separate short-lived
 signed cookie. Another tab can start sign-in without invalidating the first.
+Sign-in links and sign-out forms use Remix's `data-rmx-document` so Auth redirects
+and session changes load a new document. Ordinary room selection stays client-side;
+see the [shared navigation convention](../../docs/remix-navigation.md).
 
 Use `npm run dev:celld` for a compatibility run on Celld, serving
 <http://127.0.0.1:9876> with disposable local state under `apps/radio/.celld/dev/`. Use the Celld fork
@@ -48,8 +51,10 @@ npm run types:worker --workspace @harrhy/radio
 npm run radio:check
 ```
 
-`check` builds browser assets once before typechecking, both Remix and Worker
-test suites, and the deployment dry-run. Standalone `npm test` still builds its
+`check` builds browser assets once before typechecking, Remix and Worker tests,
+Auth navigation browser tests, and the deployment dry-run. After a build, run
+`npm run test:auth-navigation --workspace @harrhy/radio` independently; it requires
+Playwright Chromium (`npx playwright install --only-shell chromium`). Standalone `npm test` still builds its
 own assets; the production Celld smoke deliberately makes a separate minified
 build.
 
@@ -189,6 +194,7 @@ image's existing built application and bundled Celld binary are used throughout 
 - `app/routes.ts` and `app/actions/` own the server-rendered page contract.
 - `app/assets/` owns hydrated playback, clock synchronization, and browser audio.
 - `__tests__/worker/` owns Worker, Durable Object, R2, alarm, and WebSocket integration tests.
+- `__tests__/auth-navigation.test.ts` checks real lobby/document components and built browser assets against isolated mock Auth origins: cross-origin redirects, Back, keyboard/new-tab/no-script behavior, native logout POST, and client-side room selection.
 - `dist/client/` is generated and must not be committed.
 
 ## Playback synchronization

@@ -31,6 +31,8 @@ Apps import packages; packages must not import apps. Use Remix 3 for app routing
 
 Prefix first-party environment settings with `HARRHY_`; use `HARRHY_AUTH_*` for Auth integration and an app-specific prefix where settings differ. Preserve platform and third-party environment contracts. Coordinate existing setting renames with their deployed consumers; never rename secret values or silently change runtime behavior.
 
+Keep Auth entry links and session-changing forms native with Remix's `data-rmx-document` attribute. Same-origin routes can redirect to another origin; they must not be fetched as frame navigation. Shared `ButtonLink` forwards this attribute. Keep ordinary internal navigation client-side; follow [the document navigation guide](docs/remix-navigation.md) and test actual hydrated clicks, not just rendered markup.
+
 Use Remix `css(...)` mixins for static UI styles. Keep inline `style` for values computed at runtime. A small stylesheet is fine for CSS features the mixin cannot express, such as `@font-face`.
 
 Keep behavior owned by one app inside that app, even when it has a clean internal interface. Extract a package when another consumer needs it or the module is meant to be embedded by independent hosts.

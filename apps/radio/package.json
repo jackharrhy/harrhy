@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "npm run build && npm run types:worker && npm run typecheck && npm run test:remix && npm run test:worker && wrangler deploy --dry-run",
+    "check": "npm run build && npm run types:worker && npm run typecheck && npm run test:remix && npm run test:worker && npm run test:auth-navigation && wrangler deploy --dry-run",
     "dev": "npm run build && wrangler dev",
     "dev:celld": "npm run build && celld dev",
     "postinstall": "node scripts/sync-icon-font.mjs",
@@ -14,13 +14,14 @@
     "test": "npm run build && npm run test:remix && npm run test:worker",
     "test:remix": "cd ../.. && NODE_ENV=test remix test \"apps/radio/app/**/__tests__/**/*.test{,.browser}.{ts,tsx}\" --type server --type browser",
     "test:worker": "vitest run --config vitest.config.ts",
+    "test:auth-navigation": "node --import remix/node-tsx --test __tests__/auth-navigation.test.ts",
     "test:celld": "NODE_ENV=production npm run build && node scripts/test-celld.mjs",
     "typecheck": "tsrs --noEmit",
     "types:worker": "wrangler types worker-configuration.d.ts --env-file .dev.vars.example"
   },
   "dependencies": {
-    "@harrhy/identity": "0.1.0",
     "@chenglou/pretext": "^1.0.0",
+    "@harrhy/identity": "0.1.0",
     "@material-symbols/font-400": "^0.49.0",
     "remix": "3.2.0"
   },

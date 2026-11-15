@@ -87,6 +87,7 @@ export function RoomLobby(
             {!identity ? (
               <a
                 href={routes.auth.login.href()}
+                data-rmx-document
                 mix={desktopStyle.primaryButton}
               >
                 Sign in
@@ -136,6 +137,7 @@ export function RoomLobby(
             <form
               method="post"
               action={routes.logout.href()}
+              data-rmx-document
               mix={roomLobbyStyle.signOutForm}
             >
               <button mix={desktopStyle.smallButton} type="submit">
