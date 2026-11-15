@@ -165,8 +165,23 @@
     "pkceClientIds": ["399095840712491028"],
     "roles": ["admin", "member"],
     "authorizationHold": false,
-    "delegatedRoles": ["admin"],
-    "delegatedPermissions": ["archive-read", "archive-restore"],
+    "delegatedRoles": ["admin", "member"],
+    "delegatedPermissions": [
+      "archive-read",
+      "archive-restore",
+      "boards-read",
+      "boards-write"
+    ],
+    "delegatedPermissionPolicies": [
+      {
+        "roles": ["admin"],
+        "permissions": ["archive-read", "archive-restore"]
+      },
+      {
+        "roles": ["admin", "member"],
+        "permissions": ["boards-read", "boards-write"]
+      }
+    ],
     "clientRoleRequirements": {
       "399095840712491028": ["member", "admin"]
     },

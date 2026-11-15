@@ -327,17 +327,31 @@ export class BoardCell extends DurableObject<Env> {
       this.send(socket, { type: "error", message: "Invalid board operation" });
       return;
     }
-    if (operation.kind === "remove")
-      await this.ctx.storage.setAlarm(Date.now() + 60_000);
-    const result = this.applyOperation(
+    const result = await this.submitOperation(
       boardId,
       attachment.sessionHash,
       operation,
     );
+    if (result.type === "rejected") this.send(socket, result);
+  }
+
+  async submitOperation(
+    boardId: string,
+    actorId: string,
+    input: unknown,
+  ): Promise<Extract<BoardServerFrame, { type: "applied" | "rejected" }>> {
+    this.assertBoard(boardId);
+    const operation = parseOperation(input);
+    if (!operation || !actorId || actorId.length > 512)
+      throw new Error("Invalid board operation");
+    if (operation.kind === "remove")
+      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+    const result = this.applyOperation(boardId, actorId, operation);
     if (result.type === "applied") {
       this.broadcast(result);
       if (operation.kind === "remove") await this.assets.drainPendingDeletes();
-    } else this.send(socket, result);
+    }
+    return result;
   }
 
   async alarm(): Promise<void> {

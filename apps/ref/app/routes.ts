@@ -20,6 +20,10 @@ export const routes = route({
     media: get("/media/:boardId/:assetId"),
     preview: get("/previews/:boardId/:imageId"),
   },
+  mcp: {
+    endpointGet: get("/mcp"),
+    endpoint: post("/mcp"),
+  },
   archive: {
     boards: get("/api/archive/boards"),
     restoreBoard: post("/api/archive/boards"),

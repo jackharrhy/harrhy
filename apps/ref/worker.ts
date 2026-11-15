@@ -5,6 +5,12 @@ import { readSessionCookie } from "./app/middleware/session.ts";
 import { createAppRouter } from "./app/router.ts";
 import { authorizeArchive } from "./app/middleware/archive-auth.ts";
 import {
+  authorizeRefMcp,
+  mcpScopes,
+  mcpAuthError,
+  type RefMcpAccess,
+} from "./app/mcp/auth.ts";
+import {
   createIdentityClient,
   IdentityError,
   PROJECT_ROLES_SCOPE,
@@ -57,6 +63,17 @@ export default {
       publicOrigin.origin !== env.AUTH_PUBLIC_ORIGIN
     )
       return new Response("Sign-in is not configured", { status: 503 });
+    if (url.pathname === "/.well-known/oauth-protected-resource/mcp") {
+      return Response.json(
+        {
+          resource: `${env.AUTH_PUBLIC_ORIGIN}/mcp`,
+          authorization_servers: [env.AUTH_ISSUER],
+          bearer_methods_supported: ["header"],
+          scopes_supported: mcpScopes(env.AUTH_PROJECT_ID),
+        },
+        { headers: { "Cache-Control": "public, max-age=300" } },
+      );
+    }
     if (url.pathname === "/.well-known/oauth-protected-resource/api/archive") {
       return Response.json(
         {
@@ -82,6 +99,40 @@ export default {
       if (url.pathname === "/ready") {
         await runtime.directory.listBoards();
         return Response.json({ ready: true });
+      }
+      let mcpAccess: RefMcpAccess | null = null;
+      if (url.pathname === "/mcp") {
+        const bearer = request.headers.get("Authorization");
+        if (!bearer?.startsWith("Bearer "))
+          return mcpAuthError(
+            env.AUTH_PUBLIC_ORIGIN,
+            401,
+            "Ref MCP bearer authorization is required",
+          );
+        if (!env.AUTH_INTROSPECTION_CLIENT_ID || !env.AUTH_INTROSPECTION_SECRET)
+          return mcpAuthError(
+            env.AUTH_PUBLIC_ORIGIN,
+            503,
+            "Ref MCP authentication is unavailable",
+          );
+        try {
+          const principal = await createIdentityClient({
+            issuer: env.AUTH_ISSUER,
+            clientId: env.AUTH_CLIENT_ID,
+            projectId: env.AUTH_PROJECT_ID,
+            organizationId: env.AUTH_ORGANIZATION_ID,
+          }).introspect(bearer.slice(7), {
+            clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
+            clientSecret: env.AUTH_INTROSPECTION_SECRET,
+          });
+          mcpAccess = authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
+        } catch (error) {
+          return mcpAuthError(
+            env.AUTH_PUBLIC_ORIGIN,
+            error instanceof IdentityError ? error.status : 503,
+            "Ref MCP authorization failed",
+          );
+        }
       }
       const token = readSessionCookie(request);
       let authenticated = token
@@ -115,11 +166,21 @@ export default {
             clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
             clientSecret: env.AUTH_INTROSPECTION_SECRET,
           });
-          authorizeArchive(
-            principal,
-            env.AUTH_PROJECT_ID,
-            archive && request.method !== "GET" ? "restore" : "read",
-          );
+          const boardGrant =
+            principal.scopes.has(roleScope("boards-read")) ||
+            principal.scopes.has(roleScope("boards-write"));
+          if (!archive && boardGrant) {
+            if (!authorizeRefMcp(principal, env.AUTH_PROJECT_ID).canRead)
+              throw new IdentityError(
+                "Ref board read authorization is required",
+                403,
+              );
+          } else
+            authorizeArchive(
+              principal,
+              env.AUTH_PROJECT_ID,
+              archive && request.method !== "GET" ? "restore" : "read",
+            );
           authenticated = true;
         } catch (error) {
           return new Response("Archive authorization failed", {
@@ -134,15 +195,21 @@ export default {
             "WWW-Authenticate": `Bearer resource_metadata="${env.AUTH_PUBLIC_ORIGIN}/.well-known/oauth-protected-resource/api/archive"`,
           },
         });
-      const router = createAppRouter(runtime, authenticated, token, {
-        config: {
-          issuer: env.AUTH_ISSUER,
-          clientId: env.AUTH_CLIENT_ID,
-          projectId: env.AUTH_PROJECT_ID,
-          organizationId: env.AUTH_ORGANIZATION_ID,
+      const router = createAppRouter(
+        runtime,
+        authenticated,
+        token,
+        {
+          config: {
+            issuer: env.AUTH_ISSUER,
+            clientId: env.AUTH_CLIENT_ID,
+            projectId: env.AUTH_PROJECT_ID,
+            organizationId: env.AUTH_ORGANIZATION_ID,
+          },
+          origin: env.AUTH_PUBLIC_ORIGIN,
         },
-        origin: env.AUTH_PUBLIC_ORIGIN,
-      });
+        mcpAccess,
+      );
       return withSecurityHeaders(await router.fetch(request), true);
     } catch (error) {
       console.error(

@@ -8,9 +8,12 @@ import authController from "./actions/auth-controller.ts";
 import boardsController from "./actions/boards/controller.tsx";
 import resourcesController from "./actions/resources/controller.tsx";
 import archiveController from "./actions/archive/controller.ts";
+import mcpController from "./mcp/controller.ts";
+import type { RefMcpAccess } from "./mcp/auth.ts";
 import {
   AppRuntime,
   AppIdentity,
+  McpAccess,
   Authenticated,
   CurrentSessionToken,
   type AppRuntimeService,
@@ -32,6 +35,7 @@ export function createAppRouter(
   authenticated: boolean,
   token: string | null,
   identity: { config: IdentityConfig; origin: string },
+  mcpAccess: RefMcpAccess | null = null,
 ) {
   const router = createRouter<AppContext>({
     middleware: [
@@ -40,6 +44,7 @@ export function createAppRouter(
         context.set(Authenticated, authenticated);
         context.set(CurrentSessionToken, token);
         context.set(AppIdentity, identity);
+        context.set(McpAccess, mcpAccess);
         return next();
       },
       formData({
@@ -80,5 +85,6 @@ export function createAppRouter(
   router.map(routes.boards, boardsController);
   router.map(routes.resources, resourcesController);
   router.map(routes.archive, archiveController);
+  router.map(routes.mcp, mcpController);
   return router;
 }
