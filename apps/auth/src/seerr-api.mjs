@@ -2,6 +2,10 @@ import { readFile } from "node:fs/promises";
 
 const invalid = () => new Error("Seerr native contract could not be verified");
 
+/**
+ * @param {import("./media-contracts.ts").WriteConfig} config
+ * @param {import("./media-contracts.ts").NativeDependencies} [dependencies]
+ */
 export function createSeerrApi(
   { baseUrl, writeTokenFile },
   { fetcher = fetch, readToken = readFile } = {},
@@ -17,6 +21,7 @@ export function createSeerrApi(
     !writeTokenFile.startsWith("/")
   )
     throw invalid();
+  /** @returns {Promise<unknown>} */
   return async function request(
     path,
     {

@@ -122,3 +122,84 @@ test("new-person route reserves review only, uses explicit provisioning authorit
   assert.equal(effects[0].password, undefined);
   assert.equal(effects[1], "/manage/onboarding/review-id");
 });
+
+const serviceAccountInput = (method, path) => ({
+  request: { method },
+  url: new URL(path, "https://auth.invalid"),
+  session: { userId: "operator" },
+  context: { admin: true },
+  form: new URLSearchParams({
+    reason: "reviewed",
+    subject: "subject",
+    nativeId: "native",
+  }),
+  sendRemix: async (render) => render("nonce"),
+});
+
+test("configured digit-containing service IDs work for inventory and mapping preview, not unconfigured scopes", async () => {
+  const selected = {
+    service: "forum2",
+    instance: "local",
+    name: "Synthetic Forum",
+  };
+  const snapshot = {
+    ...selected,
+    state: "available",
+    observedAt: new Date().toISOString(),
+    accounts: [],
+  };
+  const scopes = [];
+  let reviewed;
+  const handler = createAccessRoutes({
+    api: async () => ({ result: [] }),
+    organizationId: "org",
+    issuer: "https://issuer.invalid",
+    mediaInventory: {
+      instances: () => [selected],
+      read: async (service, instance) => {
+        scopes.push([service, instance]);
+        return snapshot;
+      },
+    },
+    access: {
+      isAdministrator: () => true,
+      media: {
+        mappings: () => [],
+        preview: (value) => {
+          reviewed = value;
+          return value;
+        },
+      },
+    },
+    accountActions: {
+      managedUser: async () => ({ id: "operator", state: "USER_STATE_ACTIVE" }),
+    },
+    rateLimit: () => {},
+    renderConnectedAccounts: (_instances, instance) => {
+      assert.equal(instance, selected);
+      return "inventory";
+    },
+    renderAccountLinkReview: () => "review",
+  });
+  assert.equal(
+    await handler(serviceAccountInput("GET", "/manage/media/forum2/local")),
+    true,
+  );
+  assert.equal(
+    await handler(
+      serviceAccountInput("POST", "/manage/media/forum2/local/preview"),
+    ),
+    true,
+  );
+  assert.equal(reviewed.mapping.service, "forum2");
+  assert.deepEqual(scopes, [
+    ["forum2", "local"],
+    ["forum2", "local"],
+  ]);
+  await assert.rejects(
+    handler(serviceAccountInput("GET", "/manage/media/forum3/local")),
+    {
+      status: 404,
+    },
+  );
+});

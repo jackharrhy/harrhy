@@ -4,6 +4,10 @@ const invalid = () =>
   new Error("Jellyfin native contract could not be verified");
 
 // Write credentials are explicit and never fall back to the inventory reader.
+/**
+ * @param {import("./media-contracts.ts").WriteConfig} config
+ * @param {import("./media-contracts.ts").NativeDependencies} [dependencies]
+ */
 export function createJellyfinApi(
   { baseUrl, writeTokenFile },
   { fetcher = fetch, readToken = readFile } = {},
@@ -19,6 +23,7 @@ export function createJellyfinApi(
     !writeTokenFile.startsWith("/")
   )
     throw invalid();
+  /** @returns {Promise<unknown>} */
   return async function request(
     path,
     { method = "GET", body, json = method === "GET" } = {},

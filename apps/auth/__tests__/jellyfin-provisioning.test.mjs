@@ -155,11 +155,20 @@ test("stale review, invalid selection and failed durable claim cause zero native
   const { adapter, effects, options } = fixture();
   await assert.rejects(
     adapter.preview({ username: "synthetic-new", folderIds: [id] }),
+    { status: 400 },
+  );
+  await assert.rejects(
+    adapter.preview({ username: "bad username", folderIds: [folder] }),
+    { status: 400 },
   );
   const review = await adapter.preview({
     username: "synthetic-new",
     folderIds: [folder],
   });
+  await assert.rejects(
+    adapter.provision(review, { ...options, password: "short" }),
+    { status: 400 },
+  );
   await assert.rejects(
     adapter.provision({ ...review, profile: "all-folders" }, options),
   );

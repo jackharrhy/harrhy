@@ -11,28 +11,27 @@ import { createJellyfinApi } from "./jellyfin-api.mjs";
 
 const invalid = () =>
   new Error("Jellyfin new-account contract could not be verified");
+const invalidInput = (message: string) =>
+  Object.assign(new Error(message), { status: 400 });
+function nativeObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw invalid();
+  return value as Record<string, unknown>;
+}
 const uuid = /^(?:[a-f0-9]{32}|[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})$/i;
 
 // This profile is only for a newly returned native ID, never an incumbent policy.
-export function newJellyfinPlaybackPolicy(
-  user: {
-    Id?: unknown;
-    Policy?: {
-      IsAdministrator?: unknown;
-      AuthenticationProviderId?: unknown;
-      PasswordResetProviderId?: unknown;
-    };
-  },
-  folders: string[],
-) {
+export function newJellyfinPlaybackPolicy(user: unknown, folders: string[]) {
+  const native = nativeObject(user);
+  const policy = nativeObject(native.Policy);
   if (
-    typeof user?.Id !== "string" ||
-    !uuid.test(user.Id) ||
-    user.Policy?.IsAdministrator !== false ||
-    typeof user.Policy.AuthenticationProviderId !== "string" ||
-    !user.Policy.AuthenticationProviderId ||
-    typeof user.Policy.PasswordResetProviderId !== "string" ||
-    !user.Policy.PasswordResetProviderId ||
+    typeof native.Id !== "string" ||
+    !uuid.test(native.Id) ||
+    policy.IsAdministrator !== false ||
+    typeof policy.AuthenticationProviderId !== "string" ||
+    !policy.AuthenticationProviderId ||
+    typeof policy.PasswordResetProviderId !== "string" ||
+    !policy.PasswordResetProviderId ||
     !Array.isArray(folders) ||
     !folders.length ||
     folders.length > 100 ||
@@ -80,8 +79,8 @@ export function newJellyfinPlaybackPolicy(
     BlockedMediaFolders: [],
     BlockedChannels: [],
     RemoteClientBitrateLimit: 0,
-    AuthenticationProviderId: user.Policy.AuthenticationProviderId,
-    PasswordResetProviderId: user.Policy.PasswordResetProviderId,
+    AuthenticationProviderId: policy.AuthenticationProviderId,
+    PasswordResetProviderId: policy.PasswordResetProviderId,
     SyncPlayAccess: "None",
   };
 }
@@ -95,8 +94,10 @@ export function createJellyfinProvisioning(
     const result = await request("Library/VirtualFolders");
     if (!Array.isArray(result) || result.length > 100) throw invalid();
     const rows = result
-      .map((row) => {
+      .map((value: unknown) => {
+        const row = nativeObject(value);
         if (
+          typeof row.ItemId !== "string" ||
           !uuid.test(row.ItemId) ||
           typeof row.Name !== "string" ||
           !row.Name ||
@@ -124,26 +125,38 @@ export function createJellyfinProvisioning(
       !folderIds.length ||
       new Set(folderIds).size !== folderIds.length
     )
-      throw invalid();
+      throw invalidInput(
+        "Choose a valid native username and at least one library, without duplicate selections.",
+      );
     const available = await libraries();
     const folders = folderIds
       .map((id) => {
         const row = available.find((item) => item.id === id);
-        if (!row) throw invalid();
+        if (!row)
+          throw invalidInput(
+            "The selected libraries are unavailable. Reload the libraries and start a new review.",
+          );
         return row;
       })
       .toSorted((a, b) => a.id.localeCompare(b.id));
-    const accounts = await request("Users");
+    const users = await request("Users");
+    if (!Array.isArray(users) || users.length > 10000) throw invalid();
+    const accounts = users.map((value: unknown) => {
+      const row = nativeObject(value);
+      if (
+        typeof row.Name !== "string" ||
+        typeof row.Id !== "string" ||
+        !uuid.test(row.Id)
+      )
+        throw invalid();
+      return { id: row.Id, name: row.Name };
+    });
     if (
-      !Array.isArray(accounts) ||
-      accounts.length > 10000 ||
-      accounts.some((row) => typeof row.Name !== "string" || !uuid.test(row.Id))
+      accounts.some((row) => row.name.toLowerCase() === username.toLowerCase())
     )
-      throw invalid();
-    if (
-      accounts.some((row) => row.Name.toLowerCase() === username.toLowerCase())
-    )
-      throw invalid();
+      throw invalidInput(
+        "That native username already exists. Choose a different username.",
+      );
     return {
       username,
       folders,
@@ -161,7 +174,9 @@ export function createJellyfinProvisioning(
         password.length < 16 ||
         password.length > 256
       )
-        throw invalid();
+        throw invalidInput(
+          "Enter a separate native password of 16–256 characters.",
+        );
       const current = await preview({
         username: review.username,
         folderIds: review.folders.map((row) => row.id),
@@ -172,15 +187,18 @@ export function createJellyfinProvisioning(
       await claimEffect();
       let nativeId: string | undefined;
       try {
-        const created = await request("Users/New", {
-          method: "POST",
-          json: true,
-          body: {
-            Name: review.username,
-            Password: randomBytes(48).toString("base64url"),
-          },
-        });
-        if (!uuid.test(created?.Id)) throw invalid();
+        const created = nativeObject(
+          await request("Users/New", {
+            method: "POST",
+            json: true,
+            body: {
+              Name: review.username,
+              Password: randomBytes(48).toString("base64url"),
+            },
+          }),
+        );
+        if (typeof created.Id !== "string" || !uuid.test(created.Id))
+          throw invalid();
         const returnedId: string = created.Id;
         nativeId = returnedId;
         // Durable receipt precedes all subsequent writes; never rediscover by name.
@@ -194,7 +212,7 @@ export function createJellyfinProvisioning(
           method: "POST",
           body: policy,
         });
-        const observed = await request(`Users/${nativeId}`);
+        const observed = nativeObject(await request(`Users/${nativeId}`));
         if (
           observed.Id !== nativeId ||
           observed.Name !== review.username ||

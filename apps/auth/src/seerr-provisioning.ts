@@ -22,19 +22,15 @@ const guid = (value: unknown) => {
 const numericId = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
-function verify(
-  user: {
-    id: number;
-    jellyfinUserId: string;
-    jellyfinUsername: string;
-    permissions: number;
-    userType: number;
-  },
-  review: SeerrReview,
-  nativeId: string,
-) {
+function nativeObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value))
+    throw invalid();
+  return value as Record<string, unknown>;
+}
+function verify(value: unknown, review: SeerrReview, nativeId: string) {
+  const user = nativeObject(value);
   if (
-    !numericId(user?.id) ||
+    !numericId(user.id) ||
     user.id === 1 ||
     String(user.id) !== nativeId ||
     guid(user.jellyfinUserId) !== guid(review.jellyfinNativeId) ||
@@ -58,11 +54,12 @@ export function createSeerrProvisioning(
   }): Promise<SeerrReview> {
     const normalized = guid(jellyfinNativeId);
     // Full settings stay in memory only; the API can include its own API key.
-    const settings = await request("settings/main");
+    const settings = nativeObject(await request("settings/main"));
     if (settings.mediaServerType !== 2 || settings.defaultPermissions !== 160)
       throw invalid();
-    const users = await request("settings/jellyfin/users");
-    if (!Array.isArray(users) || users.length > 10000) throw invalid();
+    const result = await request("settings/jellyfin/users");
+    if (!Array.isArray(result) || result.length > 10000) throw invalid();
+    const users = result.map(nativeObject);
     const ids = users.map((user) => guid(user.id));
     if (new Set(ids).size !== ids.length) throw invalid();
     const native = users.find((user) => user.id === jellyfinNativeId);
@@ -103,15 +100,12 @@ export function createSeerrProvisioning(
           json: true,
           body: { jellyfinUserIds: [review.jellyfinNativeId] },
         });
-        if (
-          !Array.isArray(created) ||
-          created.length !== 1 ||
-          !numericId(created[0]?.id)
-        )
-          throw invalid();
-        nativeId = String(created[0].id);
+        if (!Array.isArray(created) || created.length !== 1) throw invalid();
+        const user = nativeObject(created[0]);
+        if (!numericId(user.id)) throw invalid();
+        nativeId = String(user.id);
         await recordNativeId(nativeId);
-        verify(created[0], review, nativeId);
+        verify(user, review, nativeId);
         verify(await request(`user/${nativeId}`), review, nativeId);
         return {
           state: "created",

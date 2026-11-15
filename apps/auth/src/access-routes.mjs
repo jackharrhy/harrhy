@@ -400,7 +400,7 @@ export function createAccessRoutes({
         return true;
       }
       const target = url.pathname.match(
-        /^\/manage\/media\/([a-z-]+)\/([A-Za-z0-9-]{1,100})(\/preview)?$/,
+        /^\/manage\/media\/([a-z][a-z0-9-]{0,99})\/([A-Za-z0-9-]{1,100})(\/preview)?$/,
       );
       const selected =
         target &&

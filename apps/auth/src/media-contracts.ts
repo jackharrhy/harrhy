@@ -82,7 +82,7 @@ export interface WriteConfig {
 }
 export interface NativeDependencies {
   fetcher?: typeof fetch;
-  readToken?: typeof import("node:fs/promises").readFile;
+  readToken?: (path: string, encoding: "utf8") => Promise<string>;
 }
 export interface ProvisioningResolver {
   (target: { service: "jellyfin"; instance: string }): JellyfinProvisioning;
