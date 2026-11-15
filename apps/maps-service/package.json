@@ -13,6 +13,7 @@
     "check": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
+    "@harrhy/mcp": "0.1.0",
     "@harrhy/worldview-renderer": "0.2.0",
     "@harrhy/maps-editor": "0.1.0",
     "@harrhy/maps-protocol": "0.1.0",
@@ -26,6 +27,8 @@
     "@harrhy/identity": "0.1.0"
   },
   "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
     "@types/node": "^26.6.6",
     "vitest": "^5.1.0"
   },

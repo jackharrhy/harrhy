@@ -1,5 +1,10 @@
 import { z } from "zod";
 import {
+  createNativeHandler,
+  Server,
+  specTypeSchemas,
+} from "@harrhy/mcp/native";
+import {
   mcpAuthorizationScopes,
   mcpResourceUrl,
   requireMcpAdmin,
@@ -7,26 +12,14 @@ import {
 import { mcpOperationsByName, mcpToolDescriptions } from "../mcp-operations.js";
 import { ServiceHttpError } from "../service-http.js";
 import { defineWebRoute } from "../service-routing.js";
-import { webError, webRequestBody } from "../service-web-http.js";
+import { webError } from "../service-web-http.js";
 import type { MapsServiceOptions } from "../service-options.js";
 
-const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26"] as const;
-const RpcRequestSchema = z.strictObject({
-  jsonrpc: z.literal("2.0"),
-  id: z.union([z.string(), z.number(), z.null()]).optional(),
-  method: z.string().min(1),
-  params: z.record(z.string(), z.unknown()).optional(),
+const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
+  tools: mcpToolDescriptions,
 });
-
-function rpcResponse(body: unknown): Response {
-  return new Response(JSON.stringify(body), {
-    status: 200,
-    headers: {
-      "Content-Type": "application/json; charset=utf-8",
-      "Cache-Control": "no-store",
-    },
-  });
-}
+if (catalog.issues) throw new Error("Invalid Worldview MCP catalog");
+const toolsResult = catalog.value;
 
 export function createMcpRoutes(options: MapsServiceOptions) {
   return [
@@ -91,103 +84,59 @@ export function createMcpRoutes(options: MapsServiceOptions) {
         }
         return webError(error.status, error.message, headers);
       }
-      const request = await webRequestBody(
-        context.request,
-        RpcRequestSchema,
-        3 * 1024 * 1024,
-      );
-      if (!Object.hasOwn(request, "id")) {
-        return new Response(null, {
-          status: request.method === "notifications/initialized" ? 202 : 400,
-          headers: { "Cache-Control": "no-store" },
-        });
-      }
-      const id = request.id ?? null;
-      if (request.method === "initialize") {
-        const requested = request.params?.protocolVersion;
-        const version =
-          typeof requested === "string" &&
-          SUPPORTED_VERSIONS.includes(requested as never)
-            ? requested
-            : SUPPORTED_VERSIONS[0];
-        return rpcResponse({
-          jsonrpc: "2.0",
-          id,
-          result: {
-            protocolVersion: version,
-            capabilities: { tools: { listChanged: false } },
-            serverInfo: { name: "tea-maps", version: "0.1.0" },
-          },
-        });
-      }
-      const protocolVersion = context.request.headers.get(
-        "mcp-protocol-version",
-      );
-      if (
-        protocolVersion &&
-        !SUPPORTED_VERSIONS.includes(protocolVersion as never)
-      ) {
-        return webError(400, "Unsupported MCP protocol version");
-      }
-      if (request.method === "tools/list") {
-        return rpcResponse({
-          jsonrpc: "2.0",
-          id,
-          result: { tools: mcpToolDescriptions },
-        });
-      }
-      if (request.method === "tools/call") {
-        const name = String(request.params?.name ?? "");
-        const tool = mcpOperationsByName.get(name);
-        if (!tool) {
-          return rpcResponse({
-            jsonrpc: "2.0",
-            id,
-            result: {
-              content: [{ type: "text", text: `Unknown tool: ${name}` }],
-              isError: true,
-            },
-          });
-        }
-        try {
-          const value = await tool.execute(
-            options,
-            user,
-            request.params?.arguments ?? {},
+      const handler = createNativeHandler(
+        () => {
+          const server = new Server(
+            { name: "tea-maps", version: "0.1.0" },
+            { capabilities: { tools: { listChanged: false } } },
           );
-          return rpcResponse({
-            jsonrpc: "2.0",
-            id,
-            result: {
-              content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
-              structuredContent: value,
-            },
+          server.setRequestHandler("tools/list", () => toolsResult);
+          server.setRequestHandler("tools/call", async (message) => {
+            const name = message.params.name;
+            const tool = mcpOperationsByName.get(name);
+            if (!tool)
+              return {
+                content: [{ type: "text", text: `Unknown tool: ${name}` }],
+                isError: true,
+              };
+            try {
+              const value = await tool.execute(
+                options,
+                user,
+                message.params.arguments ?? {},
+              );
+              if (!value || typeof value !== "object" || Array.isArray(value))
+                throw new Error("Invalid Worldview MCP result");
+              return server.projectCallToolResult(
+                {
+                  content: [
+                    { type: "text", text: JSON.stringify(value, null, 2) },
+                  ],
+                  structuredContent: value as Record<string, unknown>,
+                },
+                undefined,
+              );
+            } catch (error) {
+              const expected =
+                error instanceof ServiceHttpError ||
+                error instanceof z.ZodError;
+              if (!expected) console.error("Worldview MCP tool failed", error);
+              return {
+                content: [
+                  {
+                    type: "text",
+                    text: expected ? error.message : "Tool failed",
+                  },
+                ],
+                isError: true,
+              };
+            }
           });
-        } catch (error) {
-          const message =
-            error instanceof ServiceHttpError || error instanceof z.ZodError
-              ? error.message
-              : "Tool failed";
-          if (
-            !(error instanceof ServiceHttpError || error instanceof z.ZodError)
-          ) {
-            console.error("Worldview MCP tool failed", error);
-          }
-          return rpcResponse({
-            jsonrpc: "2.0",
-            id,
-            result: {
-              content: [{ type: "text", text: message }],
-              isError: true,
-            },
-          });
-        }
-      }
-      return rpcResponse({
-        jsonrpc: "2.0",
-        id,
-        error: { code: -32601, message: "Method not found" },
-      });
+          return server;
+        },
+        { maxRequestBytes: 3 * 1024 * 1024 },
+      );
+      return handler.fetch(context.request);
     }),
   ] as const;
 }
