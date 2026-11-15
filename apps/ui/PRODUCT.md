@@ -4,7 +4,7 @@ An internal workbench for @harrhy/ui, implemented with native Remix 3 on a Node 
 
 ## Explorer
 
-Select a component, change its actual props, inspect native and managed behavior, and copy matching source. Component and theme have shareable query URLs. Search is a native GET form and works without scripts. Mobile has a component selector instead of the desktop rail.
+Select a component, change its actual props, inspect native and managed behavior, and copy matching source. Component and theme have shareable query URLs. Search is a native GET form and works without scripts. Mobile exposes component links in a disclosure instead of the desktop rail. Select controls use the actual official Remix UI pattern, not native select elements or a replacement interaction engine.
 
 ## Scenes
 

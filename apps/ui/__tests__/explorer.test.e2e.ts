@@ -11,7 +11,12 @@ it("explores actual props, matching source, and scoped themes", async (t) => {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto("/");
   const preview = page.locator('[data-preview="button"]');
-  await page.getByLabel("Variant", { exact: true }).selectOption("danger");
+  await page.getByRole("button", { name: "Variant", exact: true }).click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Danger", exact: true }).click();
+  await page.locator("pre").filter({ hasText: 'variant="danger"' }).waitFor();
   await page.getByLabel("Label", { exact: true }).fill("Delete reference");
   assert.match(
     await page.locator("pre").innerText(),
@@ -34,8 +39,13 @@ it("explores actual props, matching source, and scoped themes", async (t) => {
   assert.match(await page.locator("pre").innerText(), / disabled>/);
   await page.getByLabel("Disabled", { exact: true }).uncheck();
   await page
-    .getByLabel("Preview theme", { exact: true })
-    .selectOption("brutalist");
+    .getByRole("button", { name: "Preview theme", exact: true })
+    .click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Artbin", exact: true }).click();
+  await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
   assert.equal(new URL(page.url()).searchParams.get("theme"), "brutalist");
   const button = preview.getByRole("button", {
     name: "Delete reference",
@@ -62,7 +72,11 @@ it("explores actual props, matching source, and scoped themes", async (t) => {
       true,
     );
   }
-  await page.getByLabel("Component", { exact: true }).selectOption("field");
+  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page
+    .getByRole("link", { name: "Field", exact: true })
+    .filter({ visible: true })
+    .click();
   const input = page.getByLabel("Collection name", { exact: true });
   await page.getByLabel("Error", { exact: true }).check();
   assert.equal(await input.getAttribute("aria-invalid"), "true");
@@ -148,7 +162,10 @@ it("filters component navigation with a native GET and without scripts", async (
   assert.equal(new URL(page.url()).searchParams.get("q"), "nothing-matches");
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/");
-  await page.getByLabel("Component", { exact: true }).selectOption("field");
-  await page.getByRole("button", { name: "Open", exact: true }).click();
+  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page
+    .getByRole("link", { name: "Field", exact: true })
+    .filter({ visible: true })
+    .click();
   await page.getByRole("heading", { name: "Field", exact: true }).waitFor();
 });

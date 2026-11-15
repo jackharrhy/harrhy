@@ -2,7 +2,8 @@ import * as assert from "remix/assert";
 import { on, type Handle } from "remix/component";
 import { render } from "remix/component/test";
 import { it } from "remix/test";
-import { ActionButton, Dialog } from "@harrhy/ui/interactive";
+import { ActionButton, Dialog, Select } from "@harrhy/ui/interactive";
+import { Field } from "@harrhy/ui/native";
 
 it("honors caller preventDefault before starting an action", async (t) => {
   let calls = 0;
@@ -114,3 +115,112 @@ it("reports non-vetoable native method=dialog close to the controlled owner", as
   assert.equal(dialog.open, false);
   assert.deepEqual(closes, [{ reason: "native", value: "confirmed" }]);
 });
+
+it("composes Select keyboard, Field relationships and form participation", async (t) => {
+  const changes: string[] = [];
+  const options = [
+    { value: "alpha", label: "Alpha" },
+    { value: "blocked", label: "Unavailable", disabled: true },
+    { value: "gamma", label: "Gamma" },
+  ];
+  const { $, act, cleanup } = render(
+    <form>
+      <span id="external">External hint</span>
+      <Field
+        id="choice"
+        label="Choice"
+        description="Pick one"
+        error="Check choice"
+      >
+        <Select
+          options={options}
+          defaultValue="alpha"
+          name="choice"
+          aria-describedby="external"
+          onValueChange={(value) => changes.push(value)}
+        />
+      </Field>
+      <Select
+        aria-label="Disabled choice"
+        options={options}
+        defaultValue="alpha"
+        name="disabled-choice"
+        disabled
+      />
+    </form>,
+  );
+  t.after(cleanup);
+  const trigger = $("#choice") as HTMLButtonElement;
+  const form = $("form") as HTMLFormElement;
+  assert.equal($("select"), null);
+  assert.equal($("label")?.getAttribute("for"), "choice");
+  assert.equal(trigger.getAttribute("aria-invalid"), "true");
+  const described = trigger.getAttribute("aria-describedby")?.split(" ") ?? [];
+  for (const id of ["external", "choice-description", "choice-error"]) {
+    assert.ok(described.includes(id));
+    assert.ok(document.getElementById(id));
+  }
+  assert.deepEqual(Array.from(new FormData(form)), [["choice", "alpha"]]);
+  assert.equal(
+    ($('[aria-label="Disabled choice"]') as HTMLButtonElement).disabled,
+    true,
+  );
+  trigger.focus();
+  await act(() => dispatchKey(trigger, "ArrowDown"));
+  assert.equal(trigger.getAttribute("aria-expanded"), "true");
+  assert.equal(
+    $('[role="option"][aria-disabled="true"]')?.textContent,
+    "Unavailable",
+  );
+  const list = $('[role="listbox"]')!;
+  await act(async () => {
+    const deadline = performance.now() + 3000;
+    while (document.activeElement !== list && performance.now() < deadline) {
+      await new Promise(requestAnimationFrame);
+    }
+  });
+  assert.equal(document.activeElement, list);
+  await act(() => $('[role="option"][aria-disabled="true"]')?.click());
+  assert.deepEqual(changes, []);
+  assert.deepEqual(Array.from(new FormData(form)), [["choice", "alpha"]]);
+  await act(() => dispatchKey(list, "Home"));
+  await act(() => dispatchKey(list, "ArrowDown"));
+  await act(async () => {
+    dispatchKey(document.activeElement!, "Enter");
+    const deadline = performance.now() + 3000;
+    while (changes.length === 0 && performance.now() < deadline) {
+      await new Promise(requestAnimationFrame);
+    }
+  });
+  assert.deepEqual(changes, ["gamma"]);
+  assert.deepEqual(Array.from(new FormData(form)), [["choice", "gamma"]]);
+  assert.equal(trigger.textContent?.trim(), "Gamma");
+  await act(() => dispatchKey(trigger, "ArrowDown"));
+  await act(async () => {
+    const deadline = performance.now() + 3000;
+    while (document.activeElement !== list && performance.now() < deadline) {
+      await new Promise(requestAnimationFrame);
+    }
+  });
+  await act(async () => {
+    dispatchKey(list, "Escape");
+    const deadline = performance.now() + 3000;
+    while (
+      trigger.getAttribute("aria-expanded") !== "false" &&
+      performance.now() < deadline
+    ) {
+      await new Promise(requestAnimationFrame);
+    }
+  });
+  assert.equal(document.activeElement, trigger);
+  assert.equal(trigger.getAttribute("aria-expanded"), "false");
+});
+
+const dispatchKey = (node: Element, value: string) =>
+  node.dispatchEvent(
+    new KeyboardEvent("keydown", {
+      key: value,
+      bubbles: true,
+      cancelable: true,
+    }),
+  );

@@ -1,6 +1,7 @@
 import { css, on, ref } from "remix/component";
 import type { Handle } from "remix/component";
-import { Button, Inline, Select } from "@harrhy/ui/native";
+import { Button, Inline } from "@harrhy/ui/native";
+import { Select } from "@harrhy/ui/interactive";
 import { RadioPlayerView } from "./player.tsx";
 import { desktopThemeStyle } from "./theme.ts";
 import { createRadioDemo, scenarios } from "./model.ts";
@@ -21,23 +22,20 @@ export function RadioScene(handle: Handle) {
         <label htmlFor="radio-scenario">Scenario</label>
         <Select
           id="radio-scenario"
-          value={scenario}
-          mix={[
-            css({ width: "auto" }),
-            on("change", (event) => {
-              scenario = event.currentTarget.value as Scenario;
-              demo.reset(scenario);
-            }),
-          ]}
-        >
-          {scenarios.map((name) => (
-            <option value={name}>
-              {name === "calibrated"
+          defaultValue={scenario}
+          options={scenarios.map((name) => ({
+            value: name,
+            label:
+              name === "calibrated"
                 ? "Offset +20ms"
-                : name[0]!.toUpperCase() + name.slice(1)}
-            </option>
-          ))}
-        </Select>
+                : name[0]!.toUpperCase() + name.slice(1),
+          }))}
+          onValueChange={(value) => {
+            scenario = value as Scenario;
+            demo.reset(scenario);
+          }}
+          mix={css({ width: "auto" })}
+        />
         <Button mix={on("click", () => demo.reset(scenario))}>
           Reset scene
         </Button>

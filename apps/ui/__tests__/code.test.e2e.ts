@@ -45,7 +45,11 @@ it("integrates shared code views, safe live source, copy and prepared diff state
       true,
     );
   }
-  await page.getByLabel("Component", { exact: true }).selectOption("diff");
+  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page
+    .getByRole("link", { name: "CodeDiff", exact: true })
+    .filter({ visible: true })
+    .click();
   const diff = page.getByRole("region", {
     name: "Action label revision",
     exact: true,

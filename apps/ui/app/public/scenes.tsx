@@ -9,10 +9,10 @@ import {
   Input,
   Notice,
   Panel,
-  Select,
   Stack,
   Textarea,
 } from "@harrhy/ui/native";
+import { Select } from "@harrhy/ui/interactive";
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { themes } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
@@ -144,19 +144,18 @@ export const Scenes = clientEntry(
                 <label htmlFor="scene-theme">Theme</label>
                 <Select
                   id="scene-theme"
-                  value={theme}
-                  mix={[
-                    css({ width: "auto" }),
-                    on("change", (event) => {
-                      theme = event.currentTarget.value as ThemeName;
-                      handle.update();
-                    }),
+                  defaultValue={theme}
+                  options={[
+                    { value: "clean", label: "Clean" },
+                    { value: "tactile", label: "Radio" },
+                    { value: "brutalist", label: "Artbin" },
                   ]}
-                >
-                  <option value="clean">Clean</option>
-                  <option value="tactile">Radio</option>
-                  <option value="brutalist">Artbin</option>
-                </Select>
+                  onValueChange={(value) => {
+                    theme = value as ThemeName;
+                    handle.update();
+                  }}
+                  mix={css({ width: "auto" })}
+                />
               </Inline>
               <div mix={grid}>
                 <Panel aria-labelledby="auth-title">

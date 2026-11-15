@@ -9,12 +9,12 @@ import {
   Input,
   Notice,
   Panel,
-  Select,
   Stack,
   Textarea,
 } from "@harrhy/ui/native";
 import {
   ActionButton,
+  Select,
   Dialog,
   Tabs,
   TabList,
@@ -50,7 +50,7 @@ export const stories = [
     id: "select",
     name: "Select",
     group: "Forms",
-    summary: "A native choice, with native keyboard behavior.",
+    summary: "A themed choice with official Remix UI keyboard interaction.",
   },
   {
     id: "checkbox",
@@ -117,8 +117,10 @@ const chrome = css({
   lineHeight: "1.5",
   "& *": { boxSizing: "border-box" },
   "& a": { color: "inherit", textUnderlineOffset: "3px" },
-  "& aside input, & aside select, & aside button, & [data-workbench-controls] input, & [data-workbench-controls] select, & [data-source] button":
-    { font: "inherit" },
+  "& aside input, & aside button, & [data-workbench-controls] input, & [data-source] button":
+    {
+      font: "inherit",
+    },
   "& header :focus-visible, & aside :focus-visible, & [data-workbench-controls] :focus-visible, & [data-source] :focus-visible":
     { outline: "2px solid #0969da", outlineOffset: "3px" },
   "& ::selection": { background: "#d9eaff", color: "#12243b" },
@@ -203,17 +205,8 @@ const rail = css({
 const mobile = css({
   display: "none",
   "@media (max-width: 760px)": {
-    display: "flex",
-    gap: "12px",
-    alignItems: "center",
-    "& select": {
-      flex: 1,
-      minWidth: 0,
-      padding: "8px",
-      border: "1px solid #c5c8ce",
-      background: "white",
-      borderRadius: "6px",
-    },
+    display: "block",
+    "& summary": { cursor: "pointer", padding: "8px 0" },
   },
 });
 const contentStyle = css({
@@ -233,13 +226,6 @@ const toolbar = css({
   padding: "12px 16px",
   borderBottom: "1px solid #dedfe2",
   background: "#fafafa",
-  "& select": {
-    border: "1px solid #c5c8ce",
-    borderRadius: "5px",
-    padding: "4px 8px",
-    background: "white",
-    color: "#24292f",
-  },
 });
 const bench = css({
   border: "1px solid #dedfe2",
@@ -275,7 +261,7 @@ const controls = css({
     alignItems: "center",
     gap: "8px",
   },
-  "& input:not([type=checkbox]), & select, & textarea": {
+  "& input:not([type=checkbox]), & textarea": {
     width: "100%",
     minWidth: 0,
     color: "#202124",
@@ -381,7 +367,7 @@ export const Explorer = clientEntry(
                         .filter((item) => item.group === group)
                         .map((item) => (
                           <a
-                            href={`/?component=${item.id}&theme=${theme}`}
+                            href={`/?component=${item.id}&theme=${theme}&q=${encodeURIComponent(query)}`}
                             aria-current={
                               item.id === story ? "page" : undefined
                             }
@@ -398,33 +384,83 @@ export const Explorer = clientEntry(
                   No components found. <a href="/">Clear search</a>
                 </p>
               )}
-              <div mix={mobile}>
-                <form
-                  method="get"
-                  action="/"
-                  mix={css({ margin: 0, width: "100%", alignItems: "center" })}
-                >
-                  <label htmlFor="component-select">Component</label>
-                  <select
-                    id="component-select"
-                    name="component"
-                    value={story}
-                    mix={on("change", (event) => {
-                      event.currentTarget.form?.requestSubmit();
-                    })}
-                  >
-                    {(filtered.length ? filtered : [selected]).map((item) => (
-                      <option value={item.id}>{item.name}</option>
-                    ))}
-                  </select>
-                  <input type="hidden" name="theme" value={theme} />
-                  <button type="submit">Open</button>
-                </form>
-              </div>
+              <details mix={mobile}>
+                <summary>Component: {selected.name}</summary>
+                <div aria-label="Mobile component navigation">
+                  {filtered.map((item) => (
+                    <a
+                      href={`/?component=${item.id}&theme=${theme}&q=${encodeURIComponent(query)}`}
+                      aria-current={item.id === story ? "page" : undefined}
+                    >
+                      {item.name}
+                    </a>
+                  ))}
+                </div>
+              </details>
             </aside>
             <main id="component" mix={contentStyle}>
               <h1>{selected.name}</h1>
               <p mix={introStyle}>{selected.summary}</p>
+              <details
+                aria-label="Official upstream inventory"
+                mix={css({
+                  marginTop: "20px",
+                  fontSize: "12px",
+                  color: "#59616b",
+                })}
+              >
+                <summary>
+                  Official Remix UI: 10 modules · Select/Tabs adopted
+                </summary>
+                <p>
+                  10 installed subpaths. Popover and Listbox support Select
+                  internals. Others are available upstream, not Harrhy adapters.
+                  Dialog stays native: upstream has no Dialog.
+                </p>
+                <ul
+                  mix={css({
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "6px 16px",
+                    padding: 0,
+                    margin: "8px 0 0",
+                    listStyle: "none",
+                  })}
+                >
+                  {[
+                    "accordion",
+                    "anchor",
+                    "animation",
+                    "combobox",
+                    "listbox",
+                    "menu",
+                    "popover",
+                    "select",
+                    "tabs",
+                    "toggle",
+                  ].map((name) => (
+                    <li>
+                      <a
+                        href={`https://github.com/remix-run/remix/tree/main/packages/ui/src/${name}`}
+                      >
+                        {name}
+                      </a>{" "}
+                      —{" "}
+                      {name === "select" || name === "tabs"
+                        ? "adopted"
+                        : name === "popover" || name === "listbox"
+                          ? "Select internals"
+                          : "upstream only"}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+              {(story === "select" || story === "tabs") && (
+                <p mix={introStyle}>
+                  Uses official Remix UI {selected.name} with Harrhy theme
+                  recipes.
+                </p>
+              )}
               <Story
                 key={story}
                 story={story}
@@ -450,6 +486,58 @@ export const Explorer = clientEntry(
     };
   },
 );
+
+const upstreamSelectSource = `import type { Handle } from "remix/component";
+import * as select from "@remix-run/ui/select";
+import * as popover from "@remix-run/ui/popover";
+
+function Trigger(handle: Handle) {
+  const context = handle.context.get(select.Context);
+  return () => (
+    <button id="visibility-trigger" type="button"
+      aria-describedby={context.selectedId}
+      mix={[
+        select.trigger(),
+        select.onSelectChange((event) => console.log(event.value)),
+      ]}>
+      {context.displayedLabel}
+    </button>
+  );
+}
+
+function Visibility() {
+  return () => (
+    <select.Context name="visibility" defaultValue="private" defaultLabel="Private">
+      <Trigger />
+      <popover.Context>
+        <div mix={select.popover()}>
+          <div aria-labelledby="visibility-trigger" mix={select.list()}>
+            <div mix={select.option({ value: "private", label: "Private" })}>Private</div>
+            <div mix={select.option({ value: "shared", label: "Shared" })}>Shared</div>
+          </div>
+        </div>
+      </popover.Context>
+      <input mix={select.hiddenInput()} />
+    </select.Context>
+  );
+}`;
+
+const upstreamTabsSource = `import * as tabs from "@remix-run/ui/tabs";
+
+function CollectionTabs() {
+  return () => (
+    <tabs.Context defaultActiveTab="overview">
+      <div mix={tabs.root()}>
+        <div aria-label="Collection" mix={tabs.list()}>
+          <button type="button" mix={tabs.tab({ name: "overview" })}>Overview</button>
+          <button type="button" mix={tabs.tab({ name: "activity" })}>Activity</button>
+        </div>
+        <div mix={tabs.panel({ name: "overview" })}>Collection details</div>
+        <div mix={tabs.panel({ name: "activity" })}>No changes yet.</div>
+      </div>
+    </tabs.Context>
+  );
+}`;
 
 const demoDiff: readonly DiffLine[] = [
   {
@@ -553,13 +641,13 @@ function Story(
                         : story === "checkbox"
                           ? `<label><Checkbox name="private"${checked ? " defaultChecked" : ""}${disabled ? " disabled" : ""} /> Private collection</label>`
                           : story === "select"
-                            ? `<Field id="visibility" label="Visibility">\n  <Select name="visibility"${disabled ? " disabled" : ""}>\n    <option value="private">Private</option>\n    <option value="shared">Shared</option>\n  </Select>\n</Field>`
+                            ? `<Field id="visibility" label="Visibility">\n  <Select name="visibility" defaultValue="private"${disabled ? " disabled" : ""}\n    options={[{ value: "private", label: "Private" }, { value: "shared", label: "Shared" }]} />\n</Field>`
                             : story === "textarea"
                               ? `<Field id="notes" label="Notes">\n  <Textarea name="notes" rows={3}${disabled ? " disabled" : ""} />\n</Field>`
                               : '<Panel aria-labelledby="collection-title">\n  <Stack>\n    <h2 id="collection-title">Evening sketches</h2>\n    <p>Reference images for the next drawing session.</p>\n  </Stack>\n</Panel>';
     const imports = ["code", "diff"].includes(story)
       ? "@harrhy/ui/code"
-      : ["action", "dialog", "tabs"].includes(story)
+      : ["action", "dialog", "tabs", "select"].includes(story)
         ? "@harrhy/ui/interactive"
         : "@harrhy/ui/native";
     const themeImport =
@@ -574,7 +662,7 @@ function Story(
 
 `
         : "";
-    const example = `import { ${stories.find((item) => item.id === story)!.name}${story === "diff" ? ", type DiffLine" : story === "field" ? ", Input" : ["textarea", "select"].includes(story) ? ", Field" : story === "panel" ? ", Stack" : story === "tabs" ? ", TabList, Tab, TabPanel" : ""} } from "${imports}";\nimport { ${themeImport}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n\n${declaration}<section mix={[themeStyles(${themeImport}), themeRoot]}>\n${content
+    const example = `import { ${stories.find((item) => item.id === story)!.name}${story === "diff" ? ", type DiffLine" : story === "field" ? ", Input" : story === "textarea" ? ", Field" : story === "panel" ? ", Stack" : story === "tabs" ? ", TabList, Tab, TabPanel" : ""} } from "${imports}";\n${story === "select" ? 'import { Field } from "@harrhy/ui/native";\n' : ""}import { ${themeImport}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n\n${declaration}<section mix={[themeStyles(${themeImport}), themeRoot]}>\n${content
       .split("\n")
       .map((line) => `  ${line}`)
       .join("\n")}\n</section>`;
@@ -582,24 +670,27 @@ function Story(
       <section mix={bench} aria-label="Component workbench">
         <div mix={toolbar}>
           <h2>Preview</h2>
-          <label>
-            Theme{" "}
-            <select
+          <div mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}>
+            <label htmlFor="preview-theme">Theme</label>
+            <Select
+              id="preview-theme"
               aria-label="Preview theme"
-              value={theme}
-              mix={on("change", (event) => {
-                const next = event.currentTarget.value as ThemeName;
+              defaultValue={theme}
+              options={[
+                { value: "clean", label: "Clean" },
+                { value: "tactile", label: "Radio" },
+                { value: "brutalist", label: "Artbin" },
+              ]}
+              onValueChange={(value) => {
+                if (value === null) return;
+                const next = value as ThemeName;
                 const url = new URL(location.href);
                 url.searchParams.set("theme", next);
                 history.replaceState(null, "", url);
                 handle.props.onThemeChange(next);
-              })}
-            >
-              <option value="clean">Clean</option>
-              <option value="tactile">Radio</option>
-              <option value="brutalist">Artbin</option>
-            </select>
-          </label>
+              }}
+            />
+          </div>
         </div>
         <div mix={specimenLayout}>
           <div
@@ -696,10 +787,15 @@ function Story(
               )}
               {story === "select" && (
                 <Field id="visibility" label="Visibility">
-                  <Select name="visibility" disabled={disabled}>
-                    <option value="private">Private</option>
-                    <option value="shared">Shared</option>
-                  </Select>
+                  <Select
+                    name="visibility"
+                    defaultValue="private"
+                    disabled={disabled}
+                    options={[
+                      { value: "private", label: "Private" },
+                      { value: "shared", label: "Shared" },
+                    ]}
+                  />
                 </Field>
               )}
               {story === "textarea" && (
@@ -835,20 +931,25 @@ function Story(
                     })}
                   />
                 </label>
-                <label>
-                  Language
-                  <select
+                <div
+                  mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}
+                >
+                  <label htmlFor="code-language">Language</label>
+                  <Select
+                    id="code-language"
                     aria-label="Language"
-                    value={language}
-                    mix={on("change", (event) => {
-                      language = event.currentTarget.value;
+                    defaultValue={language}
+                    options={[
+                      { value: "tsx", label: "tsx" },
+                      { value: "text", label: "text" },
+                    ]}
+                    onValueChange={(value) => {
+                      if (value === null) return;
+                      language = value;
                       handle.update();
-                    })}
-                  >
-                    <option value="tsx">tsx</option>
-                    <option value="text">text</option>
-                  </select>
-                </label>
+                    }}
+                  />
+                </div>
                 <label>
                   <input
                     type="checkbox"
@@ -902,39 +1003,45 @@ function Story(
               </label>
             )}
             {story === "button" && (
-              <label>
-                Variant
-                <select
+              <div mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}>
+                <label htmlFor="button-variant">Variant</label>
+                <Select
+                  id="button-variant"
                   aria-label="Variant"
-                  value={variant}
-                  mix={on("change", (event) => {
-                    variant = event.currentTarget.value as typeof variant;
+                  defaultValue={variant}
+                  options={[
+                    { value: "primary", label: "Primary" },
+                    { value: "secondary", label: "Secondary" },
+                    { value: "quiet", label: "Quiet" },
+                    { value: "danger", label: "Danger" },
+                  ]}
+                  onValueChange={(value) => {
+                    if (value === null) return;
+                    variant = value as typeof variant;
                     handle.update();
-                  })}
-                >
-                  <option value="primary">Primary</option>
-                  <option value="secondary">Secondary</option>
-                  <option value="quiet">Quiet</option>
-                  <option value="danger">Danger</option>
-                </select>
-              </label>
+                  }}
+                />
+              </div>
             )}
             {story === "notice" && (
-              <label>
-                Tone
-                <select
+              <div mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}>
+                <label htmlFor="notice-tone">Tone</label>
+                <Select
+                  id="notice-tone"
                   aria-label="Tone"
-                  value={tone}
-                  mix={on("change", (event) => {
-                    tone = event.currentTarget.value as typeof tone;
+                  defaultValue={tone}
+                  options={[
+                    { value: "neutral", label: "Neutral" },
+                    { value: "success", label: "Success" },
+                    { value: "danger", label: "Danger" },
+                  ]}
+                  onValueChange={(value) => {
+                    if (value === null) return;
+                    tone = value as typeof tone;
                     handle.update();
-                  })}
-                >
-                  <option value="neutral">Neutral</option>
-                  <option value="success">Success</option>
-                  <option value="danger">Danger</option>
-                </select>
-              </label>
+                  }}
+                />
+              </div>
             )}
             {!["notice", "badge", "panel", "code", "diff"].includes(story) && (
               <label>
@@ -1012,12 +1119,42 @@ function Story(
                       ? "Escape closes; focus returns to the trigger."
                       : story === "action"
                         ? "1.2s fixture. Repeated activation is guarded."
-                        : story === "field"
-                          ? "Error and help IDs compose with the native label."
-                          : "Tab to inspect focus. Hover and press to inspect states."}
+                        : story === "select"
+                          ? "Official Select: arrows/typeahead; Escape returns focus. Hydration required; no native required/reset integration."
+                          : story === "field"
+                            ? "Error and help IDs compose with the native label."
+                            : "Tab to inspect focus. Hover and press to inspect states."}
             </p>
           </div>
         </div>
+        {(story === "select" || story === "tabs") && (
+          <details
+            mix={css({
+              padding: "16px",
+              borderTop: "1px solid #dedfe2",
+              minWidth: 0,
+            })}
+          >
+            <summary>
+              Underlying official API: {story === "select" ? "Select" : "Tabs"}
+            </summary>
+            <p mix={descriptionCss}>
+              Adapter composition using @remix-run/ui 0.13.1. Theme recipes and
+              Field wiring omitted; the preview above uses these upstream
+              behaviors through Harrhy adapters.{" "}
+              <a href={`https://ui.remix.run/patterns/${story}/`}>
+                Official pattern and examples
+              </a>
+            </p>
+            <CodeBlock
+              label={`Official ${story === "select" ? "Select" : "Tabs"} composition`}
+              language="tsx"
+              source={
+                story === "select" ? upstreamSelectSource : upstreamTabsSource
+              }
+            />
+          </details>
+        )}
         <div mix={source} data-source="">
           <div mix={toolbar}>
             <h2>Code</h2>

@@ -187,34 +187,66 @@ it("renders actual Radio scenario states and narrow layouts", async (t) => {
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.goto("/?view=scenes&scene=radio");
-  const scenario = page.getByLabel("Scenario", { exact: true });
+  const scenario = page.getByRole("button", { name: "Scenario", exact: true });
   const room = page.locator("[data-radio-shell]");
-  await scenario.selectOption("empty");
+  await scenario.click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Empty", exact: true }).click();
+  await room
+    .getByRole("button", { name: "Play", exact: true })
+    .and(room.locator("button:disabled"))
+    .waitFor();
   assert.equal(
     await room.getByRole("button", { name: "Play", exact: true }).isDisabled(),
     true,
   );
   assert.equal(await room.locator("ol > li").count(), 0);
-  await scenario.selectOption("offline");
+  await scenario.click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Offline", exact: true }).click();
+  await room
+    .getByRole("button", { name: "Sync playback", exact: true })
+    .and(room.locator("button:disabled"))
+    .waitFor();
   assert.equal(
     await room
       .getByRole("button", { name: "Sync playback", exact: true })
       .isDisabled(),
     true,
   );
-  await scenario.selectOption("uploading");
+  await scenario.click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Uploading", exact: true }).click();
   await room
     .locator('[data-upload-status="uploading"]')
     .getByText("↑ 31%", { exact: true })
     .waitFor();
-  await scenario.selectOption("failed");
+  await scenario.click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Failed", exact: true }).click();
   await room
     .locator('[data-upload-status="failed"]')
     .getByText("failed", { exact: true })
     .waitFor();
-  await scenario.selectOption("buffering");
+  await scenario.click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Buffering", exact: true }).click();
   await room.getByText("1/4 ready", { exact: true }).waitFor();
-  await scenario.selectOption("calibrated");
+  await scenario.click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("role") === "listbox",
+  );
+  await page.getByRole("option", { name: "Offset +20ms", exact: true }).click();
   await room
     .getByLabel("Playback offset: 20 milliseconds later", { exact: true })
     .waitFor();

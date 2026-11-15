@@ -148,21 +148,6 @@ export function Textarea(handle: Handle<Props<"textarea">>) {
     );
   };
 }
-export function Select(handle: Handle<Props<"select">>) {
-  return () => {
-    const { mix, ...props } = handle.props;
-    const field = handle.context.get(Field);
-    return (
-      <select
-        {...props}
-        {...fieldAttributes(field, props["aria-describedby"])}
-        id={field?.controlId ?? props.id}
-        aria-invalid={field?.errorId ? true : props["aria-invalid"]}
-        mix={[controlStyles, focusStyles, mix]}
-      />
-    );
-  };
-}
 export function Checkbox(
   handle: Handle<Omit<Extract<Props<"input">, { type: "checkbox" }>, "type">>,
 ) {

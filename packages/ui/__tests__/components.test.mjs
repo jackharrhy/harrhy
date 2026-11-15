@@ -3,7 +3,7 @@ import test from "node:test";
 import "remix/node-tsx";
 import { createElement as h } from "remix/component";
 import { renderToString } from "remix/component/server";
-const { Button, ButtonLink, Field, Input, Select, Textarea } =
+const { Button, ButtonLink, Field, Input, Textarea } =
   await import("../components.tsx");
 const { Dialog, Tabs, TabList, Tab, TabPanel } =
   await import("../interactive.ts");
@@ -35,7 +35,7 @@ test("native actions keep native form and navigation contracts without a client 
 });
 
 test("Field wires a single control and merges authored description IDs without duplicates", async () => {
-  for (const Control of [Input, Select, Textarea]) {
+  for (const Control of [Input, Textarea]) {
     const html = await renderToString(
       h(
         Field,
