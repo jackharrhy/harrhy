@@ -13,7 +13,7 @@ const directory = await fs.mkdtemp(
 );
 await fs.writeFile(
   path.join(directory, "Home.md"),
-  "---\npublic: true\n---\n```component\nMug\n```\n\n```component\nNowPlaying\n```\n\n[About](/about)",
+  '---\npublic: true\n---\n```component\nMug\n```\n\n```component\nNowPlaying\n```\n\n```js\nconst fox = "🦊";\n\t<script>unsafe()</script>\n```\n\n[About](/about)',
 );
 await fs.writeFile(
   path.join(directory, "About.md"),
@@ -61,12 +61,24 @@ try {
       )
         errors.push(message.text());
     });
+    const engineRequests: string[] = [];
     const modelRequests: string[] = [];
     page.on("request", (request) => {
+      if (/highlights|shiki|\.wasm(?:\?|$)/.test(request.url()))
+        engineRequests.push(request.url());
       if (request.url().includes("cuppa.txt"))
         modelRequests.push(request.url());
     });
     await page.goto(base, { waitUntil: "networkidle" });
+    assert.equal(
+      await page.locator("pre.hui-highlight code").textContent(),
+      'const fox = "🦊";\n\t<script>unsafe()</script>\n',
+    );
+    assert.ok(
+      (await page.locator("pre.hui-highlight code span[style]").count()) > 0,
+    );
+    assert.equal(await page.locator("pre.hui-highlight script").count(), 0);
+    assert.deepEqual(engineRequests, []);
     if (reducedMotion === "no-preference")
       await page.getByText("Fixture now playing", { exact: true }).waitFor();
     await page.waitForFunction(
@@ -159,6 +171,10 @@ try {
   const context = await browser.newContext({ javaScriptEnabled: false });
   const page = await context.newPage();
   await page.goto(base);
+  assert.equal(
+    await page.locator("pre.hui-highlight code").textContent(),
+    'const fox = "🦊";\n\t<script>unsafe()</script>\n',
+  );
   await page.getByRole("link", { name: "About", exact: true }).first().click();
   assert.equal(await page.title(), "About · Jack Harrhy");
   await page.getByRole("link", { name: "Thumbnail tool" }).click();

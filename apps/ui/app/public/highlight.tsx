@@ -1,7 +1,4 @@
-import { createHighlighterCoreSync } from "@shikijs/core";
-import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
-import tsx from "@shikijs/langs/tsx";
-import githubLight from "@shikijs/themes/github-light";
+import { highlightCode } from "@harrhy/ui/highlight";
 import {
   CodeBlock,
   type CodeBlockProps,
@@ -9,12 +6,6 @@ import {
 } from "@harrhy/ui/code";
 import type { Handle } from "remix/component";
 
-// The same small grammar/theme and native-regexp engine run during SSR and updates.
-const highlighter = createHighlighterCoreSync({
-  themes: [githubLight],
-  langs: [tsx],
-  engine: createJavaScriptRegexEngine(),
-});
 // Darker Github-light accents remain readable on all three light theme surfaces.
 const syntaxColors: Record<string, string> = {
   "#22863a": "#1b7131",
@@ -39,21 +30,9 @@ export function prepareCode(
     return undefined;
   const cached = cache.get(source);
   if (cached) return cached;
-  const lines = highlighter.codeToTokens(source, {
-    lang: "tsx",
-    theme: "github-light",
-  }).tokens;
-  // Slice by Shiki's offsets, not reconstructed lines: CRLF and final newlines stay exact.
-  const tokens: CodeToken[] = [];
-  let offset = 0;
-  for (const line of lines)
-    for (const token of line) {
-      if (token.offset > offset)
-        tokens.push({ text: source.slice(offset, token.offset) });
-      tokens.push({ text: token.content, color: syntaxColor(token.color) });
-      offset = token.offset + token.content.length;
-    }
-  if (offset < source.length) tokens.push({ text: source.slice(offset) });
+  const tokens = highlightCode(source, { language, theme: "github-light" }).map(
+    (token) => ({ ...token, color: syntaxColor(token.color) }),
+  );
   if (cache.size >= 64) cache.delete(cache.keys().next().value!);
   cache.set(source, tokens);
   return tokens;
