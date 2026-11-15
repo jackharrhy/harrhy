@@ -102,7 +102,7 @@ export function createMcpRouter(db: Db, config: Config) {
         return Response.json(
           result(parsed.id, {
             content: [{ type: "text", text: JSON.stringify(value, null, 2) }],
-            structuredContent: value,
+            structuredContent: Array.isArray(value) ? { items: value } : value,
           }),
         );
       } catch (error) {

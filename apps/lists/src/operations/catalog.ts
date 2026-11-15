@@ -304,6 +304,15 @@ export const mcpOperations = new Map(
 export const mcpTools = Object.values(operationCatalog).map((operation) => ({
   name: operation.mcpName,
   description: operation.description,
-  inputSchema: z.toJSONSchema(operation.input, { target: "draft-7" }),
-  outputSchema: z.toJSONSchema(operation.output, { target: "draft-7" }),
+  // MCP requires object roots, including all-object input unions.
+  inputSchema: {
+    type: "object" as const,
+    ...z.toJSONSchema(operation.input, { target: "draft-7" }),
+  },
+  outputSchema: z.toJSONSchema(
+    operation.output instanceof z.ZodArray
+      ? z.object({ items: operation.output })
+      : operation.output,
+    { target: "draft-7" },
+  ),
 }));

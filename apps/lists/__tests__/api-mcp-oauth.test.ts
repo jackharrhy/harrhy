@@ -1,3 +1,8 @@
+import {
+  CallToolResultSchema,
+  ListToolsResultSchema,
+} from "@modelcontextprotocol/sdk/types.js";
+import { AjvJsonSchemaValidator } from "@modelcontextprotocol/sdk/validation/ajv";
 import { beforeEach, describe, expect, test } from "bun:test";
 import { mockClient } from "aws-sdk-client-mock";
 import { SESv2Client, SendEmailCommand } from "@aws-sdk/client-sesv2";
@@ -5,7 +10,7 @@ import { eq } from "drizzle-orm";
 import { createApplication } from "../src/http-app.ts";
 import { mintApiToken as mintScopedToken } from "../src/services/api-tokens";
 import { createSubscriber } from "../src/services/subscriber";
-import { operationCatalog } from "../src/operations/catalog";
+import { mcpTools, operationCatalog } from "../src/operations/catalog";
 import { createTestDb, seedList } from "./helpers";
 import * as schema from "../src/db/schema";
 import type { Config } from "../src/config";
@@ -143,7 +148,17 @@ describe("scoped API and MCP", () => {
     });
     expect(mcp.status).toBe(200);
     const mcpData = (await mcp.json()) as any;
-    expect(mcpData.result.structuredContent).toEqual(restData);
+    const decoded = CallToolResultSchema.parse(mcpData.result);
+    expect(decoded.structuredContent).toEqual({ items: restData });
+    expect(decoded.content).toEqual([
+      { type: "text", text: JSON.stringify(restData, null, 2) },
+    ]);
+    const descriptor = mcpTools.find((tool) => tool.name === "lists_list")!;
+    expect(
+      new AjvJsonSchemaValidator().getValidator(descriptor.outputSchema)(
+        decoded.structuredContent,
+      ).valid,
+    ).toBe(true);
 
     const forbidden = await app.request("/api/v1/subscribers", {
       headers: bearer(token),
@@ -217,7 +232,7 @@ describe("scoped API and MCP", () => {
       { email: "pilot@example.com", status: "delivered" },
     ]);
     const mcp = await mcpCall(app, token, "campaign_sends", { id: visible.id });
-    expect(mcp.result.structuredContent).toMatchObject([
+    expect(mcp.result.structuredContent.items).toMatchObject([
       { email: "pilot@example.com", status: "delivered" },
     ]);
     expect(
@@ -250,6 +265,7 @@ describe("scoped API and MCP", () => {
       }),
     });
     const body = (await response.json()) as any;
+    ListToolsResultSchema.parse(body.result);
     expect(
       body.result.tools
         .map((tool: any) => tool.name)
@@ -270,6 +286,35 @@ describe("scoped API and MCP", () => {
       ),
     ).toBe(false);
     expect(create.outputSchema.required).toEqual(["id", "email"]);
+  });
+
+  test("the published campaign union preserves audience validation", () => {
+    const descriptor = mcpTools.find(
+      (tool) => tool.name === "campaign_create_draft",
+    )!;
+    const validate = new AjvJsonSchemaValidator().getValidator(
+      descriptor.inputSchema,
+    );
+    const base = {
+      subject: "News",
+      bodyMarkdown: "Hello",
+      fromAddress: "news@example.com",
+    };
+    for (const audience of [
+      { audienceType: "list", audienceId: 1 },
+      { audienceType: "tag", audienceId: 1 },
+      { audienceType: "all" },
+      { audienceType: "subscribers", audienceData: [1] },
+    ]) {
+      expect(validate({ ...base, ...audience }).valid).toBe(true);
+    }
+    for (const audience of [
+      { audienceType: "list" },
+      { audienceType: "all", audienceId: 1 },
+      { audienceType: "subscribers", audienceData: [] },
+    ]) {
+      expect(validate({ ...base, ...audience }).valid).toBe(false);
+    }
   });
 
   test("rejects malformed JSON-RPC requests", async () => {

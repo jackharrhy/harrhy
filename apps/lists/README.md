@@ -10,6 +10,8 @@ Install from the Tea root with `npm ci` and use Bun 1.4.4 for execution. For loc
 
 Run `npm run check --workspace @harrhy/lists` for type checking, the isolated Bun test suite, and browser asset builds. The Compose-backed integration suite is `npm run test:local --workspace @harrhy/lists` after starting its local dependencies. Tests use synthetic in-memory databases and mocked SES unless explicitly marked as local stack tests.
 
+MCP publishes object-root schemas for SDK interoperability. Array-valued operations expose structured results as `{ items: [...] }`; their text content and REST results retain the original arrays. The API/MCP tests validate the complete catalog and a real array-valued response with the MCP SDK.
+
 ## Boundaries and deployment
 
 The database is the source of truth for subscriber and campaign state, recipient attempts, historical API tokens and OAuth records, and operator sessions. The delivery, scheduler, and inbound poller run in the same process. Keep confirmation, unsubscribe, bounce, and complaint behavior intact when changing routes. The production host, AWS resources, secrets, and DNS are managed in the Infra repository. The `lists.jackharrhy.dev` URL is the production entry point.
