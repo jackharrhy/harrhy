@@ -140,7 +140,7 @@ export function createTeaRouter(
               !process.env.TEA_AUTH_INTROSPECTION_CLIENT_ID ||
               !process.env.TEA_AUTH_INTROSPECTION_SECRET
             )
-              return new Response("CMS Central Auth resource is unavailable", {
+              return new Response("CMS Auth resource is unavailable", {
                 status: 503,
               });
             try {

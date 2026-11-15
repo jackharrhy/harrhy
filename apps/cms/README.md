@@ -43,37 +43,37 @@ Database snapshots are individually consistent, not a cross-database instant.
 Local snapshots are not off-host disaster recovery. The separate production Andrew
 site and its legacy media are outside this app's backup scope.
 
-## Central Auth transition
+## Auth transition
 
 The existing operator and site password logins stay active until the operator
-has a reviewed Central Auth subject link and live browser/editor acceptance.
-The first Central cutover can link only the operator: the existing one-use,
+has a reviewed Auth subject link and live browser/editor acceptance.
+The first Auth cutover can link only the operator: the existing one-use,
 site-bound tickets still let the operator enter both editors. Direct site
 login stays unavailable until each editor has an explicit reviewed link. Set
 `TEA_AUTH_ISSUER`, `TEA_AUTH_PROJECT_ID`,
 `TEA_AUTH_ORGANIZATION_ID`, `TEA_AUTH_OWNER_SUBJECT`, and the three public client IDs
 `TEA_AUTH_OPERATOR_CLIENT_ID`, `TEA_AUTH_ANDREW_CLIENT_ID`, and
-`TEA_AUTH_LUKE_CLIENT_ID` together to enable Central mode. The exact callbacks
+`TEA_AUTH_LUKE_CLIENT_ID` together to enable Auth mode. The exact callbacks
 are `/auth/callback` on the operator host and `/tea/auth/callback` on each site
-host. Initial Central mode admits only the reviewed owner's immutable issuer and subject.
+host. Initial Auth mode admits only the reviewed owner's immutable issuer and subject.
 The app requires an existing local user row with reviewed `auth_issuer` and
 `auth_subject`; subject-only links are not adopted automatically. It never links
 by email or creates an editor on sign-in. The owner pin applies to callbacks,
 existing sessions, operator tickets, and MCP, even if another local user is linked.
-The Central Auth registry remains held with `allowedUserIds: []` in source. Infra
+The Auth registry remains held with `allowedUserIds: []` in source. Infra
 must run the checked Auth image that enforces that field before releasing the CMS
 hold in its reviewed runtime registry, with exactly the owner's ID in the list.
 Keep other clients, Ref preview policy, grants, and application entries unchanged.
 No Luke/Andrew enrollment or grant is enabled by this cutover.
 Operator sign-in requires the CMS project admin grant; site editor sign-in
 requires member or admin plus that site's local subject link. Operator tickets
-continue to grant temporary access to site editors. Central sessions expire
-after one hour, and old password sessions are rejected as soon as Central mode
+continue to grant temporary access to site editors. Auth sessions expire
+after one hour, and old password sessions are rejected as soon as Auth mode
 is enabled. Login transactions are bounded, server-held, ten-minute and one-use,
 bound to the browser cookie and exact host/client callback. A restart invalidates
 pending sign-ins. Log out clears the local session.
 
-Central mode also replaces the shared read-only `TEA_MCP_TOKEN` with a human
+Auth mode also replaces the shared read-only `TEA_MCP_TOKEN` with a human
 CMS-admin resource token for the pinned owner (no acted or service tokens). Configure `TEA_AUTH_INTROSPECTION_CLIENT_ID` and
 `TEA_AUTH_INTROSPECTION_SECRET` for that endpoint; the site resource metadata
 is at `/.well-known/oauth-protected-resource/tea/mcp`. Production identity
@@ -83,7 +83,7 @@ owners, not this repository.
 With the CMS stopped and backed up, apply a private mode-0600 reviewed link
 manifest of `{ "issuer": "https://reviewed-issuer.example", "operator": [{ "id": 1, "subject": "..." }], "sites": {
 "andrew": [], "luke": [] } }` for the initial operator-only cutover. Add
-site links only after the corresponding local IDs and Central subjects are
+site links only after the corresponding local IDs and Auth subjects are
 reviewed. Use the actual reviewed local IDs; the example operator ID is a
 placeholder. First run `npm run link:central-auth --workspace @harrhy/cms --
 /private/links.json` to validate every target without changing links, then
@@ -99,7 +99,7 @@ idempotent. Keep the verified SQLite-and-media snapshot until production accepta
 For rollback, restore the previous image and its complete previous environment
 and Auth registry (including the CMS hold and Ref preview overlay). The additive
 columns are compatible with the previous image; do not drop columns or erase
-links/content. Reverting Central mode restores the previous password-login behavior
+links/content. Reverting Auth mode restores the previous password-login behavior
 and may reactivate old unexpired password sessions. If data recovery is required,
 use the matching-image offline restore procedure, never copy a live SQLite file.
 Infra owns this sequence and the bounded Watchtower rollout. Acceptance requires

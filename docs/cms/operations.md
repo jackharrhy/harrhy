@@ -57,12 +57,12 @@ Keep off-host copies and test restores. Standalone Andrew remains outside this a
 
 Each site's stores scope sessions, rate limits, and file lookups. Cookies include the site ID because browser cookies do not isolate ports on one hostname. Editors sign in separately. The operator database holds its credentials, sessions, and one-time entry tickets; operator sign-out invalidates operator-issued site sessions. `apps/cms/__tests__/tenants.test.ts` and `apps/cms/__tests__/operator.test.ts` test the main isolation boundaries of the shared server.
 
-## Initial owner-only Central Auth cutover
+## Initial owner-only Auth cutover
 
-Central mode intentionally replaces **all** tenant and operator password forms with
-Central sign-in. Preserve existing user rows, content, uploads, revisions and identity
+Auth mode intentionally replaces **all** tenant and operator password forms with
+Auth sign-in. Preserve existing user rows, content, uploads, revisions and identity
 links; the initial reviewed manifest links only the existing operator. No Luke/Andrew
-Central accounts, invitations or grants are part of this operation.
+Auth accounts, invitations or grants are part of this operation.
 
 Infra owns the bounded Watchtower/image selection, private configuration and recovery
 receipts. Before activation, retain a fresh verified native SQLite-and-media snapshot
@@ -111,7 +111,7 @@ migration adds nullable `auth_issuer` to users and sessions; it does not adopt a
 subject-only link. Inspect every database's resulting schema before proceeding.
 
 Use the private issuer-bearing link manifest and dry-run/apply commands in the
-[CMS guide](../../apps/cms/README.md#central-auth-transition). The initial manifest has
+[CMS guide](../../apps/cms/README.md#auth-transition). The initial manifest has
 one reviewed stable operator row ID and empty `andrew`/`luke` arrays. Migration and
 linking are transactional **per database**, not one cross-database transaction. On
 failure stop, inspect all databases and receipts, and only then resume an idempotent
@@ -119,7 +119,7 @@ retry; do not assume earlier databases rolled back. Verify exactly the reviewed
 operator issuer/subject was linked and every tenant user row stayed unchanged.
 
 Configure the pinned issuer/owner subject and existing public clients before starting
-Central CMS; verify registered-host public health and the sign-in redirect on all
+Auth-enabled CMS; verify registered-host public health and the sign-in redirect on all
 three hosts. Release the CMS registry hold only with the checked owner-only list.
 Acceptance needs the owner's actual fresh sign-in and entry to both tenant editors;
 synthetic tests do not establish production acceptance. Keep the prior image, full

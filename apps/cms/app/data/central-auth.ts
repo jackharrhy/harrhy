@@ -36,7 +36,7 @@ export function centralAuth(
   const organizationId = process.env.TEA_AUTH_ORGANIZATION_ID;
   const ownerSubject = process.env.TEA_AUTH_OWNER_SUBJECT;
   if (!clientId || !projectId || !organizationId || !ownerSubject)
-    throw new Error("CMS Central Auth is incomplete");
+    throw new Error("CMS Auth is incomplete");
   return {
     config: { issuer, clientId, projectId, organizationId },
     origin,

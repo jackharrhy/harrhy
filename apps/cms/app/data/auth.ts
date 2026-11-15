@@ -86,7 +86,7 @@ export function createAuthStore(
     subject?: string,
   ) {
     if (central && (!subject || bySubject(subject)?.id !== userId))
-      throw new Error("CMS Central Auth subject is not linked to this user");
+      throw new Error("CMS Auth subject is not linked to this user");
     const id = randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + durationMs);
     sqlite

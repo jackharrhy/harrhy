@@ -4,7 +4,7 @@ The Node app serves read-only MCP at `POST /tea/mcp` on each registered site hos
 
 Without `TEA_MCP_TOKEN`, the endpoint returns 404. Set a long random token through your secret manager and send `Authorization: Bearer <token>`. One token grants read access to every site in this Node process. Keep it private and out of tracked files. Editor login does not authorize MCP.
 
-In Central Auth mode, the shared token is ignored. Each site publishes
+In Auth mode, the shared token is ignored. Each site publishes
 `/.well-known/oauth-protected-resource/tea/mcp`; the resource is the site's
 `/tea/mcp` URL. A human token must have the CMS project audience, admin grant,
 and admin role scope. The immutable subject must match `TEA_AUTH_OWNER_SUBJECT`

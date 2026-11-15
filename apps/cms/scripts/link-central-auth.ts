@@ -80,7 +80,7 @@ function check(database: DatabaseSync, rows: Link[], issuer: string) {
       columns.some((column) => column.name === name),
     )
   )
-    throw new Error("Apply the Central Auth schema migration first");
+    throw new Error("Apply the Auth schema migration first");
   for (const { id, subject } of rows) {
     const row = database
       .prepare("SELECT auth_subject,auth_issuer FROM users WHERE id=?")
