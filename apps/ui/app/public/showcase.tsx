@@ -25,7 +25,6 @@ import {
 import {
   brutalistTheme,
   cleanTheme,
-  composeTheme,
   tactileTheme,
   themeRoot,
   themeStyles,
@@ -320,9 +319,7 @@ export const Showcase = clientEntry(
               {(Object.keys(themes) as ThemeName[]).map((name) => (
                 <div
                   mix={[
-                    themeStyles(
-                      composeTheme(themes[name], { textSize: "0.9375rem" }),
-                    ),
+                    themeStyles(themes[name]),
                     themeRoot,
                     css({ padding: "0.75rem" }),
                   ]}
