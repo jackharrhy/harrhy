@@ -24,8 +24,7 @@ import {
   characters,
   positions,
   initialLineup,
-  frozenAppearances,
-  frozenHomeAppearances,
+  matchFixtures,
   lineupError,
   stat,
   innings,
@@ -96,6 +95,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
   function reset() {
     slots = initialLineup();
     captain = "Mario";
+    statsSide = "away";
     saveState = "clean";
     error = "";
     announcement = "";
@@ -176,8 +176,9 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
   }
   function scoresTable(pitching = false) {
     const incomplete = matchState === "incomplete";
+    const match = matchFixtures[leagueIndex]!;
     const appearances =
-      statsSide === "away" ? frozenAppearances : frozenHomeAppearances;
+      statsSide === "away" ? match.awayAppearances : match.homeAppearances;
     return (
       <TableContainer
         role="region"
@@ -235,6 +236,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
   }
   return () => {
     const league = leagues[leagueIndex]!;
+    const match = matchFixtures[leagueIndex]!;
     const team = league.teams[0];
     const opponent = league.teams[1];
     const busy = saveState === "saving";
@@ -547,7 +549,9 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                         fontVariantNumeric: "tabular-nums",
                       })}
                     >
-                      {matchState === "scheduled" ? "vs" : "4 – 2"}
+                      {matchState === "scheduled"
+                        ? "vs"
+                        : `${match.awayScore} – ${match.homeScore}`}
                     </strong>
                     <div>
                       {opponent.name}
@@ -585,8 +589,8 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                       frozen match appearances
                     </Heading>
                     <p mix={quiet}>
-                      Recorded at match start. Editing the team lineup does not
-                      change these appearances.
+                      Recorded at match start · {match.captureId}. Editing the
+                      team lineup does not change these appearances.
                     </p>
                     <div
                       mix={css({
@@ -596,8 +600,8 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                       })}
                     >
                       {(statsSide === "away"
-                        ? frozenAppearances
-                        : frozenHomeAppearances
+                        ? match.awayAppearances
+                        : match.homeAppearances
                       ).map((s, i) => (
                         <span
                           mix={css({
@@ -814,7 +818,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                   >
                     <Select
                       key={`away-${resetKey}-${league.id}`}
-                      defaultValue=""
+                      defaultValue={awayMapping}
                       placeholder="Choose scheduled away team"
                       options={league.teams.map((t) => ({
                         value: t.id,
@@ -834,7 +838,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                   >
                     <Select
                       key={`mapping-${resetKey}`}
-                      defaultValue=""
+                      defaultValue={missingMapping}
                       placeholder="Choose character"
                       options={[
                         { value: "luigi", label: "Luigi" },
@@ -963,8 +967,10 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                 ) : null}
                 <Button
                   variant="primary"
-                  disabled={!canConfirm || publishState === "published"}
+                  disabled={!canConfirm}
+                  aria-disabled={publishState === "published" || undefined}
                   mix={on("click", () => {
+                    if (publishState === "published") return;
                     confirming = true;
                     update();
                   })}
@@ -995,8 +1001,8 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                       </strong>
                     </p>
                     <p>
-                      Sample final: 4–2. Incomplete capture; unknown statistics
-                      stay unknown.{" "}
+                      Sample final: {match.awayScore}–{match.homeScore}.
+                      Incomplete capture; unknown statistics stay unknown.{" "}
                       {duplicate
                         ? "The existing result will be replaced in this simulation."
                         : "This sample result will be marked published locally."}

@@ -125,6 +125,20 @@ it("keeps Sluggers tenant context, unknown statistics, keyboard lineup edits and
   await choose("Resolve character: Green brother", "Luigi");
   assert.equal(await review.isDisabled(), true);
   await scene.getByRole("checkbox").check();
+  await tab("Box score");
+  await tab("Tracker review");
+  assert.match(
+    await scene
+      .getByLabel("Map away brand: Custom Red", { exact: true })
+      .innerText(),
+    /Fireballs/,
+  );
+  assert.match(
+    await scene
+      .getByLabel("Resolve character: Green brother", { exact: true })
+      .innerText(),
+    /Luigi/,
+  );
   await review.click();
   const dialog = page.getByRole("dialog", {
     name: "Confirm simulated replacement",
@@ -146,12 +160,24 @@ it("keeps Sluggers tenant context, unknown statistics, keyboard lineup edits and
   await dialog
     .getByRole("button", { name: "Confirm simulation", exact: true })
     .click();
+  await dialog
+    .getByRole("button", { name: "Simulating…", exact: true })
+    .waitFor();
+  await page.keyboard.press("Escape");
+  assert.equal(await dialog.isVisible(), true);
   await dialog.waitFor({ state: "hidden" });
   await scene
     .getByText("Simulation published. No real match or standings changed.", {
       exact: true,
     })
     .waitFor();
+  assert.equal(
+    await review.evaluate((n) => n === document.activeElement),
+    true,
+  );
+  assert.equal(await review.getAttribute("aria-disabled"), "true");
+  await page.keyboard.press("Enter");
+  assert.equal(await dialog.isVisible(), false);
   assert.deepEqual(errors, []);
 });
 

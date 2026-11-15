@@ -130,6 +130,18 @@ export const frozenHomeAppearances: readonly Slot[] = [
   "Petey Piranha",
   "King Boo",
 ].map((character, i) => ({ character, position: positions[i]! }));
+export const matchFixtures = leagues.map((league, index) => ({
+  id: `${league.id}-match-2`,
+  leagueId: league.id,
+  seasonId: league.seasonId,
+  awayTeamId: league.teams[0].id,
+  homeTeamId: league.teams[1].id,
+  captureId: `${league.id}-sample-export-2`,
+  awayScore: index === 0 ? 4 : 3,
+  homeScore: index === 0 ? 2 : 1,
+  awayAppearances: frozenAppearances.map((slot) => ({ ...slot })),
+  homeAppearances: frozenHomeAppearances.map((slot) => ({ ...slot })),
+}));
 export function lineupError(slots: Slot[], captain: string): string | null {
   if (slots.length !== 9 || new Set(slots.map((s) => s.character)).size !== 9)
     return "Choose nine different characters.";
