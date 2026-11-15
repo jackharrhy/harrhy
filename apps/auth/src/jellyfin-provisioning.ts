@@ -1,3 +1,10 @@
+import type {
+  Folder,
+  JellyfinProvisioning,
+  JellyfinReview,
+  WriteConfig,
+  NativeDependencies,
+} from "./media-contracts.ts";
 import { randomBytes } from "node:crypto";
 import { isDeepStrictEqual } from "node:util";
 import { createJellyfinApi } from "./jellyfin-api.mjs";
@@ -7,9 +14,20 @@ const invalid = () =>
 const uuid = /^(?:[a-f0-9]{32}|[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})$/i;
 
 // This profile is only for a newly returned native ID, never an incumbent policy.
-export function newJellyfinPlaybackPolicy(user, folders) {
+export function newJellyfinPlaybackPolicy(
+  user: {
+    Id?: unknown;
+    Policy?: {
+      IsAdministrator?: unknown;
+      AuthenticationProviderId?: unknown;
+      PasswordResetProviderId?: unknown;
+    };
+  },
+  folders: string[],
+) {
   if (
-    !uuid.test(user?.Id) ||
+    typeof user?.Id !== "string" ||
+    !uuid.test(user.Id) ||
     user.Policy?.IsAdministrator !== false ||
     typeof user.Policy.AuthenticationProviderId !== "string" ||
     !user.Policy.AuthenticationProviderId ||
@@ -68,9 +86,12 @@ export function newJellyfinPlaybackPolicy(user, folders) {
   };
 }
 
-export function createJellyfinProvisioning(config, dependencies = {}) {
+export function createJellyfinProvisioning(
+  config: WriteConfig,
+  dependencies: NativeDependencies = {},
+): JellyfinProvisioning {
   const request = createJellyfinApi(config, dependencies);
-  async function libraries() {
+  async function libraries(): Promise<Folder[]> {
     const result = await request("Library/VirtualFolders");
     if (!Array.isArray(result) || result.length > 100) throw invalid();
     const rows = result
@@ -89,7 +110,13 @@ export function createJellyfinProvisioning(config, dependencies = {}) {
       throw invalid();
     return rows;
   }
-  async function preview({ username, folderIds }) {
+  async function preview({
+    username,
+    folderIds,
+  }: {
+    username: string;
+    folderIds: string[];
+  }): Promise<JellyfinReview> {
     if (
       typeof username !== "string" ||
       !/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(username) ||
@@ -143,7 +170,7 @@ export function createJellyfinProvisioning(config, dependencies = {}) {
       // No supported atomic create-with-policy endpoint exists. No usable credential
       // is released until the selected-library policy has been verified.
       await claimEffect();
-      let nativeId;
+      let nativeId: string | undefined;
       try {
         const created = await request("Users/New", {
           method: "POST",
@@ -154,9 +181,10 @@ export function createJellyfinProvisioning(config, dependencies = {}) {
           },
         });
         if (!uuid.test(created?.Id)) throw invalid();
-        nativeId = created.Id;
+        const returnedId: string = created.Id;
+        nativeId = returnedId;
         // Durable receipt precedes all subsequent writes; never rediscover by name.
-        await recordNativeId(nativeId);
+        await recordNativeId(returnedId);
         if (created.Name !== review.username) throw invalid();
         const policy = newJellyfinPlaybackPolicy(
           created,

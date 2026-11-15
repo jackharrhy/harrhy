@@ -805,6 +805,39 @@ try {
     form: { operation: "made-up", csrf: "wrong" },
   });
   assert.equal(forged.status(), 403);
+  // Preview refresh observes current synthetic effects, not just a new timestamp.
+  await fixture.refreshInventorySnapshots();
+  const refreshedJellyfin = JSON.parse(
+    await readFile(`${directory}/media-snapshot.json`, "utf8"),
+  );
+  const refreshedSeerr = JSON.parse(
+    await readFile(`${directory}/seerr-snapshot.json`, "utf8"),
+  );
+  assert.equal(refreshedJellyfin.accounts[0].disabled, true);
+  assert.equal(
+    refreshedJellyfin.accounts.filter(
+      (account) => account.nativeId === fixture.createdNativeId,
+    ).length,
+    1,
+  );
+  assert.equal(
+    refreshedSeerr.accounts.some((account) => account.nativeId === "42"),
+    false,
+  );
+  assert.equal(
+    refreshedSeerr.accounts.some((account) => account.nativeId === "73"),
+    true,
+  );
+  assert.deepEqual(
+    refreshedSeerr.accounts.find((account) => account.nativeId === "160"),
+    fixture.seerrSnapshot.accounts.find(
+      (account) => account.nativeId === "160",
+    ),
+  );
+  assert(
+    Date.parse(refreshedJellyfin.observedAt) >=
+      Date.parse(fixture.nativeSnapshot.observedAt),
+  );
   assert.deepEqual(errors, []);
   console.log(
     "PASS access UI Chromium: HTTPS reviewed creation, separate invitation, recipient proof/password and normal sign-in without grants; compact login, directory, groups preview/apply, role preservation, sessions, member denial, forged Origin, mobile layout.",

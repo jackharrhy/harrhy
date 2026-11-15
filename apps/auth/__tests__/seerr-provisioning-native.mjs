@@ -1,6 +1,6 @@
 // Opt-in isolated native contract check. Never reads host or production configuration.
 import assert from "node:assert/strict";
-import { createSeerrProvisioning } from "../src/seerr-provisioning.mjs";
+import { createSeerrProvisioning } from "../src/seerr-provisioning.ts";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { createJellyfinNativeFixture } from "./fixtures/jellyfin-native.mjs";

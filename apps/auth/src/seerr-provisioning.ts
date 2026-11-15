@@ -1,9 +1,15 @@
+import type {
+  SeerrProvisioning,
+  SeerrReview,
+  WriteConfig,
+  NativeDependencies,
+} from "./media-contracts.ts";
 import { isDeepStrictEqual } from "node:util";
 import { createSeerrApi } from "./seerr-api.mjs";
 
 const invalid = () =>
   new Error("Seerr exact-ID import contract could not be verified");
-const guid = (value) => {
+const guid = (value: unknown) => {
   if (
     typeof value !== "string" ||
     !/^(?:[a-f0-9]{32}|[a-f0-9]{8}-(?:[a-f0-9]{4}-){3}[a-f0-9]{12})$/i.test(
@@ -13,9 +19,20 @@ const guid = (value) => {
     throw invalid();
   return value.replaceAll("-", "").toLowerCase();
 };
-const numericId = (value) => Number.isSafeInteger(value) && value > 0;
+const numericId = (value: unknown): value is number =>
+  typeof value === "number" && Number.isSafeInteger(value) && value > 0;
 
-function verify(user, review, nativeId) {
+function verify(
+  user: {
+    id: number;
+    jellyfinUserId: string;
+    jellyfinUsername: string;
+    permissions: number;
+    userType: number;
+  },
+  review: SeerrReview,
+  nativeId: string,
+) {
   if (
     !numericId(user?.id) ||
     user.id === 1 ||
@@ -29,9 +46,16 @@ function verify(user, review, nativeId) {
 }
 
 // Import one reviewed native ID only; never create a local/password account.
-export function createSeerrProvisioning(config, dependencies = {}) {
+export function createSeerrProvisioning(
+  config: WriteConfig,
+  dependencies: NativeDependencies = {},
+): SeerrProvisioning {
   const request = createSeerrApi(config, dependencies);
-  async function preview({ jellyfinNativeId }) {
+  async function preview({
+    jellyfinNativeId,
+  }: {
+    jellyfinNativeId: string;
+  }): Promise<SeerrReview> {
     const normalized = guid(jellyfinNativeId);
     // Full settings stay in memory only; the API can include its own API key.
     const settings = await request("settings/main");
@@ -72,7 +96,7 @@ export function createSeerrProvisioning(config, dependencies = {}) {
       });
       if (!isDeepStrictEqual(current, review)) throw invalid();
       await claimEffect();
-      let nativeId;
+      let nativeId: string | undefined;
       try {
         const created = await request("user/import-from-jellyfin", {
           method: "POST",

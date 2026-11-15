@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createSeerrProvisioning } from "../src/seerr-provisioning.mjs";
+import { createSeerrProvisioning } from "../src/seerr-provisioning.ts";
 
 const jellyfinNativeId = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 function fixture() {

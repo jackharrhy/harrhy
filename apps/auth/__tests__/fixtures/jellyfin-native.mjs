@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { createJellyfinProvisioning } from "../../src/jellyfin-provisioning.mjs";
+import { createJellyfinProvisioning } from "../../src/jellyfin-provisioning.ts";
 
 const docker = (...args) =>
   execFileSync("docker", args, {

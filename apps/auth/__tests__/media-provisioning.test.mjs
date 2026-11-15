@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
-import { createMediaProvisioningLedger } from "../src/media-provisioning.mjs";
+import { createMediaProvisioningLedger } from "../src/media-provisioning.ts";
 
 const target = {
   service: "jellyfin",
@@ -19,7 +19,10 @@ function fixture({ uncertain = false } = {}) {
   const adapter = {
     preview: async ({ username, folderIds }) => ({
       username,
-      folders: folderIds,
+      folders: folderIds.map((id) => ({ id, name: id })),
+      profile: "selected-library-playback-v1",
+      nativePassword: "separate-from-auth",
+      mapping: "separate-exact-id-review",
     }),
     provision: async (review, { claimEffect, recordNativeId }) => {
       await claimEffect();
@@ -164,6 +167,11 @@ test("Seerr import requires a fresh exact source mapping and blocks duplicate na
       preview: async ({ jellyfinNativeId }) => ({
         username: `new-name-${writes}`,
         jellyfinNativeId,
+        permissions: 160,
+        permissionMeaning: "request-and-auto-approve",
+        userType: 3,
+        profile: "exact-jellyfin-import-v1",
+        mapping: "separate-exact-id-review",
       }),
       provision: async (_review, { claimEffect, recordNativeId }) => {
         await claimEffect();
@@ -197,6 +205,43 @@ test("Seerr import requires a fresh exact source mapping and blocks duplicate na
       { status: 409 },
     );
     assert.equal(writes, 1);
+  } finally {
+    db.close();
+  }
+});
+
+test("persisted provisioning rejects crossed service reviews and impossible receipt states before effects", async () => {
+  const { db, ledger, preview, writes } = fixture();
+  try {
+    const action = await preview();
+    const body = JSON.stringify(action.body);
+    const update = db.prepare(
+      "UPDATE media_provisioning SET state=?,native_id=?,body=? WHERE id=?",
+    );
+    for (const [state, nativeId, storedBody] of [
+      ["created", null, body],
+      ["native-id-recorded", "receipt", body],
+      ["review", "receipt", body],
+      [
+        "review",
+        null,
+        JSON.stringify({
+          ...action.body,
+          review: {
+            ...action.body.review,
+            profile: "exact-jellyfin-import-v1",
+          },
+        }),
+      ],
+    ]) {
+      update.run(state, nativeId, storedBody, action.id);
+      assert.throws(() => ledger.get(action.id), { status: 409 });
+      await assert.rejects(
+        ledger.confirm({ id: action.id, actor: "reviewer" }),
+        { status: 409 },
+      );
+    }
+    assert.equal(writes(), 0);
   } finally {
     db.close();
   }

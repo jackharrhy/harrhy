@@ -37,17 +37,29 @@ try {
   console.log(
     `Synthetic management preview ready: ${origin.origin} (backend 127.0.0.1:${fixture.listenPort})`,
   );
+  await fixture.refreshInventorySnapshots();
+  let refresh = Promise.resolve();
   await new Promise((resolve) => {
     const finish = () => {
       clearTimeout(timer);
+      clearInterval(refreshTimer);
       process.off("SIGTERM", finish);
       process.off("SIGINT", finish);
       resolve();
     };
+    const refreshTimer = setInterval(() => {
+      refresh = refresh
+        .then(() => fixture.refreshInventorySnapshots())
+        .catch(() => {
+          console.error("Synthetic inventory refresh failed; stopping preview");
+          finish();
+        });
+    }, 60000);
     const timer = setTimeout(finish, minutes * 60 * 1000);
     process.once("SIGTERM", finish);
     process.once("SIGINT", finish);
   });
+  await refresh;
 } finally {
   await fixture.close();
 }

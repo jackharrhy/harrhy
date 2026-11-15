@@ -9,7 +9,7 @@ import { createAccessStore } from "./access-store.mjs";
 import { createAccessRoutes } from "./access-routes.mjs";
 import { createAccountInventory } from "./account-inventory.mjs";
 import { createMediaLifecycle } from "./media-lifecycle.mjs";
-import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.mjs";
+import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.ts";
 import { createInvitationRoute } from "./invitation-routes.mjs";
 import { createAccountRoutes } from "./account-routes.mjs";
 import { createOAuthBrowserRoutes } from "./oauth-browser-routes.mjs";

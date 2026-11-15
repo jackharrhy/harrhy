@@ -3,7 +3,7 @@ import test from "node:test";
 import {
   createJellyfinProvisioning,
   newJellyfinPlaybackPolicy,
-} from "../src/jellyfin-provisioning.mjs";
+} from "../src/jellyfin-provisioning.ts";
 
 const id = "77777777-1111-4111-8111-111111111111";
 const folder = "88888888-1111-4111-8111-111111111111";

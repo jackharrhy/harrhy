@@ -5,8 +5,8 @@ import { createConnectedAccountLedger } from "./connected-accounts.mjs";
 import { createIdentityOnboardingLedger } from "./identity-onboarding.mjs";
 import { createMediaServiceActions } from "./media-service-actions.mjs";
 import { createMediaLifecycle } from "./media-lifecycle.mjs";
-import { createMediaProvisioningLedger } from "./media-provisioning.mjs";
-import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.mjs";
+import { createMediaProvisioningLedger } from "./media-provisioning.ts";
+import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.ts";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 const active = (value) => value?.state === "USER_GRANT_STATE_ACTIVE";

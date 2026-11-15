@@ -1,3 +1,4 @@
+import type { Creation, Folder } from "./media-contracts.ts";
 import { type Handle } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { Document, type DocumentProps } from "./document.tsx";
@@ -5,26 +6,6 @@ import { Document, type DocumentProps } from "./document.tsx";
 type Context = Omit<DocumentProps, "title" | "children"> & { csrf: string };
 type Instance = { service: string; instance: string; name: string };
 type Person = { subject: string; name: string; active: boolean };
-type Folder = { id: string; name: string };
-type Creation = {
-  id: string;
-  actor: string;
-  state: string;
-  created_at: string;
-  native_id?: string;
-  body: {
-    target: {
-      service: string;
-      instance: string;
-      issuer: string;
-      subject: string;
-      sourceInstance?: string;
-      sourceNativeId?: string;
-    };
-    reason: string;
-    review: { username: string; folders?: Folder[] };
-  };
-};
 function ProvisioningPage(
   handle: Handle<{
     instances: Instance[];
@@ -308,7 +289,10 @@ function ProvisioningReviewPage(
           <>
             <h2>Selected-library playback</h2>
             <ul>
-              {review.folders?.map((folder) => (
+              {(review.profile === "selected-library-playback-v1"
+                ? review.folders
+                : []
+              ).map((folder) => (
                 <li>
                   {folder.name} · {folder.id}
                 </li>

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createServer, request as httpRequest } from "node:http";
 import { createServer as createHttpsServer } from "node:https";
 import { execFileSync, spawn } from "node:child_process";
-import { mkdtemp, writeFile, readFile, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, readFile, rename, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -204,6 +204,59 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
       PasswordResetProviderId: "synthetic-reset",
       EnableAllFolders: true,
     };
+    // Explicit opt-in: ordinary browser fixtures must still be able to test stale snapshots.
+    async function refreshInventorySnapshots() {
+      const observedAt = new Date().toISOString();
+      const jellyfinAccounts = nativeSnapshot.accounts
+        .filter((account) => account.nativeId !== createdNativeId)
+        .map((account, index) =>
+          index === 0
+            ? {
+                ...account,
+                disabled: nativePolicy.IsDisabled,
+                administrator: nativePolicy.IsAdministrator,
+              }
+            : account,
+        );
+      if (createdNative)
+        jellyfinAccounts.push({
+          nativeId: createdNative.Id,
+          name: createdNative.Name,
+          disabled: createdNative.Policy.IsDisabled,
+          administrator: createdNative.Policy.IsAdministrator,
+        });
+      const seerrAccounts = seerrSnapshot.accounts.filter(
+        (account) =>
+          account.nativeId !== String(importedSeerrUser.id) &&
+          !(seerrDeletes && account.nativeId === "42"),
+      );
+      if (seerrImports)
+        seerrAccounts.push({
+          nativeId: String(importedSeerrUser.id),
+          name: importedSeerrUser.jellyfinUsername,
+          disabled: false,
+          administrator: false,
+        });
+      for (const { file, snapshot, accounts } of [
+        {
+          file: "media-snapshot.json",
+          snapshot: nativeSnapshot,
+          accounts: jellyfinAccounts,
+        },
+        {
+          file: "seerr-snapshot.json",
+          snapshot: seerrSnapshot,
+          accounts: seerrAccounts,
+        },
+      ]) {
+        const path = `${directory}/${file}`;
+        await writeFile(
+          `${path}.next`,
+          JSON.stringify({ ...snapshot, observedAt, accounts }),
+        );
+        await rename(`${path}.next`, path);
+      }
+    }
     nativeServer = createServer(async (request, response) => {
       if (
         [
@@ -674,6 +727,7 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
       selectedLibrary,
       createdNativeId,
       importedSeerrUser,
+      refreshInventorySnapshots,
       artbin,
       get writes() {
         return writes;

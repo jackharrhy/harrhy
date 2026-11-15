@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createMediaProvisioningAdapters } from "../src/media-provisioning-adapters.mjs";
+import { createMediaProvisioningAdapters } from "../src/media-provisioning-adapters.ts";
 
 test("provisioning is default closed and uses only explicit Jellyfin write capabilities", () => {
   assert.throws(

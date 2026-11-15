@@ -26,8 +26,16 @@
       ],
     },
     "apps/auth": {
+      // HTTPS synthetic fixtures generate local ephemeral certificates.
+      "ignoreBinaries": ["openssl"],
       "entry": [
         "integrations/*.js",
+        "__tests__/media-contracts.types.ts",
+        "__tests__/native-invitation-contract.mjs",
+        "__tests__/native-invitation-browser.mjs",
+        "__tests__/jellyfin-provisioning-native.mjs",
+        "__tests__/seerr-provisioning-native.mjs",
+        "__tests__/fixtures/management-preview.mjs",
         "__tests__/fixtures/ui-preview.mjs",
         "__tests__/fixtures/explorer.mjs",
         "tools/doodle-gallery/server.mjs",
