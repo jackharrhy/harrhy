@@ -62,6 +62,8 @@ jobs:
           fi
           convert -version
           identify -version
+      - name: Install Chromium for Artbin browser checks
+        run: npx playwright install --with-deps --only-shell chromium
       - run: npm run artbin:check
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
