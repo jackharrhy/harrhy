@@ -48,9 +48,10 @@ function requireFreshRequest(request, minimum) {
   }
 }
 
-const denied = () =>
+const denied = (code) =>
   Object.assign(new Error("This authorization request is not enabled."), {
     status: 403,
+    code,
   });
 
 export function authorizationForRequest(applications, request) {
@@ -79,19 +80,20 @@ export function authorizationForRequest(applications, request) {
     scopes.length > 32 ||
     scopes.some((scope) => typeof scope !== "string" || scope.length > 256)
   )
-    throw denied();
+    throw denied("authorization_request_shape");
   const targets = applications.filter((app) =>
     scopes.includes(`urn:zitadel:iam:org:project:id:${app.projectId}:aud`),
   );
-  if (targets.length !== 1 || !targets[0].delegatedRoles?.length)
-    throw denied();
+  if (targets.length !== 1) throw denied("authorization_audience");
   const application = targets[0];
-  if (application.authorizationHold) throw denied();
+  if (!application.delegatedRoles?.length)
+    throw denied("authorization_delegation_unavailable");
+  if (application.authorizationHold) throw denied("authorization_hold");
   requireFreshRequest(request, application.delegatedAuthRequestNotBefore);
   const roles = application.delegatedRoles.filter((role) =>
     scopes.includes(`urn:zitadel:iam:org:project:role:${role}`),
   );
-  if (roles.length !== 1) throw denied();
+  if (roles.length !== 1) throw denied("authorization_membership_scope");
   const required = [
     "openid",
     `urn:zitadel:iam:org:project:id:${application.projectId}:aud`,
@@ -102,7 +104,7 @@ export function authorizationForRequest(applications, request) {
     scopes.includes(`urn:zitadel:iam:org:project:role:${role}`),
   );
   if (application.delegatedPermissions?.length && !permissions.length)
-    throw denied();
+    throw denied("authorization_permission_scope");
   if (application.delegatedPermissionPolicies) {
     const matching = application.delegatedPermissionPolicies.filter(
       (policy) =>
@@ -112,7 +114,7 @@ export function authorizationForRequest(applications, request) {
           policy.permissions.includes(permission),
         ),
     );
-    if (matching.length !== 1) throw denied();
+    if (matching.length !== 1) throw denied("authorization_permission_family");
   }
   const allowed = new Set([
     ...required,
@@ -121,16 +123,15 @@ export function authorizationForRequest(applications, request) {
     "email",
     "offline_access",
   ]);
-  if (
-    required.some((scope) => !scopes.includes(scope)) ||
-    scopes.some((scope) => !allowed.has(scope))
-  )
-    throw denied();
+  if (required.some((scope) => !scopes.includes(scope)))
+    throw denied("authorization_required_scope");
+  if (scopes.some((scope) => !allowed.has(scope)))
+    throw denied("authorization_unexpected_scope");
   let callback;
   try {
     callback = new URL(request.redirectUri);
   } catch {
-    throw denied();
+    throw denied("authorization_callback_url");
   }
   if (
     callback.username ||
@@ -142,7 +143,7 @@ export function authorizationForRequest(applications, request) {
         ["127.0.0.1", "localhost", "[::1]"].includes(callback.hostname)
       ))
   )
-    throw denied();
+    throw denied("authorization_callback_policy");
   return {
     application,
     roles: [...roles, ...permissions],
