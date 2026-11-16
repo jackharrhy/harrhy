@@ -51,14 +51,17 @@ const nav = css({
   gap: "8px",
   "& button": {
     border: "1px solid #a9c5f4",
-    color: "#fff",
+    color: "var(--hui-ink)",
     background: "transparent",
     padding: "10px 14px",
     borderRadius: "6px",
     font: "inherit",
     cursor: "pointer",
   },
-  "& button[aria-pressed=true]": { background: "#fff", color: "#173f81" },
+  "& button[aria-pressed=true]": {
+    background: "var(--hui-ink)",
+    color: "#173f81",
+  },
   "& button:focus-visible": {
     outline: "3px solid white",
     outlineOffset: "3px",
@@ -259,23 +262,26 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
             padding: "20px",
             minWidth: 0,
             overflowWrap: "anywhere",
-            color: "#fff",
+            color: "var(--hui-ink)",
             backgroundImage:
               "radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%), radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%)",
             backgroundSize: "112px 112px",
             backgroundPosition: "0 0, 56px 56px",
             "& *": { boxSizing: "border-box" },
-            "& ::selection": { background: "#fff1a1", color: "#173866" },
+            "& ::selection": {
+              background: "var(--hui-accent)",
+              color: "var(--hui-on-accent)",
+            },
             "& [role=region]": {
-              background: "rgb(106 130 174 / 0.3)",
+              background: "var(--hui-table-header)",
               borderRadius: "8px",
-              scrollbarColor: "#93add5 #294578",
+              scrollbarColor: "var(--hui-control-border) var(--hui-elevated)",
             },
             "& table": { minWidth: "480px" },
-            "& thead th": { fontSize: "12px", color: "#d6e3fa" },
+            "& thead th": { fontSize: "12px", color: "var(--hui-muted)" },
             "& th[scope=rowgroup]": {
-              background: "rgb(106 130 174 / 0.3)",
-              color: "#e5edff",
+              background: "var(--hui-table-header)",
+              color: "var(--hui-muted)",
               fontSize: "12px",
             },
             "& th[scope=row]": {
@@ -299,7 +305,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
             >
               Synthetic league preview
             </Badge>
-            <span mix={css({ color: "#fff", fontSize: "13px" })}>
+            <span mix={css({ color: "var(--hui-ink)", fontSize: "13px" })}>
               No accounts, uploads or backend · reload resets changes
             </span>
           </Inline>
@@ -320,20 +326,20 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                     "SluggersHappiness, SluggersBolt, system-ui, sans-serif",
                   fontSize: "36px",
                   margin: 0,
-                  color: "#fff",
+                  color: "var(--hui-ink)",
                   lineHeight: "1.2",
                 })}
               >
                 Sluggers
               </Heading>
-              <p mix={css({ margin: "8px 0 0", color: "#e0ebff" })}>
+              <p mix={css({ margin: "8px 0 0", color: "var(--hui-muted)" })}>
                 {league.name} / {league.season}
               </p>
             </div>
             <div
               mix={css({
-                background: "rgb(106 130 174 / 0.3)",
-                color: "#fff",
+                background: "var(--hui-table-header)",
+                color: "var(--hui-ink)",
                 padding: "8px 12px",
                 borderRadius: "8px",
               })}
@@ -430,7 +436,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                                           css({
                                             border: 0,
                                             background: "transparent",
-                                            color: "#fff",
+                                            color: "var(--hui-ink)",
                                             padding: 0,
                                             font: "inherit",
                                             textAlign: "left",
@@ -452,7 +458,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                                       </button>
                                       <div
                                         mix={css({
-                                          color: "#d6e3fa",
+                                          color: "var(--hui-muted)",
                                           fontSize: "12px",
                                           display: "inline",
                                           marginLeft: "8px",
@@ -475,14 +481,14 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                                           css({
                                             color:
                                               i === 0
-                                                ? "#a6f0c2"
+                                                ? "var(--hui-success)"
                                                 : i === 1
-                                                  ? "#ffc1c6"
+                                                  ? "var(--hui-danger)"
                                                   : value > 0
-                                                    ? "#a6f0c2"
+                                                    ? "var(--hui-success)"
                                                     : value < 0
-                                                      ? "#ffc1c6"
-                                                      : "#d6e3fa",
+                                                      ? "var(--hui-danger)"
+                                                      : "var(--hui-muted)",
                                           }),
                                         ]}
                                       >
@@ -555,7 +561,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                 </Inline>
                 <div
                   mix={css({
-                    background: "rgb(106 130 174 / 0.3)",
+                    background: "var(--hui-table-header)",
                     borderRadius: "10px",
                     padding: "16px",
                     textAlign: "center",
@@ -580,7 +586,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                     <strong
                       mix={css({
                         fontFamily: "SluggersCezanne, sans-serif",
-                        color: "#fff1a1",
+                        color: "var(--hui-accent)",
                         fontSize: "36px",
                         fontVariantNumeric: "tabular-nums",
                       })}
@@ -642,7 +648,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                         <span
                           mix={css({
                             padding: "8px 10px",
-                            background: "rgb(106 130 174 / 0.3)",
+                            background: "var(--hui-table-header)",
                             borderRadius: "6px",
                           })}
                         >
@@ -745,7 +751,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                           alignItems: "center",
                           gap: "12px",
                           padding: "8px 12px",
-                          background: "rgb(106 130 174 / 0.3)",
+                          background: "var(--hui-table-header)",
                           borderRadius: "8px",
                           "@media(max-width:600px)": {
                             gridTemplateColumns: "28px minmax(0,1fr) 90px",
@@ -848,7 +854,10 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
                             })}
                           >
                             <strong
-                              mix={css({ display: "block", color: "#fff1a1" })}
+                              mix={css({
+                                display: "block",
+                                color: "var(--hui-accent)",
+                              })}
                             >
                               {slot.position}
                             </strong>
@@ -1144,7 +1153,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
           <p
             role="status"
             aria-live="polite"
-            mix={css({ minHeight: "24px", margin: 0, color: "#fff" })}
+            mix={css({ minHeight: "24px", margin: 0, color: "var(--hui-ink)" })}
           >
             {announcement ||
               "Interactive examples use local fixture data. No production connections."}
