@@ -33,6 +33,18 @@ export function selectChecks(paths, workspaces) {
   const affected = new Set();
 
   for (const path of paths) {
+    if (path === "celld.json" || path === "scripts/celld-runtime.mjs") {
+      for (const name of [
+        "@harrhy/ref",
+        "@harrhy/radio",
+        "@harrhy/worldview",
+        "@harrhy/maps-collaboration",
+        "@harrhy/4orm",
+      ]) {
+        affected.add(name);
+      }
+      continue;
+    }
     if (
       path === "README.md" ||
       path === "AGENTS.md" ||

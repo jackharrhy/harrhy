@@ -129,6 +129,11 @@ export function selectPublishedApps({
     if (!equal(beforeHeader, afterHeader)) return apps;
   }
   return apps.filter((app) => {
+    if (
+      paths.includes("celld.json") &&
+      /ARG CELLD_IMAGE=/.test(dockerfiles[app] ?? "")
+    )
+      return true;
     if (paths.some((path) => path.startsWith(`apps/${app}/`))) return true;
     const before = dependencyClosure(beforeLock, app);
     const after = dependencyClosure(afterLock, app);

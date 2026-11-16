@@ -1,0 +1,8 @@
+{
+  "image": "ghcr.io/jackharrhy/celld@sha256:dfea10316af715b6540c4d2257182537e5bc620b072310273c54d5cbd929820a",
+  "upstreamVersion": "0.6.3",
+  "upstreamRevision": "8702f6d186c77698dbfb30cf29e3b1922a88f008",
+  "forkRevision": "140fe0e00254afd228d4e8e17c33de54c4de4a70",
+  "platform": "linux/amd64",
+  "binarySha256": "43072e8ecb4a8aa60e91f91eac246d9b087b013f7ef2a1e35bd0556aabc0dd40"
+}

@@ -23,6 +23,12 @@ Ask for owner review through Familiar only for a specific unresolved product, se
 
 Shared-runtime operations may need serialization by their operator; that does not reserve source files or gate independent source work. No GitHub auto-merge setting or custom status subscription is needed for this workflow.
 
+## Celld runtime policy
+
+Keep the Celld fork on the latest qualified upstream release with a linear series of owned patches; do not add merge commits to the maintained fork branch. Preserve required standalone-storage and security fixes when updating upstream.
+
+All Harrhy Celld apps and native previews must converge on one qualified immutable artifact. Do not leave per-app runtime version exceptions. Qualify the fork and publish its artifact before changing app pins; coordinate the fleet transition with the runtime operator, including native CLI binaries and preview supervisors. Disposable compatibility tests may exercise older or candidate binaries without changing the shared runtime selection. A source pin change is not proof that an image was published or a running service upgraded. See [the runtime inventory](docs/celld-runtime.md).
+
 ## Code and workspace conventions
 
 Keep Markdown tables unpadded and put `<!-- prettier-ignore -->` immediately before each table so OxFmt leaves the source easy to edit.

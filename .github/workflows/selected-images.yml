@@ -4,6 +4,7 @@ on:
     paths:
       - .github/workflows/selected-images.yml
       - scripts/ci/selected-image-smoke.mjs
+      - celld.json
       - .dockerignore
       - .npmrc
       - package.json

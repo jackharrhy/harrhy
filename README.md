@@ -8,6 +8,8 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 [npm publication](docs/npm-publication.md) describes the two public `@harrhy` packages and their release boundary.
 [Shared UI direction](docs/ui.md) records the original control foundation; the [UI package guide](packages/ui/README.md) covers native components, theme composition and compatibility.
 
+[Common Celld runtime](docs/celld-runtime.md) records the qualified container/native artifact and fleet upgrade checks.
+
 ### Apps
 
 <!-- prettier-ignore -->
