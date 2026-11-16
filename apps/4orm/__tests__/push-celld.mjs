@@ -22,7 +22,10 @@ const publicJWK = (point) => ({
 });
 process.umask(0o077);
 const repo = process.cwd();
-assert.equal(repo, fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""));
+assert.equal(
+  repo,
+  fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""),
+);
 const binary = process.env.CELLD_BIN;
 if (!binary) throw new Error("Set CELLD_BIN to the canonical Celld binary");
 await verifyCelldBinary(binary);
@@ -119,7 +122,9 @@ import {deliverPush} from ${JSON.stringify(absolute("apps/4orm/app/push-delivery
     }),
   );
   const env = {
-    ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("CELLD_"))),
+    ...Object.fromEntries(
+      Object.entries(process.env).filter(([k]) => !k.startsWith("CELLD_")),
+    ),
     CELLD_BUCKET: `sqlite://${join(state, "objects.sqlite3")}`,
     CELLD_WATCH: join(state, "replica"),
     CELLD_DURABILITY: "bucket",
@@ -167,7 +172,10 @@ import {deliverPush} from ${JSON.stringify(absolute("apps/4orm/app/push-delivery
   });
   assert.equal(response.status, 200);
   const observed = await response.json();
-  await writeFile(join(evidence, "worker-result.json"), JSON.stringify(observed, null, 2));
+  await writeFile(
+    join(evidence, "worker-result.json"),
+    JSON.stringify(observed, null, 2),
+  );
   assert.deepEqual(observed, { expired: true });
   assert.equal(requests, 1);
   await writeFile(
@@ -199,7 +207,10 @@ import {deliverPush} from ${JSON.stringify(absolute("apps/4orm/app/push-delivery
   for (const child of children) {
     if (child.exitCode === null && child.signalCode === null) {
       child.kill("SIGTERM");
-      await Promise.race([new Promise((resolve) => child.once("exit", resolve)), delay(15000)]);
+      await Promise.race([
+        new Promise((resolve) => child.once("exit", resolve)),
+        delay(15000),
+      ]);
       if (child.exitCode === null && child.signalCode === null) {
         child.kill("SIGKILL");
         await new Promise((resolve) => child.once("exit", resolve));

@@ -9,7 +9,10 @@ import { tmpdir } from "node:os";
 import { resolve as absolute, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 process.umask(0o077);
-assert.equal(process.cwd(), fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""));
+assert.equal(
+  process.cwd(),
+  fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""),
+);
 const binary = process.env.CELLD_BIN;
 if (!binary) throw new Error("Set CELLD_BIN to the canonical Celld binary");
 await verifyCelldBinary(binary);
@@ -30,7 +33,9 @@ let running,
   logs = "";
 const children = [];
 const environment = {
-  ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("CELLD_"))),
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => !k.startsWith("CELLD_")),
+  ),
   CELLD_BUCKET: `sqlite://${join(state, "objects.sqlite3")}`,
   CELLD_WATCH: join(state, "replica"),
   CELLD_DURABILITY: "bucket",
@@ -50,12 +55,14 @@ function run(args) {
   return child;
 }
 async function stop() {
-  if (!running || running.exitCode !== null || running.signalCode !== null) return;
+  if (!running || running.exitCode !== null || running.signalCode !== null)
+    return;
   const child = running;
   const exited = new Promise((done) => child.once("exit", done));
   child.kill("SIGTERM");
   const timer = setTimeout(() => {
-    if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
+    if (child.exitCode === null && child.signalCode === null)
+      child.kill("SIGKILL");
   }, 30000);
   await exited;
   clearTimeout(timer);
@@ -122,7 +129,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
         { name: "SCHEDULED", class_name: "ScheduledCell" },
       ],
     },
-    migrations: [{ tag: "v1", new_sqlite_classes: ["CommunityCell", "ScheduledCell"] }],
+    migrations: [
+      { tag: "v1", new_sqlite_classes: ["CommunityCell", "ScheduledCell"] },
+    ],
     r2_buckets: [
       { binding: "MEDIA", bucket_name: "fourm-orphan-test" },
       { binding: "SCHEDULE_MEDIA", bucket_name: "fourm-schedule-test" },
@@ -139,9 +148,14 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
   );
   await start();
   assert.equal((await request("/seed", "POST")).status, 200);
-  for (const path of ["/admin/orphans", "/admin/cleanup/files", "/admin/cleanup/records"])
+  for (const path of [
+    "/admin/orphans",
+    "/admin/cleanup/files",
+    "/admin/cleanup/records",
+  ])
     assert.equal(
-      (await request(path, path.includes("cleanup") ? "POST" : "GET", false)).status,
+      (await request(path, path.includes("cleanup") ? "POST" : "GET", false))
+        .status,
       403,
     );
   const scan = await request("/admin/orphans");
@@ -151,12 +165,16 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
   );
   assert.equal(scan.status, 200);
   const html = await scan.text();
-  assert.ok(html.includes("fixture/orphan.txt") && html.includes("fixture/missing.txt"));
+  assert.ok(
+    html.includes("fixture/orphan.txt") && html.includes("fixture/missing.txt"),
+  );
   const feedDocuments = [];
   for (const path of ["/feed.xml", "/u/fixture/feed.xml", "/forum/feed.xml"]) {
     const response = await request(path, "GET", false);
     assert.equal(response.status, 200);
-    assert.ok(response.headers.get("Content-Type").startsWith("application/rss+xml"));
+    assert.ok(
+      response.headers.get("Content-Type").startsWith("application/rss+xml"),
+    );
     feedDocuments.push(await response.text());
   }
   assert.ok(feedDocuments[0].includes("Fixture: RSS &amp; &lt;page&gt;"));
@@ -167,7 +185,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
   assert.ok(feedDocuments[1].includes("4orm updates from Fixture"));
   assert.equal((feedDocuments[2].match(/<item>/g) || []).length, 2);
   assert.ok(feedDocuments[2].includes("Member in Thread &amp; RSS"));
-  assert.ok(feedDocuments[2].indexOf("#post-2") < feedDocuments[2].indexOf("#post-1"));
+  assert.ok(
+    feedDocuments[2].indexOf("#post-2") < feedDocuments[2].indexOf("#post-1"),
+  );
   assert.equal((await request("/u/absent/feed.xml", "GET", false)).status, 404);
   const browser = await chromium.launch();
   try {
@@ -177,7 +197,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       serviceWorkers: "block",
     });
     await context.route("**/*", (route) =>
-      new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
+      new URL(route.request().url()).origin === origin
+        ? route.continue()
+        : route.abort(),
     );
     const page = await context.newPage();
     const errors = [];
@@ -186,8 +208,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       assert.equal(
         await page.evaluate(
           (xml) =>
-            new DOMParser().parseFromString(xml, "application/xml").querySelector("parsererror") ===
-            null,
+            new DOMParser()
+              .parseFromString(xml, "application/xml")
+              .querySelector("parsererror") === null,
           document,
         ),
         true,
@@ -200,17 +223,26 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
         {
           username: "fixture",
           display_name: "Fixture",
-          children: [{ username: "member", display_name: "Member", children: [] }],
+          children: [
+            { username: "member", display_name: "Member", children: [] },
+          ],
         },
       ],
     });
     await page.goto(origin + "/lineage");
-    await page.locator("ul.tree > li#user-fixture > ul.tree > li#user-member").waitFor();
-    assert.equal(await page.locator("#user-member > .muted").innerText(), "@member");
+    await page
+      .locator("ul.tree > li#user-fixture > ul.tree > li#user-member")
+      .waitFor();
+    assert.equal(
+      await page.locator("#user-member > .muted").innerText(),
+      "@member",
+    );
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       assert.equal(
-        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
         true,
       );
       await page.screenshot({
@@ -224,8 +256,12 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
         has: page.locator("summary h2").filter({ hasText: /^storage health$/ }),
       });
       await panel.locator("summary").click();
-      await panel.getByRole("button", { name: "scan for orphans", exact: true }).click();
-      await panel.getByRole("heading", { name: "orphaned records", exact: true }).waitFor();
+      await panel
+        .getByRole("button", { name: "scan for orphans", exact: true })
+        .click();
+      await panel
+        .getByRole("heading", { name: "orphaned records", exact: true })
+        .waitFor();
       return panel;
     };
     const panel = await openScan();
@@ -242,7 +278,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       if (kind === "records") await openScan();
       page.once("dialog", (dialog) => dialog.accept());
       const response = page.waitForResponse(
-        (r) => r.url() === origin + `/admin/cleanup/${kind}` && r.request().method() === "POST",
+        (r) =>
+          r.url() === origin + `/admin/cleanup/${kind}` &&
+          r.request().method() === "POST",
       );
       await page
         .getByRole("button", {
@@ -251,7 +289,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
         })
         .click();
       assert.equal((await response).status(), 200);
-      await page.getByText(`deleted 1 orphaned ${label}.`, { exact: true }).waitFor();
+      await page
+        .getByText(`deleted 1 orphaned ${label}.`, { exact: true })
+        .waitFor();
     }
     assert.deepEqual(errors, []);
   } finally {
@@ -261,18 +301,26 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
   assert.equal(await (await request("/claim", "POST")).json(), true);
   const backupRun = await (await request("/backup-begin", "POST")).json();
   assert.equal(backupRun.state, "pending");
-  assert.deepEqual(await (await request("/backup-begin", "POST")).json(), backupRun);
+  assert.deepEqual(
+    await (await request("/backup-begin", "POST")).json(),
+    backupRun,
+  );
   await stop();
   await rm(join(state, "replica"), { recursive: true, force: true });
   await start();
   assert.equal((await (await request("/inspect")).json()).pending, true);
-  assert.equal((await (await request("/backup-status")).json()).pending.name, backupRun.name);
+  assert.equal(
+    (await (await request("/backup-status")).json()).pending.name,
+    backupRun.name,
+  );
   const backupFinished = await (await request("/backup-finish", "POST")).json();
   assert.equal(backupFinished.state, "complete");
   const backupStatus = await (await request("/backup-status")).json();
   assert.equal(backupStatus.pending, null);
   assert.equal(backupStatus.backups[0].name, backupRun.name);
-  const restoredBackup = await (await request("/backup-restore", "POST")).json();
+  const restoredBackup = await (
+    await request("/backup-restore", "POST")
+  ).json();
   assert.deepEqual(restoredBackup, {
     tablesEqual: true,
     kept: "kept",
@@ -323,9 +371,12 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
     manifestVerified: true,
   });
   for (const method of ["GET", "HEAD"]) {
-    const denied = await fetch(origin + "/uploads/.backups/native/native-full-fixture.json", {
-      method,
-    });
+    const denied = await fetch(
+      origin + "/uploads/.backups/native/native-full-fixture.json",
+      {
+        method,
+      },
+    );
     assert.equal(denied.status, 404);
   }
   const catalogue = await (await request("/catalogue-check", "POST")).json();
@@ -341,7 +392,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
     count: 2,
     manualProtected: true,
   });
-  const manualBackup = await (await request("/manual-backup-check", "POST")).json();
+  const manualBackup = await (
+    await request("/manual-backup-check", "POST")
+  ).json();
   assert.deepEqual(manualBackup, {
     denied: true,
     complete: true,
@@ -361,7 +414,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       serviceWorkers: "block",
     });
     await context.route("**/*", (route) =>
-      new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
+      new URL(route.request().url()).origin === origin
+        ? route.continue()
+        : route.abort(),
     );
     const page = await context.newPage(),
       errors = [];
@@ -371,22 +426,40 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       has: page.locator("summary h2").filter({ hasText: /^backups$/ }),
     });
     await panel.locator("summary").click();
-    await panel.getByRole("button", { name: "view full backup list", exact: true }).click();
-    await panel.getByRole("columnheader", { name: "snapshot", exact: true }).waitFor();
+    await panel
+      .getByRole("button", { name: "view full backup list", exact: true })
+      .click();
+    await panel
+      .getByRole("columnheader", { name: "snapshot", exact: true })
+      .waitFor();
     const response = page.waitForResponse(
-      (r) => r.url() === origin + "/admin/backups/run" && r.request().method() === "POST",
+      (r) =>
+        r.url() === origin + "/admin/backups/run" &&
+        r.request().method() === "POST",
     );
-    await panel.getByRole("button", { name: "run backup now", exact: true }).click();
+    await panel
+      .getByRole("button", { name: "run backup now", exact: true })
+      .click();
     assert.equal((await response).status(), 200);
     await panel.locator("#backup-status .ok").waitFor();
-    assert.match(await panel.locator("#backup-status").innerText(), /^backup complete:/);
+    assert.match(
+      await panel.locator("#backup-status").innerText(),
+      /^backup complete:/,
+    );
     await page.reload();
     await panel.locator("summary").click();
-    await panel.getByRole("button", { name: "view full backup list", exact: true }).click();
-    await panel.getByRole("columnheader", { name: "snapshot", exact: true }).waitFor();
+    await panel
+      .getByRole("button", { name: "view full backup list", exact: true })
+      .click();
+    await panel
+      .getByRole("columnheader", { name: "snapshot", exact: true })
+      .waitFor();
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
-      assert.equal(await panel.evaluate((el) => el.scrollWidth <= el.clientWidth + 1), true);
+      assert.equal(
+        await panel.evaluate((el) => el.scrollWidth <= el.clientWidth + 1),
+        true,
+      );
       await panel.screenshot({
         path: join(output, `native-backups-${width}.png`),
       });
@@ -412,14 +485,18 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
     retained: true,
     manual: true,
   });
-  const busyCapture = await (await request("/busy-backup-check", "POST")).json();
+  const busyCapture = await (
+    await request("/busy-backup-check", "POST")
+  ).json();
   assert.deepEqual(busyCapture, {
     initialSQLPreserved: true,
     liveActivityContinued: true,
     files: 3,
     verified: true,
   });
-  const automaticCatalogue = await (await request("/auto-catalogue-check", "POST")).json();
+  const automaticCatalogue = await (
+    await request("/auto-catalogue-check", "POST")
+  ).json();
   assert.deepEqual(automaticCatalogue, {
     emptyBefore: true,
     rebuilt: true,
@@ -440,7 +517,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
   await stop();
   await rm(join(state, "replica"), { recursive: true, force: true });
   await start();
-  const recoveredSchedule = await waitScheduled(periodicScheduled.backups.length);
+  const recoveredSchedule = await waitScheduled(
+    periodicScheduled.backups.length,
+  );
   for (const saved of periodicScheduled.backups)
     assert.ok(recoveredSchedule.backups.some((row) => row.name === saved.name));
   const counterBrowser = await chromium.launch();
@@ -450,17 +529,22 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       serviceWorkers: "block",
     });
     await context.route("**/*", (route) =>
-      new URL(route.request().url()).origin === origin ? route.continue() : route.abort(),
+      new URL(route.request().url()).origin === origin
+        ? route.continue()
+        : route.abort(),
     );
     const page = await context.newPage(),
       errors = [];
     page.on("pageerror", (error) => errors.push(error.message));
     const css = ".counter-number { color: rgb(12, 34, 56); }",
-      counterMarkup = '<aside id="counter-custom">custom counter footer</aside>';
+      counterMarkup =
+        '<aside id="counter-custom">custom counter footer</aside>';
     const openCounter = async () => {
       await page.goto(origin + "/settings");
       const details = page.locator("details").filter({
-        has: page.locator("summary strong").getByText("visitor counter", { exact: true }),
+        has: page
+          .locator("summary strong")
+          .getByText("visitor counter", { exact: true }),
       });
       await details.locator("summary").click();
       return details;
@@ -472,17 +556,27 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       ["counter_html", counterMarkup],
     ]) {
       const textarea = form.locator(`textarea[name="${name}"]`);
-      const editor = textarea.locator("xpath=preceding-sibling::*[1]").locator(".cm-content");
+      const editor = textarea
+        .locator("xpath=preceding-sibling::*[1]")
+        .locator(".cm-content");
       await editor.click();
       await page.keyboard.press("ControlOrMeta+A");
       await page.keyboard.insertText(text);
       assert.equal(await textarea.inputValue(), text);
     }
-    await form.getByRole("button", { name: "save counter", exact: true }).click();
+    await form
+      .getByRole("button", { name: "save counter", exact: true })
+      .click();
     await form.locator("#counter-status .ok").waitFor();
     details = await openCounter();
-    assert.equal(await details.locator('[name="counter_css"]').inputValue(), css);
-    assert.equal(await details.locator('[name="counter_html"]').inputValue(), counterMarkup);
+    assert.equal(
+      await details.locator('[name="counter_css"]').inputValue(),
+      css,
+    );
+    assert.equal(
+      await details.locator('[name="counter_html"]').inputValue(),
+      counterMarkup,
+    );
     for (const width of [1280, 390]) {
       await page.setViewportSize({ width, height: 900 });
       await details.screenshot({
@@ -494,19 +588,32 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       await page.goto(origin + "/u/fixture/counter");
       await page.locator("#counter-custom").waitFor();
       assert.equal(
-        await page.locator(".counter-number").evaluate((el) => getComputedStyle(el).color),
+        await page
+          .locator(".counter-number")
+          .evaluate((el) => getComputedStyle(el).color),
         "rgb(12, 34, 56)",
       );
-      assert.equal(await page.locator(".counter-label").innerText(), "fixture visitors");
-      const response = await context.request.get(origin + "/u/fixture/counter", {
-          headers: { Accept: "application/json" },
-        }),
+      assert.equal(
+        await page.locator(".counter-label").innerText(),
+        "fixture visitors",
+      );
+      const response = await context.request.get(
+          origin + "/u/fixture/counter",
+          {
+            headers: { Accept: "application/json" },
+          },
+        ),
         data = await response.json();
       assert.equal(data.username, "fixture");
       assert.equal(typeof data.total_views, "number");
-      assert.equal(await page.locator(".counter-number").innerText(), String(data.total_views));
       assert.equal(
-        await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth),
+        await page.locator(".counter-number").innerText(),
+        String(data.total_views),
+      );
+      assert.equal(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
         true,
       );
       await page.screenshot({
@@ -515,10 +622,13 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       });
     }
     const playlistHeaders = { Origin: origin, Accept: "application/json" };
-    const addedTrack = await context.request.post(origin + "/settings/player/add", {
-      headers: playlistHeaders,
-      form: { media_id: "1", title: "ignored by original form contract" },
-    });
+    const addedTrack = await context.request.post(
+      origin + "/settings/player/add",
+      {
+        headers: playlistHeaders,
+        form: { media_id: "1", title: "ignored by original form contract" },
+      },
+    );
     assert.equal(addedTrack.status(), 200);
     const playlistBefore = await (
       await context.request.get(origin + "/u/fixture/player", {
@@ -533,9 +643,14 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
     );
     assert.equal(movedTrack.status(), 200);
     await page.goto(origin + "/u/fixture/player");
-    assert.equal((await page.locator("#track-list li").innerText()).trim(), "kept.txt");
+    assert.equal(
+      (await page.locator("#track-list li").innerText()).trim(),
+      "kept.txt",
+    );
     await page.goto(origin + "/u/fixture/guestbook");
-    await page.locator('textarea[name="message"]').fill("Fixture guestbook message");
+    await page
+      .locator('textarea[name="message"]')
+      .fill("Fixture guestbook message");
     await page.getByRole("button", { name: "sign", exact: true }).click();
     await page
       .locator(".gb-entry")
@@ -587,7 +702,8 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
     assert.equal(
       (
         await context.request.post(
-          origin + `/u/member/guestbook/${memberGuestbook.entries[0].id}/delete`,
+          origin +
+            `/u/member/guestbook/${memberGuestbook.entries[0].id}/delete`,
           { headers: playlistHeaders },
         )
       ).status(),
@@ -636,7 +752,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
     await page.goto(origin + "/u/fixture/counter");
     await page.locator("#counter-custom").waitFor();
     assert.equal(
-      await page.locator(".counter-number").evaluate((el) => getComputedStyle(el).color),
+      await page
+        .locator(".counter-number")
+        .evaluate((el) => getComputedStyle(el).color),
       "rgb(12, 34, 56)",
     );
     assert.deepEqual(errors, []);
@@ -710,7 +828,8 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
           coldRestartAfterRestore: true,
           replicaRemovedAfterRestore: true,
         },
-        operationalSequenceFixture: "synthetic historical high-water70; not production state",
+        operationalSequenceFixture:
+          "synthetic historical high-water70; not production state",
         backupSnapshotCaptureAndRestore: true,
         backupRunLimit:
           "Isolated synthetic content archive; operational-state/full-storage backup, scheduling and real-cohort capture not yet accepted",
@@ -732,7 +851,11 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
   await writeFile(join(output, "runtime.log"), logs);
   await writeFile(
     join(output, "failure.json"),
-    JSON.stringify({ status: "FAIL", message: error.message, stack: error.stack }, null, 2),
+    JSON.stringify(
+      { status: "FAIL", message: error.message, stack: error.stack },
+      null,
+      2,
+    ),
   );
   throw error;
 } finally {

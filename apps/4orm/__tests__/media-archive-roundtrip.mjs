@@ -9,7 +9,10 @@ const root = "/home/jack/.local/state/form-harrhy-integration/candidate",
   repo = process.cwd(),
   origin = "http://127.0.0.1:18974";
 const original = resolve("apps/4orm/.review/parity-local"),
-  output = join(root, "metadata-roundtrip-" + new Date().toISOString().replace(/[:.]/g, ""));
+  output = join(
+    root,
+    "metadata-roundtrip-" + new Date().toISOString().replace(/[:.]/g, ""),
+  );
 const binary = process.env.CELLD_BIN ?? join(root, "tools/celld");
 await verifyCelldBinary(binary);
 await mkdir(output, { mode: 0o700 });
@@ -28,8 +31,13 @@ async function alive(pid) {
   }
 }
 async function stop(state) {
-  const report = JSON.parse(await readFile(join(state, "runtime.json"), "utf8"));
-  const command = await readFile(`/proc/${report.supervisorPid}/cmdline`, "utf8");
+  const report = JSON.parse(
+    await readFile(join(state, "runtime.json"), "utf8"),
+  );
+  const command = await readFile(
+    `/proc/${report.supervisorPid}/cmdline`,
+    "utf8",
+  );
   assert.ok(command.includes("scripts/review.mjs"));
   process.kill(report.supervisorPid, "SIGTERM");
   const deadline = Date.now() + 25000;
@@ -41,7 +49,9 @@ async function stop(state) {
     assert.equal(await alive(pid), false, "Owned service remains live");
 }
 async function start(state, persist = false) {
-  const log = persist ? await open(join(output, "restored-source.log"), "a", 0o600) : null;
+  const log = persist
+    ? await open(join(output, "restored-source.log"), "a", 0o600)
+    : null;
   const child = spawn(process.execPath, ["apps/4orm/scripts/review.mjs"], {
     cwd: repo,
     env: {
@@ -73,27 +83,33 @@ async function start(state, persist = false) {
     }
     try {
       const r = JSON.parse(await readFile(join(state, "runtime.json"), "utf8"));
-      if (r.supervisorPid === child.pid && (await fetch(origin + "/ready")).ok) break;
+      if (r.supervisorPid === child.pid && (await fetch(origin + "/ready")).ok)
+        break;
     } catch {}
-    if (Date.now() > deadline) throw Error("Owned test runner readiness timeout");
+    if (Date.now() > deadline)
+      throw Error("Owned test runner readiness timeout");
     await delay(150);
   }
   if (persist) child.unref();
 }
 function token(name) {
   const path = join(output, name);
-  const minted = spawnSync(process.execPath, ["packages/dev-auth/token.mjs", path], {
-    cwd: repo,
-    env: {
-      ...process.env,
-      HARRHY_DEV_AUTH_ORIGIN: "http://127.0.0.1:18975",
-      HARRHY_DEV_AUTH_CALLBACK: origin + "/auth/callback",
-      HARRHY_DEV_AUTH_CLIENT_ID: "fourm-local-browser",
-      HARRHY_DEV_AUTH_PROJECT_ID: "fourm-local-project",
-      HARRHY_DEV_AUTH_ROLES: "member,admin,archive-read,archive-restore",
+  const minted = spawnSync(
+    process.execPath,
+    ["packages/dev-auth/token.mjs", path],
+    {
+      cwd: repo,
+      env: {
+        ...process.env,
+        HARRHY_DEV_AUTH_ORIGIN: "http://127.0.0.1:18975",
+        HARRHY_DEV_AUTH_CALLBACK: origin + "/auth/callback",
+        HARRHY_DEV_AUTH_CLIENT_ID: "fourm-local-browser",
+        HARRHY_DEV_AUTH_PROJECT_ID: "fourm-local-project",
+        HARRHY_DEV_AUTH_ROLES: "member,admin,archive-read,archive-restore",
+      },
+      encoding: "utf8",
     },
-    encoding: "utf8",
-  });
+  );
   assert.equal(minted.status, 0, "Private fixture token creation failed");
   return readFile(path, "utf8");
 }
@@ -105,12 +121,19 @@ try {
     origin,
     token: sourceToken,
   });
-  const saved = JSON.parse(await readFile(join(archive, "archive.json"), "utf8"));
+  const saved = JSON.parse(
+    await readFile(join(archive, "archive.json"), "utf8"),
+  );
   const inventory = JSON.parse(
-    await readFile(root + "/parity-cohort-metadata-20261112/inventory.json", "utf8"),
+    await readFile(
+      root + "/parity-cohort-metadata-20261112/inventory.json",
+      "utf8",
+    ),
   );
   for (const source of inventory.assets) {
-    const item = saved.objects.find((candidate) => candidate.storage_path === source.path);
+    const item = saved.objects.find(
+      (candidate) => candidate.storage_path === source.path,
+    );
     assert.ok(item);
     assert.equal(item.sha256, source.sha256);
     assert.equal(item.mtime_ns, source.mtime_ns);
@@ -152,7 +175,9 @@ try {
   ).json();
   assert.deepEqual(result.tables, saved.tables);
   for (const item of saved.objects) {
-    const stat = result.objects.find((object) => object.storage_path === item.storage_path);
+    const stat = result.objects.find(
+      (object) => object.storage_path === item.storage_path,
+    );
     assert.equal(stat.mtime_ns, item.mtime_ns);
     assert.equal(stat.etag, item.etag);
     assert.equal(stat.last_modified, item.last_modified);
