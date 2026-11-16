@@ -1,5 +1,6 @@
 import { css } from "remix/component";
 import { composeTheme, sluggersTheme } from "@harrhy/ui/theme";
+import { originalBlue } from "../original.ts";
 import type { LabConcept } from "./types.ts";
 export const stadium: LabConcept = {
   id: "stadium",
@@ -11,7 +12,7 @@ export const stadium: LabConcept = {
     "Stepped blue scoreboards, compact score cells, capsule-free controls and a panoramic field.",
   tokens: composeTheme(sluggersTheme, {
     ink: "#ffffff",
-    muted: "#e0edff",
+    muted: "#eaf2ff",
     accent: "#fff1a1",
     onAccent: "#173866",
     danger: "#ffd7df",
@@ -27,25 +28,25 @@ export const stadium: LabConcept = {
     focus: "#fff1a1",
     buttonImage: "linear-gradient(rgb(255 255 255 / .10),rgb(255 255 255 / 0))",
     buttonShadow: "0 2px 3px rgb(0 0 0 / .12)",
-    canvas: "#155ba4",
-    surface: "#235e9b",
-    elevated: "#1c5088",
-    tableSurface: "#1d548d",
-    tableHeader: "#16477b",
-    selectedSurface: "#16477b",
+    canvas: originalBlue[600],
+    surface: originalBlue[600],
+    elevated: originalBlue[700],
+    tableSurface: originalBlue[600],
+    tableHeader: originalBlue[700],
+    selectedSurface: originalBlue[800],
     panelRadius: "10px",
     controlRadius: "6px",
     tableCellPadding: "8px 12px",
     tableBorder: "#759cca",
-    dangerSurface: "#235e9b",
-    successSurface: "#235e9b",
-    hoverSurface: "#16477b",
-    disabledSurface: "#1c5088",
+    dangerSurface: originalBlue[600],
+    successSurface: originalBlue[600],
+    hoverSurface: originalBlue[800],
+    disabledSurface: originalBlue[700],
   }),
   parts: {
     contentColumns: "minmax(0,1.6fr) minmax(330px,1fr)",
-    panelImage: "linear-gradient(#276ba8,#21548e)",
-    headingImage: "linear-gradient(#3277b5,#225f9e)",
+    panelImage: `linear-gradient(${originalBlue[600]}, ${originalBlue[500]})`,
+    headingImage: `linear-gradient(${originalBlue[400]}, ${originalBlue[700]})`,
     headingInk: "#ffffff",
     panelEdge: "2px solid #81bae8",
     cardRadius: "8px",
@@ -55,21 +56,20 @@ export const stadium: LabConcept = {
     grass: "#398466",
     infield: "#aa8056",
     line: "#e1f4d0",
-    marker: "#235e9b",
+    marker: originalBlue[600],
     portraitSize: "32px",
   },
   recipe: css({
-    background: "linear-gradient(#2676b9,#18579c 70%)",
     "& [data-baseball-scoreboard]": {
       border: "2px solid #a4d7ff",
       background: "#1d548d",
     },
     "& [data-baseball-scoreboard] [data-total]": {
-      background: "linear-gradient(#276ec0,#174f94)",
+      background: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
       color: "#fff1a1",
     },
     "& [data-roster-card]": {
-      background: "linear-gradient(#2b6aab,#22568f)",
+      background: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
       borderRadius: "6px",
     },
   }),

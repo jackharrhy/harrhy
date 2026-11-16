@@ -10,6 +10,14 @@ Private experimental workbench at `/sluggers-lab?concept=pennant&screen=matchday
 - `../lab.server.tsx`: opt-in route registration and fixed curated asset manifest. Server-only filesystem access never enters a browser bundle.
 - `../../../../../__tests__/sluggers-lab.test.e2e.ts`: synthetic-only route privacy, allowlist, keyboard, complete data and responsive checks. No original data/artwork is committed for tests.
 
+## Original palette and circle backdrop
+
+`original.ts` records the original app's blue ramp, sampled from its live OKLCH values into sRGB: blue-400 `#2b70df`, blue-500 `#2165da`, blue-600 `#1d56bf`, blue-700 `#1948a5`. This is app-local presentation, not a change to shared `sluggersTheme` or other consumers.
+
+The original `app/app.css` uses blue-600 behind two repeating radial gradients: white at 2.5% opacity, `40%` then `transparent 21%`, 7rem tiles (112px in the verified original browser), offset by half a tile (56px). Its `#bg-gradient` masks the dots through the top 70dvh; its commented animation is intentionally inactive. The preview restores those exact observed dimensions and opacity, not an approximate image or oversized decorative circles. All six concepts share this original canvas and ramp while retaining their own density, radii, panel gradients and layout proportions. Opaque data panels keep the quiet dots behind content, not behind individual table cells.
+
+Browser regression checks pin the source-faithful canvas, two staggered circle layers and lack of animation across all six concepts and four viewport widths. A bounded contrast check covers brightest gradient stops, button overlay, status ink and the brightest dotted canvas; it is not WCAG certification.
+
 ## Private activation
 
 Default off: neither `/sluggers-lab` nor its image route is registered, and no private corpus is read. Explicit `HARRHY_UI_SLUGGERS_PRIVATE_REVIEW=1` enables the page. `HARRHY_UI_SLUGGERS_REVIEW_DIR` optionally selects its provisioned directory, default `/home/jack/.local/share/sluggers-lab`; never point it at a backup, production volume or home directory. It must contain curated `corpus.json`, `manifest.json` and `assets/`. Asset requests match a narrow filename pattern and an exact manifest key; adjacent files and arbitrary paths are not served. Private responses are `no-store`.

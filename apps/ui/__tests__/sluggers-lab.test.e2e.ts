@@ -193,6 +193,23 @@ it("switches six full cookoff recipes over the same data, preserves context, and
         .getByRole("button", { name: concept.name, exact: true })
         .click();
       assert.match(page.url(), new RegExp(`concept=${concept.id}`));
+      const backdrop = await page
+        .locator("[data-sluggers-lab]")
+        .evaluate((element) => {
+          const style = getComputedStyle(element);
+          return {
+            color: style.backgroundColor,
+            image: style.backgroundImage,
+            size: style.backgroundSize,
+            position: style.backgroundPosition,
+            animation: style.animationName,
+          };
+        });
+      assert.equal(backdrop.color, "rgb(29, 86, 191)");
+      assert.equal((backdrop.image.match(/radial-gradient/g) ?? []).length, 2);
+      assert.match(backdrop.size, /112px 112px, 112px 112px/);
+      assert.match(backdrop.position, /0px 0px, 56px 56px/);
+      assert.equal(backdrop.animation, "none");
       await screens
         .getByRole("button", { name: "Lineup & field", exact: true })
         .click();
