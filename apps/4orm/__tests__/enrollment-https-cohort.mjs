@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import assert from "node:assert/strict";
 import { createServer as netServer } from "node:net";
 import { createServer as tlsServer } from "node:https";
@@ -19,6 +20,8 @@ import { transferArchive } from "../scripts/archive.mjs";
 import { createInvite } from "./enrollment-browser.mjs";
 process.umask(0o077);
 const root = "/home/jack/.local/state/form-harrhy-integration/candidate";
+const binary = process.env.CELLD_BIN ?? join(root, "tools/celld");
+await verifyCelldBinary(binary);
 const temporary = await mkdtemp(join(tmpdir(), "fourm-enrollment-https-"));
 const output = join(
   root,
@@ -45,7 +48,7 @@ const origin = `https://127.0.0.1:${appTLS}`,
   issuer = `https://127.0.0.1:${issuerTLS}`;
 const env = {
   ...process.env,
-  CELLD_BIN: join(root, "tools/celld"),
+  CELLD_BIN: binary,
   FOURM_REVIEW_STATE: join(temporary, "native"),
   FOURM_REVIEW_PORT: String(appPort),
   FOURM_REVIEW_ISSUER_PORT: String(issuerPort),

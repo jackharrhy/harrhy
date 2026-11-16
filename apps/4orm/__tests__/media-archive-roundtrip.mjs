@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
 import { readFile, writeFile, mkdir, rm, open } from "node:fs/promises";
@@ -12,6 +13,8 @@ const original = resolve("apps/4orm/.review/parity-local"),
     root,
     "metadata-roundtrip-" + new Date().toISOString().replace(/[:.]/g, ""),
   );
+const binary = process.env.CELLD_BIN ?? join(root, "tools/celld");
+await verifyCelldBinary(binary);
 await mkdir(output, { mode: 0o700 });
 const target = join(output, "target"),
   archive = join(output, "archive");
@@ -53,7 +56,7 @@ async function start(state, persist = false) {
     cwd: repo,
     env: {
       ...process.env,
-      CELLD_BIN: root + "/tools/celld",
+      CELLD_BIN: binary,
       FOURM_REVIEW_STATE: state,
       FOURM_REVIEW_PORT: "18974",
       FOURM_REVIEW_ISSUER_PORT: "18975",

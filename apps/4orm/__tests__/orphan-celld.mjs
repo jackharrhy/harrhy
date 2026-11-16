@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import { fileURLToPath } from "node:url";
 import { chromium } from "@playwright/test";
 import assert from "node:assert/strict";
@@ -12,8 +13,9 @@ assert.equal(
   process.cwd(),
   fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""),
 );
-const binary =
-  "/home/jack/.local/state/form-harrhy-integration/candidate/tools/celld";
+const binary = process.env.CELLD_BIN;
+if (!binary) throw new Error("Set CELLD_BIN to the canonical Celld binary");
+await verifyCelldBinary(binary);
 const state = await mkdtemp(join(tmpdir(), "fourm-orphan-celld-"));
 const output =
   "/home/jack/.local/state/form-harrhy-integration/candidate/orphan-celld-" +
@@ -371,7 +373,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
   for (const method of ["GET", "HEAD"]) {
     const denied = await fetch(
       origin + "/uploads/.backups/native/native-full-fixture.json",
-      { method },
+      {
+        method,
+      },
     );
     assert.equal(denied.status, 404);
   }
@@ -595,7 +599,9 @@ export default {async fetch(request,env,context){const path=new URL(request.url)
       );
       const response = await context.request.get(
           origin + "/u/fixture/counter",
-          { headers: { Accept: "application/json" } },
+          {
+            headers: { Accept: "application/json" },
+          },
         ),
         data = await response.json();
       assert.equal(data.username, "fixture");

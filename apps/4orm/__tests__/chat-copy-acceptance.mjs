@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
@@ -12,9 +13,7 @@ import {
 import { resolve, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHash } from "node:crypto";
-import { exerciseChatCopies } from "./chat-copy-workflow.mjs";
-import { exercisePushCopies } from "./push-copy-workflow.mjs";
-import { exerciseAdminCopies } from "./admin-copy-workflow.mjs";
+
 process.umask(0o077);
 const workflow = process.env.FOURM_COPY_WORKFLOW ?? "chat";
 assert.ok(
@@ -28,6 +27,12 @@ assert.ok(
     "widgets",
   ].includes(workflow),
 );
+const root = "/home/jack/.local/state/form-harrhy-integration/candidate";
+const binary = process.env.CELLD_BIN ?? join(root, "tools/celld");
+await verifyCelldBinary(binary);
+const { exerciseChatCopies } = await import("./chat-copy-workflow.mjs");
+const { exercisePushCopies } = await import("./push-copy-workflow.mjs");
+const { exerciseAdminCopies } = await import("./admin-copy-workflow.mjs");
 const exerciseCopies = [
   "admin",
   "accounts",
@@ -44,7 +49,6 @@ assert.equal(
   repo,
   fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""),
 );
-const root = "/home/jack/.local/state/form-harrhy-integration/candidate";
 const canonical = resolve("apps/4orm/.review/parity-local");
 const oracle = join(root, "python-oracle");
 const output = join(
@@ -116,7 +120,7 @@ async function startNative(state, persist = false) {
     cwd: repo,
     env: {
       ...process.env,
-      CELLD_BIN: join(root, "tools/celld"),
+      CELLD_BIN: binary,
       FOURM_REVIEW_STATE: state,
       FOURM_REVIEW_PORT: "18974",
       FOURM_REVIEW_ISSUER_PORT: "18975",

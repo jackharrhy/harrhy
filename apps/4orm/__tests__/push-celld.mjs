@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -25,8 +26,9 @@ assert.equal(
   repo,
   fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""),
 );
-const binary =
-  "/home/jack/.local/state/form-harrhy-integration/candidate/tools/celld";
+const binary = process.env.CELLD_BIN;
+if (!binary) throw new Error("Set CELLD_BIN to the canonical Celld binary");
+await verifyCelldBinary(binary);
 const state = await mkdtemp(join(tmpdir(), "fourm-push-celld-"));
 const evidence =
   "/home/jack/.local/state/form-harrhy-integration/candidate/push-celld-" +

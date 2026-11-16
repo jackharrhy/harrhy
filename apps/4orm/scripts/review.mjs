@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import { reviewSourceFingerprint } from "./review-source.mjs";
 import { createServer } from "node:net";
 import { parse } from "jsonc-parser";
@@ -51,6 +52,7 @@ await Promise.all(
       }),
   ),
 );
+await verifyCelldBinary(binary);
 await mkdir(state, { recursive: true, mode: 0o700 });
 const fingerprint = await reviewSourceFingerprint(root);
 let enrollmentKey;

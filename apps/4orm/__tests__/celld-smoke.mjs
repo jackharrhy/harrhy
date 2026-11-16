@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, readFile, writeFile, rm } from "node:fs/promises";
@@ -10,6 +11,9 @@ import { transferArchive } from "../scripts/archive.mjs";
 import { createInvite, completeInvite } from "./enrollment-browser.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
+if (!process.env.CELLD_BIN)
+  throw new Error("Set CELLD_BIN to the canonical Celld binary");
+await verifyCelldBinary(process.env.CELLD_BIN);
 const state = await mkdtemp(join(tmpdir(), "fourm-celld-smoke-"));
 const output = join(
   root,
