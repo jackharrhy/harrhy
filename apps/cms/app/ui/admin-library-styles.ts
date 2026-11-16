@@ -1,11 +1,6 @@
 import { css } from "remix/component";
 
 export const adminLibraryStyles = css({
-  "& .media-dialog": {
-    width: "min(900px, 92vw)",
-    "max-height": "85dvh",
-    padding: "26px",
-  },
   "& .media-dialog .picker-grid": {
     "margin-top": "20px",
     "max-height": "52dvh",
@@ -506,10 +501,6 @@ export const adminLibraryStyles = css({
     gap: "6px",
     "margin-bottom": "12px",
   },
-  "& .folder-dialog": {
-    width: "min(440px, -24px + 100vw)",
-    padding: "24px",
-  },
   "& .navigation-toggle": {
     "flex-shrink": "0",
   },
@@ -627,9 +618,6 @@ export const adminLibraryStyles = css({
     },
     "& .picker-grid": {
       "grid-template-columns": "repeat(2, minmax(0px, 1fr))",
-    },
-    "& .media-dialog": {
-      padding: "18px",
     },
     "& .picker-image img": {
       height: "110px",

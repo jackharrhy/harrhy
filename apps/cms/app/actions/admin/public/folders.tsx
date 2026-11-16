@@ -3,7 +3,7 @@ import { Notice, Button, Input, Textarea } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
 import { folderPath } from "../../../ui/public/folder-path.ts";
 export { folderPath } from "../../../ui/public/folder-path.ts";
-import { on, type Handle, type RemixNode } from "remix/component";
+import { css, on, type Handle, type RemixNode } from "remix/component";
 import { Dialog } from "@harrhy/ui/interactive";
 import type { MediaFolder } from "../../../ui/public/content-types.ts";
 
@@ -105,7 +105,10 @@ export function Folders(
           title={editing.id ? "Edit folder" : "New folder"}
           className="folder-dialog"
           initialFocus="input"
-          mix={focusReturn}
+          mix={[
+            focusReturn,
+            css({ width: "min(440px, calc(100vw - 24px))", padding: "24px" }),
+          ]}
           onClose={() => {
             if (!busy) {
               editing = null;

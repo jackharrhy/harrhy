@@ -76,6 +76,7 @@ for (const site of ["andrew", "luke"]) {
     await chooseImage.click();
     const imageDialog = page.getByRole("dialog", { name: "Choose an image" });
     await expect(imageDialog.getByLabel("Search images")).toBeFocused();
+    await expect(imageDialog).toHaveCSS("width", "900px");
     await captureSelect(
       page,
       imageDialog.getByLabel("Image folder"),

@@ -1,7 +1,7 @@
 import { restoreDialogFocus } from "./dialog-focus.ts";
 import { Button, Input } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
-import { on, type Handle } from "remix/component";
+import { css, on, type Handle } from "remix/component";
 import { Dialog } from "@harrhy/ui/interactive";
 import type { Media } from "../../../ui/public/content-types.ts";
 
@@ -21,7 +21,15 @@ export function MediaPicker(
       title="Choose an image"
       className="media-dialog"
       initialFocus='input[type="search"]'
-      mix={focusReturn}
+      mix={[
+        focusReturn,
+        css({
+          width: "min(900px, 92vw)",
+          maxHeight: "85dvh",
+          padding: "26px",
+          "@media (max-width: 600px)": { padding: "18px" },
+        }),
+      ]}
       onClose={() => handle.props.close()}
     >
       <div className="section-heading">
@@ -37,10 +45,13 @@ export function MediaPicker(
         type="search"
         aria-label="Search images"
         placeholder="Filename or alt text"
-        mix={on("input", (event) => {
-          query = event.currentTarget.value;
-          handle.update();
-        })}
+        mix={[
+          css({ marginBottom: "0.75rem" }),
+          on("input", (event) => {
+            query = event.currentTarget.value;
+            handle.update();
+          }),
+        ]}
       />
       <CmsSelect
         aria-label="Image folder"
