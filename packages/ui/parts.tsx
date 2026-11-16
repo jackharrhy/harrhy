@@ -179,7 +179,7 @@ const tableContainerStyles = css({
   maxWidth: "100%",
   overflowX: "auto",
   border: "1px solid var(--hui-table-border)",
-  background: "var(--hui-table-surface)",
+  background: "var(--hui-table-container-surface)",
 });
 export function Table(handle: Handle<Props<"table">>) {
   return () => {
@@ -248,4 +248,7 @@ const cellStyles = css({
   padding: "var(--hui-table-cell-padding)",
   "& + th, & + td": { borderLeft: "var(--hui-table-column-border)" },
 });
-const headStyles = css({ fontWeight: 600 });
+const headStyles = css({
+  fontWeight: 600,
+  fontSize: "var(--hui-table-header-text-size)",
+});

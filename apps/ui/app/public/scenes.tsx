@@ -15,7 +15,7 @@ import {
 } from "@harrhy/ui/native";
 import { WorkbenchHeader } from "./workbench.tsx";
 import { displayStyles, themeRoot, themeStyles } from "@harrhy/ui/theme";
-import { themes } from "./themes.ts";
+import { themes, themeLabels } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
 import { RadioScene } from "./radio/scene.tsx";
 
@@ -40,7 +40,7 @@ const grid = css({
 });
 const comparison = css({
   display: "grid",
-  gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   gap: "16px",
   "@media (max-width: 1000px)": { gridTemplateColumns: "1fr" },
 });
@@ -275,11 +275,7 @@ export const Scenes = clientEntry(
                       <Panel>
                         <Stack>
                           <h3 mix={css({ margin: 0, fontSize: "16px" })}>
-                            {name === "clean"
-                              ? "Clean"
-                              : name === "tactile"
-                                ? "Radio"
-                                : "Artbin"}
+                            {themeLabels[name]}
                           </h3>
                           <Field id={`${name}-name`} label="Collection name">
                             <Input placeholder="Evening sketches…" />

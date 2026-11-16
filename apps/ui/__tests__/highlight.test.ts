@@ -13,6 +13,10 @@ it("prepares safe Pierre Highlights tokens without changing raw source or trunca
     true,
   );
   assert.equal(prepareCode(source), tokens);
+  const dark = prepareCode(source, "tsx", "dark");
+  assert.equal(dark?.map((token) => token.text).join(""), source);
+  assert.equal(prepareCode(source, "tsx", "dark"), dark);
+  assert.equal(dark === tokens, false);
   assert.equal(prepareCode(source, "text"), undefined);
   assert.equal(prepareCode("x".repeat(20_001)), undefined);
   assert.equal(prepareCode("x".repeat(2_001)), undefined);
