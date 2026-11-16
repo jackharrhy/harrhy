@@ -26,7 +26,8 @@ let callbackOrigin,
   delegated = false,
   silent = false,
   promptOverride,
-  maxAgeOverride;
+  maxAgeOverride,
+  scopeOverride;
 let credentialAttempts = 0;
 let completions = 0,
   resetCalls = 0,
@@ -113,7 +114,7 @@ const provider = createServer(async (request, response) => {
           prompt: promptOverride || (silent ? ["PROMPT_NONE"] : []),
           maxAge: maxAgeOverride,
           redirectUri: `${callbackOrigin}/callback`,
-          scope: scopes,
+          scope: scopeOverride || scopes,
         },
       };
     }
@@ -772,6 +773,45 @@ try {
   await resetContext.close();
   console.log(
     "PASS reset: live policy hints, safe validation retry, mismatch, and successful proof-bound submission",
+  );
+  currentClient = applications.find((app) => app.id === "ref").clientIds[0];
+  const ref = applications.find((app) => app.id === "ref");
+  delegated = true;
+  scopeOverride = [
+    "openid",
+    `urn:zitadel:iam:org:project:id:${ref.projectId}:aud`,
+    "urn:zitadel:iam:org:projects:roles",
+    "urn:zitadel:iam:org:project:role:admin",
+    "urn:zitadel:iam:org:project:role:boards-read",
+    "private-unexpected-scope-sentinel",
+  ];
+  const diagnosticsContext = await browser.newContext();
+  const diagnosticsPage = await diagnosticsContext.newPage();
+  const diagnosticsStart = logs.length;
+  const failure = await diagnosticsPage.goto(
+    `${origin}/login?returnTo=${encodeURIComponent("/authorize?authRequest=private-request-sentinel")}`,
+  );
+  assert.equal(failure.status(), 403);
+  const problem = await diagnosticsPage.locator("body").innerText();
+  assert.match(problem, /This authorization request is not enabled\./);
+  assert.doesNotMatch(problem, /authorization_unexpected_scope|private-/);
+  const diagnostic = logs.slice(diagnosticsStart);
+  assert.match(diagnostic, /request_failed/);
+  const record = JSON.parse(
+    diagnostic.split("request_failed ")[1].split("\n")[0],
+  );
+  assert.deepEqual(record, {
+    path: "/login",
+    status: 403,
+    code: "authorization_unexpected_scope",
+  });
+  assert.doesNotMatch(
+    diagnostic,
+    /private-|dynamic|authRequest|scope=|redirect_uri|clientId|cookie|token/i,
+  );
+  await diagnosticsContext.close();
+  console.log(
+    "PASS authorization diagnostics: static internal reason, generic browser error, no request secrets",
   );
 } finally {
   await browser?.close();
