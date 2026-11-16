@@ -1,3 +1,5 @@
+import { Button, Input, Textarea } from "@harrhy/ui/native";
+import { CmsSelect } from "./cms-select.tsx";
 import { folderPath } from "../../../ui/public/folder-path.ts";
 export { folderPath } from "../../../ui/public/folder-path.ts";
 import { on, ref, type Handle, type RemixNode } from "remix/component";
@@ -19,7 +21,7 @@ export function Folders(
       .filter((f) => f.parent_id === parent)
       .map((f) => (
         <div>
-          <button
+          <Button
             type="button"
             className={
               "folder-link" + (handle.props.selected === f.id ? " active" : "")
@@ -28,7 +30,7 @@ export function Folders(
             mix={on("click", () => handle.props.select(f.id))}
           >
             ▱ {f.name}
-          </button>
+          </Button>
           {tree(f.id, depth + 1)}
         </div>
       ));
@@ -41,7 +43,7 @@ export function Folders(
         ["unfiled", "Unfiled"],
         ["adornments", "Adornment artwork"],
       ].map(([id, label]) => (
-        <button
+        <Button
           type="button"
           className={
             "folder-link" + (handle.props.selected === id ? " active" : "")
@@ -49,11 +51,12 @@ export function Folders(
           mix={on("click", () => handle.props.select(id))}
         >
           {label}
-        </button>
+        </Button>
       ))}
       <div className="section-heading">
         <h3>Folders</h3>
-        <button
+        <Button
+          variant="quiet"
           type="button"
           className="text-button"
           mix={on("click", () => {
@@ -72,11 +75,12 @@ export function Folders(
           })}
         >
           New folder
-        </button>
+        </Button>
       </div>
       {tree(null)}
       {handle.props.folders.some((f) => f.id === handle.props.selected) && (
-        <button
+        <Button
+          variant="quiet"
           type="button"
           className="text-button"
           mix={on("click", () => {
@@ -90,7 +94,7 @@ export function Folders(
           })}
         >
           Edit folder
-        </button>
+        </Button>
       )}
       {editing && (
         <dialog
@@ -141,7 +145,7 @@ export function Folders(
             )}
             <label>
               Folder name
-              <input
+              <Input
                 required
                 maxLength={100}
                 value={editing.name}
@@ -153,7 +157,7 @@ export function Folders(
             </label>
             <label>
               Description
-              <textarea
+              <Textarea
                 rows={3}
                 maxLength={2000}
                 value={editing.description}
@@ -165,30 +169,33 @@ export function Folders(
             </label>
             <label>
               Inside
-              <select
+              <CmsSelect
                 value={editing.parent_id ?? ""}
-                mix={on<HTMLSelectElement>("change", (e) => {
-                  editing!.parent_id = e.currentTarget.value || null;
+                onValueChange={(value) => {
+                  editing!.parent_id = value || null;
                   handle.update();
-                })}
-              >
-                <option value="" selected={!editing.parent_id}>
-                  Library
-                </option>
-                {handle.props.folders
-                  .filter((f) => f.id !== editing!.id)
-                  .map((f) => (
-                    <option value={f.id} selected={editing!.parent_id === f.id}>
-                      {folderPath(handle.props.folders, f.id)}
-                    </option>
-                  ))}
-              </select>
+                }}
+                options={[
+                  { value: "", label: "Library" },
+                  ...handle.props.folders
+                    .filter((f) => f.id !== editing!.id)
+                    .map((f) => ({
+                      value: f.id,
+                      label: folderPath(handle.props.folders, f.id),
+                    })),
+                ]}
+              />
             </label>
             <div className="form-actions">
-              <button className="button primary" disabled={busy}>
+              <Button
+                variant="primary"
+                type="submit"
+                className="button primary"
+                disabled={busy}
+              >
                 Save folder
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
                 className="button"
                 disabled={busy}
@@ -198,9 +205,10 @@ export function Folders(
                 })}
               >
                 Cancel
-              </button>
+              </Button>
               {editing.id && (
-                <button
+                <Button
+                  variant="danger"
                   type="button"
                   className="text-button danger"
                   disabled={busy}
@@ -227,7 +235,7 @@ export function Folders(
                   })}
                 >
                   Remove folder
-                </button>
+                </Button>
               )}
             </div>
           </form>

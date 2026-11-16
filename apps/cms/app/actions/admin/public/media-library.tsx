@@ -1,3 +1,5 @@
+import { Button, Input, Textarea } from "@harrhy/ui/native";
+import { CmsSelect } from "./cms-select.tsx";
 import { clientEntry, on, type Handle } from "remix/component";
 import { Folders, folderPath } from "./folders.tsx";
 import type { Media, MediaFolder } from "../../../ui/public/content-types.ts";
@@ -118,7 +120,7 @@ export const MediaLibrary = clientEntry(
           </p>
         )}
         <div className="media-tools">
-          <input
+          <Input
             aria-label="Search media"
             type="search"
             placeholder="Filename or alt text"
@@ -127,20 +129,22 @@ export const MediaLibrary = clientEntry(
               handle.update();
             })}
           />
-          <select
+          <CmsSelect
             aria-label="Filter media"
-            mix={on<HTMLSelectElement>("change", (e) => {
-              filter = e.currentTarget.value;
+            onValueChange={(value) => {
+              filter = value;
               handle.update();
-            })}
-          >
-            <option value="all">All files</option>
-            <option value="image/">Images</option>
-            <option value="audio/">Audio</option>
-            <option value="video/">Video</option>
-            <option value="application/">Documents</option>
-            <option value="missing-alt">Missing alternative text</option>
-          </select>
+            }}
+            value={filter}
+            options={[
+              { value: "all", label: "All files" },
+              { value: "image/", label: "Images" },
+              { value: "audio/", label: "Audio" },
+              { value: "video/", label: "Video" },
+              { value: "application/", label: "Documents" },
+              { value: "missing-alt", label: "Missing alternative text" },
+            ]}
+          />
         </div>
         <div className="media-workspace with-folders">
           <Folders
@@ -166,7 +170,7 @@ export const MediaLibrary = clientEntry(
                   {folders
                     .filter((f) => f.parent_id === folder)
                     .map((f) => (
-                      <button
+                      <Button
                         type="button"
                         className="button small"
                         mix={on("click", () => {
@@ -175,7 +179,7 @@ export const MediaLibrary = clientEntry(
                         })}
                       >
                         ▱ {f.name}
-                      </button>
+                      </Button>
                     ))}
                 </div>
               </div>
@@ -207,7 +211,7 @@ export const MediaLibrary = clientEntry(
                       m.mime_type.startsWith(filter)),
                 )
                 .map((m) => (
-                  <button
+                  <Button
                     type="button"
                     className={
                       "media-tile" + (selected?.id === m.id ? " selected" : "")
@@ -236,7 +240,7 @@ export const MediaLibrary = clientEntry(
                         {!m.alt ? " · No alt text" : ""}
                       </small>
                     </span>
-                  </button>
+                  </Button>
                 ))}
             </div>
           </div>
@@ -245,7 +249,8 @@ export const MediaLibrary = clientEntry(
               <>
                 <div className="section-heading">
                   <h2>File details</h2>
-                  <button
+                  <Button
+                    variant="quiet"
                     className="text-button"
                     mix={on("click", () => {
                       selected = null;
@@ -253,7 +258,7 @@ export const MediaLibrary = clientEntry(
                     })}
                   >
                     Close
-                  </button>
+                  </Button>
                 </div>
                 {selected.mime_type.startsWith("image/") && (
                   <img
@@ -268,7 +273,7 @@ export const MediaLibrary = clientEntry(
                 </p>
                 <label>
                   Alternative text
-                  <textarea
+                  <Textarea
                     rows={4}
                     value={selected.alt ?? ""}
                     mix={on("input", (e) => {
@@ -279,7 +284,7 @@ export const MediaLibrary = clientEntry(
                 </label>
                 <label>
                   Notes
-                  <textarea
+                  <Textarea
                     rows={2}
                     maxLength={2000}
                     value={selected.description ?? ""}
@@ -292,33 +297,29 @@ export const MediaLibrary = clientEntry(
                 </label>
                 <label>
                   Folder
-                  <select
+                  <CmsSelect
                     value={selected.folder_id ?? ""}
-                    mix={on<HTMLSelectElement>("change", (e) => {
-                      selected!.folder_id = e.currentTarget.value || null;
+                    onValueChange={(value) => {
+                      selected!.folder_id = value || null;
                       handle.update();
-                    })}
-                  >
-                    <option value="" selected={!selected.folder_id}>
-                      Unfiled
-                    </option>
-                    {folders.map((f) => (
-                      <option
-                        value={f.id}
-                        selected={selected!.folder_id === f.id}
-                      >
-                        {folderPath(folders, f.id)}
-                      </option>
-                    ))}
-                  </select>
+                    }}
+                    options={[
+                      { value: "", label: "Unfiled" },
+                      ...folders.map((f) => ({
+                        value: f.id,
+                        label: folderPath(folders, f.id),
+                      })),
+                    ]}
+                  />
                 </label>
-                <button
+                <Button
+                  variant="primary"
                   className="button primary"
                   disabled={savingDetails}
                   mix={on("click", () => void saveDetails())}
                 >
                   Save details
-                </button>
+                </Button>
                 <a href={"/tea/api/media/file/" + selected.id} target="_blank">
                   Open original ↗
                 </a>
@@ -327,7 +328,8 @@ export const MediaLibrary = clientEntry(
                   {handle.props.references[selected.id]?.join(", ") ||
                     "Not used."}
                 </p>
-                <button
+                <Button
+                  variant="danger"
                   className="button danger"
                   disabled={!!handle.props.references[selected.id]?.length}
                   mix={on("click", async () => {
@@ -356,7 +358,7 @@ export const MediaLibrary = clientEntry(
                   })}
                 >
                   Remove from library
-                </button>
+                </Button>
               </>
             ) : (
               <div className="inspector-empty">

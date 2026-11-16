@@ -1,3 +1,5 @@
+import { Button, Checkbox, Input, Textarea } from "@harrhy/ui/native";
+import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { clientEntry, on, type Handle } from "remix/component";
 
 export const SiteSettings = clientEntry(
@@ -43,7 +45,8 @@ export const SiteSettings = clientEntry(
           <div>
             <h1>Site settings</h1>
           </div>
-          <button
+          <Button
+            variant="primary"
             className="button primary"
             disabled={saving || !dirty}
             mix={on("click", async () => {
@@ -71,7 +74,7 @@ export const SiteSettings = clientEntry(
             })}
           >
             Save settings
-          </button>
+          </Button>
         </div>
         {error && (
           <p className="notice error" role="alert">
@@ -84,7 +87,7 @@ export const SiteSettings = clientEntry(
             <h2>Identity & appearance</h2>
             <label>
               Website name
-              <input
+              <Input
                 value={site.site_name}
                 mix={on("input", (e) => {
                   site.site_name = e.currentTarget.value;
@@ -95,7 +98,7 @@ export const SiteSettings = clientEntry(
             </label>
             <label>
               Default description
-              <textarea
+              <Textarea
                 rows={4}
                 value={site.description}
                 mix={on("input", (e) => {
@@ -121,7 +124,7 @@ export const SiteSettings = clientEntry(
                     change();
                   })}
                 />
-                <input
+                <Input
                   aria-label="Background color value"
                   value={site.background_color}
                   mix={on("input", (e) => {
@@ -140,7 +143,7 @@ export const SiteSettings = clientEntry(
             <h2>Analytics</h2>
             <label>
               Google Analytics measurement ID
-              <input
+              <Input
                 placeholder="G-XXXXXXXXXX"
                 value={site.analytics_id}
                 mix={on("input", (e) => {
@@ -149,9 +152,8 @@ export const SiteSettings = clientEntry(
                 })}
               />
             </label>
-            <label>
-              <input
-                type="checkbox"
+            <label mix={checkboxLabelStyles}>
+              <Checkbox
                 checked={site.analytics_enabled}
                 mix={on("change", (e) => {
                   site.analytics_enabled = e.currentTarget.checked;
@@ -163,7 +165,7 @@ export const SiteSettings = clientEntry(
             <h2>Website address</h2>
             <label>
               Canonical origin
-              <input
+              <Input
                 readOnly
                 type="url"
                 value={site.canonical_origin}

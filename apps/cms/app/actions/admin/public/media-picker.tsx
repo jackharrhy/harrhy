@@ -1,3 +1,5 @@
+import { Button, Input } from "@harrhy/ui/native";
+import { CmsSelect } from "./cms-select.tsx";
 import { on, ref, type Handle } from "remix/component";
 import type { Media } from "../../../ui/public/content-types.ts";
 
@@ -21,15 +23,15 @@ export function MediaPicker(
     >
       <div className="section-heading">
         <h2>Choose an image</h2>
-        <button
+        <Button
           type="button"
           className="button"
           mix={on("click", () => handle.props.close())}
         >
           Close
-        </button>
+        </Button>
       </div>
-      <input
+      <Input
         type="search"
         aria-label="Search images"
         placeholder="Filename or alt text"
@@ -38,26 +40,25 @@ export function MediaPicker(
           handle.update();
         })}
       />
-      <select
+      <CmsSelect
         aria-label="Image folder"
         value={folder}
-        mix={on<HTMLSelectElement>("change", (e) => {
-          folder = e.currentTarget.value;
+        onValueChange={(value) => {
+          folder = value;
           handle.update();
-        })}
-      >
-        <option value="all">All folders</option>
-        <option value="unfiled">Unfiled</option>
-        {[
-          ...new Map(
-            handle.props.media
-              .filter((m) => m.folder_id)
-              .map((m) => [m.folder_id!, m.folder_path ?? "Folder"]),
-          ).entries(),
-        ].map(([id, path]) => (
-          <option value={id}>{path}</option>
-        ))}
-      </select>
+        }}
+        options={[
+          { value: "all", label: "All folders" },
+          { value: "unfiled", label: "Unfiled" },
+          ...[
+            ...new Map(
+              handle.props.media
+                .filter((m) => m.folder_id)
+                .map((m) => [m.folder_id!, m.folder_path ?? "Folder"]),
+            ).entries(),
+          ].map(([id, path]) => ({ value: id, label: path })),
+        ]}
+      />
       <div className="picker-grid">
         {handle.props.media
           .filter(
@@ -71,7 +72,7 @@ export function MediaPicker(
                 .includes(query.toLowerCase()),
           )
           .map((m) => (
-            <button
+            <Button
               type="button"
               className="picker-image"
               mix={on("click", () => handle.props.choose(m))}
@@ -82,7 +83,7 @@ export function MediaPicker(
                 loading="lazy"
               />
               <span>{m.filename}</span>
-            </button>
+            </Button>
           ))}
       </div>
       <p className="muted">

@@ -1,3 +1,4 @@
+import { Button } from "@harrhy/ui/native";
 import type { Features } from "../../../ui/public/features.ts";
 import { on, type Handle } from "remix/component";
 import type {
@@ -77,7 +78,7 @@ export function BlockList(
               data-block-id={b.id}
               key={b.id + ":" + epoch}
             >
-              <button
+              <Button
                 type="button"
                 className="block-drag"
                 aria-label={
@@ -136,7 +137,7 @@ export function BlockList(
                 ]}
               >
                 ⠿
-              </button>
+              </Button>
               <div className="block-top">
                 <span>
                   <span className="block-index">
@@ -145,7 +146,7 @@ export function BlockList(
                   {labels[b.type] ?? b.type}
                 </span>
                 <div className="block-actions">
-                  <button
+                  <Button
                     type="button"
                     title="Move block up"
                     aria-label="Move block up"
@@ -153,8 +154,8 @@ export function BlockList(
                     mix={on("click", () => move(index, -1))}
                   >
                     ↑
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     title="Move block down"
                     aria-label="Move block down"
@@ -162,8 +163,8 @@ export function BlockList(
                     mix={on("click", () => move(index, 1))}
                   >
                     ↓
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     title="Duplicate block"
                     mix={on("click", () => {
@@ -175,8 +176,8 @@ export function BlockList(
                     })}
                   >
                     Duplicate
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
                     title="Remove block"
                     mix={on("click", () => {
@@ -185,7 +186,7 @@ export function BlockList(
                     })}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               </div>
               <BlockFields
@@ -225,13 +226,13 @@ export function BlockList(
                 ([type]) => type !== "special" || handle.props.features.riso,
               )
               .map(([type, label]) => (
-                <button
+                <Button
                   type="button"
                   className="button small"
                   mix={on("click", () => add(type))}
                 >
                   + {label}
-                </button>
+                </Button>
               ))}
           </div>
         </div>
