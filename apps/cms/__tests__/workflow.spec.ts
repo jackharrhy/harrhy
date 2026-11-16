@@ -1,3 +1,4 @@
+import { join } from "node:path";
 import { test, expect, type Locator, type Page } from "@playwright/test";
 
 async function choose(page: Page, trigger: Locator, label: string) {
@@ -6,6 +7,32 @@ async function choose(page: Page, trigger: Locator, label: string) {
   await expect(trigger).toHaveText(label);
 }
 import { credentials } from "./fixture.ts";
+
+async function captureSelect(page: Page, trigger: Locator, name: string) {
+  const directory = process.env.HARRHY_CMS_UI_SCREENSHOTS;
+  if (!directory) return;
+  const viewport = page.viewportSize();
+  for (const width of [390, 1440]) {
+    await page.setViewportSize({ width, height: 900 });
+    const closeNavigation = page.locator("#close-cms-navigation");
+    if (
+      width === 390 &&
+      (await closeNavigation.isVisible()) &&
+      !(await page.getByRole("dialog").isVisible())
+    ) {
+      await closeNavigation.click();
+    }
+    await trigger.click();
+    await expect(page.getByRole("option").first()).toBeVisible();
+    await page.screenshot({
+      path: join(directory, `${name}-${width}.png`),
+      fullPage: true,
+    });
+    await page.keyboard.press("Escape");
+  }
+  if (viewport) await page.setViewportSize(viewport);
+}
+
 for (const site of ["andrew", "luke"]) {
   test(`${site}: native editor, drafts, publishing, settings and feature controls`, async ({
     page,
@@ -33,6 +60,7 @@ for (const site of ["andrew", "luke"]) {
     // Shared Select must follow restored block props, not retain its first default.
     const headingSize = page.getByLabel("Heading size");
     await expect(headingSize).toHaveText("Heading 1");
+    await captureSelect(page, headingSize, `${site}-heading-select`);
     await choose(page, headingSize, "Heading 3");
     await page.getByRole("button", { name: /Undo/ }).click();
     await expect(headingSize).toHaveText("Heading 1");
@@ -48,6 +76,11 @@ for (const site of ["andrew", "luke"]) {
     await chooseImage.click();
     const imageDialog = page.getByRole("dialog", { name: "Choose an image" });
     await expect(imageDialog.getByLabel("Search images")).toBeFocused();
+    await captureSelect(
+      page,
+      imageDialog.getByLabel("Image folder"),
+      `${site}-media-dialog`,
+    );
     await choose(page, imageDialog.getByLabel("Image folder"), "Unfiled");
     await page.keyboard.press("Escape");
     await expect(imageDialog).not.toBeVisible();
@@ -56,6 +89,35 @@ for (const site of ["andrew", "luke"]) {
     const fields = page.locator('[contenteditable="true"]');
     await expect(fields.first()).toBeVisible();
     await fields.first().fill(`Edited ${site} heading`);
+    const paragraph = fields.nth(1);
+    const paragraphText = `Formatted ${site} text`;
+    await paragraph.fill(paragraphText);
+    await paragraph.press("ControlOrMeta+A");
+    const paragraphEditor = paragraph.locator(
+      "xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' rich-text-wrap ')][1]",
+    );
+    await paragraphEditor
+      .getByRole("button", { name: "Bold", exact: true })
+      .click();
+    await expect(paragraph.locator("strong")).toHaveText(paragraphText);
+    await paragraph.focus();
+    await paragraph.press("ControlOrMeta+A");
+    await paragraphEditor
+      .getByRole("button", { name: "Link", exact: true })
+      .click();
+    await paragraphEditor
+      .getByLabel("Link URL")
+      .fill("https://example.test/selected-text");
+    await paragraphEditor
+      .getByRole("button", { name: "Apply", exact: true })
+      .click();
+    await expect(paragraph.locator("a")).toHaveAttribute(
+      "href",
+      "https://example.test/selected-text",
+    );
+    await expect(paragraph.locator("a strong, strong a")).toHaveText(
+      paragraphText,
+    );
     if (site === "andrew") await riso.click();
     await expect(
       page.getByText("Draft saved", { exact: true }).first(),
