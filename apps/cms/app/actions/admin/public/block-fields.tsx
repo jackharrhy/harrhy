@@ -1,3 +1,5 @@
+import { Notice, Input, Textarea } from "@harrhy/ui/native";
+import { CmsSelect } from "./cms-select.tsx";
 import { PlainImageFields } from "./plain-image-fields.tsx";
 import type { Features } from "../../../ui/public/features.ts";
 import { on, type Handle } from "remix/component";
@@ -42,16 +44,14 @@ export function BlockFields(
           {b.type === "heading" && (
             <label className="compact-field">
               Heading size
-              <select
+              <CmsSelect
                 value={p.level ?? 2}
-                mix={on<HTMLSelectElement>("change", (e) =>
-                  set("level", Number(e.currentTarget.value)),
-                )}
-              >
-                {[1, 2, 3, 4, 5, 6].map((n) => (
-                  <option value={n}>Heading {n}</option>
-                ))}
-              </select>
+                onValueChange={(value) => set("level", Number(value))}
+                options={[1, 2, 3, 4, 5, 6].map((n) => ({
+                  value: String(n),
+                  label: `Heading ${n}`,
+                }))}
+              />
             </label>
           )}
           <RichText
@@ -69,7 +69,7 @@ export function BlockFields(
       return (
         <label>
           Markdown & embed HTML
-          <textarea
+          <Textarea
             className="code-input"
             rows={Math.min(
               16,
@@ -109,7 +109,7 @@ export function BlockFields(
           {["title", "credit", "url"].map((key) => (
             <label>
               {key}
-              <input
+              <Input
                 value={p[key] ?? ""}
                 mix={on("input", (e) => set(key, e.currentTarget.value))}
               />
@@ -126,9 +126,9 @@ export function BlockFields(
       );
     if (b.type === "divider") return <hr />;
     return (
-      <p className="notice">
+      <Notice className="notice">
         Unsupported block: {b.type}. Saved without changes.
-      </p>
+      </Notice>
     );
   };
 }

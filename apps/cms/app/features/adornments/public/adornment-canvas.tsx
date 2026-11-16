@@ -1,3 +1,4 @@
+import { Button, Range } from "@harrhy/ui/native";
 import {
   imageStyle,
   imageGroupStyle,
@@ -239,8 +240,7 @@ export function AdornmentCanvas(
           <div className="placement-controls">
             <label>
               Size
-              <input
-                type="range"
+              <Range
                 min={5}
                 max={150}
                 value={
@@ -259,8 +259,7 @@ export function AdornmentCanvas(
             </label>
             <label>
               Angle <span>{Number(selected.css.rotation) || 0}°</span>
-              <input
-                type="range"
+              <Range
                 aria-label="Angle"
                 min={-180}
                 max={180}
@@ -273,9 +272,10 @@ export function AdornmentCanvas(
                 )}
               />
             </label>
-            <button
+            <Button
+              variant="quiet"
               type="button"
-              className="button small"
+              className="small"
               mix={on("click", () =>
                 change(selected.id, {
                   ...selected.css,
@@ -290,7 +290,7 @@ export function AdornmentCanvas(
               )}
             >
               Center at top
-            </button>
+            </Button>
             <small>
               Drag the artwork to position it. Arrow keys nudge; Shift moves
               farther.

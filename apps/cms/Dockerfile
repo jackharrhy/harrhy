@@ -12,6 +12,7 @@ COPY packages/mcp/package.json ./packages/mcp/
 COPY packages/request-body/package.json ./packages/request-body/
 COPY packages/result/package.json ./packages/result/
 COPY packages/rich-text/package.json ./packages/rich-text/
+COPY packages/ui/package.json ./packages/ui/
 RUN npm ci --workspace @harrhy/cms --include-workspace-root=true
 COPY tsconfig.base.json ./
 COPY apps/cms ./apps/cms
@@ -22,6 +23,7 @@ COPY packages/mcp ./packages/mcp
 COPY packages/request-body ./packages/request-body
 COPY packages/result ./packages/result
 COPY packages/rich-text ./packages/rich-text
+COPY packages/ui ./packages/ui
 RUN npm run build --workspace @harrhy/cms && npm prune --omit=dev --workspace @harrhy/cms --include-workspace-root=true
 
 FROM platformatic/node-caged:26-slim
@@ -40,6 +42,7 @@ COPY --from=build --chown=node:node /app/packages/mcp /app/packages/mcp
 COPY --from=build --chown=node:node /app/packages/request-body /app/packages/request-body
 COPY --from=build --chown=node:node /app/packages/result /app/packages/result
 COPY --from=build --chown=node:node /app/packages/rich-text /app/packages/rich-text
+COPY --from=build --chown=node:node /app/packages/ui /app/packages/ui
 RUN mkdir -p /app/data /app/backups && chown node:node /app/data /app/backups
 USER node
 EXPOSE 4351

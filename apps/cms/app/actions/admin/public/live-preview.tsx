@@ -1,3 +1,4 @@
+import { Button } from "@harrhy/ui/native";
 import { on, ref, type Handle } from "remix/component";
 import morphdom from "morphdom/dist/morphdom-esm.js";
 import { routes } from "../../../routes.ts";
@@ -56,6 +57,14 @@ export function LivePreview(
         );
       const html = await response.text();
       if (current.signal.aborted) return;
+      const next = new DOMParser().parseFromString(html, "text/html");
+      // srcdoc inherits the editor's CSP, not the independent preview response's nonce.
+      const nonce =
+        document.querySelector<HTMLScriptElement>("script[nonce]")?.nonce;
+      if (!nonce)
+        throw new Error("Reload the editor to restore preview security.");
+      for (const style of next.querySelectorAll("style[nonce]"))
+        style.setAttribute("nonce", nonce);
       if (!initialized) {
         await new Promise<void>((resolve, reject) => {
           current.signal.addEventListener(
@@ -71,10 +80,9 @@ export function LivePreview(
             },
             { once: true, signal: current.signal },
           );
-          frame!.srcdoc = html;
+          frame!.srcdoc = "<!doctype html>" + next.documentElement.outerHTML;
         });
       } else {
-        const next = new DOMParser().parseFromString(html, "text/html");
         const doc = frame.contentDocument!;
         const scroll = frame.contentWindow!.scrollY;
         morphdom(doc.body, next.body, {
@@ -125,13 +133,14 @@ export function LivePreview(
       <aside className="preview-panel">
         <div className="preview-feedback">
           {error && <p role="alert">{error}</p>}
-          <button
+          <Button
             type="button"
             className="text-button"
+            variant="quiet"
             mix={on("click", () => void update())}
           >
             Refresh preview ↻
-          </button>
+          </Button>
         </div>
         <iframe
           title="Page preview"

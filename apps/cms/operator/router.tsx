@@ -123,6 +123,12 @@ export function createOperatorRouter(
     operatorRoutes,
     createController(operatorRoutes, {
       actions: {
+        async assets(context) {
+          return (
+            (await assets.fetch(context.request)) ??
+            new Response("Not found", { status: 404 })
+          );
+        },
         index(context) {
           const user = store.auth.resolve(
             cookieValue(context.request, cookieName),

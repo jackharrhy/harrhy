@@ -1,3 +1,6 @@
+import { VisualTools } from "../actions/public/visual-tools.tsx";
+import { themeRoot } from "@harrhy/ui/theme";
+import { adminTheme } from "./admin-theme.ts";
 import { css, type Handle, type RemixNode } from "remix/component";
 import { ImportMap } from "remix/component/server";
 import { getContext } from "remix/middleware/async-context";
@@ -31,13 +34,18 @@ export function Document(
         mix={
           handle.props.admin
             ? [
+                adminTheme,
+                themeRoot,
                 adminCoreStyles,
                 adminEditorStyles,
                 adminLibraryStyles,
                 adminWorkspaceStyles,
                 ...(handle.props.styles ?? []),
               ]
-            : handle.props.styles
+            : [
+                ...(handle.props.styles ?? []),
+                ...(handle.props.visualEditing ? [visualFieldStyles] : []),
+              ]
         }
       >
         <head>
@@ -65,35 +73,48 @@ export function Document(
                 defer
               ></script>
             )}
-          {handle.props.editorSession && (
-            <script
-              src="/tea-visual.js"
-              nonce={nonce}
-              data-slug={handle.props.visualSlug}
-              data-active={handle.props.visualEditing ? "1" : "0"}
-              defer
-            ></script>
-          )}
           {handle.props.head}
-          {handle.props.admin && !handle.props.static && (
-            <ImportMap value={entryScript.importMap} />
-          )}
+          {(handle.props.admin || handle.props.editorSession) &&
+            !handle.props.static && <ImportMap value={entryScript.importMap} />}
           {handle.props.admin &&
             !handle.props.static &&
             entryScript.preloads.map((href) => (
               <link rel="modulepreload" href={href} />
             ))}
-          {handle.props.admin && !handle.props.static && (
-            <script type="module" src={entryScript.href} nonce={nonce}></script>
-          )}
+          {(handle.props.admin || handle.props.editorSession) &&
+            !handle.props.static && (
+              <script
+                type="module"
+                src={entryScript.href}
+                nonce={nonce}
+              ></script>
+            )}
         </head>
         <body
           className={handle.props.admin ? "cms" : "site"}
           style={{ backgroundColor: handle.props.background }}
+          data-tea-visual-loading={handle.props.visualEditing ? "" : undefined}
         >
           {handle.props.children}
+          {handle.props.editorSession && !handle.props.static && (
+            <VisualTools
+              active={Boolean(handle.props.visualEditing)}
+              slug={handle.props.visualSlug ?? ""}
+            />
+          )}
         </body>
       </html>
     );
   };
 }
+
+const visualFieldStyles = css({
+  "& body[data-tea-visual-loading] [data-preview-key]": {
+    pointerEvents: "none",
+  },
+  "& .tea-editable-field:hover, & .tea-editable-field:focus-visible": {
+    outline: "2px solid #006c9c",
+    outlineOffset: "3px",
+    cursor: "pointer",
+  },
+});

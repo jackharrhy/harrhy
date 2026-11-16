@@ -1,20 +1,6 @@
 import { css } from "remix/component";
 
 export const adminLibraryStyles = css({
-  "& .media-dialog": {
-    width: "min(900px, 92vw)",
-    "max-height": "85dvh",
-    border: "1px solid var(--line)",
-    "border-radius": "var(--radius)",
-    padding: "26px",
-    color: "var(--ink)",
-    "box-shadow": "0 20px 80px var(--shadow)",
-    background: "var(--paper)",
-  },
-  "& .media-dialog::backdrop": {
-    background: "var(--backdrop)",
-    "backdrop-filter": "none",
-  },
   "& .media-dialog .picker-grid": {
     "margin-top": "20px",
     "max-height": "52dvh",
@@ -74,7 +60,7 @@ export const adminLibraryStyles = css({
   "& .media-tools input": {
     "max-width": "460px",
   },
-  "& .media-tools select": {
+  "& .media-tools [aria-haspopup=listbox]": {
     "max-width": "210px",
   },
   "& .media-workspace": {
@@ -220,7 +206,7 @@ export const adminLibraryStyles = css({
     "font-size": "12px",
     margin: "0px",
   },
-  "& .navigation-item input, & .navigation-item select": {
+  "& .navigation-item input, & .navigation-item [aria-haspopup=listbox]": {
     "font-size": "12px",
   },
   "& .category-art": {
@@ -515,10 +501,6 @@ export const adminLibraryStyles = css({
     gap: "6px",
     "margin-bottom": "12px",
   },
-  "& .folder-dialog": {
-    width: "min(440px, -24px + 100vw)",
-    padding: "24px",
-  },
   "& .navigation-toggle": {
     "flex-shrink": "0",
   },
@@ -602,7 +584,7 @@ export const adminLibraryStyles = css({
       "flex-direction": "column",
       gap: "10px",
     },
-    "& .media-tools select": {
+    "& .media-tools [aria-haspopup=listbox]": {
       "max-width": "100%",
     },
     "& .media-grid": {
@@ -636,9 +618,6 @@ export const adminLibraryStyles = css({
     },
     "& .picker-grid": {
       "grid-template-columns": "repeat(2, minmax(0px, 1fr))",
-    },
-    "& .media-dialog": {
-      padding: "18px",
     },
     "& .picker-image img": {
       height: "110px",

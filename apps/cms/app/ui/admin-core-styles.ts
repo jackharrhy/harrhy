@@ -1,61 +1,42 @@
 import { css } from "remix/component";
 
 export const adminCoreStyles = css({
-  "color-scheme": "light",
-  "--ink": "oklch(0.3 0.026 60)",
-  "--muted": "oklch(0.49 0.025 65)",
-  "--line": "oklch(0.91 0.014 80)",
-  "--field-border": "oklch(0.62 0.045 60)",
-  "--paper": "oklch(0.995 0.003 85)",
-  "--canvas": "oklch(0.984 0.007 85)",
-  "--surface": "oklch(0.963 0.011 82)",
-  "--surface-hover": "oklch(0.925 0.017 82)",
-  "--tea": "oklch(0.4 0.066 50)",
-  "--on-tea": "oklch(0.982 0.012 85)",
-  "--accent": "oklch(0.45 0.081 125)",
-  "--accent-hover": "oklch(0.385 0.078 125)",
-  "--accent-soft": "oklch(0.955 0.024 125)",
-  "--on-accent": "oklch(0.982 0.012 85)",
-  "--danger": "oklch(0.44 0.12 30)",
-  "--danger-hover": "oklch(0.36 0.11 30)",
-  "--danger-soft": "oklch(0.95 0.022 35)",
-  "--danger-soft-hover": "oklch(0.91 0.041 35)",
-  "--shadow": "oklch(0.25 0.04 50 / 0.15)",
-  "--backdrop": "oklch(0.25 0.04 50 / 0.55)",
-  "--radius": "6px",
-  "--radius-control": "4px",
+  // Compatibility names for CMS-owned layout recipes; appearance comes from Clean.
+  "--ink": "var(--hui-ink)",
+  "--muted": "var(--hui-muted)",
+  "--line": "var(--hui-border)",
+  "--field-border": "var(--hui-control-border)",
+  "--paper": "var(--hui-surface)",
+  "--canvas": "var(--hui-canvas)",
+  "--surface": "var(--hui-hover-surface)",
+  "--surface-hover": "var(--hui-selected-surface)",
+  "--tea": "var(--hui-accent)",
+  "--on-tea": "var(--hui-on-accent)",
+  "--accent": "var(--hui-accent)",
+  "--accent-hover": "var(--hui-selected-ink)",
+  "--accent-soft": "var(--hui-selected-surface)",
+  "--on-accent": "var(--hui-on-accent)",
+  "--danger": "var(--hui-danger)",
+  "--danger-hover": "var(--hui-danger)",
+  "--danger-soft": "var(--hui-danger-surface)",
+  "--danger-soft-hover": "var(--hui-danger-surface)",
+  "--radius": "var(--hui-panel-radius)",
+  "--radius-control": "var(--hui-control-radius)",
+  "--shadow": "#19212620",
+  "--backdrop": "#19212688",
   "& *": {
     "box-sizing": "border-box",
   },
-  "& body": {
-    margin: "0px",
-    color: "var(--ink)",
-    background: "var(--canvas)",
-    font: '14px / 1.5 "Inter",\n    ui-sans-serif,\n    system-ui,\n    -apple-system,\n    BlinkMacSystemFont,\n    "Segoe UI",\n    sans-serif',
-    "font-optical-sizing": "auto",
-  },
-  "& button, & input, & textarea, & select": {
-    font: "inherit",
-  },
-  "& button, & a, & input, & textarea, & select": {
+  "& body": { margin: "0px" },
+  "& button, & a, & input, & textarea": {
     "-webkit-tap-highlight-color": "transparent",
   },
-  "& button, & a": {
-    "touch-action": "manipulation",
-  },
-  "& button": {
-    cursor: "pointer",
-    color: "inherit",
-  },
-  "& button:disabled": {
-    cursor: "default",
-    opacity: "0.6",
-  },
-  "& a": {
+  "& button, & a": { "touch-action": "manipulation" },
+  "& a:not([data-variant])": {
     color: "inherit",
     "text-decoration": "none",
   },
-  "& a:hover": {
+  "& a:not([data-variant]):hover": {
     "text-decoration": "underline",
     "text-underline-offset": "3px",
   },
@@ -89,10 +70,6 @@ export const adminCoreStyles = css({
   "& img": {
     "max-width": "100%",
   },
-  "& :focus-visible": {
-    outline: "3px solid var(--accent)",
-    "outline-offset": "3px",
-  },
   "& label": {
     display: "flex",
     "flex-direction": "column",
@@ -100,51 +77,7 @@ export const adminCoreStyles = css({
     "margin-bottom": "14px",
     gap: "5px",
   },
-  "& label small": {
-    "font-weight": "400",
-    "line-height": "1.5",
-  },
-  '& input:not([type="checkbox"]):not([type="color"]):not([type="file"]), & textarea, & select':
-    {
-      border: "1px solid var(--line)",
-      "border-radius": "var(--radius-control)",
-      background: "var(--paper)",
-      color: "var(--ink)",
-      padding: "10px 12px",
-      width: "100%",
-      "min-width": "0px",
-      transition: "border-color 0.15s",
-      "line-height": "1.5",
-    },
-  "& input:hover, & textarea:hover, & select:hover": {
-    "border-color": "var(--field-border)",
-  },
-  "& select": {
-    appearance: "none",
-    "padding-right": "38px",
-    "background-image":
-      "linear-gradient(45deg, transparent 50%, var(--muted) 50%),\n    linear-gradient(135deg, var(--muted) 50%, transparent 50%)",
-    "background-position":
-      "calc(100% - 19px) calc(50% + 1px),\n    calc(100% - 14px) calc(50% + 1px)",
-    "background-repeat": "no-repeat",
-    "background-size": "5px 5px",
-  },
-  "@media (forced-colors: active)": {
-    "& select": {
-      appearance: "auto",
-      "background-image": "none",
-      "padding-right": "12px",
-    },
-  },
-  "& textarea": {
-    resize: "vertical",
-  },
-  '& input[type="checkbox"]': {
-    "accent-color": "var(--accent)",
-    width: "16px",
-    height: "16px",
-    margin: "0px",
-  },
+  "& label small": { "font-weight": "400", "line-height": "1.5" },
   "& details > summary": {
     cursor: "pointer",
     "font-weight": "550",
@@ -172,79 +105,10 @@ export const adminCoreStyles = css({
   "& .muted": {
     color: "var(--muted)",
   },
-  "& .eyebrow": {
-    color: "var(--muted)",
-    "line-height": "1.5",
-    "margin-bottom": "15px",
-    "font-size": "12px",
-    "letter-spacing": "0px",
-    "font-weight": "600",
-  },
-  "& .button": {
-    border: "0",
-    display: "inline-flex",
-    "align-items": "center",
-    "justify-content": "center",
-    gap: "12px",
-    color: "var(--ink)",
-    "border-radius": "var(--radius-control)",
-    "font-weight": "550",
-    "font-size": "13px",
-    "line-height": "1.5",
-    "white-space": "nowrap",
-    "text-decoration": "none",
-    "min-height": "40px",
-    transition: "background 0.15s,\n    color 0.15s",
-    background: "var(--surface)",
-    padding: "7px 12px",
-  },
-  '& .button:hover:not(:disabled):not([aria-disabled="true"])': {
-    "text-decoration": "none",
-    background: "var(--surface-hover)",
-  },
-  '& .button[aria-disabled="true"]': {
-    cursor: "default",
-    opacity: "0.6",
-  },
-  "& .button.primary": {
-    color: "var(--on-accent)",
-    background: "var(--accent)",
-  },
-  '& .button.primary:hover:not(:disabled):not([aria-disabled="true"])': {
-    background: "var(--accent-hover)",
-  },
   "& .button.small": {
-    "font-size": "12px",
-    "min-height": "32px",
-    padding: "5px 9px",
-  },
-  "& .button.danger": {
-    background: "var(--danger-soft)",
-    color: "var(--danger)",
-  },
-  '& .button.danger:hover:not(:disabled):not([aria-disabled="true"])': {
-    background: "var(--danger-soft-hover)",
-    color: "var(--danger-hover)",
-  },
-  "& .text-button": {
-    border: "0px",
-    background: "none",
-    color: "var(--accent)",
-    padding: "0px",
-    font: "inherit",
-    "text-decoration": "underline",
-    "text-underline-offset": "3px",
-    transition: "color 0.15s",
-  },
-  "& .text-button:hover:not(:disabled)": {
-    color: "var(--accent-hover)",
-    "text-decoration-thickness": "2px",
-  },
-  "& .text-button.danger": {
-    color: "var(--danger)",
-  },
-  "& .text-button.danger:hover:not(:disabled)": {
-    color: "var(--danger-hover)",
+    "--hui-button-height": "2rem",
+    "--hui-button-padding": "0.3rem 0.55rem",
+    "--hui-button-text-size": "0.8125rem",
   },
   "& .check-label": {
     display: "flex",
@@ -255,29 +119,9 @@ export const adminCoreStyles = css({
     "font-size": "12px",
     "font-weight": "400",
   },
-  "& .notice": {
-    padding: "13px 16px",
-    "border-radius": "var(--radius-control)",
-    background: "var(--accent-soft)",
-    border: "1px solid var(--line)",
-    color: "var(--accent)",
-    margin: "12px 0px 20px",
-  },
-  "& .notice.error": {
-    background: "var(--danger-soft)",
-    "border-color": "var(--line)",
-    color: "var(--danger)",
-  },
-  "& .notice button": {
-    "margin-left": "12px",
-  },
-  "& .panel": {
-    border: "1px solid var(--line)",
-    background: "var(--paper)",
-    "border-radius": "var(--radius)",
-    "margin-bottom": "22px",
-    padding: "20px",
-  },
+  "& .notice": { margin: "12px 0px 20px" },
+  "& .notice button": { "margin-left": "12px" },
+  "& .panel": { "margin-bottom": "22px" },
   "& .section-heading": {
     display: "flex",
     "align-items": "center",
@@ -605,24 +449,6 @@ export const adminCoreStyles = css({
     display: "block",
     color: "var(--muted)",
   },
-  "& .badge": {
-    display: "inline-flex",
-    "align-items": "center",
-    width: "max-content",
-    "border-radius": "var(--radius-control)",
-    padding: "4px 7px",
-    background: "var(--surface)",
-    color: "var(--muted)",
-    "font-size": "12px",
-  },
-  "& .badge.good": {
-    background: "var(--accent-soft)",
-    color: "var(--accent)",
-  },
-  "& .badge.error": {
-    background: "var(--danger-soft)",
-    color: "var(--danger)",
-  },
   "& .row-arrow": {
     color: "var(--muted)",
   },
@@ -676,29 +502,11 @@ export const adminCoreStyles = css({
     "font-size": "13px",
     color: "var(--muted)",
   },
-  "& input::placeholder, & textarea::placeholder": {
-    color: "var(--muted)",
-    opacity: "1",
-  },
-  "& .button:active:not(:disabled)": {
-    transform: "translateY(1px)",
-  },
   "& .workspace-status[hidden], & .workspace-status:not([role])": {
     display: "none",
   },
   "& .workspace, & .wide .workspace": {
     "padding-top": "20px",
-  },
-  "& dialog": {
-    font: "inherit",
-    color: "var(--ink)",
-    background: "var(--paper)",
-    border: "0px",
-    "border-radius": "8px",
-    "box-shadow": "0 16px 70px var(--shadow)",
-  },
-  "& dialog::backdrop": {
-    background: "var(--backdrop)",
   },
   "& .cms-sidebar[hidden]": {
     display: "none",

@@ -3,6 +3,9 @@ import { test, expect } from "@playwright/test";
 test("design reference is public and shows live admin tokens", async ({
   page,
 }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("requestfailed", (request) => errors.push(request.url()));
   await page.goto("http://operator.localhost:4352/design");
   await expect(
     page.getByRole("heading", { name: "Design", exact: true }),
@@ -10,24 +13,34 @@ test("design reference is public and shows live admin tokens", async ({
   await expect(page.locator('[data-token-value="--accent"]')).not.toBeEmpty();
   await expect(page.getByText("Page list row")).toBeVisible();
   const fields = page.locator(".design-form-sample");
+  await expect(fields.locator("[data-cms-hydration]")).not.toHaveAttribute(
+    "inert",
+    "",
+  );
   const inputHeight = await fields
     .locator('input[type="text"]')
     .evaluate((element) => element.getBoundingClientRect().height);
-  const select = fields.locator("select");
+  const select = fields.getByRole("button", { name: /Visibility/ });
   expect(
     await select.evaluate((element) => element.getBoundingClientRect().height),
   ).toBe(inputHeight);
-  expect(
-    await select.evaluate((element) =>
-      parseFloat(getComputedStyle(element).paddingRight),
-    ),
-  ).toBeGreaterThanOrEqual(32);
+  await expect(select).toContainText("Published");
+  // Selection verifies the demo's clientEntry mounted, not just its SSR label.
+  await select.click();
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.getByRole("option", { name: "Draft", exact: true }).click();
+  await expect(select).toContainText("Draft");
+  await expect(fields.locator('input[name="visibility"]')).toHaveValue("draft");
+  await expect(select).toBeFocused();
+  await select.press("ArrowDown");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await expect(page.getByRole("listbox")).toBeFocused();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox")).not.toBeVisible();
+  await expect(select).toBeFocused();
   const buttons = page.locator(".design-button-row");
-  for (const [label, property] of [
-    ["Save draft", "backgroundColor"],
-    ["Delete", "backgroundColor"],
-    ["Text button", "color"],
-  ] as const) {
+  for (const label of ["Save draft", "Delete", "Text button"]) {
+    const property = "filter" as const;
     const button = buttons.getByRole("button", { name: label });
     const before = await button.evaluate(
       (element, key) => getComputedStyle(element)[key],
@@ -43,6 +56,18 @@ test("design reference is public and shows live admin tokens", async ({
       )
       .not.toBe(before);
   }
+  await expect(
+    buttons.getByRole("button", { name: "Publish page" }),
+  ).toHaveAttribute("data-variant", "primary");
+  await expect(
+    buttons.getByRole("button", { name: "Delete", exact: true }),
+  ).toHaveAttribute("data-variant", "danger");
+  await expect(
+    buttons.getByRole("button", { name: "Unavailable" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("table", { name: "Example pages" }),
+  ).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   expect(
     await page.evaluate(() =>
@@ -56,6 +81,7 @@ test("design reference is public and shows live admin tokens", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  expect(errors).toEqual([]);
 });
 
 test("operator dashboard opens both isolated site editors", async ({

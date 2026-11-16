@@ -203,6 +203,6 @@ test("repository selected Dockerfiles check actual UI consumers without unrelate
       afterLock: lock,
       dockerfiles,
     }),
-    ordered("auth", "artbin"),
+    ordered("cms", "auth", "artbin"),
   );
 });

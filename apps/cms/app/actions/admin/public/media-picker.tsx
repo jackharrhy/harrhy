@@ -1,4 +1,8 @@
-import { on, ref, type Handle } from "remix/component";
+import { restoreDialogFocus } from "./dialog-focus.ts";
+import { Button, Input } from "@harrhy/ui/native";
+import { CmsSelect } from "./cms-select.tsx";
+import { css, on, type Handle } from "remix/component";
+import { Dialog } from "@harrhy/ui/interactive";
 import type { Media } from "../../../ui/public/content-types.ts";
 
 export function MediaPicker(
@@ -8,56 +12,66 @@ export function MediaPicker(
     close: () => void;
   }>,
 ) {
+  const focusReturn = restoreDialogFocus();
   let query = "",
     folder = "all";
   return () => (
-    <dialog
+    <Dialog
+      open
+      title="Choose an image"
       className="media-dialog"
-      aria-label="Choose an image"
+      initialFocus='input[type="search"]'
       mix={[
-        ref((node) => node.showModal()),
-        on("cancel", () => handle.props.close()),
+        focusReturn,
+        css({
+          width: "min(900px, 92vw)",
+          maxHeight: "85dvh",
+          padding: "26px",
+          "@media (max-width: 600px)": { padding: "18px" },
+        }),
       ]}
+      onClose={() => handle.props.close()}
     >
       <div className="section-heading">
-        <h2>Choose an image</h2>
-        <button
+        <Button
           type="button"
           className="button"
           mix={on("click", () => handle.props.close())}
         >
           Close
-        </button>
+        </Button>
       </div>
-      <input
+      <Input
         type="search"
         aria-label="Search images"
         placeholder="Filename or alt text"
-        mix={on("input", (event) => {
-          query = event.currentTarget.value;
-          handle.update();
-        })}
+        mix={[
+          css({ marginBottom: "0.75rem" }),
+          on("input", (event) => {
+            query = event.currentTarget.value;
+            handle.update();
+          }),
+        ]}
       />
-      <select
+      <CmsSelect
         aria-label="Image folder"
         value={folder}
-        mix={on<HTMLSelectElement>("change", (e) => {
-          folder = e.currentTarget.value;
+        onValueChange={(value) => {
+          folder = value;
           handle.update();
-        })}
-      >
-        <option value="all">All folders</option>
-        <option value="unfiled">Unfiled</option>
-        {[
-          ...new Map(
-            handle.props.media
-              .filter((m) => m.folder_id)
-              .map((m) => [m.folder_id!, m.folder_path ?? "Folder"]),
-          ).entries(),
-        ].map(([id, path]) => (
-          <option value={id}>{path}</option>
-        ))}
-      </select>
+        }}
+        options={[
+          { value: "all", label: "All folders" },
+          { value: "unfiled", label: "Unfiled" },
+          ...[
+            ...new Map(
+              handle.props.media
+                .filter((m) => m.folder_id)
+                .map((m) => [m.folder_id!, m.folder_path ?? "Folder"]),
+            ).entries(),
+          ].map(([id, path]) => ({ value: id, label: path })),
+        ]}
+      />
       <div className="picker-grid">
         {handle.props.media
           .filter(
@@ -71,7 +85,7 @@ export function MediaPicker(
                 .includes(query.toLowerCase()),
           )
           .map((m) => (
-            <button
+            <Button
               type="button"
               className="picker-image"
               mix={on("click", () => handle.props.choose(m))}
@@ -82,7 +96,7 @@ export function MediaPicker(
                 loading="lazy"
               />
               <span>{m.filename}</span>
-            </button>
+            </Button>
           ))}
       </div>
       <p className="muted">
@@ -91,6 +105,6 @@ export function MediaPicker(
         </a>
         , then save your edits and reload this page.
       </p>
-    </dialog>
+    </Dialog>
   );
 }

@@ -27,6 +27,13 @@ for (const site of ["andrew", "luke"]) {
     const field = fields[0];
     const target = page.locator(`[data-preview-key="${field.id}"]`);
     await target.click();
+    await expect(
+      page.getByRole("textbox", { name: "Block text" }),
+    ).toBeFocused();
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#tea-visual-dialog")).not.toBeVisible();
+    await expect(target).toBeFocused();
+    await page.keyboard.press("Enter");
     const edited = `Visual draft for ${site}`;
     await page.getByRole("textbox", { name: "Block text" }).fill(edited);
     await page.getByRole("button", { name: "Save draft" }).click();

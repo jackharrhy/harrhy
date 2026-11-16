@@ -4,7 +4,13 @@ This Remix 3 Node app is the multi-site CMS. It selects sites by hostname and us
 
 `server.ts` starts the server, `config.ts` registers sites and origins, and `app.ts` connects each site to its router. `app/` owns routes, controllers, editor UI, storage, and assets; `createContentStore` and `createAuthStore` bind storage to a database. `operator/` owns the dashboard and `createOperatorStore`; `db/` holds SQLite migrations. Keep site code and assets in `sites/<id>/`.
 
-UI styles use Remix `css(...)` mixins in `app/ui/`, `operator/`, and each site's `app/styles.ts`. `public/fonts.css` contains only the Inter font faces.
+## Admin UI
+
+Operator and admin views use [`@harrhy/ui`](../../packages/ui/README.md) native controls and interactive compositions with the Clean theme. `app/ui/admin-theme.ts` composes the shared theme with locally hosted Inter and compact admin density. `app/ui/admin-*-styles.ts` and `operator/` keep CMS-specific layouts, media grids and editor geometry; their compatibility color variables refer to shared semantic tokens rather than a second palette. `public/fonts.css` contains only the Inter font faces.
+
+Both the block editor and visual editor remain first-class. CMS owns editor state, rich text, block ordering, resizable previews, media/folder workflows, saving and publishing. Shared controls do not own these domain behaviors. Selections use the shared interactive Select; changes and resets must keep its mounted selection consistent with the CMS document. Browser components run inside existing `clientEntry(...)` boundaries, and `app/assets.ts` explicitly mounts/allows their shared package graph.
+
+`app/actions/public/visual-tools.tsx` is a shared-component editing overlay, scoped to its own Clean root. Public site rendering and live-preview content keep their site styles and never inherit the admin theme. Anonymous pages do not load the editing island. Preserve native Auth/session navigation, request nonces, field labels, focus behavior and keyboard resizing when changing these surfaces.
 
 The Node host opens a request record through [`@harrhy/logger`](../../packages/logger/README.md). MCP handlers enrich that record. Request bodies, headers, and raw URLs are not logged.
 
@@ -45,8 +51,9 @@ site and its legacy media are outside this app's backup scope.
 
 ## Auth transition
 
-The existing operator and site password logins stay active until the operator
-has a reviewed Auth subject link and live browser/editor acceptance.
+Native operator and site password logins are available only when Auth is not
+configured. Enabling Auth rejects old password sessions and disables password
+sign-in without removing user rows or content.
 The first Auth cutover links only the operator. A site's Sign in button sends
 the browser through the operator's Auth flow; the dashboard's Open editor button
 uses an existing one-use, site-bound handoff to enter either editor without another

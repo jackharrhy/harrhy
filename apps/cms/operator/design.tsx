@@ -1,3 +1,22 @@
+import {
+  Field,
+  Badge,
+  Button,
+  Checkbox,
+  Input,
+  NavigationMenu,
+  NavigationMenuLink,
+  Notice,
+  Panel,
+  Textarea,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@harrhy/ui/native";
 import type { Handle } from "remix/component";
 import { getContext } from "remix/middleware/async-context";
 import { getCspNonce } from "remix/middleware/csp";
@@ -5,6 +24,7 @@ import { AdminBrand } from "../app/ui/admin-brand.tsx";
 import { Document } from "../app/ui/document.tsx";
 import { designStyles } from "./design-styles.ts";
 import { operatorStyles } from "./operator-styles.ts";
+import { DesignVisibility } from "./public/design-fields.tsx";
 
 const colors = [
   ["--canvas", "Page background"],
@@ -59,7 +79,6 @@ export function Design(_handle: Handle) {
     <Document
       title="Design · teacms"
       admin
-      static
       styles={[operatorStyles, designStyles]}
       head={
         <>
@@ -76,31 +95,29 @@ export function Design(_handle: Handle) {
       </a>
       <header className="design-header">
         <AdminBrand href="/" />
-        <nav aria-label="Page links">
-          <a href="#colors">Colors</a>
-          <a href="#patterns">Patterns</a>
-          <a href="/login">Sign in</a>
-        </nav>
+        <NavigationMenu aria-label="Page links">
+          <NavigationMenuLink href="#colors">Colors</NavigationMenuLink>
+          <NavigationMenuLink href="#patterns">Patterns</NavigationMenuLink>
+          <NavigationMenuLink href="/login">Sign in</NavigationMenuLink>
+        </NavigationMenu>
       </header>
       <div className="design-layout">
         <aside className="design-index" aria-label="On this page">
           <span>On this page</span>
-          <nav>
+          <NavigationMenu aria-label="Design sections">
             {links.map(([href, label]) => (
-              <a href={href}>{label}</a>
+              <NavigationMenuLink href={href}>{label}</NavigationMenuLink>
             ))}
-          </nav>
+          </NavigationMenu>
         </aside>
         <main id="design-content" className="design-main">
           <div className="design-intro">
-            <p className="design-kicker">teacms / design</p>
             <h1>Design</h1>
             <p>Colors, type, controls, and patterns used in the editor.</p>
           </div>
 
           <section className="design-section" id="colors">
             <div className="design-section-head">
-              <span>01</span>
               <div>
                 <h2>Colors</h2>
                 <p>
@@ -118,7 +135,6 @@ export function Design(_handle: Handle) {
 
           <section className="design-section" id="type">
             <div className="design-section-head">
-              <span>02</span>
               <div>
                 <h2>Type</h2>
                 <p>Inter Variable, served by teacms. Weights 100–900.</p>
@@ -153,7 +169,6 @@ export function Design(_handle: Handle) {
 
           <section className="design-section" id="shape">
             <div className="design-section-head">
-              <span>03</span>
               <div>
                 <h2>Shape &amp; spacing</h2>
                 <p>
@@ -189,48 +204,42 @@ export function Design(_handle: Handle) {
 
           <section className="design-section" id="buttons">
             <div className="design-section-head">
-              <span>04</span>
               <div>
                 <h2>Buttons</h2>
                 <p>
-                  Primary actions are green. Destructive actions use red text.
+                  Actions use the shared Clean theme. Destructive actions are
+                  labelled explicitly.
                 </p>
               </div>
             </div>
-            <div className="design-sample">
+            <Panel className="design-sample">
               <div className="design-button-row">
-                <button type="button" className="button primary">
+                <Button type="button" variant="primary">
                   Publish page
-                </button>
-                <button type="button" className="button">
-                  Save draft
-                </button>
-                <button type="button" className="button danger">
+                </Button>
+                <Button type="button">Save draft</Button>
+                <Button type="button" variant="danger">
                   Delete
-                </button>
-                <button type="button" className="button small">
-                  Small button
-                </button>
-                <button type="button" className="text-button">
+                </Button>
+                <Button type="button">Small button</Button>
+                <Button type="button" variant="quiet">
                   Text button
-                </button>
-                <button type="button" className="text-button danger">
+                </Button>
+                <Button type="button" variant="danger">
                   Destructive text
-                </button>
-                <button type="button" className="button primary" disabled>
+                </Button>
+                <Button type="button" disabled variant="primary">
                   Unavailable
-                </button>
+                </Button>
               </div>
               <p className="design-caption">
-                Default controls are 40px high; small controls are 32px. Hover
-                to compare the states.
+                Controls use shared theme sizing. Hover to compare the states.
               </p>
-            </div>
+            </Panel>
           </section>
 
           <section className="design-section" id="fields">
             <div className="design-section-head">
-              <span>05</span>
               <div>
                 <h2>Fields</h2>
                 <p>
@@ -239,69 +248,58 @@ export function Design(_handle: Handle) {
                 </p>
               </div>
             </div>
-            <div className="design-sample design-form-sample">
+            <Panel className="design-sample design-form-sample">
               <div className="field-grid">
-                <label>
-                  Page title
-                  <input type="text" placeholder="A new page" />
-                  <small>Shown in the editor and on the website.</small>
-                </label>
-                <label>
-                  Visibility
-                  <select defaultValue="published">
-                    <option value="published">Published</option>
-                    <option value="draft">Draft</option>
-                  </select>
-                </label>
+                <Field
+                  id="design-field-1"
+                  label="Page title"
+                  description="Shown in the editor and on the website."
+                >
+                  <Input type="text" placeholder="A new page" />
+                </Field>
+                <DesignVisibility />
               </div>
-              <label>
-                Description
-                <textarea
+              <Field id="design-field-2" label="Description">
+                <Textarea
                   rows={3}
                   placeholder="A short description for search and sharing."
                 />
-              </label>
+              </Field>
               <label className="check-label">
-                <input type="checkbox" defaultChecked />
+                <Checkbox defaultChecked />
                 Show in navigation
               </label>
-            </div>
+            </Panel>
           </section>
 
           <section className="design-section" id="feedback">
             <div className="design-section-head">
-              <span>06</span>
               <div>
                 <h2>Feedback</h2>
                 <p>State labels use words as well as color.</p>
               </div>
             </div>
-            <div className="design-sample">
+            <Panel className="design-sample">
               <div className="design-badges">
-                <span className="badge good">Published</span>
-                <span className="badge">Draft</span>
-                <span className="badge error">Unavailable</span>
-                <span className="count">12</span>
+                <Badge>Published</Badge>
+                <Badge>Draft</Badge>
+                <Badge>Unavailable</Badge>
+                <Badge>12</Badge>
               </div>
-              <div className="notice">
-                Draft saved. The live page has not changed.
-              </div>
-              <div className="notice error">
-                This file is too large to upload.
-              </div>
+              <Notice>Draft saved. The live page has not changed.</Notice>
+              <Notice tone="danger">This file is too large to upload.</Notice>
               <div className="design-empty empty-state">
                 <strong>No pages yet</strong>
                 <p>Create a page to start adding content.</p>
-                <button type="button" className="button primary">
+                <Button type="button" variant="primary">
                   New page
-                </button>
+                </Button>
               </div>
-            </div>
+            </Panel>
           </section>
 
           <section className="design-section" id="patterns">
             <div className="design-section-head">
-              <span>07</span>
               <div>
                 <h2>Patterns</h2>
                 <p>Fixture content in the same layouts used by the app.</p>
@@ -309,25 +307,34 @@ export function Design(_handle: Handle) {
             </div>
             <div className="design-pattern">
               <div className="design-pattern-label">Page list row</div>
-              <div className="page-list">
-                <div className="list-heading">
-                  <span>PAGE</span>
-                  <span>CONTENT</span>
-                  <span>SEARCH</span>
-                </div>
-                <div className="page-row">
-                  <div className="page-identity">
-                    <span className="page-monogram">N</span>
-                    <span>
-                      <strong>Notes</strong>
-                      <small>/notes · Unpublished changes</small>
-                    </span>
-                  </div>
-                  <span className="muted">4 blocks</span>
-                  <span className="badge">Needs description</span>
-                  <span className="row-arrow">↗</span>
-                </div>
-              </div>
+              <TableContainer>
+                <Table aria-label="Example pages">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Page</TableHead>
+                      <TableHead>Content</TableHead>
+                      <TableHead>Search</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell>
+                        <div className="page-identity">
+                          <span className="page-monogram">N</span>
+                          <span>
+                            <strong>Notes</strong>
+                            <small>/notes · Unpublished changes</small>
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>4 blocks</TableCell>
+                      <TableCell>
+                        <Badge>Needs description</Badge>
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </TableContainer>
             </div>
             <div className="design-pattern">
               <div className="design-pattern-label">Review item</div>
@@ -367,7 +374,7 @@ export function Design(_handle: Handle) {
             </div>
             <div className="design-pattern">
               <div className="design-pattern-label">Editor actions</div>
-              <div className="design-editor-fixture">
+              <Panel className="design-editor-fixture">
                 <div className="editor-heading">
                   <div>
                     <span className="back-link">← Pages</span>
@@ -376,34 +383,30 @@ export function Design(_handle: Handle) {
                   </div>
                   <div className="editor-actions">
                     <span className="save-status pending">Unsaved changes</span>
-                    <button type="button" className="button">
-                      Save draft
-                    </button>
-                    <button type="button" className="button primary">
+                    <Button type="button">Save draft</Button>
+                    <Button type="button" variant="primary">
                       Publish
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <div className="editor-toolbar">
                   <div>
-                    <button type="button" className="button small">
-                      ↶ Undo
-                    </button>
-                    <button type="button" className="button small" disabled>
+                    <Button type="button">↶ Undo</Button>
+                    <Button type="button" disabled>
                       ↷ Redo
-                    </button>
+                    </Button>
                   </div>
                 </div>
-              </div>
+              </Panel>
             </div>
             <div className="design-pattern">
               <div className="design-pattern-label">Site summary</div>
               <div className="operator-sites">
-                <article className="operator-site">
+                <Panel className="operator-site">
                   <div className="operator-site-info">
                     <div className="operator-site-head">
                       <h2>Example site</h2>
-                      <span className="badge good">Healthy</span>
+                      <Badge>Healthy</Badge>
                     </div>
                     <p className="operator-description">
                       A fixture site for this design page.
@@ -433,11 +436,11 @@ export function Design(_handle: Handle) {
                     </div>
                   </dl>
                   <div>
-                    <button type="button" className="button primary">
+                    <Button type="button" variant="primary">
                       Open editor
-                    </button>
+                    </Button>
                   </div>
-                </article>
+                </Panel>
               </div>
             </div>
           </section>

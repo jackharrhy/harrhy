@@ -100,20 +100,9 @@ export const adminEditorStyles = css({
     display: "flex",
     "align-items": "center",
     gap: "0px",
-  },
-  "& .block-actions button": {
-    border: "0px",
-    background: "none",
-    "border-radius": "var(--radius-control)",
-    "font-size": "12px",
-    color: "var(--muted)",
-    "min-width": "25px",
-    "min-height": "28px",
-    padding: "3px 5px",
-  },
-  "& .block-actions button:hover:not(:disabled)": {
-    background: "var(--surface)",
-    color: "var(--accent)",
+    "--hui-button-height": "2rem",
+    "--hui-button-padding": "0.25rem 0.4rem",
+    "--hui-button-text-size": "0.8125rem",
   },
   "& .block-card label": {
     "font-size": "12px",
@@ -129,7 +118,7 @@ export const adminEditorStyles = css({
     "align-items": "center",
     "justify-content": "space-between",
   },
-  "& .compact-field select": {
+  '& .compact-field [aria-haspopup="listbox"]': {
     "max-width": "150px",
   },
   "& .code-input": {
@@ -254,10 +243,6 @@ export const adminEditorStyles = css({
   "& .navigation-item .block-actions": {
     "margin-top": "20px",
   },
-  '& input:not([type="checkbox"]):not([type="color"]):not([type="file"]), & textarea, & select, & .rich-text-wrap':
-    {
-      "border-color": "var(--field-border)",
-    },
   "& .block-actions button, & .rich-toolbar button": {
     "min-height": "32px",
     "min-width": "32px",
@@ -270,7 +255,7 @@ export const adminEditorStyles = css({
   "& .page-heading, & .editor-heading": {
     "margin-bottom": "18px",
   },
-  "& .panel, & .page-title-field, & .block-card, & .add-block, & .media-inspector, & .adornment-tile, & .media-tile":
+  "& .page-title-field, & .block-card, & .add-block, & .media-inspector, & .adornment-tile, & .media-tile":
     {
       border: "0px",
     },

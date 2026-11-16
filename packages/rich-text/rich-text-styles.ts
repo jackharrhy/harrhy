@@ -1,7 +1,7 @@
 import { css } from "remix/component";
 
 export const richTextStyles = css({
-  "border-radius": "var(--radius-control)",
+  "border-radius": "var(--hui-control-radius)",
   border: "0",
   overflow: "visible",
   "& .rich-toolbar": {
@@ -12,21 +12,16 @@ export const richTextStyles = css({
     border: "0",
     padding: "0",
     background: "none",
-  },
-  "& .rich-toolbar button": {
-    padding: "4px 8px",
-    border: "0",
-    background: "transparent",
-    "font-size": "12px",
-    "border-radius": "var(--radius-control)",
-    "min-height": "28px",
+    "--hui-button-height": "2rem",
+    "--hui-button-padding": "0.25rem 0.5rem",
+    "--hui-button-text-size": "0.8125rem",
   },
   '& .rich-toolbar button:hover:not(:disabled), & .rich-toolbar button[aria-pressed="true"]':
     {
-      background: "var(--accent-soft)",
+      background: "var(--hui-selected-surface)",
     },
   '& .rich-toolbar button[aria-pressed="true"]': {
-    color: "var(--accent)",
+    color: "var(--hui-accent)",
   },
   "& .rich-toolbar .bold": {
     "font-weight": "800",
@@ -44,19 +39,19 @@ export const richTextStyles = css({
     outline: "none",
     "overflow-wrap": "anywhere",
     "white-space": "pre-wrap",
-    background: "var(--paper)",
+    background: "var(--hui-surface)",
     "min-height": "46px",
     padding: "8px 4px",
     "line-height": "1.6",
   },
   "& .rich-text:focus": {
     "box-shadow": "none",
-    outline: "2px solid var(--accent)",
+    outline: "2px solid var(--hui-accent)",
     "outline-offset": "2px",
-    "border-radius": "var(--radius-control)",
+    "border-radius": "var(--hui-control-radius)",
   },
   "& .rich-text a": {
-    color: "var(--accent)",
+    color: "var(--hui-accent)",
     "text-decoration": "underline",
   },
   "& .inline-link-form": {

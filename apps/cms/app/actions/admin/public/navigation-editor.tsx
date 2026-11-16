@@ -1,3 +1,5 @@
+import { Notice, Panel, Button, Input } from "@harrhy/ui/native";
+import { CmsSelect } from "./cms-select.tsx";
 import { clientEntry, on, type Handle } from "remix/component";
 import type { Sidebar, Media, Page } from "../../../ui/public/content-types.ts";
 import { MediaPicker } from "./media-picker.tsx";
@@ -60,28 +62,29 @@ export const NavigationEditor = clientEntry(
             <h1>Navigation</h1>
             <p className="muted">Sidebar links, in display order.</p>
           </div>
-          <button
+          <Button
+            variant="primary"
             className="button primary"
             disabled={saving || !dirty}
             mix={on("click", () => void save())}
           >
             {saving ? "Saving…" : "Save navigation"}
-          </button>
+          </Button>
         </div>
         {error && (
-          <p className="notice error" role="alert">
+          <Notice className="notice error" role="alert" tone="danger">
             {error}
-          </p>
+          </Notice>
         )}
         <p role="status" className="save-status">
           {status}
         </p>
         <div className="settings-columns">
           <section>
-            <div className="panel">
+            <Panel className="panel">
               <div className="section-heading">
                 <h2>Sidebar image</h2>
-                <button
+                <Button
                   className="button small"
                   mix={on("click", () => {
                     picking = -1;
@@ -89,7 +92,7 @@ export const NavigationEditor = clientEntry(
                   })}
                 >
                   Choose image
-                </button>
+                </Button>
               </div>
               {data.top_image_id && (
                 <img
@@ -98,13 +101,13 @@ export const NavigationEditor = clientEntry(
                   alt="Sidebar image"
                 />
               )}
-            </div>
+            </Panel>
             {data.categories.map((category, index) => (
-              <section className="panel navigation-category">
+              <Panel className="panel navigation-category">
                 <div className="block-top">
                   <span>Category {index + 1}</span>
                   <div className="block-actions">
-                    <button
+                    <Button
                       disabled={!index}
                       mix={on("click", () => {
                         [data.categories[index - 1], data.categories[index]] = [
@@ -115,8 +118,8 @@ export const NavigationEditor = clientEntry(
                       })}
                     >
                       ↑
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       disabled={index === data.categories.length - 1}
                       mix={on("click", () => {
                         [data.categories[index + 1], data.categories[index]] = [
@@ -127,8 +130,8 @@ export const NavigationEditor = clientEntry(
                       })}
                     >
                       ↓
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       mix={on("click", () => {
                         if (confirm("Remove this navigation category?")) {
                           data.categories.splice(index, 1);
@@ -137,12 +140,12 @@ export const NavigationEditor = clientEntry(
                       })}
                     >
                       Remove
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <label>
                   Category title
-                  <input
+                  <Input
                     value={category.categoryTitle ?? ""}
                     mix={on("input", (e) => {
                       category.categoryTitle = e.currentTarget.value;
@@ -157,7 +160,8 @@ export const NavigationEditor = clientEntry(
                       alt="Category background"
                     />
                   )}
-                  <button
+                  <Button
+                    variant="quiet"
                     className="text-button"
                     mix={on("click", () => {
                       picking = index;
@@ -165,9 +169,10 @@ export const NavigationEditor = clientEntry(
                     })}
                   >
                     Choose background image
-                  </button>
+                  </Button>
                   {category.backgroundImageId && (
-                    <button
+                    <Button
+                      variant="quiet"
                       className="text-button"
                       mix={on("click", () => {
                         category.backgroundImageId = null;
@@ -175,14 +180,14 @@ export const NavigationEditor = clientEntry(
                       })}
                     >
                       Clear
-                    </button>
+                    </Button>
                   )}
                 </div>
                 {category.items.map((item, i) => (
                   <div className="navigation-item">
                     <label>
                       Link label
-                      <input
+                      <Input
                         value={item.text}
                         mix={on("input", (e) => {
                           item.text = e.currentTarget.value;
@@ -192,20 +197,20 @@ export const NavigationEditor = clientEntry(
                     </label>
                     <label>
                       Page
-                      <select
+                      <CmsSelect
                         value={item.pageSlug}
-                        mix={on<HTMLSelectElement>("change", (e) => {
-                          item.pageSlug = e.currentTarget.value;
+                        onValueChange={(value) => {
+                          item.pageSlug = value;
                           change();
-                        })}
-                      >
-                        {handle.props.pages.map((p) => (
-                          <option value={p.slug}>{p.title}</option>
-                        ))}
-                      </select>
+                        }}
+                        options={handle.props.pages.map((p) => ({
+                          value: p.slug,
+                          label: p.title,
+                        }))}
+                      />
                     </label>
                     <div className="block-actions">
-                      <button
+                      <Button
                         aria-label="Move link up"
                         disabled={!i}
                         mix={on("click", () => {
@@ -217,8 +222,8 @@ export const NavigationEditor = clientEntry(
                         })}
                       >
                         ↑
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         aria-label="Move link down"
                         disabled={i === category.items.length - 1}
                         mix={on("click", () => {
@@ -230,8 +235,8 @@ export const NavigationEditor = clientEntry(
                         })}
                       >
                         ↓
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         aria-label="Remove link"
                         mix={on("click", () => {
                           category.items.splice(i, 1);
@@ -239,11 +244,11 @@ export const NavigationEditor = clientEntry(
                         })}
                       >
                         ×
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
-                <button
+                <Button
                   className="button small"
                   mix={on("click", () => {
                     category.items.push({
@@ -254,10 +259,10 @@ export const NavigationEditor = clientEntry(
                   })}
                 >
                   + Add link
-                </button>
-              </section>
+                </Button>
+              </Panel>
             ))}
-            <button
+            <Button
               className="button"
               mix={on("click", () => {
                 data.categories.push({
@@ -268,14 +273,14 @@ export const NavigationEditor = clientEntry(
               })}
             >
               + Add category
-            </button>
-            <section className="panel">
+            </Button>
+            <Panel className="panel">
               <h2>External links</h2>
               {data.links.map((link, i) => (
                 <div className="navigation-item">
                   <label>
                     Service
-                    <input
+                    <Input
                       value={link.service}
                       mix={on("input", (e) => {
                         link.service = e.currentTarget.value;
@@ -285,7 +290,7 @@ export const NavigationEditor = clientEntry(
                   </label>
                   <label>
                     URL
-                    <input
+                    <Input
                       type="url"
                       value={link.url}
                       mix={on("input", (e) => {
@@ -294,7 +299,8 @@ export const NavigationEditor = clientEntry(
                       })}
                     />
                   </label>
-                  <button
+                  <Button
+                    variant="quiet"
                     className="text-button"
                     aria-label="Remove external link"
                     mix={on("click", () => {
@@ -303,10 +309,10 @@ export const NavigationEditor = clientEntry(
                     })}
                   >
                     Remove
-                  </button>
+                  </Button>
                 </div>
               ))}
-              <button
+              <Button
                 className="button small"
                 mix={on("click", () => {
                   data.links.push({ service: "", url: "" });
@@ -314,8 +320,8 @@ export const NavigationEditor = clientEntry(
                 })}
               >
                 + Add external link
-              </button>
-            </section>
+              </Button>
+            </Panel>
           </section>
           <aside className="help-panel">
             <h2>Sidebar</h2>

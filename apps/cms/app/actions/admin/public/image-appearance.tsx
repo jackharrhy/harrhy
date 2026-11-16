@@ -1,3 +1,6 @@
+import { Range } from "@harrhy/ui/native";
+import { controlStyles, focusStyles } from "@harrhy/ui/recipes";
+import { CmsSelect } from "./cms-select.tsx";
 import { on, type Handle } from "remix/component";
 import type { ImageLayout } from "../../../ui/public/image-layout.ts";
 
@@ -44,8 +47,7 @@ export function ImageAppearance(
       <div className="image-appearance">
         <label>
           Image tilt <span className="muted">{Number(p.rotation) || 0}°</span>
-          <input
-            type="range"
+          <Range
             aria-label="Image tilt"
             min={-180}
             max={180}
@@ -57,33 +59,29 @@ export function ImageAppearance(
         </label>
         <label>
           Image border
-          <select
+          <CmsSelect
             aria-label="Image border"
             value={current.style}
-            mix={on<HTMLSelectElement>("change", (e) =>
-              border(e.currentTarget.value),
-            )}
-          >
-            {[
+            onValueChange={(value) => border(value)}
+            options={[
               "none",
               "solid",
               "dashed",
               "dotted",
               "double",
               ...(current.style === "custom" ? ["custom"] : []),
-            ].map((style) => (
-              <option value={style} selected={style === current.style}>
-                {style === "custom"
+            ].map((style) => ({
+              value: style,
+              label:
+                style === "custom"
                   ? "Custom (see advanced)"
-                  : style[0].toUpperCase() + style.slice(1)}
-              </option>
-            ))}
-          </select>
+                  : style[0].toUpperCase() + style.slice(1),
+            }))}
+          />
         </label>
         <label>
           Border width <span className="muted">{current.width}</span>
-          <input
-            type="range"
+          <Range
             aria-label="Border width"
             min={0}
             max={12}
@@ -103,9 +101,13 @@ export function ImageAppearance(
               /^#[\da-f]{6}$/i.test(current.color) ? current.color : colorHex
             }
             disabled={["none", "custom"].includes(current.style)}
-            mix={on("input", (e) =>
-              border(undefined, undefined, e.currentTarget.value),
-            )}
+            mix={[
+              controlStyles,
+              focusStyles,
+              on("input", (e) =>
+                border(undefined, undefined, e.currentTarget.value),
+              ),
+            ]}
           />
         </label>
       </div>

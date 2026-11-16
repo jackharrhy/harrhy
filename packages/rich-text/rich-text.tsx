@@ -1,3 +1,4 @@
+import { Button, Input } from "@harrhy/ui/native";
 import { on, ref, unsafeHTML, type Handle } from "remix/component";
 import { Editor, Mark } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
@@ -56,7 +57,8 @@ export function RichText(
           ["underline", "Underline", "U"],
           ["strike", "Strikethrough", "S"],
         ].map(([name, label, text]) => (
-          <button
+          <Button
+            variant="quiet"
             type="button"
             aria-label={label}
             title={label}
@@ -67,9 +69,10 @@ export function RichText(
             ]}
           >
             <span className={name}>{text}</span>
-          </button>
+          </Button>
         ))}
-        <button
+        <Button
+          variant="quiet"
           type="button"
           mix={[
             on("mousedown", (e) => e.preventDefault()),
@@ -86,8 +89,9 @@ export function RichText(
           ]}
         >
           Link
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="quiet"
           type="button"
           title="Remove formatting"
           mix={[
@@ -96,10 +100,10 @@ export function RichText(
           ]}
         >
           Clear
-        </button>
+        </Button>
         {linkOpen && (
           <span className="inline-link-form">
-            <input
+            <Input
               type="url"
               aria-label="Link URL"
               placeholder="https://…"
@@ -109,7 +113,8 @@ export function RichText(
                 handle.update();
               })}
             />
-            <button
+            <Button
+              variant="quiet"
               type="button"
               mix={on("click", () => {
                 if (/^(https?:\/\/|mailto:|\/[^/]|#)/.test(link)) {
@@ -125,8 +130,9 @@ export function RichText(
               })}
             >
               Apply
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="quiet"
               type="button"
               mix={on("click", () => {
                 editor
@@ -140,7 +146,7 @@ export function RichText(
               })}
             >
               Unlink
-            </button>
+            </Button>
           </span>
         )}
       </div>

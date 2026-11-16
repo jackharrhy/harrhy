@@ -29,6 +29,11 @@ const app = run({
 void app
   .ready()
   .then(() => {
+    document.body.removeAttribute("data-tea-visual-loading");
+    for (const element of document.querySelectorAll("[data-cms-hydration]")) {
+      element.removeAttribute("inert");
+      element.removeAttribute("aria-busy");
+    }
     const workspace = document.getElementById("workspace");
     workspace?.removeAttribute("inert");
     workspace?.removeAttribute("aria-busy");

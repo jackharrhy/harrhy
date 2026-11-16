@@ -1,3 +1,4 @@
+import { Button } from "@harrhy/ui/native";
 import { on, ref, type Handle, type RemixNode } from "remix/component";
 
 const grip = 16,
@@ -69,8 +70,9 @@ export function ResizableWorkspace(
           }
           id="editor-pane"
         >
-          <button
+          <Button
             className="text-button editor-collapse"
+            variant="quiet"
             type="button"
             aria-expanded={!collapsed}
             mix={on("click", () => {
@@ -79,7 +81,7 @@ export function ResizableWorkspace(
             })}
           >
             {collapsed ? "Edit" : "Collapse editor"}
-          </button>
+          </Button>
           <div
             className="editor-scroll"
             hidden={collapsed && handle.props.showPreview}
@@ -162,7 +164,7 @@ export function ResizableWorkspace(
                   )}{" "}
                   px
                 </span>
-                <button
+                <Button
                   type="button"
                   className="button small"
                   disabled={width < 640}
@@ -172,8 +174,8 @@ export function ResizableWorkspace(
                   })}
                 >
                   Mobile
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   className="button small"
                   disabled={width < 640}
@@ -183,10 +185,11 @@ export function ResizableWorkspace(
                   })}
                 >
                   Wide
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   className="text-button"
+                  variant="quiet"
                   disabled={width < 640}
                   mix={on("click", () => {
                     ratio = 0.55;
@@ -195,7 +198,7 @@ export function ResizableWorkspace(
                   })}
                 >
                   Reset split
-                </button>
+                </Button>
               </div>
               {handle.props.preview}
             </div>

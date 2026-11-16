@@ -1,3 +1,5 @@
+import { Button, Input } from "@harrhy/ui/native";
+import { CmsSelect } from "./cms-select.tsx";
 import { on, type Handle } from "remix/component";
 import type { ContentBlock, Media } from "../../../ui/public/content-types.ts";
 import { MediaPicker } from "./media-picker.tsx";
@@ -26,7 +28,7 @@ export function PlainImageFields(
           ) : (
             <p className="muted">No image selected.</p>
           )}
-          <button
+          <Button
             type="button"
             className="button"
             mix={on("click", () => {
@@ -35,30 +37,29 @@ export function PlainImageFields(
             })}
           >
             {p.mediaId ? "Change image" : "Choose image"}
-          </button>
+          </Button>
         </div>
         <label>
           Alternative text
-          <input
+          <Input
             value={p.alt ?? ""}
             mix={on("input", (e) => set("alt", e.currentTarget.value))}
           />
         </label>
         <label>
           Image role
-          <select
+          <CmsSelect
             value={p.role ?? "image"}
-            mix={on<HTMLSelectElement>("change", (e) =>
-              set("role", e.currentTarget.value),
-            )}
-          >
-            <option value="image">Page image</option>
-            <option value="background">Homepage background</option>
-          </select>
+            onValueChange={(value) => set("role", value)}
+            options={[
+              { value: "image", label: "Page image" },
+              { value: "background", label: "Homepage background" },
+            ]}
+          />
         </label>
         <label>
           Width (optional)
-          <input
+          <Input
             placeholder="e.g. 100% or 480px"
             value={p.width ?? ""}
             mix={on("input", (e) => set("width", e.currentTarget.value))}

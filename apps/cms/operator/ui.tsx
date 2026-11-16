@@ -1,3 +1,12 @@
+import {
+  Field,
+  Badge,
+  Button,
+  ButtonLink,
+  Input,
+  Notice,
+  Panel,
+} from "@harrhy/ui/native";
 import type { Handle } from "remix/component";
 import { Document } from "../app/ui/document.tsx";
 import { AdminBrand } from "../app/ui/admin-brand.tsx";
@@ -24,45 +33,43 @@ export function Login(
     <Document title="Sign in · teacms" admin static styles={[operatorStyles]}>
       <main className="operator-login">
         <AdminBrand href="/" />
-        <section className="operator-login-panel">
+        <Panel className="operator-login-panel">
           <h1>Sign in</h1>
           {handle.props.error && (
-            <p role="alert" className="notice error">
+            <Notice role="alert" tone="danger">
               {handle.props.error}
-            </p>
+            </Notice>
           )}
           {handle.props.central ? (
-            <a href="/auth/login" className="button primary" data-rmx-document>
+            <ButtonLink href="/auth/login" data-rmx-document variant="primary">
               Sign in
-            </a>
+            </ButtonLink>
           ) : (
             <form method="post" action="/login" data-rmx-document>
               <input type="hidden" name="csrf" value={handle.props.csrf} />
-              <label>
-                Email address{" "}
-                <input
+              <Field id="ui-field-1" label="Email address">
+                <Input
                   name="email"
                   type="email"
                   required
                   autoComplete="username"
                   autoFocus
                 />
-              </label>
-              <label>
-                Password{" "}
-                <input
+              </Field>
+              <Field id="ui-field-2" label="Password">
+                <Input
                   name="password"
                   type="password"
                   required
                   autoComplete="current-password"
                 />
-              </label>
-              <button type="submit" className="button primary">
+              </Field>
+              <Button type="submit" variant="primary">
                 Sign in
-              </button>
+              </Button>
             </form>
           )}
-        </section>
+        </Panel>
         <a className="operator-design-link" href="/design">
           Design
         </a>
@@ -89,9 +96,9 @@ export function Dashboard(
             <span>{handle.props.email}</span>
             <form method="post" action="/logout" data-rmx-document>
               <input type="hidden" name="csrf" value={handle.props.csrf} />
-              <button type="submit" className="text-button">
+              <Button type="submit" variant="quiet">
                 Sign out
-              </button>
+              </Button>
             </form>
           </div>
         </header>
@@ -99,7 +106,7 @@ export function Dashboard(
           <h1>Sites</h1>
         </div>
         {handle.props.backup && (
-          <section aria-label="Backups" className="operator-site">
+          <Panel aria-label="Backups" className="operator-site">
             <div className="operator-site-info">
               <h2>Backups</h2>
               <p>
@@ -124,24 +131,24 @@ export function Dashboard(
                 {handle.props.backup.intervalSeconds} seconds
               </p>
               {handle.props.backup.lastError && (
-                <p role="alert">{handle.props.backup.lastError}</p>
+                <Notice role="alert" tone="danger">
+                  {handle.props.backup.lastError}
+                </Notice>
               )}
               <p>
                 Local recovery only. Off-host replication and restore drills are
                 separate protections.
               </p>
             </div>
-          </section>
+          </Panel>
         )}
         <div className="operator-sites">
           {handle.props.sites.map((site) => (
-            <article className="operator-site">
+            <Panel className="operator-site">
               <div className="operator-site-info">
                 <div className="operator-site-head">
                   <h2>{site.name}</h2>
-                  <span className={site.healthy ? "badge good" : "badge error"}>
-                    {site.healthy ? "Healthy" : "Unavailable"}
-                  </span>
+                  <Badge>{site.healthy ? "Healthy" : "Unavailable"}</Badge>
                 </div>
                 {site.description && (
                   <p className="operator-description">{site.description}</p>
@@ -184,16 +191,17 @@ export function Dashboard(
                 data-rmx-document
               >
                 <input type="hidden" name="csrf" value={handle.props.csrf} />
-                <button
+                <Button
                   type="submit"
-                  className="button primary"
+
                   disabled={!site.healthy}
                   aria-label={`Open ${site.name} editor`}
+                  variant="primary"
                 >
                   Open editor
-                </button>
+                </Button>
               </form>
-            </article>
+            </Panel>
           ))}
         </div>
       </main>
