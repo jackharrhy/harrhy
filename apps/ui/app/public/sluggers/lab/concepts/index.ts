@@ -1,26 +1,15 @@
-import { pennant } from "./pennant.ts";
-import { channel } from "./channel.ts";
-import { stadium } from "./stadium.ts";
-import { captain } from "./captain.ts";
-import { dugout } from "./dugout.ts";
-import { festival } from "./festival.ts";
-import { pennantVeranda } from "./pennant-veranda.ts";
+import { broadcastPrism } from "./broadcast-prism.ts";
+import { broadcastFloat } from "./broadcast-float.ts";
+import { frostStudio } from "./frost-studio.ts";
+import { frostRibbon } from "./frost-ribbon.ts";
 import { pennantBroadcast } from "./pennant-broadcast.ts";
-import { pennantCanopy } from "./pennant-canopy.ts";
 import { dugoutFrost } from "./dugout-frost.ts";
-import { dugoutLedger } from "./dugout-ledger.ts";
-import { dugoutPocket } from "./dugout-pocket.ts";
+
 export const concepts = [
-  pennant,
-  channel,
-  stadium,
-  captain,
-  dugout,
-  festival,
-  pennantVeranda,
+  broadcastPrism,
+  broadcastFloat,
+  frostStudio,
+  frostRibbon,
   pennantBroadcast,
-  pennantCanopy,
   dugoutFrost,
-  dugoutLedger,
-  dugoutPocket,
 ];

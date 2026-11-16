@@ -24,6 +24,7 @@ import { labPartStyles } from "./concepts/types.ts";
 import {
   labScreens,
   recordedTotal,
+  matchResult,
   standings,
   type LabCorpus,
   type LabPlayer,
@@ -34,13 +35,30 @@ function portrait(p: LabPlayer, size = 48) {
   return p.image ? (
     <img src={p.image} alt="" width={size} height={size} loading="lazy" />
   ) : (
-    <span data-portrait-missing title="Original portrait unavailable">
+    <span
+      data-portrait-missing
+      title="Original portrait unavailable"
+      style={{ width: size, height: size }}
+    >
       {(p.character ?? p.name).slice(0, 1)}
     </span>
   );
 }
 
 const value = (n: number | null | undefined) => n ?? "—";
+function score(match: LabMatch) {
+  return (
+    <strong data-match-score>
+      <span data-result={matchResult(match, match.awayId) ?? undefined}>
+        {value(match.awayScore)}
+      </span>
+      <span data-score-separator>–</span>
+      <span data-result={matchResult(match, match.homeId) ?? undefined}>
+        {value(match.homeScore)}
+      </span>
+    </strong>
+  );
+}
 export const SluggersLab = clientEntry(
   import.meta.url,
   function SluggersLab(
@@ -80,12 +98,20 @@ export const SluggersLab = clientEntry(
     }
     const team = (id: number) => data.teams.find((t) => t.id === id)!;
     const player = (id: number) => data.players.find((p) => p.id === id)!;
-    function identity(id: number) {
+    function identity(id: number, match?: LabMatch) {
       const t = team(id);
+      const result = match ? matchResult(match, id) : null;
       return (
         <span data-team-identity>
-          {t.image ? <img src={t.image} alt="" width="96" height="36" /> : null}
-          <strong>{t.name}</strong>
+          {t.image ? <img src={t.image} alt="" width="44" height="32" /> : null}
+          <span data-team-label>
+            <strong>{t.name}</strong>
+            {result ? (
+              <small data-result={result}>{result}</small>
+            ) : (
+              <small>{t.abbreviation}</small>
+            )}
+          </span>
         </span>
       );
     }
@@ -145,7 +171,7 @@ export const SluggersLab = clientEntry(
                     <TableRow>
                       <TableHead scope="row">
                         <span data-player-identity>
-                          {portrait(p, 32)}
+                          {portrait(p, 24)}
                           <span>
                             {p.name}
                             <small>
@@ -250,23 +276,38 @@ export const SluggersLab = clientEntry(
       );
     }
     function rosterCard(p: LabPlayer) {
+      const owner = data.teams.find((t) => t.id === p.teamId);
+      const captain = owner?.captainId === p.id;
       return (
         <button
           type="button"
           data-roster-card
+          aria-label={`${p.name} · ${p.character ?? "Character not recorded"} · ${p.position ?? "Bench"} · ${owner?.abbreviation ?? "Free agent"}${captain ? " · Captain" : ""}${p.starred ? " · Starred" : ""} · Batting ${value(p.batting)}, fielding ${value(p.fielding)}, speed ${value(p.speed)}`}
           aria-pressed={selectedPlayer === p.id}
           mix={on("click", () => {
             selectedPlayer = p.id;
             update();
           })}
         >
-          {portrait(p, 64)}
-          <strong>{p.name}</strong>
-          <span>{p.character ?? "Character not recorded"}</span>
-          <small>
-            {p.position ?? "Bench"}
-            {p.starred ? " · Starred" : ""}
-          </small>
+          <span data-player-icon>
+            {portrait(p, 32)}
+            {captain ? (
+              <span data-captain-mark aria-hidden="true">
+                C
+              </span>
+            ) : null}
+            {p.starred ? (
+              <svg data-star-mark viewBox="0 0 20 20" aria-hidden="true">
+                <path d="m10 1 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L1 7.6l6.2-.9Z" />
+              </svg>
+            ) : null}
+          </span>
+          <span data-roster-identity>
+            <strong>{p.name}</strong>
+            <small>
+              {p.position ?? "Bench"} · {owner?.abbreviation ?? "Free"}
+            </small>
+          </span>
           <span data-card-stats>
             <span>
               BAT <b>{value(p.batting)}</b>
@@ -316,26 +357,23 @@ export const SluggersLab = clientEntry(
           </header>
           <section data-lab-switcher aria-label="Design comparison">
             <nav aria-label="Design concepts">
-              <span data-concept-family>Original six</span>
-              {concepts.map((c, index) => (
-                <>
-                  {c.parent && c.parent !== concepts[index - 1]?.parent ? (
-                    <span data-concept-family>{c.parent} offspring</span>
-                  ) : null}
-                  <Button
-                    variant={conceptId === c.id ? "primary" : "secondary"}
-                    aria-pressed={conceptId === c.id}
-                    mix={on("click", () => change(c.id))}
-                  >
-                    {c.name}
-                  </Button>
-                </>
+              <span data-concept-family>
+                Four glass studies · two reference anchors
+              </span>
+              {concepts.map((c) => (
+                <Button
+                  variant={conceptId === c.id ? "primary" : "secondary"}
+                  aria-pressed={conceptId === c.id}
+                  mix={on("click", () => change(c.id))}
+                >
+                  {c.name}
+                </Button>
               ))}
             </nav>
             <div data-concept-description>
               <strong>{concept.name}</strong>
               <span>
-                {concept.parent ? `Child of ${concept.parent} · ` : ""}
+                {concept.parent ? `Based on ${concept.parent} · ` : ""}
                 {concept.summary}
               </span>
               <details>
@@ -420,21 +458,21 @@ export const SluggersLab = clientEntry(
                             mix={on("click", () => openMatch(m))}
                           >
                             <span data-match-meta>
-                              {m.stadium ?? "Stadium not recorded"} ·{" "}
-                              {m.state === "finished"
-                                ? "Final"
-                                : m.state === "live"
-                                  ? "Live"
-                                  : "Scheduled"}
+                              <span>
+                                {m.stadium ?? "Stadium not recorded"} ·{" "}
+                                {m.state === "finished"
+                                  ? "Final"
+                                  : m.state === "live"
+                                    ? "Live"
+                                    : "Scheduled"}
+                              </span>
+                              <span data-match-action>Box score →</span>
                             </span>
                             <span data-match-teams>
-                              {identity(m.awayId)}
-                              <strong data-match-score>
-                                {value(m.awayScore)} – {value(m.homeScore)}
-                              </strong>
-                              {identity(m.homeId)}
+                              {identity(m.awayId, m)}
+                              {score(m)}
+                              {identity(m.homeId, m)}
                             </span>
-                            <span data-match-action>Box score →</span>
                           </button>
                         ))}
                     </div>
@@ -488,7 +526,14 @@ export const SluggersLab = clientEntry(
                               </TableHead>
                               <TableCell data-positive>{t.wins}</TableCell>
                               <TableCell data-negative>{t.losses}</TableCell>
-                              <TableCell>
+                              <TableCell
+                                data-positive={
+                                  t.difference > 0 ? true : undefined
+                                }
+                                data-negative={
+                                  t.difference < 0 ? true : undefined
+                                }
+                              >
                                 {t.difference > 0 ? "+" : ""}
                                 {t.difference}
                               </TableCell>
@@ -528,12 +573,9 @@ export const SluggersLab = clientEntry(
                     {current.stadium ?? "Stadium not recorded"}
                   </h3>
                   <div data-score-banner>
-                    {identity(current.awayId)}
-                    <strong>
-                      {value(current.awayScore)} <span>–</span>{" "}
-                      {value(current.homeScore)}
-                    </strong>
-                    {identity(current.homeId)}
+                    {identity(current.awayId, current)}
+                    {score(current)}
+                    {identity(current.homeId, current)}
                   </div>
                   {board(current)}
                 </section>
@@ -584,7 +626,7 @@ export const SluggersLab = clientEntry(
                               })}
                             >
                               <b>{p.battingOrder}</b>
-                              {portrait(p, 40)}
+                              {portrait(p, 24)}
                               <span>
                                 {p.name}
                                 <small>{p.character}</small>
@@ -647,7 +689,7 @@ export const SluggersLab = clientEntry(
                   <h3 data-panel-title>
                     Character roster · same archived players in every concept
                   </h3>
-                  <div data-roster-grid>
+                  <div data-roster-grid data-catalogue-grid>
                     {data.players
                       .filter(
                         (p) =>
@@ -820,9 +862,29 @@ const labStyles = css({
     overflow: "hidden",
     backgroundImage: "var(--lab-panel-image)",
     backgroundColor: "var(--lab-panel-surface)",
-    backdropFilter: "var(--lab-panel-filter)",
+    position: "relative",
+    isolation: "isolate",
     border: "var(--lab-panel-edge)",
     borderRadius: "var(--hui-panel-radius)",
+  },
+  "&[data-translucent] [data-lab-panel]::before": {
+    content: '""',
+    position: "absolute",
+    inset: "0 0 auto",
+    height: "min(96px,100%)",
+    borderRadius: "inherit",
+    backdropFilter: "var(--lab-panel-filter)",
+    maskImage: "linear-gradient(#000 55%, transparent)",
+    pointerEvents: "none",
+    zIndex: 0,
+  },
+  "&[data-translucent] [data-lab-panel] > *": {
+    position: "relative",
+    zIndex: 1,
+  },
+  "&[data-screen=players] [data-lab-panel]::before": { display: "none" },
+  "&[data-screen=players][data-translucent] [data-panel-title]": {
+    backdropFilter: "var(--lab-panel-filter)",
   },
   "@supports not (backdrop-filter: blur(1px))": {
     "&[data-translucent] [data-lab-panel]": {
@@ -836,6 +898,8 @@ const labStyles = css({
       backgroundImage: "none",
       backdropFilter: "none",
     },
+    "&[data-translucent] [data-panel-title]": { backdropFilter: "none" },
+    "&[data-translucent] [data-lab-panel]::before": { display: "none" },
   },
   "& [data-panel-title]": {
     fontSize: "18px",
@@ -869,45 +933,96 @@ const labStyles = css({
     "&:hover": { background: "var(--hui-hover-surface)" },
   },
   "& [data-match-meta]": {
-    display: "block",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    gap: "8px",
     fontSize: "12px",
     color: "var(--hui-muted)",
     marginBottom: "12px",
   },
   "& [data-match-teams]": {
     display: "grid",
-    gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
-    gap: "10px",
+    gridTemplateColumns: "minmax(0,1fr) 104px minmax(0,1fr)",
+    gap: "8px",
     alignItems: "center",
-    textAlign: "center",
+    "& > [data-team-identity]:first-child": {
+      flexDirection: "row-reverse",
+      textAlign: "right",
+    },
   },
   "& [data-team-identity]": {
-    display: "grid",
-    justifyItems: "center",
-    gap: "4px",
+    display: "flex",
+    alignItems: "center",
+    gap: "7px",
+    minWidth: 0,
+    textAlign: "left",
     fontSize: "13px",
-    "& img": { height: "36px" },
+    "& img": { width: "40px", height: "32px", flexShrink: 0 },
+    "& [data-team-label]": { minWidth: 0, overflowWrap: "anywhere" },
+    "& strong": { display: "block", lineHeight: "1.3" },
+    "& small": { fontSize: "11px", marginTop: "3px" },
   },
   "& [data-match-score]": {
+    display: "grid",
+    gridTemplateColumns: "minmax(0,1fr) 12px minmax(0,1fr)",
+    alignItems: "baseline",
+    gap: "3px",
     fontSize: "24px",
+    fontFamily: "var(--hui-font-display)",
     fontVariantNumeric: "tabular-nums",
     whiteSpace: "nowrap",
+    textAlign: "center",
   },
+  "& [data-match-teams] [data-match-score]": { fontSize: "24px" },
+  "& [data-score-separator]": {
+    color: "var(--hui-muted)",
+    fontFamily: "var(--hui-font-ui)",
+    fontSize: ".65em",
+  },
+  "& [data-result=Win]": { color: "var(--hui-success)" },
+  "& [data-result=Loss]": { color: "var(--hui-danger)" },
+  "& [data-result=Draw]": { color: "var(--hui-muted)" },
+  "& small[data-result]": {
+    display: "inline-block",
+    padding: "1px 4px",
+    borderRadius: "3px",
+    fontSize: "11px",
+    lineHeight: "1.3",
+  },
+  "& small[data-result=Win]": { background: "#07483c" },
+  "& small[data-result=Loss]": { background: "#64233d" },
+  "& small[data-result=Draw]": { background: "var(--hui-elevated)" },
   "& [data-match-action]": {
     display: "block",
-    fontSize: "12px",
-    marginTop: "14px",
+    fontSize: "11px",
+    whiteSpace: "nowrap",
+    flexShrink: 0,
+    marginTop: 0,
     textAlign: "right",
     textDecoration: "underline",
     textUnderlineOffset: "3px",
   },
   "& table": { fontVariantNumeric: "tabular-nums" },
+  "& [data-baseball-scoreboard] td:nth-last-child(3)": {
+    color: "var(--hui-accent)",
+    fontFamily: "var(--hui-font-display)",
+    fontWeight: 700,
+  },
   "& td, & thead th:not(:first-child)": {
     textAlign: "right",
     whiteSpace: "nowrap",
   },
-  "& [data-positive]": { color: "var(--hui-success)" },
-  "& [data-negative]": { color: "var(--hui-danger)" },
+  "& [data-positive]": {
+    color: "var(--hui-success)",
+    background: "rgb(0 69 58 / .28)",
+    fontFamily: "var(--hui-font-display)",
+  },
+  "& [data-negative]": {
+    color: "var(--hui-danger)",
+    background: "rgb(77 16 43 / .28)",
+    fontFamily: "var(--hui-font-display)",
+  },
   "& [data-team-link]": {
     display: "flex",
     gap: "8px",
@@ -919,24 +1034,29 @@ const labStyles = css({
     textAlign: "left",
     cursor: "pointer",
     padding: 0,
-    minHeight: "36px",
-    minWidth: "190px",
-    "& img": { width: "54px", height: "26px" },
+    minHeight: "44px",
+    minWidth: "170px",
+    "& img": { width: "36px", height: "24px" },
   },
   "& [data-score-banner]": {
     display: "grid",
-    gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
+    gridTemplateColumns: "minmax(0,1fr) 144px minmax(0,1fr)",
     gap: "16px",
     alignItems: "center",
     padding: "20px",
     "& > strong": {
-      fontSize: "42px",
+      fontSize: "36px",
       fontVariantNumeric: "tabular-nums",
       whiteSpace: "nowrap",
       color: "var(--hui-accent)",
       textShadow: "0 1px 1px rgb(0 0 0 / .1)",
     },
-    "& img": { width: "160px", height: "58px" },
+    "& img": { width: "72px", height: "40px" },
+    "& > [data-team-identity]:first-child": {
+      flexDirection: "row-reverse",
+      textAlign: "right",
+      justifyContent: "flex-start",
+    },
   },
   "& [data-player-identity]": {
     display: "flex",
@@ -964,14 +1084,15 @@ const labStyles = css({
     gap: "4px",
     "& button": {
       display: "grid",
-      gridTemplateColumns: "24px 40px minmax(0,1fr) 36px",
+      gridTemplateColumns: "20px 24px minmax(0,1fr) 32px",
       gap: "10px",
       width: "100%",
       alignItems: "center",
       border: "1px solid var(--hui-border)",
       borderRadius: "var(--hui-control-radius)",
       background: "var(--hui-table-surface)",
-      padding: "6px 10px",
+      padding: "6px 8px",
+      minHeight: "44px",
       color: "var(--hui-ink)",
       font: "inherit",
       textAlign: "left",
@@ -992,28 +1113,86 @@ const labStyles = css({
     border: "1px solid var(--hui-border)",
     font: "inherit",
     color: "var(--hui-ink)",
-    padding: "12px",
-    display: "flex",
-    flexDirection: "column",
+    padding: "10px",
+    display: "grid",
+    gridTemplateColumns: "32px minmax(0,1fr)",
+    gridTemplateRows: "minmax(40px,1fr) auto",
     alignItems: "center",
-    gap: "5px",
-    textAlign: "center",
+    alignContent: "stretch",
+    gap: "7px",
+    textAlign: "left",
     cursor: "pointer",
     minWidth: 0,
-    "& > img": { height: "64px" },
-    "& > span:not([data-card-stats])": { fontSize: "12px" },
+    minHeight: "88px",
     "&[aria-pressed=true]": {
       outline: "3px solid var(--hui-focus)",
       outlineOffset: "-3px",
     },
   },
+  "& [data-player-icon]": {
+    position: "relative",
+    width: "32px",
+    height: "32px",
+    display: "grid",
+    placeItems: "center",
+    alignSelf: "center",
+    "& img": { width: "32px", height: "32px", objectFit: "contain" },
+  },
+  "& [data-captain-mark]": {
+    position: "absolute",
+    top: "-4px",
+    left: "-4px",
+    background: "#73364a",
+    color: "#fff",
+    borderRadius: "50%",
+    width: "13px",
+    height: "13px",
+    fontSize: "9px",
+    lineHeight: "13px",
+    textAlign: "center",
+  },
+  "& [data-star-mark]": {
+    position: "absolute",
+    top: "-4px",
+    right: "-5px",
+    width: "13px",
+    height: "13px",
+    fill: "var(--hui-accent)",
+    stroke: "#173866",
+    strokeWidth: 1,
+  },
+  "& [data-roster-identity]": {
+    minWidth: 0,
+    overflowWrap: "anywhere",
+    "& strong": { display: "block", fontSize: "13px", lineHeight: "1.3" },
+    "& small": { fontSize: "11px", marginTop: "3px" },
+  },
   "& [data-card-stats]": {
-    display: "flex",
-    gap: "8px",
-    fontSize: "11px",
-    marginTop: "8px",
+    gridColumn: "1 / -1",
+    display: "grid",
+    gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+    gap: "6px",
+    paddingTop: "5px",
+    borderTop: "1px solid rgb(164 204 244 / .25)",
+    fontSize: "10px",
     fontVariantNumeric: "tabular-nums",
-    "& b": { display: "block", fontSize: "14px" },
+    color: "var(--hui-muted)",
+    "& > span": {
+      display: "flex",
+      alignItems: "baseline",
+      justifyContent: "space-between",
+      gap: "3px",
+    },
+    "& b": {
+      color: "var(--hui-ink)",
+      fontSize: "13px",
+      fontFamily: "var(--hui-font-display)",
+    },
+  },
+  "@media (min-width: 481px)": {
+    "&[data-screen=players] [data-roster-grid]": {
+      gridTemplateColumns: "repeat(auto-fill,minmax(144px,1fr))",
+    },
   },
   "& [data-lab-footer]": {
     padding: "12px 16px",
@@ -1059,10 +1238,26 @@ const labStyles = css({
       gridTemplateColumns: "repeat(2,minmax(0,1fr))",
     },
     "& [data-match-list]": { gridTemplateColumns: "minmax(0,1fr)" },
+    "& [data-match-teams] [data-match-score]": { fontSize: "22px" },
+    "& [data-match-teams]": {
+      gridTemplateColumns: "minmax(0,1fr) 96px minmax(0,1fr)",
+      gap: "5px",
+    },
+    "& [data-team-identity]": {
+      flexDirection: "column",
+      justifyContent: "center",
+      textAlign: "center",
+      gap: "4px",
+      fontSize: "12px",
+      "& img": { width: "32px", height: "26px" },
+    },
+    "& [data-match-teams] > [data-team-identity]:first-child, & [data-score-banner] > [data-team-identity]:first-child":
+      { flexDirection: "column", textAlign: "center" },
     "& [data-score-banner]": {
+      gridTemplateColumns: "minmax(0,1fr) 104px minmax(0,1fr)",
       gap: "8px",
       padding: "16px 10px",
-      "& > strong": { fontSize: "30px" },
+      "& > strong": { fontSize: "24px" },
       "& img": { height: "40px" },
     },
     "& [data-roster-grid]": {

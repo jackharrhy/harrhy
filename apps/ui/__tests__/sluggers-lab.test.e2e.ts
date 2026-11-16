@@ -5,9 +5,32 @@ import { mkdtemp, writeFile, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createApp } from "../app/router.tsx";
-import type { LabCorpus } from "../app/public/sluggers/lab/model.ts";
+import {
+  matchResult,
+  type LabCorpus,
+} from "../app/public/sluggers/lab/model.ts";
 import { concepts } from "../app/public/sluggers/lab/concepts/index.ts";
 import type { BaseballPosition } from "@harrhy/ui/baseball";
+it("labels only authoritative finished results, including zero and draws", () => {
+  const match = {
+    id: 1,
+    dayId: 1,
+    awayId: 1,
+    homeId: 2,
+    state: "finished",
+    awayScore: 0,
+    homeScore: 2,
+    stadium: null,
+  };
+  assert.equal(matchResult(match, 1), "Loss");
+  assert.equal(matchResult(match, 2), "Win");
+  assert.equal(matchResult({ ...match, homeScore: 0 }, 1), "Draw");
+  assert.equal(matchResult({ ...match, awayScore: null }, 1), null);
+  assert.equal(matchResult({ ...match, state: "upcoming" }, 1), null);
+  assert.equal(matchResult({ ...match, state: "live" }, 1), null);
+  assert.equal(matchResult(match, 99), null);
+});
+
 function corpus(): LabCorpus {
   const positions: BaseballPosition[] = [
     "P",
@@ -38,7 +61,7 @@ function corpus(): LabCorpus {
     character: `Character ${i + 1}`,
     position: positions[i % 12] ?? null,
     battingOrder: i % 12 < 9 ? (i % 12) + 1 : null,
-    starred: false,
+    starred: i === 0,
     class: "Balanced",
     batting: 5,
     pitching: 5,
@@ -52,7 +75,7 @@ function corpus(): LabCorpus {
     homeId: (i % 5) * 2 + 2,
     state: i < 50 ? "finished" : "upcoming",
     awayScore: i < 50 ? 0 : null,
-    homeScore: i < 50 ? 2 : null,
+    homeScore: i < 50 ? 12 : null,
     stadium: "Demo stadium",
   }));
   const appearances = matches.slice(0, 50).flatMap((m) =>
@@ -114,7 +137,7 @@ it("keeps the private cookoff and curated assets unavailable without explicit ca
       404,
     );
 });
-it("switches twelve full cookoff recipes over the same data, preserves context, and keeps native field markers accessible", async (t) => {
+it("switches six curated cookoff recipes over the same data, preserves context, and keeps native field markers accessible", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "sluggers-lab-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(join(directory, "assets"));
@@ -149,7 +172,7 @@ it("switches twelve full cookoff recipes over the same data, preserves context, 
   page.on("pageerror", (e) => errors.push(e.message));
   for (const containerWidth of [480, 481]) {
     await page.setViewportSize({ width: 1440, height: 1000 });
-    await page.goto("/sluggers-lab?concept=dugout&screen=lineup");
+    await page.goto("/sluggers-lab?concept=dugout-frost&screen=lineup");
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );
@@ -188,6 +211,12 @@ it("switches twelve full cookoff recipes over the same data, preserves context, 
     );
     const screens = page.getByRole("navigation", { name: "League screens" });
     const recipes = page.getByRole("navigation", { name: "Design concepts" });
+    assert.equal(await recipes.getByRole("button").count(), 6);
+    assert.equal(
+      await page.locator("[data-sluggers-lab]").getAttribute("data-concept"),
+      "broadcast-prism",
+      "retired concepts fall back to the curated recommendation",
+    );
     for (const concept of concepts) {
       await recipes
         .getByRole("button", { name: concept.name, exact: true })
@@ -280,10 +309,70 @@ it("switches twelve full cookoff recipes over the same data, preserves context, 
         .getByRole("button", { name: "Match day", exact: true })
         .click();
       assert.equal(await page.locator("[data-match]").count(), 5);
+      assert.equal(
+        await page
+          .locator("[data-match-score]")
+          .first()
+          .evaluate((element) => {
+            const rects = [...element.children].map((child) => {
+              const range = document.createRange();
+              range.selectNodeContents(child);
+              return range.getBoundingClientRect();
+            });
+            return (
+              rects[0]!.right <= rects[1]!.left &&
+              rects[1]!.right <= rects[2]!.left
+            );
+          }),
+        true,
+        `aligned two-digit numeric score slots ${concept.id} ${width}`,
+      );
+      assert.equal(
+        await page.locator("[data-match] small[data-result=Win]").count(),
+        5,
+      );
+      assert.equal(
+        await page.locator("[data-match] small[data-result=Loss]").count(),
+        5,
+      );
       await screens
         .getByRole("button", { name: "Player catalogue", exact: true })
         .click();
       assert.equal(await page.locator("[data-roster-card]").count(), 120);
+      assert.equal(
+        await page
+          .locator("[data-roster-card]")
+          .first()
+          .evaluate((element) => {
+            const icon = element
+              .querySelector("[data-player-icon]")!
+              .getBoundingClientRect();
+            return (
+              icon.width === 32 &&
+              icon.height === 32 &&
+              element.getBoundingClientRect().height >= 44
+            );
+          }),
+        true,
+        `compact visual icon inside accessible card ${concept.id}`,
+      );
+      assert.equal(
+        await page.locator("[data-roster-grid]").evaluate((grid) => {
+          const rows = new Map<number, number[]>();
+          for (const card of grid.querySelectorAll("[data-roster-card]")) {
+            const top = Math.round(card.getBoundingClientRect().top);
+            const bottom = card
+              .querySelector("[data-card-stats]")!
+              .getBoundingClientRect().bottom;
+            rows.set(top, [...(rows.get(top) ?? []), bottom]);
+          }
+          return [...rows.values()].every(
+            (bottoms) => Math.max(...bottoms) - Math.min(...bottoms) <= 1,
+          );
+        }),
+        true,
+        `aligned stat baselines despite long names ${concept.id} ${width}`,
+      );
       assert.equal(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -311,11 +400,17 @@ it("switches twelve full cookoff recipes over the same data, preserves context, 
           color: style.backgroundColor,
           image: style.backgroundImage,
           filter: style.backdropFilter,
+          diffusion: getComputedStyle(element, "::before").display,
         };
       });
     assert.deepEqual(
       panel,
-      { color: "rgb(29, 86, 191)", image: "none", filter: "none" },
+      {
+        color: "rgb(29, 86, 191)",
+        image: "none",
+        filter: "none",
+        diffusion: "none",
+      },
       `opaque reduced-transparency fallback ${concept.id}`,
     );
   }
