@@ -3,7 +3,7 @@ import { createServer } from "node:net";
 import { spawn } from "node:child_process";
 import { mkdtemp, writeFile, readFile, rm, readdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve as absolute } from "node:path";
 
 for (const runner of [
   "scripts/review.mjs",
@@ -20,7 +20,7 @@ for (const runner of [
     await writeFile(binary, "not the canonical executable");
     try {
       const child = spawn(process.execPath, [`apps/4orm/${runner}`], {
-        cwd: resolve("../.."),
+        cwd: absolute("../.."),
         env: {
           PATH: process.env.PATH,
           HOME: scratch,
