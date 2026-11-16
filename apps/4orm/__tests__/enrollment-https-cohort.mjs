@@ -1,17 +1,11 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import assert from "node:assert/strict";
 import { createServer as netServer } from "node:net";
 import { createServer as tlsServer } from "node:https";
 import { request } from "node:http";
 import { spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import {
-  mkdtemp,
-  mkdir,
-  readFile,
-  writeFile,
-  symlink,
-  rm,
-} from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, writeFile, symlink, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
@@ -19,6 +13,8 @@ import { transferArchive } from "../scripts/archive.mjs";
 import { createInvite } from "./enrollment-browser.mjs";
 process.umask(0o077);
 const root = "/home/jack/.local/state/form-harrhy-integration/candidate";
+const binary = process.env.CELLD_BIN ?? join(root, "tools/celld");
+await verifyCelldBinary(binary);
 const temporary = await mkdtemp(join(tmpdir(), "fourm-enrollment-https-"));
 const output = join(
   root,
@@ -45,7 +41,7 @@ const origin = `https://127.0.0.1:${appTLS}`,
   issuer = `https://127.0.0.1:${issuerTLS}`;
 const env = {
   ...process.env,
-  CELLD_BIN: join(root, "tools/celld"),
+  CELLD_BIN: binary,
   FOURM_REVIEW_STATE: join(temporary, "native"),
   FOURM_REVIEW_PORT: String(appPort),
   FOURM_REVIEW_ISSUER_PORT: String(issuerPort),
@@ -82,13 +78,8 @@ async function start() {
   while (Date.now() < deadline) {
     assert.equal(runner.exitCode, null, "Owned fixture runtime exited");
     try {
-      const r = JSON.parse(
-        await readFile(join(env.FOURM_REVIEW_STATE, "runtime.json"), "utf8"),
-      );
-      if (
-        r.supervisorPid === runner.pid &&
-        (await fetch(`http://127.0.0.1:${appPort}/ready`)).ok
-      )
+      const r = JSON.parse(await readFile(join(env.FOURM_REVIEW_STATE, "runtime.json"), "utf8"));
+      if (r.supervisorPid === runner.pid && (await fetch(`http://127.0.0.1:${appPort}/ready`)).ok)
         return;
     } catch {}
     await delay(150);
@@ -198,19 +189,13 @@ try {
   phase = "real-cohort-import";
   await start();
   const source = join(root, "corrected-cohort-stage-20261113/archive");
-  const archive = JSON.parse(
-    await readFile(join(source, "archive.json"), "utf8"),
-  );
+  const archive = JSON.parse(await readFile(join(source, "archive.json"), "utf8"));
   const alias = archive.tables.external_identities.find(
-    (row) =>
-      row.issuer === "http://127.0.0.1:18985" &&
-      row.subject === "fourm-fixture-jane",
+    (row) => row.issuer === "http://127.0.0.1:18985" && row.subject === "fourm-fixture-jane",
   );
   assert.ok(alias);
   archive.tables.external_identities.push({ ...alias, issuer });
-  const adminUsername = archive.tables.users.find(
-    (row) => row.id === alias.user_id,
-  ).username;
+  const adminUsername = archive.tables.users.find((row) => row.id === alias.user_id).username;
   const staged = join(temporary, "archive");
   await mkdir(staged);
   await writeFile(join(staged, "archive.json"), JSON.stringify(archive));
@@ -231,9 +216,7 @@ try {
     token: (await readFile(join(temporary, "import-token"), "utf8")).trim(),
   });
   const baselineMembers = (
-    await fetch(`http://127.0.0.1:${appPort}/world/community`).then((r) =>
-      r.json(),
-    )
+    await fetch(`http://127.0.0.1:${appPort}/world/community`).then((r) => r.json())
   ).members.length;
   phase = "actual-invite-form";
   const invite = await createInvite(origin, {
@@ -252,10 +235,7 @@ try {
     JSON.stringify({
       origin,
       issuer,
-      key: await readFile(
-        join(env.FOURM_REVIEW_STATE, "enrollment-key"),
-        "utf8",
-      ),
+      key: await readFile(join(env.FOURM_REVIEW_STATE, "enrollment-key"), "utf8"),
       invite,
       output,
       memberUsername: "newfixture",
@@ -268,9 +248,7 @@ try {
     `import {readFile,writeFile} from 'node:fs/promises';import {completeInvite} from ${JSON.stringify(resolve("apps/4orm/__tests__/enrollment-browser.mjs"))};const settings=JSON.parse(await readFile(process.argv[2],'utf8'));const result=await completeInvite(settings);await writeFile(${JSON.stringify(join(output, "acceptance.json"))},JSON.stringify({...result,realCohortMembers:${archive.tables.users.length},https:true,productionTouched:false},null,2));`,
   );
   await child(workflow, [config]);
-  console.log(
-    JSON.stringify({ status: "PASS_REAL_COHORT_HTTPS_ENROLLMENT", output }),
-  );
+  console.log(JSON.stringify({ status: "PASS_REAL_COHORT_HTTPS_ENROLLMENT", output }));
 } catch (error) {
   await writeFile(
     join(output, "failure.json"),
