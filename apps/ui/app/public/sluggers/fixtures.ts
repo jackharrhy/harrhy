@@ -119,7 +119,7 @@ export function initialLineup(): Slot[] {
   }));
 }
 export const frozenAppearances = initialLineup();
-export const frozenHomeAppearances: readonly Slot[] = [
+const frozenHomeAppearances: readonly Slot[] = [
   "Wario",
   "Waluigi",
   "Bowser",

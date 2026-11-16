@@ -1,5 +1,5 @@
 import type { BaseballPosition } from "@harrhy/ui/baseball";
-export interface LabTeam {
+interface LabTeam {
   id: number;
   name: string;
   abbreviation: string;
@@ -34,7 +34,7 @@ export interface LabMatch {
   homeScore: number | null;
   stadium: string | null;
 }
-export interface LabStats {
+interface LabStats {
   matchId: number;
   teamId: number;
   playerId: number;
@@ -51,7 +51,7 @@ export interface LabStats {
   assists: number | null;
   errors: number | null;
 }
-export interface LabAppearance {
+interface LabAppearance {
   matchId: number;
   teamId: number;
   playerId: number;
