@@ -1,7 +1,7 @@
 FROM node:26-bookworm AS build
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 COPY apps/4orm/package.json ./apps/4orm/
 COPY apps/8mb/package.json ./apps/8mb/
 COPY apps/artbin/package.json ./apps/artbin/

@@ -38,7 +38,7 @@ for (const app of apps) {
     const source = dockerfile.indexOf("COPY . .");
     assert.ok(install > 0 && source > install);
     const prefix = dockerfile.slice(0, install);
-    assert.ok(prefix.includes("COPY package.json package-lock.json ./"));
+    assert.ok(prefix.includes("COPY package.json package-lock.json .npmrc ./"));
     for (const path of manifests) {
       assert.ok(prefix.includes(`COPY ${path} ./`), `missing ${path}`);
     }

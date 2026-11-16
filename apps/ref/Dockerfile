@@ -7,7 +7,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json .npmrc ./
 COPY apps/4orm/package.json ./apps/4orm/
 COPY apps/8mb/package.json ./apps/8mb/
 COPY apps/artbin/package.json ./apps/artbin/
