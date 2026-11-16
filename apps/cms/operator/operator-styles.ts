@@ -38,6 +38,9 @@ export const operatorStyles = css({
     gap: "16px",
     "padding-bottom": "64px",
   },
+  "& .operator-shell > .operator-site": {
+    "margin-block-end": "16px",
+  },
   "& .operator-site": {
     display: "grid",
     "grid-template-columns": "minmax(0, 1.4fr) minmax(260px, 1fr) 136px",
