@@ -9,3 +9,11 @@ Install at the Tea root with `npm ci` and use Bun 1.4.4. `npm run check --worksp
 The game is live from Tea, with network and persistence tests and an unsupported-device message when WebGPU is unavailable. Headless Chromium on this host can lose its software WebGPU device; use a WebGPU-capable browser for actual movement and pickup playtesting. `web/src/presentation.ts` presents the local player and locally held prop on one immediate predicted timeline, remote players and their held props on a shared buffered timeline, and loose bodies independently. Remote playback continues for at most three missing ticks and eases small late corrections over 120 ms. The `tools/network-harness/` impairment matrix and `__tests__/web/presentation.test.ts` cover packet timing; the browser playtest is still needed to judge feel.
 
 The page uses Remix CSP middleware with a per-response script nonce. Its worker and WebSocket allowances cover the current browser transport; nonce-bearing HTML is private/no-store while game assets keep their static cache policy.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

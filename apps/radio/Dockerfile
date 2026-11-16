@@ -8,8 +8,14 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY . .
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+COPY apps/radio/package.json ./apps/radio/
+COPY packages/identity/package.json ./packages/identity/
+COPY apps/radio/scripts/sync-icon-font.mjs ./apps/radio/scripts/
+RUN npm ci --workspace @harrhy/radio --include-workspace-root=false
+COPY tsconfig.base.json ./
+COPY apps/radio ./apps/radio
+COPY packages/identity ./packages/identity
 
 RUN NODE_ENV=production npm run build --workspace @harrhy/radio
 
@@ -29,7 +35,10 @@ ENV CELLD_WATCH=/app/.celld/state
 WORKDIR /app/apps/radio
 
 COPY --from=celld /usr/local/bin/celld /usr/local/bin/celld
-COPY --from=build /app /app
+COPY --from=build --chown=node:node /app/node_modules /app/node_modules
+COPY --from=build --chown=node:node /app/package.json /app/tsconfig.base.json /app/
+COPY --from=build --chown=node:node /app/apps/radio /app/apps/radio
+COPY --from=build --chown=node:node /app/packages/identity /app/packages/identity
 
 RUN mkdir -p /app/.celld \
   && chmod +x /app/apps/radio/scripts/start-celld.sh \

@@ -1,8 +1,17 @@
 FROM node:26-bookworm AS build
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
-COPY . .
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+COPY apps/pool/package.json ./apps/pool/
+COPY packages/pool/package.json ./packages/pool/
+COPY packages/pool-protocol/package.json ./packages/pool-protocol/
+COPY packages/pool-simulation/package.json ./packages/pool-simulation/
+RUN npm ci --workspace @harrhy/pool-app --include-workspace-root=false
+COPY tsconfig.base.json ./
+COPY apps/pool ./apps/pool
+COPY packages/pool ./packages/pool
+COPY packages/pool-protocol ./packages/pool-protocol
+COPY packages/pool-simulation ./packages/pool-simulation
 ARG APP_REVISION=development
 RUN APP_REVISION=$APP_REVISION npm run build --workspace @harrhy/pool-app
 

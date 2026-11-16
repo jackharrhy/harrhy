@@ -7,8 +7,27 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY . .
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+COPY apps/ref/package.json ./apps/ref/
+COPY packages/dev-auth/package.json ./packages/dev-auth/
+COPY packages/identity/package.json ./packages/identity/
+COPY packages/json-schema/package.json ./packages/json-schema/
+COPY packages/mcp/package.json ./packages/mcp/
+COPY packages/request-body/package.json ./packages/request-body/
+COPY packages/result/package.json ./packages/result/
+COPY packages/ui/package.json ./packages/ui/
+COPY packages/webmcp/package.json ./packages/webmcp/
+RUN npm ci --workspace @harrhy/ref --include-workspace-root=false
+COPY tsconfig.base.json ./
+COPY apps/ref ./apps/ref
+COPY packages/dev-auth ./packages/dev-auth
+COPY packages/identity ./packages/identity
+COPY packages/json-schema ./packages/json-schema
+COPY packages/mcp ./packages/mcp
+COPY packages/request-body ./packages/request-body
+COPY packages/result ./packages/result
+COPY packages/ui ./packages/ui
+COPY packages/webmcp ./packages/webmcp
 RUN npm run build --workspace @harrhy/ref
 
 FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS runtime
@@ -26,7 +45,17 @@ ENV CELLD_WATCH=/app/.celld/state
 
 WORKDIR /app/apps/ref
 COPY --from=celld /usr/local/bin/celld /usr/local/bin/celld
-COPY --from=build /app /app
+COPY --from=build --chown=node:node /app/node_modules /app/node_modules
+COPY --from=build --chown=node:node /app/package.json /app/tsconfig.base.json /app/
+COPY --from=build --chown=node:node /app/apps/ref /app/apps/ref
+COPY --from=build --chown=node:node /app/packages/dev-auth /app/packages/dev-auth
+COPY --from=build --chown=node:node /app/packages/identity /app/packages/identity
+COPY --from=build --chown=node:node /app/packages/json-schema /app/packages/json-schema
+COPY --from=build --chown=node:node /app/packages/mcp /app/packages/mcp
+COPY --from=build --chown=node:node /app/packages/request-body /app/packages/request-body
+COPY --from=build --chown=node:node /app/packages/result /app/packages/result
+COPY --from=build --chown=node:node /app/packages/ui /app/packages/ui
+COPY --from=build --chown=node:node /app/packages/webmcp /app/packages/webmcp
 
 RUN mkdir -p /app/.celld \
   && chmod +x /app/apps/ref/scripts/start-celld.sh \

@@ -1,8 +1,13 @@
 FROM node:26-bookworm AS build
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
-COPY . .
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+COPY apps/burger/package.json ./apps/burger/
+COPY packages/burger-core/package.json ./packages/burger-core/
+RUN npm ci --workspace @harrhy/burger --include-workspace-root=false
+COPY tsconfig.base.json ./
+COPY apps/burger ./apps/burger
+COPY packages/burger-core ./packages/burger-core
 RUN npm run build --workspace @harrhy/burger
 
 FROM oven/bun:1.4.4-slim AS runtime

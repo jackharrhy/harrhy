@@ -131,6 +131,33 @@ db.close();
 console.log(JSON.stringify({node: process.version, compression: process.config.variables.v8_enable_pointer_compression, uid: process.getuid()}));
 assert.notEqual(process.getuid(), 0);
 `;
+if (["cms", "maps-service", "maps-compiler"].includes(app)) {
+  docker(
+    "run",
+    "--rm",
+    "--network",
+    "none",
+    image,
+    "node",
+    "-e",
+    `
+    const assert = require('node:assert/strict');
+    const fs = require('node:fs');
+    assert.deepEqual(fs.readdirSync('/app/apps'), [${JSON.stringify(app)}]);
+    assert.ok(fs.existsSync('/app/tsconfig.base.json'));
+    assert.equal(fs.existsSync('/app/node_modules/tsrs'), false, 'root build tools must be pruned');
+    assert.equal(fs.existsSync('/app/node_modules/better-sqlite3'), false, 'unrelated native binding must not be installed');
+    const { DatabaseSync } = require('node:sqlite');
+    const db = new DatabaseSync('/tmp/selected-smoke.sqlite');
+    db.exec("CREATE TABLE smoke(value TEXT); INSERT INTO smoke VALUES ('persisted')");
+    db.close();
+    const reopened = new DatabaseSync('/tmp/selected-smoke.sqlite');
+    assert.equal(reopened.prepare('SELECT value FROM smoke').get().value, 'persisted');
+    reopened.close();
+    console.log('selected workspaces and built-in SQLite write/reopen passed');
+  `,
+  );
+}
 // Fail before startup when a standard Node image accidentally gets selected.
 docker("run", "--rm", "--network", "none", image, "node", "-e", runtimeCheck);
 const id = docker(
@@ -258,7 +285,7 @@ for (const [path, status, headers = {}, method = 'GET', sha256] of paths) {
     assert.doesNotMatch(docker("diff", id), /diagnostics\.sqlite-(wal|shm)/);
     console.log("8mb: SIGTERM closed SQLite without WAL sidecars");
   }
-  if (["artbin", "cms", "maps-service", "maps-compiler"].includes(app)) {
+  if (app === "artbin") {
     docker(
       "exec",
       id,
