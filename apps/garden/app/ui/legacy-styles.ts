@@ -2431,7 +2431,7 @@ export const legacyStyles = [
       },
   } as Parameters<typeof css>[0]),
   css({
-    "& .astro-code .line": {
+    "& .hui-highlight code": {
       "white-space": "pre",
     },
   } as Parameters<typeof css>[0]),

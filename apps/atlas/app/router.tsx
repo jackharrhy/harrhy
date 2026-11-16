@@ -1,35 +1,52 @@
-import { createRouter, createController } from "remix/router";
+import { createRouter, createController, createContextKey } from "remix/router";
 import { render } from "remix/middleware/render";
-import { csp } from "remix/middleware/csp";
+import { csp, getCspNonce } from "remix/middleware/csp";
 import { staticFiles } from "remix/middleware/static";
 import { fileURLToPath } from "node:url";
 import { Button, Field, Input } from "@harrhy/ui/native";
 import { requestTheme } from "./theme.ts";
 import { createCatalog } from "./content/catalog.ts";
+import { createWidgetLoader } from "./widgets.ts";
 import { routes } from "./routes.ts";
 import { loadSpaces, spacePath } from "./spaces.ts";
 import { document, pageList, topicTree, article, trail } from "./ui.tsx";
 
-export async function createAtlas(root: string, manifestPath: string) {
+export async function createAtlas(
+  root: string,
+  manifestPath: string,
+  widgetManifest?: string,
+) {
   const catalog = createCatalog({
     root,
+    widgets: widgetManifest ? createWidgetLoader(widgetManifest) : undefined,
     authors: () => loadSpaces(manifestPath),
   });
   const initial = await catalog.refresh();
   if (!initial.generation)
     throw new Error("Atlas requires a valid curated catalog before startup");
+  const snapshotKey = createContextKey<ReturnType<typeof catalog.read>>();
   const router = createRouter({
     middleware: [
       csp({
-        policy: {
-          defaultSrc: ["'none'"],
-          scriptSrc: ["'none'"],
-          styleSrc: ["'self'", "'unsafe-inline'"],
-          fontSrc: ["'self'"],
-          imgSrc: ["'none'"],
-          formAction: ["'self'"],
-          baseUri: ["'none'"],
-          frameAncestors: ["'none'"],
+        policy: ({ nonce, context }) => {
+          const snapshot = catalog.read();
+          context.set(snapshotKey, snapshot);
+          return {
+            defaultSrc: ["'none'"],
+            scriptSrc: snapshot.generation?.widgets.some(
+              (widget) =>
+                widget.page.replace(/\/$/, "") ===
+                new URL(context.request.url).pathname.replace(/\/$/, ""),
+            )
+              ? [`'nonce-${nonce}'`]
+              : ["'none'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            fontSrc: ["'self'"],
+            imgSrc: ["'none'"],
+            formAction: ["'self'"],
+            baseUri: ["'none'"],
+            frameAncestors: ["'none'"],
+          };
         },
       }),
       staticFiles(fileURLToPath(new URL("../public/", import.meta.url)), {
@@ -40,6 +57,18 @@ export async function createAtlas(root: string, manifestPath: string) {
   const controller = createController(routes, {
     middleware: [render()],
     actions: {
+      widget(context) {
+        const script = catalog.widgetScript(context.params.digest);
+        return script === undefined
+          ? new Response("Not Found", { status: 404 })
+          : new Response(script, {
+              headers: {
+                "Content-Type": "text/javascript; charset=utf-8",
+                "Cache-Control": "private, max-age=31536000, immutable",
+                "X-Content-Type-Options": "nosniff",
+              },
+            });
+      },
       health() {
         const state = catalog.read();
         return Response.json(
@@ -59,15 +88,14 @@ export async function createAtlas(root: string, manifestPath: string) {
       page: show,
     },
   });
-  interface Context {
-    request: Request;
+  type Context = Parameters<typeof getCspNonce>[0] & {
     render(
       node: Parameters<typeof document>[1],
       init?: ResponseInit,
     ): Response | Promise<Response>;
-  }
+  };
   async function show(context: Context) {
-    const snapshot = catalog.read();
+    const snapshot = context.get(snapshotKey)!;
     const generation = snapshot.generation!;
     const spaces = generation.spaces;
     const url = new URL(context.request.url);
@@ -211,7 +239,11 @@ export async function createAtlas(root: string, manifestPath: string) {
           {navigation}
           <article>
             <h1>{note.title}</h1>
-            {article(note.html)}
+            {article(
+              note.html,
+              generation.widgets.filter((widget) => widget.page === note.path),
+              getCspNonce(context),
+            )}
             {pages.some((child) => child.parent === note.path) && (
               <section>
                 <h2>Pages</h2>

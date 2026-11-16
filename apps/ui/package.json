@@ -16,10 +16,6 @@
   "dependencies": {
     "@chenglou/pretext": "^1.0.0",
     "@harrhy/ui": "*",
-    "@shikijs/core": "4.6.0",
-    "@shikijs/engine-javascript": "4.6.0",
-    "@shikijs/langs": "4.6.0",
-    "@shikijs/themes": "4.6.0",
     "remix": "3.2.0"
   },
   "devDependencies": {

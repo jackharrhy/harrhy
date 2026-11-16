@@ -1,6 +1,6 @@
 # Browser WebMCP inventory
 
-Worldview is the existing browser consumer. The editor initializes its tools on normal editor startup, not only in a debug build. Registration lives in `apps/worldview/app/assets/editor-webmcp.ts`; contract, read, edit, and document modules beside it own schemas and actions. The frontend-only `@harrhy/webmcp` package owns capability detection, registration, and cancellation. HTTP MCP and its SDK dependencies remain separate in `@harrhy/mcp/native`.
+Worldview is the existing browser consumer. The editor initializes its tools on normal editor startup, not only in a debug build. Registration lives in `apps/worldview/app/assets/editor-webmcp.ts`; contract, read, edit, and document modules beside it own schemas and actions. The frontend-only `@harrhy/webmcp` package owns capability detection, registration, and cancellation. HTTP MCP and its SDK dependencies remain separate in `@harrhy/mcp`.
 
 ## Existing Worldview tools
 

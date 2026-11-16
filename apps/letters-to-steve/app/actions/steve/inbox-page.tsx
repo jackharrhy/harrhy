@@ -51,7 +51,11 @@ export function SteveInboxPage(handle: Handle<SteveInboxPageProps>) {
             <a href={routes.home.href()}>letters to steve</a>
             <h1>inbox ({inbox.length})</h1>
             {centralAuth ? (
-              <form action={routes.auth.logout.href()} method="post">
+              <form
+                action={routes.auth.logout.href()}
+                method="post"
+                data-rmx-document
+              >
                 <button type="submit">sign out</button>
               </form>
             ) : null}

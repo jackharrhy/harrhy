@@ -12,6 +12,16 @@ The live server requires `AUTH_CLIENT_ID` and `AUTH_PROJECT_ID` for the register
 
 `@harrhy/burger-core` owns shared ECS/physics and protocol constants. This app owns the Pixi client, Remix UI, auth, transport, simulation authority, persisted local IDs and content, and Docker runtime. Do not identify a Burger user by display name or email: `users.auth_subject` maps a verified central subject to the stable local `users.id`. The WebSocket requires a valid session and the server enforces movement, paint and admin policy. Production DNS, provider registration, secrets, backups and cutover live outside Tea.
 
+Auth links and sign-out POST forms use `data-rmx-document` to bypass Remix frame navigation. Sign-out deletes the session, clears its cookie and returns `303 Location: /` so the browser discards authenticated game state and closes its socket. The production browser smoke checks a hydrated sign-in click through a mocked redirect to a disposable cross-origin destination, and native sign-out through to the signed-out document and player removal; it does not contact an issuer.
+
 The Bun server handles SIGTERM/SIGINT by stopping the simulation timer, closing player sockets, stopping the listener, and closing SQLite before exit. The production browser smoke sends SIGTERM with a player still connected, checks bounded exit, then verifies the fixture database contents and integrity.
 
 The game and Atlas documents use Remix CSP middleware with a per-response script nonce. Their WebSocket allowance follows the request origin. Pixi currently requires `unsafe-eval` for shader generation, so that specific allowance remains; nonce-bearing HTML is private/no-store while game assets retain their static cache policy.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

@@ -1347,7 +1347,7 @@ describe("Email template gallery", () => {
     expect(detailHtml).toContain("Plain text");
     expect(detailHtml).toContain("Remote images");
     expect(detailHtml).toContain("HTML source");
-    expect(detailHtml).toContain("&#x3C;!");
+    expect(detailHtml).toContain("&lt;!doctype html&gt;");
     expect(detailHtml).not.toContain('<div class="template-source"><!doctype');
 
     const blocked = await authGet(

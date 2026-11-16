@@ -1,6 +1,6 @@
 # TeaCMS MCP
 
-The Node app serves read-only MCP at `POST /tea/mcp` on each registered site host. It uses the official SDK-backed `@harrhy/mcp/native` boundary with stateless Streamable HTTP, including existing 2025 clients (Executor's SDK 1.32.1) and native 2026 clients. `list_published_pages` and `get_published_page` read the selected site's published content, never drafts or previews.
+The Node app serves read-only MCP at `POST /tea/mcp` on each registered site host. It uses the official SDK-backed `@harrhy/mcp` boundary with stateless Streamable HTTP, including existing 2025 clients (Executor's SDK 1.32.1) and native 2026 clients. `list_published_pages` and `get_published_page` read the selected site's published content, never drafts or previews.
 
 Without `HARRHY_CMS_MCP_TOKEN`, the endpoint returns 404. Set a long random token through your secret manager and send `Authorization: Bearer <token>`. One token grants read access to every site in this Node process. Keep it private and out of tracked files. Editor login does not authorize MCP.
 

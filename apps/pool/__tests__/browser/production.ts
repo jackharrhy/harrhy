@@ -78,7 +78,57 @@ const browser = await chromium.launch({
   ],
 });
 const peers: WebSocket[] = [];
+const mockAuth = Bun.serve({
+  hostname: "127.0.0.1",
+  port: 0,
+  fetch: () =>
+    new Response("<h1>Mock auth destination</h1>", {
+      headers: { "content-type": "text/html" },
+    }),
+});
 try {
+  const loginPage = await browser.newPage({
+    viewport: { width: 960, height: 720 },
+    deviceScaleFactor: 0.5,
+  });
+  const authorizationURL = new URL("/authorize", mockAuth.url).href;
+  await loginPage.route("**/api/account", (route) =>
+    route.fulfill({
+      json: {
+        enabled: true,
+        authenticated: false,
+        name: null,
+        owner: false,
+        csrf: null,
+      },
+    }),
+  );
+  await loginPage.route(new URL("/auth/login", baseURL).href, (route) =>
+    route.fulfill({ status: 302, headers: { location: authorizationURL } }),
+  );
+  await loginPage.goto(baseURL);
+  // Account installation reveals this link only after the game hydrates.
+  await expect(
+    loginPage.getByRole("link", { name: "Sign in", exact: true }),
+  ).toBeVisible({ timeout: 30_000 });
+  const loginRequest = loginPage.waitForRequest(
+    new URL("/auth/login", baseURL).href,
+  );
+  await loginPage.getByRole("link", { name: "Sign in", exact: true }).click();
+  const login = await loginRequest;
+  assert.equal(login.method(), "GET");
+  assert.equal(
+    login.isNavigationRequest(),
+    true,
+    "login is a document request after hydration",
+  );
+  assert.equal(login.resourceType(), "document");
+  await loginPage.waitForURL(authorizationURL);
+  await expect(
+    loginPage.getByRole("heading", { name: "Mock auth destination" }),
+  ).toBeVisible();
+  await loginPage.close();
+
   const page = await browser.newPage({
     viewport: { width: 960, height: 720 },
     deviceScaleFactor: 0.5,
@@ -319,9 +369,10 @@ try {
     "shot broadcast to opponent",
   );
   console.log(
-    "Production smoke passed: assets, browser entry/chat, anonymous snapshots, seats and shot.",
+    "Production smoke passed: native auth navigation, assets, browser entry/chat, anonymous snapshots, seats and shot.",
   );
 } finally {
+  await mockAuth.stop(true);
   for (const peer of peers) {
     if (peer.readyState === WebSocket.OPEN)
       peer.send(JSON.stringify({ type: "leave" } satisfies ClientMessage));

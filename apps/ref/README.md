@@ -64,7 +64,7 @@ CELLD_BIN=/absolute/path/to/celld npm run test:celld --workspace @harrhy/ref
 
 `POST /mcp` exposes Ref's shared boards through the official MCP SDK. Resource
 metadata is at `/.well-known/oauth-protected-resource/mcp`. The app-owned
-`app/mcp/` catalog and handlers use `@harrhy/mcp/native`; the SDK owns protocol
+`app/mcp/` catalog and handlers use `@harrhy/mcp`; the SDK owns protocol
 negotiation and transport, including existing SDK 1.32.1 clients. Requests are
 bounded to 28 MB (allowing base64 for one 20 MB image). Browser session cookies
 never authorize MCP.
@@ -165,3 +165,11 @@ For a self-hosted runtime, [Celld](https://celld.dev/docs/) accepts this Wrangle
 The root `compose.yml` builds `apps/ref/Dockerfile`, serves `ref.localhost` with a separate `ref-data` volume, and starts the disposable local issuer at `ref-auth.localhost:8786`. Both use the same OAuth flow as `npm run ref:dev`; the issuer registration is exact to this local callback. Celld stores its authoritative SQLite object store under `/app/.celld/object-store/` and replicas under `/app/.celld/state/`; preserve the entire mount for backups. The `publish-ref` workflow builds and checks the app when Ref or its build inputs change on `main`, then publishes `ghcr.io/jackharrhy/ref:latest` and a commit tag. Newport uses `:latest` and Watchtower to deploy new main builds. See the infrastructure repository's `hosts/newport/ref/README.md` for its store and deployment path.
 
 The Dockerfile pins the fork's Celld 0.6.2 image by digest. Its published binary matches the release binary used for Ref's browser and cold-restore smoke. Pass `--build-arg CELLD_IMAGE=<image>` to rehearse another runtime on an isolated store.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

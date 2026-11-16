@@ -1,4 +1,5 @@
 .git
+.worktrees
 apps/garden/vault
 apps/garden/tmp
 apps/garden/.garden

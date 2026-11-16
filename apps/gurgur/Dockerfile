@@ -1,8 +1,15 @@
 FROM node:26-bookworm AS build
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
-COPY . .
-RUN npm ci
+COPY package.json package-lock.json .npmrc ./
+COPY apps/gurgur/package.json ./apps/gurgur/
+COPY packages/gurgur-engine/package.json ./packages/gurgur-engine/
+COPY packages/gurgur-game/package.json ./packages/gurgur-game/
+RUN npm ci --workspace @harrhy/gurgur --include-workspace-root=false
+COPY tsconfig.base.json ./
+COPY apps/gurgur ./apps/gurgur
+COPY packages/gurgur-engine ./packages/gurgur-engine
+COPY packages/gurgur-game ./packages/gurgur-game
 RUN npm run build --workspace @harrhy/gurgur
 
 FROM oven/bun:1.4.4-slim AS runtime

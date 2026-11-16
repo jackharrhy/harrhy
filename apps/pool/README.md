@@ -12,8 +12,18 @@ From the Tea root, install with `npm ci`. Bun 1.4.4 is required for the authorit
 
 `@harrhy/pool`, `@harrhy/pool-simulation`, and `@harrhy/pool-protocol` hold shared rules, movement, and the versioned wire contract. The Bun app owns admission, match authority, persistence, account/owner policy, browser UI, and deployment lifecycle. The client may predict and render but cannot decide turns or results. `scripts/recordings.ts` lists, exports, and compares recordings without modifying the database.
 
+The sign-in link uses `data-rmx-document` for native OAuth redirect navigation. The production browser smoke checks a hydrated click with mocked account availability and a redirect to a disposable cross-origin destination, without contacting an issuer. Account sign-out intentionally remains a same-origin POST fetch with its CSRF header followed by a reload.
+
 The Remix canvas ref owns each client instance. Its abort signal closes the WebSocket, timers, input listeners, audio, prediction engine, and Three scene when the canvas unmounts. UI lookups and owner controls stay inside `#pool-root`; a new mount creates a new instance. The production browser smoke checks a navigation away and back, including socket closure and one remounted canvas.
 
-The private pre-update hook in `server/pre-update.ts` must succeed before a live restart. Unfinished matches, including disconnected seats, block admission drain. Never expose its loopback port through a proxy or restart over a blocked receipt. Production routing, secrets, backups, and cutover belong to Infra and are outside this workspace.
+The private pre-update hook in `server/pre-update.ts` must succeed before a live restart. Unfinished matches, including disconnected seats, block admission drain. Never expose its loopback port through a proxy or restart over a blocked receipt. A successful drain latches new-match admission until process replacement or explicit local resume. If an update aborts or its receipt is uncertain, Infra must first confirm the original process is unchanged and the update attempt has fully settled, then use `bun dist/server/pre-update.js resume` in that runtime and require the confirmed open receipt; never reopen admission while replacement remains in flight. Live matches are in memory: recordings/results and SQLite backups do not restore unfinished games. Production routing, secrets, backups, and cutover belong to Infra and are outside this workspace.
 
 The hall document uses Remix CSP middleware and a per-response nonce for its game entry. Its WebSocket allowance follows the request origin; `data:` fetch, WASM compilation, and `unsafe-eval` support the current local pool physics bundle, which calls `Function` at runtime. Nonce-bearing HTML is private and never stored; game assets retain their static cache policy.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

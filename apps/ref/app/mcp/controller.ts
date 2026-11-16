@@ -1,5 +1,5 @@
 import { createController } from "remix/router";
-import { createNativeHandler, Server } from "@harrhy/mcp/native";
+import { createNativeHandler, Server } from "@harrhy/mcp";
 import { AppRuntime, AppIdentity, McpAccess } from "../data/runtime.ts";
 import { routes } from "../routes.ts";
 import { callRefTool, toolsFor } from "./tools.ts";

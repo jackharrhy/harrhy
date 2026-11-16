@@ -1,6 +1,7 @@
 import { get, route } from "remix/routes";
 
 export const routes = route({
+  widget: get("/_atlas/widgets/:digest.js"),
   home: get("/"),
   search: get("/search/"),
   space: get("/spaces/:space/"),

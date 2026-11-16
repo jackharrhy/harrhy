@@ -527,7 +527,7 @@ export const BurgerTools = clientEntry(
                     {windows[id]?.title ?? id[0].toUpperCase() + id.slice(1)}
                   </button>
                 ))}
-                <form method="post" action="/auth/logout">
+                <form method="post" action="/auth/logout" data-rmx-document>
                   <button type="submit">Sign out</button>
                 </form>
               </div>
