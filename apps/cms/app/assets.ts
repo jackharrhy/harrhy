@@ -13,6 +13,7 @@ export const assets = createAssetServer({
 
   mounts: {
     "/cms": "apps/cms/app",
+    "/operator": "apps/cms/operator",
     "/rich-text": "packages/rich-text",
     "/ui": "packages/ui",
     "/sites": "apps/cms/sites",
@@ -22,6 +23,7 @@ export const assets = createAssetServer({
     "apps/cms/app/routes.ts",
     "apps/cms/app/ui/admin-theme.ts",
     "apps/cms/app/**/public/**",
+    "apps/cms/operator/public/**",
     "apps/cms/sites/*/app/public/**",
   ],
   allowPackages: [

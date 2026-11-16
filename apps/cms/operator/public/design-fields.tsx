@@ -7,7 +7,7 @@ const visibilityOptions = [
   { value: "draft", label: "Draft" },
 ] as const;
 
-export function DesignVisibilityField(_handle: Handle) {
+function DesignVisibilityField(_handle: Handle) {
   return () => (
     <Field id="design-visibility" label="Visibility">
       <Select
