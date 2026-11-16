@@ -164,7 +164,7 @@ For a self-hosted runtime, [Celld](https://celld.dev/docs/) accepts this Wrangle
 
 The root `compose.yml` builds `apps/ref/Dockerfile`, serves `ref.localhost` with a separate `ref-data` volume, and starts the disposable local issuer at `ref-auth.localhost:8786`. Both use the same OAuth flow as `npm run ref:dev`; the issuer registration is exact to this local callback. Celld stores its authoritative SQLite object store under `/app/.celld/object-store/` and replicas under `/app/.celld/state/`; preserve the entire mount for backups. The `publish-ref` workflow builds and checks the app when Ref or its build inputs change on `main`, then publishes `ghcr.io/jackharrhy/ref:latest` and a commit tag. Newport uses `:latest` and Watchtower to deploy new main builds. See the infrastructure repository's `hosts/newport/ref/README.md` for its store and deployment path.
 
-The Dockerfile pins the fork's Celld 0.6.2 image by digest. Its published binary matches the release binary used for Ref's browser and cold-restore smoke. Pass `--build-arg CELLD_IMAGE=<image>` to rehearse another runtime on an isolated store.
+The Dockerfile pins the qualified Celld 0.6.3 fork by digest, matching the repository's [common runtime record](../../docs/celld-runtime.md). The earlier 0.6.2 release passed Ref's browser and cold-restore smoke; the 0.6.3 qualification does not claim that full acceptance was repeated. Pass `--build-arg CELLD_IMAGE=<image>` to rehearse another runtime on an isolated store.
 
 ### Selected Docker inputs
 

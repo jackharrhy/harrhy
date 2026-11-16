@@ -81,9 +81,10 @@ combine app stores or redesign authority during this consolidation.
 
 ## Disposable review
 
-From this app directory, using the Celld 0.6.2 fork pinned by Ref:
+From this app directory, using the qualified Celld 0.6.3 fork in the [common runtime record](../../docs/celld-runtime.md). Verify an extracted native binary before use:
 
 ```sh
+node ../../scripts/celld-runtime.mjs verify /absolute/path/to/celld
 CELLD_BIN=/absolute/path/to/celld node scripts/review.mjs
 ```
 

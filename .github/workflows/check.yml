@@ -120,30 +120,24 @@ jobs:
       - if: env.RUN_INTEGRATION == 'true' && steps.select.outputs.radio == 'true'
         run: |
           set -eu
-          radio_celld_image=$(sed -n 's/^ARG CELLD_IMAGE=//p' apps/radio/Dockerfile)
-          case "$radio_celld_image" in
-            ghcr.io/jackharrhy/celld:?* | ghcr.io/jackharrhy/celld@sha256:?*) ;;
-            *) echo "Radio Dockerfile must select a published jackharrhy/celld image" >&2; exit 1 ;;
-          esac
+          radio_celld_image=$(node scripts/celld-runtime.mjs image)
           docker pull "$radio_celld_image"
           radio_celld_container=$(docker create "$radio_celld_image" --version)
           trap 'docker rm "$radio_celld_container" > /dev/null' EXIT
           docker cp "$radio_celld_container:/usr/local/bin/celld" "$RUNNER_TEMP/celld"
           chmod +x "$RUNNER_TEMP/celld"
+          node scripts/celld-runtime.mjs verify "$RUNNER_TEMP/celld"
           CELLD_BIN="$RUNNER_TEMP/celld" npm run test:celld --workspace @harrhy/radio -- --output "$RUNNER_TEMP/radio-celld-smoke.json"
       - if: env.RUN_INTEGRATION == 'true' && steps.select.outputs.ref == 'true'
         run: |
           set -eu
-          ref_celld_image=$(sed -n 's/^ARG CELLD_IMAGE=//p' apps/ref/Dockerfile)
-          case "$ref_celld_image" in
-            ghcr.io/jackharrhy/celld:?* | ghcr.io/jackharrhy/celld@sha256:?*) ;;
-            *) echo "Ref Dockerfile must select a published jackharrhy/celld image" >&2; exit 1 ;;
-          esac
+          ref_celld_image=$(node scripts/celld-runtime.mjs image)
           docker pull "$ref_celld_image"
           ref_celld_container=$(docker create "$ref_celld_image" --version)
           trap 'docker rm "$ref_celld_container" > /dev/null' EXIT
           docker cp "$ref_celld_container:/usr/local/bin/celld" "$RUNNER_TEMP/ref-celld"
           chmod +x "$RUNNER_TEMP/ref-celld"
+          node scripts/celld-runtime.mjs verify "$RUNNER_TEMP/ref-celld"
           CELLD_BIN="$RUNNER_TEMP/ref-celld" npm run test:celld --workspace @harrhy/ref -- --output "$RUNNER_TEMP/ref-celld-smoke.json"
       - if: env.RUN_INTEGRATION == 'true' && steps.select.outputs.maps_hosted == 'true'
         run: npm run test:hosted --workspace @harrhy/worldview -- --output "$RUNNER_TEMP/maps-hosted-smoke.json"

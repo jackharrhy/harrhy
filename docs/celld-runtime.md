@@ -2,29 +2,43 @@
 
 Harrhy uses one qualified Celld fork artifact across containerized apps and native previews. The maintained fork follows the latest qualified upstream release with owned patches in linear history, without merge commits. Historical refs and disposable upgrade fixtures are not running-version exceptions.
 
-## Current inventory
+## Authoritative selection
 
-Observed on 16 November 2026, before the proposed 0.6.3/P-256 upgrade:
+[`celld.json`](../celld.json) records the immutable image, upstream version/revision, exact fork revision, platform and extracted native binary SHA-256. The qualified selection is upstream 0.6.3 with fork release `0.6.3-jh.1`, source `140fe0e00254afd228d4e8e17c33de54c4de4a70`. The release branch/tag, not historical fork `origin/main`, identifies this linear release.
+
+Docker cannot read a local JSON file in `FROM`, so four Dockerfiles repeat its image default. The unconditional CI test `scripts/ci/__tests__/celld-fleet.test.mjs` rejects missing, duplicate or divergent defaults and missing provenance labels. Explicit build overrides are only for isolated compatibility rehearsals, not persistent alternate fleet versions.
 
 <!-- prettier-ignore -->
-| Consumer | Current selection | Upgrade boundary |
-| --- | --- | --- |
-| Ref | Dockerfile `CELLD_IMAGE` digest | App image and runtime |
-| Radio | Dockerfile `CELLD_IMAGE` digest | App image and runtime |
-| Worldview UI | Dockerfile `CELLD_IMAGE` digest | App image and runtime; add missing provenance label |
-| Maps collaboration | Dockerfile `CELLD_IMAGE` digest | App image and runtime |
-| Native 4orm preview | Operator-managed executable selected by `CELLD_BIN` | Preview supervisor and its native tool binary |
-| Ref and Radio integration checks | CI extracts their Dockerfile pins; runners also accept native binary paths | CI extraction and local test instructions |
-| 4orm acceptance runners | `CELLD_BIN` or private candidate `tools/celld` paths | Shared native artifact mapping; keep disposable stores isolated |
+| Consumer | Selection and provenance |
+| --- | --- |
+| Ref | Dockerfile default; `dev.jackharrhy.ref.celld-image` label |
+| Radio | Dockerfile default; `dev.jackharrhy.radio.celld-image` label |
+| Worldview UI | Dockerfile default; `dev.jackharrhy.worldview.celld-image` label |
+| Maps collaboration | Dockerfile default; `dev.jackharrhy.maps-collaboration.celld-image` label |
+| Native 4orm preview | Operator-managed `CELLD_BIN`, verified against the common binary SHA-256 |
+| Ref and Radio CI integration | Extract the common image, verify its binary SHA-256, then run isolated checks |
 
-The four Dockerfiles select `ghcr.io/jackharrhy/celld@sha256:0d63d5e360981f9e779c44b144abddb4ca174fc37630a80da7ddc57670c3f970`. Infra reported all four live app runtimes and the native 4orm preview on Celld 0.6.2. The native binary's SHA-256 was `4fb58268c1b89a2452d486615442adabb13fc0a80d4078bc2a73cafc19ad2a8b`. Version output alone does not distinguish fork patches.
+## Native use
 
-The 0.6.3 fork and raw P-256 repair are being qualified separately. No replacement artifact is selected here yet. A fresh isolated 4orm probe still reproduced the old binary's unsupported raw-key import and incorrect 91-byte raw public-key export; this is not evidence against an untested replacement.
+From the repository root:
 
-## Upgrade scope
+```sh
+image=$(node scripts/celld-runtime.mjs image)
+container=$(docker create --platform linux/amd64 "$image" --version)
+docker cp "$container:/usr/local/bin/celld" /absolute/scratch/celld
+docker rm "$container"
+chmod +x /absolute/scratch/celld
+node scripts/celld-runtime.mjs verify /absolute/scratch/celld
+```
 
-Keep one small authoritative artifact record and check Dockerfile defaults against it in CI. CI binary extraction and native preview instructions must use the same selection. Record the qualified fork source, upstream version, immutable image digest and native binary identity together rather than inferring identity from `celld --version`.
+`scripts/celld-runtime.mjs` also exports `readCelldRuntime()` and `verifyCelldBinary(path)` for native runners. Resolve the record relative to that module, not a caller's working directory. Verify before starting a runtime or writing its store. Do not substitute a host-built development binary: the first candidate required newer glibc than the apps' Bookworm base. The final extracted release binary passed those compatibility checks without changing app bases.
 
-Before consuming a replacement, obtain fork qualification results and the published immutable artifact from the fork owner. Keep normal app build and publish workflows; do not introduce a separate build platform. Coordinate actual container and native-preview adoption with the runtime operator, then verify the running binaries and app image provenance. A temporary rollout must converge to the same version, not become persistent mixed-version operation.
+## Qualification and rollout boundary
 
-Compatibility and upgrade tests may explicitly use another binary against disposable data. Never point those tests at the human-review cohort. Preserve the 4orm fixture issuer and identity links; a Celld upgrade does not authorize a Python cutover, cohort reseed or Auth migration.
+On 16 November 2026 the fork owner declared this exact artifact READY after release CI `43932856214` and exact-binary Worker EC/RFC crypto, storage/runtime and isolated 4orm push qualification. Independent offline all-four app-image checks on binary `43072e8ecb4a8aa60e91f91eac246d9b087b013f7ef2a1e35bd0556aabc0dd40` passed default-command diagnose/deploy/start, HTTP endpoints, exact built asset bodies, compiler transform, SQLite write/reopen and same-container restart. Ref served health/readiness and denied unauthenticated MCP; Worldview served viewer/editor; collaboration served health; Radio served its root.
+
+These bounded checks are not full Ref browser/archive acceptance, Radio room/WebSocket/audio/SIGKILL acceptance, or collaboration operation/WebSocket persistence acceptance. Earlier README receipts for 0.6.2 remain historical evidence, not repeated 0.6.3 results.
+
+Source adoption and normal image publication are not evidence of runtime adoption. The runtime operator coordinates container and native-preview convergence and verifies actual binary hashes plus app provenance. Before rollout, observed fleet runtimes were 0.6.2 with binary SHA-256 `4fb58268c1b89a2452d486615442adabb13fc0a80d4078bc2a73cafc19ad2a8b`. Do not leave a persistent mixed-version fleet.
+
+Preserve authoritative stores, replica boundaries and existing recovery procedures; this upgrade does not require reseeding or rebuilding databases. Compatibility fixtures use disposable data, never the human-review cohort. Preserve the 4orm issuer `https://newport.hedgehog-python.ts.net:8565`; no Python cutover, Auth migration or identity relinking is authorized by this upgrade.

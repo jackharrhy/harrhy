@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
     paths:
+      - celld.json
       - .dockerignore
       - .nvmrc
       - package.json
