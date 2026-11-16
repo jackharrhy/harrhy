@@ -1,7 +1,7 @@
 import { css, type Handle } from "remix/component";
 import { ButtonLink, Inline } from "@harrhy/ui/native";
 import { Select } from "@harrhy/ui/interactive";
-import type { ThemeName } from "./themes.ts";
+import { themeOptions, type ThemeName } from "./themes.ts";
 
 function setThemeUrl(theme: ThemeName) {
   const url = new URL(location.href);
@@ -44,11 +44,7 @@ export function WorkbenchHeader(
           <Select
             id="workbench-theme"
             defaultValue={theme}
-            options={[
-              { value: "clean", label: "Clean" },
-              { value: "tactile", label: "Radio" },
-              { value: "brutalist", label: "Artbin" },
-            ]}
+            options={themeOptions}
             onValueChange={(value) => {
               const next = value as ThemeName;
               setThemeUrl(next);
