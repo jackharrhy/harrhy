@@ -4,11 +4,12 @@ Status: faithful-parity rework in progress. Earlier fixture preview and tests ar
 POC evidence, not migration acceptance. See `docs/parity.md`.
 
 Development source is now merged into Harrhy `main` at `apps/4orm` (PR143).
-The preserved private runtime still uses the primary checkout on its pushed
-`work/fourm-parity` checkpoint; do not reset that checkout or replace its ignored
-state as a source-sync shortcut. The former standalone candidate worktree is
-retired. This is still the same Celld-native app, not a Python proxy or a
-production cutover.
+Development and the preserved private runtime use the dedicated
+`.worktrees/fourm-parity` checkout on `work/fourm-parity`, reconciled onto main.
+Its ignored review state was relocated without reseeding; do not replace it as a
+source-sync shortcut. Coordinate source changes consumed by the running preview
+with its runtime operator. This remains the same Celld-native app, not a Python
+proxy or a production cutover.
 
 An isolated native port of the Python community app. Remix owns HTTP routes and
 server-rendered UI; SQLite Durable Objects own members, content, invitations and
