@@ -26,6 +26,42 @@ adds client/request IDs, raw scopes, callback URLs, OAuth state, tokens, cookies
 or user details. These codes diagnose future failures; they cannot reconstruct
 an earlier request whose metadata is unavailable, and do not change authorization.
 
+### DCR scope vocabulary
+
+ZITADEL validates role scopes against the OAuth client's own project before
+creating its authorization request. A DCR client can therefore lose a requested
+resource permission even when its audience points to the correct resource project.
+The DCR project's vocabulary must include both `delegatedRoles` and
+`delegatedPermissions` from the reviewed application registry. Defining these keys
+permits scope requests; it does not assign a user grant or bypass consent, resource
+authorization, or the app's permission-family policy.
+
+[`scripts/configure-dcr.mjs`](scripts/configure-dcr.mjs) is the canonical add-only
+recipe. Supply the operator-reviewed effective registry explicitly, including any
+approved runtime overlay, the exact native `ZITADEL DCR` project, and an explicit
+credential authorized to manage that project's role definitions. There is no
+management-reader, bootstrap-key, or host-secret-path fallback. From this workspace:
+
+```sh
+node scripts/configure-dcr.mjs \
+  --api-origin "$HARRHY_AUTH_API_ORIGIN" \
+  --organization-id "$HARRHY_AUTH_ORGANIZATION_ID" \
+  --applications-file "$HARRHY_AUTH_APPLICATIONS_FILE" \
+  --project-id "$HARRHY_AUTH_DCR_PROJECT_ID" \
+  --credential-file "$HARRHY_AUTH_DCR_CREDENTIAL_FILE" \
+  --role boards-read --role boards-write
+```
+
+The default is a read-only plan. Repeat with `--apply` only after reviewing the
+missing keys. `--role` restricts the operation to declared keys; omit it to plan
+the complete deduplicated delegated vocabulary. Inventory is paginated, retries
+re-read existing definitions, and successful application verifies every prior and
+selected key remains present. It never removes roles, creates projects or clients,
+changes DCR security mode, or creates user grants. An uncertain write is not
+replayed automatically; inspect a new plan before retrying. Already-created
+authorization requests retain their processed scopes and must not be mistaken
+for proof of the repaired vocabulary.
+
 ### Real local sign-in
 
 The opt-in profile in `local-real/` uses pinned ZITADEL 4.20.0 and PostgreSQL 17 images, this Auth UI, and the actual Artbin OAuth callback. It creates one synthetic organization user and an Artbin member grant. Each worktree gets a separate Compose project and database, isolated from production; `@harrhy/dev-auth` remains the faster in-memory fixture for narrow checks. Docker is needed only for the provider and database. Node 26 and the repository dependencies run the two apps on loopback.
