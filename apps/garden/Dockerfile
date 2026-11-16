@@ -9,6 +9,7 @@ FROM platformatic/node-caged:26-slim
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
 WORKDIR /app
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY tsconfig.base.json ./tsconfig.base.json
 COPY apps/garden ./apps/garden
 COPY packages/ui ./packages/ui
 ENV NODE_ENV=production HOST=0.0.0.0 PORT=4322 GARDEN_CONTENT_PATH=/app/data/published
