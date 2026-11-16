@@ -1,5 +1,6 @@
 import { css } from "remix/component";
 import { composeTheme, sluggersTheme } from "@harrhy/ui/theme";
+import { originalBlue } from "../original.ts";
 import type { LabConcept } from "./types.ts";
 export const pennant: LabConcept = {
   id: "pennant",
@@ -11,7 +12,7 @@ export const pennant: LabConcept = {
     "Layered cobalt panels, blue chrome headers, red selection rails and mint/coral results.",
   tokens: composeTheme(sluggersTheme, {
     ink: "#ffffff",
-    muted: "#e0edff",
+    muted: "#eaf2ff",
     accent: "#fff1a1",
     onAccent: "#173866",
     danger: "#ffd7df",
@@ -27,22 +28,22 @@ export const pennant: LabConcept = {
     focus: "#fff1a1",
     buttonImage: "linear-gradient(rgb(255 255 255 / .10),rgb(255 255 255 / 0))",
     buttonShadow: "0 2px 3px rgb(0 0 0 / .12)",
-    canvas: "#1552ad",
-    surface: "#245b9e",
-    elevated: "#204c87",
-    tableSurface: "#265da2",
-    tableHeader: "#174683",
+    canvas: originalBlue[600],
+    surface: originalBlue[600],
+    elevated: originalBlue[700],
+    tableSurface: originalBlue[600],
+    tableHeader: originalBlue[700],
     selectedSurface: "#9a303c",
     tableBorder: "#759cca",
-    dangerSurface: "#245b9e",
-    successSurface: "#245b9e",
+    dangerSurface: originalBlue[600],
+    successSurface: originalBlue[600],
     hoverSurface: "#9a303c",
-    disabledSurface: "#204c87",
+    disabledSurface: originalBlue[700],
   }),
   parts: {
     contentColumns: "minmax(0,1.3fr) minmax(360px,1fr)",
-    panelImage: "linear-gradient(#2869ad, #204e8c)",
-    headingImage: "linear-gradient(#2d76bd, #21569a)",
+    panelImage: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
+    headingImage: `linear-gradient(${originalBlue[400]}, ${originalBlue[600]})`,
     headingInk: "#ffffff",
     panelEdge: "2px solid #89b6e8",
     cardRadius: "12px",
@@ -52,16 +53,15 @@ export const pennant: LabConcept = {
     grass: "#398466",
     infield: "#aa8056",
     line: "#e1f4d0",
-    marker: "#245b9e",
+    marker: originalBlue[600],
     portraitSize: "32px",
   },
   recipe: css({
-    background: "linear-gradient(#246bb3, #174a9e 60%, #123e84)",
     "& [data-lab-title]": { fontFamily: "SluggersHappiness, sans-serif" },
     "& [data-lab-panel]": { boxShadow: "0 5px 12px rgb(0 22 69 / .18)" },
     "& [data-roster-card]": {
       borderRadius: "10px",
-      background: "linear-gradient(#356fb1,#254f8c)",
+      background: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
     },
   }),
 };

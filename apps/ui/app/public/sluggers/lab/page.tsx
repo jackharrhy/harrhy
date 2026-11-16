@@ -18,6 +18,7 @@ import {
   BaseballScoreboard,
   baseballFieldStyles,
 } from "@harrhy/ui/baseball";
+import { originalBackdrop, originalBlue } from "./original.ts";
 import { concepts } from "./concepts/index.ts";
 import { labPartStyles } from "./concepts/types.ts";
 import {
@@ -296,6 +297,7 @@ export const SluggersLab = clientEntry(
             labPartStyles(concept.parts),
             baseballFieldStyles(concept.field),
             labStyles,
+            originalBackdrop,
             concept.recipe,
           ]}
         >
@@ -712,7 +714,7 @@ const labStyles = css({
     fontSize: "12px",
   },
   "& [data-lab-toolbar]": {
-    background: "#152c4b",
+    background: originalBlue[600],
     color: "#fff",
     padding: "12px 24px",
     display: "flex",
