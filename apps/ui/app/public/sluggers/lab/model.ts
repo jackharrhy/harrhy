@@ -100,6 +100,22 @@ export function standings(corpus: LabCorpus) {
     })
     .toSorted((a, b) => b.wins - a.wins || b.difference - a.difference);
 }
+export function matchResult(
+  match: LabMatch,
+  teamId: number,
+): "Win" | "Loss" | "Draw" | null {
+  if (
+    (teamId !== match.awayId && teamId !== match.homeId) ||
+    match.state !== "finished" ||
+    match.awayScore == null ||
+    match.homeScore == null
+  )
+    return null;
+  const own = teamId === match.awayId ? match.awayScore : match.homeScore;
+  const other = teamId === match.awayId ? match.homeScore : match.awayScore;
+  return own > other ? "Win" : own < other ? "Loss" : "Draw";
+}
+
 export function recordedTotal(values: (number | null | undefined)[]) {
   return values.length && values.every((n) => n != null)
     ? values.reduce<number>((a, b) => a + (b ?? 0), 0)

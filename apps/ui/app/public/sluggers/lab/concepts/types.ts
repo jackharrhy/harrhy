@@ -29,7 +29,7 @@ export function labPartStyles(parts: LabPartTokens) {
 export interface LabConcept {
   id: string;
   name: string;
-  parent?: "Pennant Park" | "Dugout Link";
+  parent?: "Pennant Broadcast" | "Dugout Frost";
   summary: string;
   source: string;
   changes: string;

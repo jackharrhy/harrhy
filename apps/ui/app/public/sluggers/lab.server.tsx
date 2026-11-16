@@ -72,7 +72,9 @@ export function createSluggersLabRoutes(
           <body style={{ margin: 0 }}>
             <SluggersLab
               corpus={corpus}
-              initialConcept={url.searchParams.get("concept") ?? "pennant"}
+              initialConcept={
+                url.searchParams.get("concept") ?? "broadcast-prism"
+              }
               initialScreen={url.searchParams.get("screen") ?? "matchday"}
             />
           </body>
