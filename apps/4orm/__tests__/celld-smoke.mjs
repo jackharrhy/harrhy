@@ -11,10 +11,15 @@ import { transferArchive } from "../scripts/archive.mjs";
 import { createInvite, completeInvite } from "./enrollment-browser.mjs";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
-if (!process.env.CELLD_BIN) throw new Error("Set CELLD_BIN to the canonical Celld binary");
+if (!process.env.CELLD_BIN)
+  throw new Error("Set CELLD_BIN to the canonical Celld binary");
 await verifyCelldBinary(process.env.CELLD_BIN);
 const state = await mkdtemp(join(tmpdir(), "fourm-celld-smoke-"));
-const output = join(root, ".review/evidence", new Date().toISOString().replace(/[:.]/g, ""));
+const output = join(
+  root,
+  ".review/evidence",
+  new Date().toISOString().replace(/[:.]/g, ""),
+);
 await mkdir(output, { recursive: true });
 const free = () =>
   new Promise((accept, reject) => {
@@ -27,8 +32,12 @@ const free = () =>
   });
 const [port, issuerPort, providerPort] = await Promise.all([
   process.env.FOURM_SMOKE_PORT ? Number(process.env.FOURM_SMOKE_PORT) : free(),
-  process.env.FOURM_SMOKE_ISSUER_PORT ? Number(process.env.FOURM_SMOKE_ISSUER_PORT) : free(),
-  process.env.FOURM_SMOKE_PROVIDER_PORT ? Number(process.env.FOURM_SMOKE_PROVIDER_PORT) : free(),
+  process.env.FOURM_SMOKE_ISSUER_PORT
+    ? Number(process.env.FOURM_SMOKE_ISSUER_PORT)
+    : free(),
+  process.env.FOURM_SMOKE_PROVIDER_PORT
+    ? Number(process.env.FOURM_SMOKE_PROVIDER_PORT)
+    : free(),
 ]);
 const origin = process.env.FOURM_SMOKE_ORIGIN ?? `http://127.0.0.1:${port}`;
 const environment = {
@@ -38,7 +47,8 @@ const environment = {
   FOURM_REVIEW_ISSUER_PORT: String(issuerPort),
   FOURM_REVIEW_PROVIDER_PORT: String(providerPort),
   FOURM_REVIEW_ORIGIN: origin,
-  FOURM_REVIEW_ISSUER: process.env.FOURM_SMOKE_ISSUER ?? `http://127.0.0.1:${issuerPort}`,
+  FOURM_REVIEW_ISSUER:
+    process.env.FOURM_SMOKE_ISSUER ?? `http://127.0.0.1:${issuerPort}`,
   FOURM_REVIEW_USER: "jane",
 };
 let runner;
@@ -56,9 +66,13 @@ async function start() {
     if (runner.exitCode !== null) throw new Error("Review runner exited");
     try {
       const result = JSON.parse(
-        await readFile(join(environment.FOURM_REVIEW_STATE, "runtime.json"), "utf8"),
+        await readFile(
+          join(environment.FOURM_REVIEW_STATE, "runtime.json"),
+          "utf8",
+        ),
       );
-      if (result.status === "RUNNING" && (await fetch(origin + "/ready")).ok) return;
+      if (result.status === "RUNNING" && (await fetch(origin + "/ready")).ok)
+        return;
     } catch {}
     await delay(150);
   }
@@ -75,7 +89,10 @@ async function stop() {
     }),
   ]);
   const report = JSON.parse(
-    await readFile(join(environment.FOURM_REVIEW_STATE, "runtime.json"), "utf8"),
+    await readFile(
+      join(environment.FOURM_REVIEW_STATE, "runtime.json"),
+      "utf8",
+    ),
   );
   for (const pid of report.pids) {
     let alive = true;
@@ -143,9 +160,11 @@ try {
     0,
     "Actual browser smoke failed",
   );
-  const receipt = JSON.parse(await readFile(join(output, "browser.json"), "utf8"));
-  const publicDirectory = await fetch(origin + "/world/community").then((response) =>
-    response.json(),
+  const receipt = JSON.parse(
+    await readFile(join(output, "browser.json"), "utf8"),
+  );
+  const publicDirectory = await fetch(origin + "/world/community").then(
+    (response) => response.json(),
   );
   assert.equal(publicDirectory.members.length, 2);
   assert.deepEqual(
@@ -163,8 +182,14 @@ try {
       authorizationReceived: false,
     },
   );
-  assert.equal((await fetch(origin + "/world/community", { method: "POST" })).status, 405);
-  assert.equal((await fetch(origin + "/internal/auth/enrollments/unknown")).status, 401);
+  assert.equal(
+    (await fetch(origin + "/world/community", { method: "POST" })).status,
+    405,
+  );
+  assert.equal(
+    (await fetch(origin + "/internal/auth/enrollments/unknown")).status,
+    401,
+  );
   const media = await fetch(origin + receipt.results[0].mediaPath);
   const bytes = Buffer.from(await media.arrayBuffer());
   assert.ok(bytes.length > 0);
@@ -227,16 +252,27 @@ try {
   await rm(join(state, "runtime.json"));
   await start();
   for (const result of receipt.results) {
-    const thread = await fetch(origin + result.threadPath).then((response) => response.text());
+    const thread = await fetch(origin + result.threadPath).then((response) =>
+      response.text(),
+    );
     assert.ok(thread.includes("A durable reply."));
-    assert.equal((await fetch(origin + `/u/jane/p/${result.privatePage}`)).status, 404);
+    assert.equal(
+      (await fetch(origin + `/u/jane/p/${result.privatePage}`)).status,
+      404,
+    );
   }
   assert.deepEqual(
-    Buffer.from(await (await fetch(origin + receipt.results[0].mediaPath)).arrayBuffer()),
+    Buffer.from(
+      await (await fetch(origin + receipt.results[0].mediaPath)).arrayBuffer(),
+    ),
     bytes,
   );
   assert.equal(
-    (await fetch(origin + "/world/community").then((response) => response.json())).members.length,
+    (
+      await fetch(origin + "/world/community").then((response) =>
+        response.json(),
+      )
+    ).members.length,
     2,
   );
   await stop();
@@ -258,7 +294,9 @@ try {
     token: access,
   });
   assert.deepEqual(
-    Buffer.from(await (await fetch(origin + receipt.results[0].mediaPath)).arrayBuffer()),
+    Buffer.from(
+      await (await fetch(origin + receipt.results[0].mediaPath)).arrayBuffer(),
+    ),
     bytes,
   );
   const invitation = await createInvite(origin);
@@ -273,7 +311,10 @@ try {
     invite: invitation,
     output,
   });
-  await writeFile(join(output, "enrollment.json"), JSON.stringify(enrollment, null, 2));
+  await writeFile(
+    join(output, "enrollment.json"),
+    JSON.stringify(enrollment, null, 2),
+  );
   success = true;
   await writeFile(
     join(output, "celld.json"),
@@ -295,7 +336,9 @@ try {
       2,
     ),
   );
-  console.log(`PASS: real Celld/browser and cold persistence; evidence ${output}`);
+  console.log(
+    `PASS: real Celld/browser and cold persistence; evidence ${output}`,
+  );
 } finally {
   try {
     await stop();
@@ -303,6 +346,7 @@ try {
     await writeFile(join(output, "runtime.log"), logs);
   }
   if (success) await rm(state, { recursive: true, force: true });
-  if (success && restoredState) await rm(restoredState, { recursive: true, force: true });
+  if (success && restoredState)
+    await rm(restoredState, { recursive: true, force: true });
   await rm(tokenPath, { force: true });
 }
