@@ -132,6 +132,28 @@ test("Clean is scoped to admin and visual tools, not website content", async ({
       path: `${capture}/visual-tools-390.png`,
       fullPage: true,
     });
+  await page.locator("[data-preview-key]").first().click();
+  const dialog = page.getByRole("dialog", { name: "Edit this block" });
+  await expect(dialog.getByLabel("Block text")).toBeFocused();
+  for (const width of [1440, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    const bounds = await dialog.boundingBox();
+    expect(bounds).not.toBeNull();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(width);
+    expect(
+      await dialog.evaluate((element) =>
+        getComputedStyle(element).getPropertyValue("--hui-canvas").trim(),
+      ),
+    ).toBe("#f6f7f8");
+    if (capture)
+      await page.screenshot({
+        path: `${capture}/visual-dialog-${width}.png`,
+        fullPage: true,
+      });
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).not.toBeVisible();
   await visitor.close();
   expect(errors).toEqual([]);
 });
