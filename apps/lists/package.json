@@ -39,9 +39,9 @@
     "nodemailer": "^10.5.0",
     "remix": "3.2.0",
     "sharp": "^0.35.5",
-    "shiki": "^4.6.0",
     "sns-validator": "^0.3.5",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@harrhy/ui": "*"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "2.4.0",

@@ -103,10 +103,19 @@ test("highlights fenced code after sanitizing and tolerates unknown languages", 
   const result = await renderMarkdown(
     '```typescript\nconst answer: number = 42;\n```\n\n```not-a-real-language\n<safe>\n```\n\n<span style="color:red">author</span>',
   );
-  assert.match(result.html, /class="shiki/);
+  assert.match(result.html, /class="hui-highlight github-light/);
   assert.match(result.html, /style="color:/);
   assert.match(result.html, /(?:&lt;|&#x3C;)safe(?:&gt;|>)/);
   assert.match(result.html, /<span>author<\/span>/);
   assert.doesNotMatch(result.html, /style="color:red"/);
   assert.match(result.text, /const answer: number = 42;/);
+});
+
+test("highlighted fenced code retains final newline, tabs and UTF-16 text", async () => {
+  const source = 'const fox = "🦊";\n\tconsole.log(fox);\n';
+  const result = await renderMarkdown("```typescript\n" + source + "```\n");
+  assert.match(result.html, /class="language-typescript"/);
+  // This source contains no HTML metacharacters; remove presentation spans only.
+  const code = result.html.match(/<code[^>]*>([\s\S]*?)<\/code>/)?.[1];
+  assert.equal(code?.replace(/<\/?span[^>]*>/g, ""), source);
 });

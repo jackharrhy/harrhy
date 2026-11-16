@@ -16,10 +16,18 @@ On SIGTERM or SIGINT, the service stops accepting HTTP requests, cancels running
 
 `GET /api/maps/:mapId/checkpoints` lists authoritative map-cell checkpoints for project members; editors can create one with `POST` on the same path. `GET /api/maps/:mapId/checkpoints/:checkpointId` reads its original source for members.
 
-The MCP endpoint advertises `tea_maps_*` tools and returns Tea `/projects/:id` links from browser grants. It advertises the Auth issuer and requires a human Maps administrator with the project audience, `admin` role, and explicit role scopes. The Auth subject must already match a local Maps administrator. The app owns its ten tool schemas and project authorization; `@harrhy/mcp/native` provides the official SDK's modern and stateless legacy Streamable HTTP transport. Requests are bounded to 3 MiB; batch requests are rejected. GET remains unsupported. Tests exercise the existing Executor SDK 1.32.1 and the current SDK pinned to the modern protocol without changing account authorization.
+The MCP endpoint advertises `tea_maps_*` tools and returns Tea `/projects/:id` links from browser grants. It advertises the Auth issuer and requires a human Maps administrator with the project audience, `admin` role, and explicit role scopes. The Auth subject must already match a local Maps administrator. The app owns its ten tool schemas and project authorization; `@harrhy/mcp` provides the official SDK's modern and stateless legacy Streamable HTTP transport. Requests are bounded to 3 MiB; batch requests are rejected. GET remains unsupported. Tests exercise the existing Executor SDK 1.32.1 and the current SDK pinned to the modern protocol without changing account authorization.
 
 ## Database format
 
 The user table stores the Jack Auth subject in `auth_subject`. Startup rejects databases without that column. Back up the database and blobs together using a consistent SQLite snapshot. Browser sessions expire within an hour and never outlive their central identity proof.
 
 Tea issues `tea_maps_session`, `tea_maps_automation`, and `tea_maps_oauth` cookies.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

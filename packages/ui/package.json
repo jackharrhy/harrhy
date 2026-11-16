@@ -11,13 +11,21 @@
     "./styles": "./styles.ts",
     "./theme": "./theme.ts",
     "./recipes": "./recipes.ts",
-    "./baseball": "./baseball.tsx"
+    "./baseball": "./baseball.tsx",
+    "./highlight": "./highlight.ts",
+    "./rehype-highlight": "./rehype-highlight.ts"
   },
   "scripts": {
     "check": "tsrs --noEmit && node --test __tests__/*.test.mjs"
   },
   "dependencies": {
+    "@pierre/highlights": "0.5.1",
     "@remix-run/ui": "0.13.1",
     "remix": "3.2.0"
+  },
+  "devDependencies": {
+    "@types/hast": "^3.0.5",
+    "esbuild": "0.28.2",
+    "miniflare": "5.20261110.2-beta"
   }
 }

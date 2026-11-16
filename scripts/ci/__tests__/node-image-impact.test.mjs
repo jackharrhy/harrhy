@@ -185,7 +185,7 @@ test("malformed lock data conservatively checks every image through the entry po
   );
 });
 
-test("repository Dockerfiles and lock preserve whole-context inputs and actual UI consumers", () => {
+test("repository selected Dockerfiles check actual UI consumers without unrelated apps", () => {
   const root = new URL("../../../", import.meta.url);
   const lock = JSON.parse(
     readFileSync(new URL("package-lock.json", root), "utf8"),
@@ -203,6 +203,6 @@ test("repository Dockerfiles and lock preserve whole-context inputs and actual U
       afterLock: lock,
       dockerfiles,
     }),
-    ordered(...broad, "auth", "artbin"),
+    ordered("auth", "artbin"),
   );
 });

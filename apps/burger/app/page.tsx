@@ -40,7 +40,7 @@ export function BurgerPage(handle: Handle<{ nonce?: string }>) {
             <div id="burger-status" role="status">
               Loading Burger…
             </div>
-            <a href="/auth/login" id="burger-login">
+            <a href="/auth/login" id="burger-login" data-rmx-document>
               Sign in to play
             </a>
           </div>

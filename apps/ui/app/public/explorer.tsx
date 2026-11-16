@@ -110,7 +110,7 @@ export const stories = [
     id: "code",
     name: "CodeBlock",
     group: "Code",
-    summary: "Selectable source with Shiki syntax highlighting.",
+    summary: "Selectable source with Pierre Highlights syntax highlighting.",
   },
   {
     id: "diff",
@@ -1060,7 +1060,7 @@ function Story(
             )}
             <p mix={descriptionCss}>
               {story === "code"
-                ? "Shiki TSX highlighting; text stays plain. Large sources fall back to complete plain text."
+                ? "Pierre Highlights TSX syntax; text stays plain. Large sources fall back to complete plain text."
                 : story === "diff"
                   ? "Caller-prepared rows. Changes remain readable without color."
                   : story === "tabs"

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { createNativeHandler, Server } from "../src/native.ts";
+import { createNativeHandler, Server } from "../src/index.ts";
 
 for (const contentLength of [undefined, "1"]) {
   test(`rejects actual oversized input with ${contentLength === undefined ? "no" : "understated"} Content-Length and cancels the stream`, async () => {

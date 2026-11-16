@@ -112,3 +112,11 @@ one fresh sign-in by the owner, then operator access to both host-selected edito
 a synthetic browser test or source merge alone is not production acceptance.
 
 The [CMS publish workflow](../../.github/workflows/publish-cms.yml) runs on `main` changes to this app or its shared dependencies. It checks the CMS and publishes `ghcr.io/jackharrhy/teacms:latest` plus a commit tag. It can also be started manually. Mug follows `latest` with Watchtower; the commit tag supports rollback.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

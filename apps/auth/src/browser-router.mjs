@@ -15,6 +15,7 @@ const routes = route({
   verifyEmail: "/verify-email",
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
+  invitation: "/invitation",
   apps: "/apps/:id",
   sessions: "/account/sessions",
   endSession: "/account/sessions/end",
@@ -33,6 +34,7 @@ export function createBrowserRouter(
     accountRoutes,
     oauthRoutes,
     emailRoutes,
+    invitationRoute,
     accessRoutes,
     supportRoutes,
     loginRoutes,
@@ -80,6 +82,9 @@ export function createBrowserRouter(
       },
       resetPassword({ request }) {
         return handle(request, emailRoutes.resetPassword, "public");
+      },
+      invitation({ request }) {
+        return handle(request, invitationRoute, "public");
       },
       apps({ request }) {
         return handle(request, accessRoutes);

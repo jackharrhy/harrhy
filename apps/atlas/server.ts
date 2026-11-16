@@ -13,7 +13,11 @@ if (!manifest)
   throw new Error(
     "Set HARRHY_ATLAS_MANIFEST to an absolute trusted registry file",
   );
-const atlas = await createAtlas(root, manifest);
+const atlas = await createAtlas(
+  root,
+  manifest,
+  process.env.HARRHY_ATLAS_WIDGETS,
+);
 const stopWatching = atlas.catalog.watch();
 const server = http.createServer(
   createRequestListener(

@@ -71,7 +71,11 @@ export function HomePage(handle: Handle<HomePageProps>) {
           </main>
 
           <footer className="site-footer">
-            <a className="footer-link" href={routes.steve.index.href()}>
+            <a
+              className="footer-link"
+              href={routes.steve.index.href()}
+              data-rmx-document
+            >
               steve login
             </a>
           </footer>
@@ -89,7 +93,11 @@ export function SiteClosedPage() {
           <img src="/steve.png" width="264" height="741" alt="Steve" />
         </main>
         <footer className="site-closed-footer">
-          <a className="footer-link" href={routes.steve.index.href()}>
+          <a
+            className="footer-link"
+            href={routes.steve.index.href()}
+            data-rmx-document
+          >
             steve login
           </a>
         </footer>

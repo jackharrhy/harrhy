@@ -89,6 +89,10 @@ it("integrates shared code views, safe live source, copy and prepared diff state
   });
   await diff.locator('[data-change="add"]').waitFor();
   assert.equal(await diff.locator('[data-change="add"]').count(), 1);
+  assert.equal(
+    (await diff.locator('[data-change="add"] span[style]').count()) > 0,
+    true,
+  );
   assert.equal(await diff.locator('[data-change="remove"]').count(), 1);
   assert.match((await diff.textContent()) ?? "", /Removed old line 3/);
   await page.getByLabel("Line numbers", { exact: true }).uncheck();

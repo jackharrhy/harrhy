@@ -32,7 +32,8 @@
     "marked": "18.2.0",
     "morphdom": "2.7.8",
     "remix": "3.2.0",
-    "sanitize-html": "2.18.2"
+    "sanitize-html": "2.18.2",
+    "@harrhy/json-schema": "0.1.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.65.0",

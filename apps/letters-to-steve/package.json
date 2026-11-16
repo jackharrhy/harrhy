@@ -10,15 +10,16 @@
     "hmr": "NODE_ENV=development node --env-file-if-exists=.env hmr.ts",
     "start": "NODE_ENV=production node --env-file-if-exists=.env --import remix/node-tsx server.ts",
     "typecheck": "tsrs --noEmit",
-    "test": "NODE_ENV=test remix test --type server",
-    "check": "npm run typecheck && npm test",
+    "test": "NODE_ENV=test remix test \"app/**/__tests__/**/*.test{,.browser}.{ts,tsx}\" --type server",
+    "check": "npm run typecheck && npm test && npm run test:auth-navigation",
+    "test:auth-navigation": "NODE_ENV=test node --import remix/node-tsx --test __tests__/auth-navigation.test.ts",
     "db:migrate": "remix db migrate",
     "db:status": "remix db status"
   },
   "dependencies": {
-    "@harrhy/identity": "0.1.0",
     "@fontsource-variable/literata": "^5.3.0",
     "@fontsource-variable/shantell-sans": "^5.3.0",
+    "@harrhy/identity": "0.1.0",
     "@tiptap/core": "3.33.1",
     "@tiptap/extension-blockquote": "3.33.1",
     "@tiptap/extension-bold": "3.33.1",
@@ -36,6 +37,7 @@
     "sharp": "^0.35.5"
   },
   "devDependencies": {
-    "@types/node": "^26.6.6"
+    "@types/node": "^26.6.6",
+    "playwright": "^1.65.0"
   }
 }

@@ -8,6 +8,8 @@ Reusable Remix 3 native components, scoped semantic themes and part recipes. App
 - `@harrhy/ui/native`: native controls (including Button with optional async action), fields, surfaces and layout.
 - `@harrhy/ui/interactive`: native modal and official tabs/select/accordion/menu compositions.
 - `@harrhy/ui/code`: native SSR code blocks and caller-prepared unified diffs.
+- `@harrhy/ui/highlight`: optional standalone Pierre Highlights token preparation and escaped source HTML.
+- `@harrhy/ui/rehype-highlight`: optional safe fenced-code HAST transformation.
 - `@harrhy/ui/theme`: semantic token types, composition and theme mixins.
 - `@harrhy/ui/recipes`: host-element recipes for imperative or custom composition.
 - `@harrhy/ui/styles`: original `createUiTheme` and `ui*Styles` exports.
@@ -129,9 +131,9 @@ Pinned 0.13.1 publishes `accordion`, `anchor`, `animation`, `combobox`, `listbox
 
 ## Code and diffs
 
-`CodeBlock({label, source, language?, tokens?})` renders escaped, selectable text with a visible caption and a named keyboard-scrollable region. The caller may supply readonly `{text, color?}` tokens; only exact source reconstruction is accepted, otherwise plain source renders. Text is escaped and colors accept only six-digit hex, never HTML/arbitrary CSS. Language labels alone do not run a highlighter. `CodeDiff({label, lines})` renders caller-prepared context/remove/add rows with optional old/new line numbers, textual change markers and accessible row descriptions. Both consume the nearest semantic theme and preserve long lines without silently truncating input. They have no client lifecycle or runtime dependencies beyond Remix. Apps own source limits, diff computation, syntax preparation and clipboard actions.
+`CodeBlock({label, source, language?, tokens?})` renders escaped, selectable text with a visible caption and a named keyboard-scrollable region. The caller may supply readonly `{text, color?, italic?, bold?}` tokens; only exact source reconstruction is accepted, otherwise plain source renders. Text is escaped and colors accept only six-digit hex, never HTML/arbitrary CSS. Language labels alone do not run a highlighter. `CodeDiff({label, lines})` renders caller-prepared context/remove/add rows with optional exact-source tokens and old/new line numbers, textual change markers and accessible row descriptions. Both consume the nearest semantic theme and preserve long lines without silently truncating input. They have no client lifecycle or runtime dependencies beyond Remix. Apps own source limits, diff computation, syntax preparation and clipboard actions.
 
-The [code research and API guide](CODE.md) inventories actual Atlas/Garden/Lists highlighting and editor consumers, compares pinned Pierre packages, records licensing/notices, Worker and client boundaries, and explains the dependency-free choice. The Explorer now prepares TSX tokens using the same Shiki 4.6.0 family as existing consumers, through its app-owned SSR/browser adapter. Existing Markdown pipelines are not migrated. The code subpath stays separate from the legacy root and does not claim optional upstream highlighters run in Workers. The Explorer uses CodeBlock for every story's current source and includes dedicated CodeBlock/CodeDiff controls.
+The [code API and runtime guide](CODE.md) documents the owner-approved direct Shiki migration, standalone Pierre Highlights 0.5.1 preparation API, licensing, exact-source guarantees, bounded work and measured runtime costs. Optional engine entries are separate from native rendering and the legacy root. Node/browser/Worker engine prototypes passed; browser WASM requires a compatible host CSP, and Worker builds must resolve the precompiled-WASM conditional export. Consumer integration checks remain necessary. The Explorer uses CodeBlock for every story's current source and includes dedicated CodeBlock/CodeDiff controls.
 
 ## Upstream and maintenance
 

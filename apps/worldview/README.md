@@ -265,3 +265,11 @@ In browsers with the [WebMCP API](https://webmachinelearning.github.io/webmcp/),
 Worldview runs in production at `worldview.harrhy.xyz`. The UI and collaboration Workers run on separate Celld instances, and the hosted service runs in a Node container. The [MIT license](LICENSE) and [third-party notices](../../THIRD_PARTY_NOTICES.md) accompany adapted editor behavior. See the [migration guide](../../docs/project-imports.md), [renderer guide](../../packages/maps-renderer/README.md), and [editor core guide](../../packages/maps-editor/README.md).
 
 The UI Worker applies Remix CSP to HTML with request nonces for its browser entries and generated styles. It keeps HTML private/no-store. The viewer may fetch a user-supplied remote map URL, so the policy permits HTTP(S) fetches and images; hosted APIs and collaboration still pass through the existing same-origin proxy routes. Static assets retain their prior cache behavior.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

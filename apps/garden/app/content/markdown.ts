@@ -6,7 +6,7 @@ import remarkRehype from "remark-rehype";
 import rehypeRaw from "rehype-raw";
 import rehypeSlug from "rehype-slug";
 import rehypeStringify from "rehype-stringify";
-import rehypeShiki from "@shikijs/rehype";
+import { rehypeHighlight } from "@harrhy/ui/rehype-highlight";
 import { remarkObsidian } from "./remark-obsidian.mjs";
 import { rehypeObsidian } from "./rehype-obsidian.mjs";
 import type { GardenIndex } from "./garden-routing.mjs";
@@ -33,10 +33,9 @@ export function createMarkdownRenderer(index: GardenIndex) {
     .use(rehypeRaw)
     .use(rehypeSlug)
     .use(rehypeObsidian)
-    .use(rehypeShiki, {
+    .use(rehypeHighlight, {
       theme: "github-dark",
-      langAlias: { component: "text" },
-      fallbackLanguage: "text",
+      languageAliases: { component: "text" },
     })
     .use(rehypeStringify);
   const cache = new Map<string, Promise<RenderedSegment[]>>();
@@ -48,10 +47,7 @@ export function createMarkdownRenderer(index: GardenIndex) {
       if (value.trim())
         segments.push({
           type: "prose",
-          html: String(await processor.process(value.trim())).replaceAll(
-            'class="shiki ',
-            'class="astro-code ',
-          ),
+          html: String(await processor.process(value.trim())),
         });
     }
     for (const match of body.matchAll(

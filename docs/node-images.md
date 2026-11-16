@@ -21,6 +21,36 @@ The deployed Node apps use prebuilt `platformatic/node-caged:26-slim` in both st
 
 The table covers Node-hosted apps and the Celld Workers built with Node 26. Burger, Gurgur, and Pool also use Node 26 in their build stages and Bun in their runtime stages. The published Artbin CLI remains compatible with Node 20+ for consumers; Harrhy builds and checks it on Node 26. All short images use `ghcr.io/jackharrhy/`. Keep previous image packages and their tags available for rollback until each runtime is switched and accepted.
 
+## Image dependency policy
+
+Copy the lockfile, root manifest, `.npmrc`, required workspace manifests and any
+install-hook inputs before installing dependencies. Use selected `npm ci --workspace`
+installs; copy only that app and its workspace closure after the dependency layer.
+Keep revision build arguments after installation. Radio alone needs its icon-font
+postinstall script before installation. Update these inputs when dependencies or
+install hooks change. Builders that use root `tsrs` opt into root tools explicitly.
+`.dockerignore` excludes local worktrees as well as dependencies and runtime data.
+
+Runtime images should contain the app's known selected workspace/dependency closure,
+not the full monorepo by default. Narrow each existing image with its actual startup
+and asset checks; do not introduce a shared image framework to hide the differences.
+Celld apps deploy at startup and still need the deploy compiler (including esbuild),
+Worker source/configuration and built assets. Node source-loader apps need their raw
+imports, migrations and SQL. Preserve native bindings and dynamic assets such as
+Pierre WASM. Artbin intentionally retains Chromium, SwiftShader/WebGPU, fonts and
+image tooling; Lists already has a selected runtime closure. Builder reductions for
+Bun apps do not imply a smaller Bun runtime. Copy inherited root configuration too:
+Garden's real default command requires `tsconfig.base.json` through the UI package.
+
+Ref, Radio, Worldview and Maps collaboration retain their selected development
+dependencies because startup needs esbuild and Radio supports dynamically imported
+Azure storage. They exclude unrelated workspaces, not every development tool. The
+two Maps Worker builders add root tools in a separate build stage; their runtimes
+use the earlier selected dependency stage, preserving nested installs. CMS and the
+Node Maps services prune development dependencies including root build tools. They
+use built-in SQLite and no longer install or rebuild unrelated better-sqlite3.
+Artbin's better-sqlite3 rebuild and sharp/browser runtime remain unchanged.
+
 ## Native modules
 
 The current better-sqlite3 13 package uses N-API, unlike older V8/NAN releases. Nevertheless, builders that install it remove its prebuilds and invoke npm's bundled node-gyp directly with `--nodedir=/usr/local --jobs=2`. This uses the compression-enabled headers/config shipped with the actual runtime, does not download stock Node headers, and ensures the rebuilt binding is loaded instead of a preferred prebuild. Sharp remains on its N-API binary. Keep the SQLite write/reopen and sharp encode/decode checks when updating either dependency. Do not assume a matching Node module ABI alone makes a V8/NAN addon safe.
@@ -43,8 +73,18 @@ The repository-owned Node images workflow selects from nine images on every PR,
 then builds affected images serially without publishing. All nine named matrix
 checks remain present; unselected rows skip Docker work. The selector includes
 before/after transitive workspace dependencies and explicit Docker context inputs.
-CMS, Maps service and Maps compiler currently copy the whole repository into their
-images, so any nonempty change still selects those three. Root/runtime inputs,
-unknown workspaces, comparison errors and manual dispatch select all nine.
-An empty diff selects none. Run `node --test scripts/ci/__tests__/*.test.mjs`
-for selector regressions; narrowing whole-repository Dockerfiles is separate work. The Rotund smoke reaches its actual compiled server over HTTP and checks the original face and favicon byte hashes. The 8mb smoke checks the editor and diagnostics request boundary. It never logs into a registry or publishes.
+CMS, Maps service and Maps compiler now copy selected workspaces; unrelated app
+changes no longer select them once both compared revisions use selected inputs.
+Root/runtime inputs, unknown workspaces, comparison errors and manual dispatch
+select all nine. An empty diff selects none. Run
+`node --test scripts/ci/__tests__/*.test.mjs` for selector and Docker input regressions. The Rotund smoke reaches its actual compiled server over HTTP and checks the original face and favicon byte hashes. The 8mb smoke checks the editor and diagnostics request boundary. It never logs into a registry or publishes.
+
+The Selected runtime images workflow builds the four Celld and three bundled Bun
+images serially. Its network-isolated smoke runs each default CMD, checks HTTP and
+exact emitted asset bodies, exercises startup esbuild and the Radio Azure import,
+checks SQLite write/reopen and restarts the same disposable container. Celld
+restarts wait 15 seconds for the stopped node's default 10-second lease to expire
+before startup diagnostics; this is not an immediate-restart recovery test. It does
+not replace browser, authenticated collaboration or live Azurite acceptance tests.
+Garden retains its separate real-CMD fixture and highlighting smoke. These checks
+do not publish images or change normal publishers/updaters.

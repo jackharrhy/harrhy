@@ -4,6 +4,7 @@ import { lstat, open, readdir } from "node:fs/promises";
 import path from "node:path";
 import { parseDocument } from "yaml";
 import { spacePath } from "../spaces.ts";
+import type { Widget } from "../widgets.ts";
 import { renderMarkdown } from "./markdown.ts";
 
 /** Explicit trusted registry entry. directory is relative to the external root. */
@@ -15,6 +16,7 @@ interface CatalogAuthor {
   readonly legacyRoutes?: boolean;
 }
 export interface CatalogOptions {
+  readonly widgets?: () => Promise<readonly Widget[]>;
   readonly root: string;
   readonly authors:
     | readonly CatalogAuthor[]
@@ -46,6 +48,7 @@ interface CatalogSearchEntry {
 /** All indexes belong to the same deeply frozen, atomically published generation. */
 interface CatalogGeneration {
   readonly id: number;
+  readonly widgets: readonly Widget[];
   readonly spaces: readonly Readonly<CatalogAuthor & { name: string }>[];
   /** Index keys and route targets omit trailing slash; page/parent URLs include it. */
   readonly pages: Readonly<Record<string, CatalogPage>>;
@@ -61,6 +64,7 @@ interface CatalogRead {
 export interface Catalog {
   /** Capture once per request; do not mix snapshots during rendering. */
   read(): CatalogRead;
+  widgetScript(digest: string): string | undefined;
   /** A failed refresh retains the entire previous generation and reports stale. */
   refresh(): Promise<CatalogRead>;
   /** Explicit opt-in watcher; handles change and rename by rebuilding all indexes. */
@@ -139,6 +143,7 @@ export function createCatalog(options: CatalogOptions): Catalog {
   });
   let pending: Promise<CatalogRead> = Promise.resolve(state);
   let fingerprint: string | null = null;
+  const assetGenerations: (readonly Widget[])[] = [];
   let renderedCache = new Map<
     string,
     Awaited<ReturnType<typeof renderMarkdown>>
@@ -363,7 +368,28 @@ export function createCatalog(options: CatalogOptions): Catalog {
             backlinks[target]!.push(page.path);
         }
       }
-      const nextFingerprint = JSON.stringify([authors, sourceDigests]);
+      const widgets = (await options.widgets?.()) ?? Object.freeze([]);
+      const usedWidgets = new Set<string>();
+      for (const page of Object.values(pages)) {
+        for (const match of page.html.matchAll(
+          /<p>\[\[widget:([a-z][a-z0-9-]{0,63})\]\]<\/p>/g,
+        )) {
+          const widget = widgets.find(
+            (candidate) =>
+              candidate.id === match[1] && candidate.page === page.path,
+          );
+          if (!widget || usedWidgets.has(widget.id))
+            throw new Error("Unregistered or duplicate page widget");
+          usedWidgets.add(widget.id);
+        }
+      }
+      if (widgets.some((widget) => !usedWidgets.has(widget.id)))
+        throw new Error("Widget requires its registered page marker");
+      const nextFingerprint = JSON.stringify([
+        authors,
+        sourceDigests,
+        widgets.map(({ id, page, digest }) => ({ id, page, digest })),
+      ]);
       renderedCache = nextCache;
       if (state.generation && nextFingerprint === fingerprint) {
         state = Object.freeze({
@@ -385,6 +411,7 @@ export function createCatalog(options: CatalogOptions): Catalog {
             Object.freeze({ ...author, name: author.name ?? author.id }),
           ),
         ),
+        widgets,
         pages: Object.freeze(pages),
         routes: Object.freeze(routes),
         backlinks: Object.freeze(backlinks),
@@ -394,6 +421,8 @@ export function createCatalog(options: CatalogOptions): Catalog {
           ),
         ),
       });
+      assetGenerations.push(widgets);
+      if (assetGenerations.length > 4) assetGenerations.shift();
       state = Object.freeze({ generation, status: "ready", error: null });
     } catch (error) {
       state = Object.freeze({
@@ -471,5 +500,12 @@ export function createCatalog(options: CatalogOptions): Catalog {
       for (const watcher of watchers) watcher.close();
     };
   }
-  return { read: () => state, refresh, watch };
+  return {
+    read: () => state,
+    refresh,
+    watch,
+    widgetScript: (digest) =>
+      assetGenerations.flat().find((widget) => widget.digest === digest)
+        ?.script,
+  };
 }

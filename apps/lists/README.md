@@ -10,7 +10,7 @@ Install from the Tea root with `npm ci` and use Bun 1.4.4 for execution. For loc
 
 Run `npm run check --workspace @harrhy/lists` for type checking, the isolated Bun test suite, and browser asset builds. The Compose-backed integration suite is `npm run test:local --workspace @harrhy/lists` after starting its local dependencies. Tests use synthetic in-memory databases and mocked SES unless explicitly marked as local stack tests.
 
-MCP uses `@harrhy/mcp/native` for the official SDK's modern and stateless legacy Streamable HTTP transport at `/mcp` and `/mcp/`. The app owns all 25 tool schemas, operation scopes and list access checks. Requests are bounded to 128 MiB, matching the existing Bun server body limit so multi-section template previews remain supported; batches and cross-origin requests are rejected. GET remains unsupported after authentication. Array-valued operations expose structured results as `{ items: [...] }`; their text content and REST results retain the original arrays. API/MCP tests exercise the existing Executor SDK 1.32.1 and the current SDK pinned to the modern protocol, including catalog, array-valued reads, scope checks and local list access.
+MCP uses `@harrhy/mcp` for the official SDK's modern and stateless legacy Streamable HTTP transport at `/mcp` and `/mcp/`. The app owns all 25 tool schemas, operation scopes and list access checks. Requests are bounded to 128 MiB, matching the existing Bun server body limit so multi-section template previews remain supported; batches and cross-origin requests are rejected. GET remains unsupported after authentication. Array-valued operations expose structured results as `{ items: [...] }`; their text content and REST results retain the original arrays. API/MCP tests exercise the existing Executor SDK 1.32.1 and the current SDK pinned to the modern protocol, including catalog, array-valued reads, scope checks and local list access.
 
 ## Boundaries and deployment
 
@@ -22,3 +22,7 @@ Remix CSP middleware applies a per-response nonce and private/no-store caching t
 
 Each browser sign-in keeps its state and PKCE verifier in a separate short-lived
 cookie, so another tab can start a login without replacing the first attempt.
+
+## Template source display
+
+`src/services/source-highlighter.ts` prepares escaped source HTML through `@harrhy/ui/highlight` using standalone Pierre Highlights 0.5.1 and GitHub Light. HTML/MJML use the HTML grammar, plain text remains text, and null source retains `(text only)`. Syntax work is bounded at 20k characters/2k per line; complete source always remains visible. This is server-only (Node/Bun), not a browser highlighter: sandboxed email previews and their CSP are unchanged. Docker includes the shared UI workspace. See [runtime boundaries and notices](../../packages/ui/CODE.md).

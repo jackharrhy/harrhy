@@ -3,7 +3,7 @@ import { it } from "remix/test";
 import { prepareCode } from "../app/public/highlight.tsx";
 import { createApp } from "../app/router.tsx";
 
-it("prepares safe Shiki tokens without changing raw source or truncating large inputs", () => {
+it("prepares safe Pierre Highlights tokens without changing raw source or truncating large inputs", () => {
   const source =
     'const x = "<script>🦊</script>";\r\n\t<Button>Save</Button>\r\n';
   const tokens = prepareCode(source);

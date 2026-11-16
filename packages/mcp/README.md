@@ -1,18 +1,28 @@
 # @harrhy/mcp
 
-Harrhy's MCP boundaries. CMS and Artbin use the additive `@harrhy/mcp/native` entry point for the official SDK's modern transport and native stateless legacy compatibility. The default export retains the earlier Remix handler and tool/resource definitions for compatibility. Apps keep authentication, origin policy and operation execution in their own routes.
+The canonical HTTP MCP boundary for Artbin, Lists, Maps, Ref and TeaCMS. Import from `@harrhy/mcp`; there is no `/native` alias or separate custom protocol engine. Browser tools use the independent `@harrhy/webmcp` package.
 
-`src/index.ts` is the public entry point. `createHandler` owns parsing and protocol responses; `maxRequestBytes` and `requestTimeoutMs` bound JSON input. Tool and protocol errors use `createToolError`, `createForbiddenError`, and `createInvalidArgumentsError`. Schemas come from [`@harrhy/json-schema`](../json-schema/README.md), results from [`@harrhy/result`](../result/README.md), and optional request log enrichment from [`@harrhy/logger`](../logger/README.md).
+## Transport
 
-`@harrhy/mcp/native` exports `createNativeHandler(factory, { maxRequestBytes, requestTimeoutMs })`. The factory creates an SDK server; the SDK owns discovery, negotiation and protocol dispatch, including existing 2025 clients. The boundary reads actual stream bytes with a size limit and a default ten-second input deadline, accepts one request per HTTP body (no batches), and marks responses no-store. Authenticate and validate request origins before calling it. CMS and Artbin own their catalogs and published-content or operation semantics.
+`src/index.ts` exports `Server`, `specTypeSchemas` and SDK result/descriptor types from official `@modelcontextprotocol/server` 2.4.0, plus `createNativeHandler(factory, { maxRequestBytes, requestTimeoutMs })`. The official SDK owns negotiation, lifecycle, SSE/JSON responses, protocol dispatch and native stateless legacy compatibility (`legacy: "stateless"`). Real-client fixtures cover Executor SDK 1.32.1 and current client 2.4.0 pinned to 2026-07-28.
 
-Run `npm run check --workspace @harrhy/mcp` from the root, plus the CMS and Artbin workspace checks when changing this package.
+The boundary reads actual stream bytes with a size limit and a default ten-second input deadline, rejects batches and marks responses no-store. Apps authenticate and validate origins before calling it, and retain their own scopes, audiences, ACLs, catalog visibility and error policies. Existing controllers capture their authorized Remix context in closures; the package creates no ambient context container.
 
----
+## Typed tools
+
+`defineTool({ name, input, output?, description?, annotations? })` derives an official descriptor from Standard Schema and Standard JSON Schema contracts. Existing Zod or `@harrhy/json-schema` schemas supply validation and discovery from one definition. Schemas must support the draft-2020-12 converter. The input converter describes wire input; the handler receives validated, transformed output.
+
+`bindTool(definition, handler, { invalidInput, invalidOutput })` returns an async callable accepting unknown input. The handler returns an SDK `CallToolResult`, keeping text formatting and structured-result wrapping explicit. When an output schema is declared, successful structured content is required, validated and projected to its parsed value; error results bypass successful-output validation. Apps choose safe validation errors and catch or mask business exceptions themselves. Dispatch and `server.projectCallToolResult(result, definition.descriptor.outputSchema)` remain explicit SDK calls, not another RPC engine.
+
+TeaCMS uses definitions and bound handlers for its two published-content reads; its selected-site store is captured in a closure. Other apps retain existing schemas and validation/error behavior while importing the same canonical transport.
+
+## Checks
+
+Run `npm run check --workspace @harrhy/mcp` and all five consumer checks from the root. Tests include both actual SDK clients, typed input transformations, output validation/projection, app-owned expected/masked errors, stream byte budgets and deadlines. `__tests__/binding.types.ts` includes compile-negative inference fixtures in the typecheck.
 
 ## Origin and MIT license
 
-This package ports [Sergio Xalambrí’s mcp](https://github.com/sergiodxa/monorepo/tree/7582e46f150b052ba145945661ac9937f5f26f27/packages/mcp) at revision `7582e46`.
+The earlier implementation ported [Sergio Xalambrí’s mcp](https://github.com/sergiodxa/monorepo/tree/7582e46f150b052ba145945661ac9937f5f26f27/packages/mcp) at revision `7582e46`. Its custom protocol engine has been removed. The small definition/binding API retains the declaration/typed-handler idea, with official SDK transport rather than that engine. Historical attribution follows.
 
 MIT License
 

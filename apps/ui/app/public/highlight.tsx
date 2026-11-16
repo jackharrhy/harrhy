@@ -1,13 +1,4 @@
-import { createHighlighterCoreSync } from "@shikijs/core";
-import { createJavaScriptRegexEngine } from "@shikijs/engine-javascript";
-import tsx from "@shikijs/langs/tsx";
-import githubLight from "@shikijs/themes/github-light";
-import githubDark from "@shikijs/themes/github-dark";
-const highlighter = createHighlighterCoreSync({
-  themes: [githubLight, githubDark],
-  langs: [tsx],
-  engine: createJavaScriptRegexEngine(),
-});
+import { highlightCode } from "@harrhy/ui/highlight";
 import {
   CodeBlock,
   type CodeBlockProps,
@@ -44,25 +35,15 @@ export function prepareCode(
   const cached = cache.get(key);
   if (cached) return cached;
   const colors = colorScheme === "dark" ? darkColors : lightColors;
-  const lines = highlighter.codeToTokens(source, {
-    lang: "tsx",
+  const tokens = highlightCode(source, {
+    language,
     theme: colorScheme === "dark" ? "github-dark" : "github-light",
-  }).tokens;
-  const tokens: CodeToken[] = [];
-  let offset = 0;
-  for (const line of lines)
-    for (const token of line) {
-      if (token.offset > offset)
-        tokens.push({ text: source.slice(offset, token.offset) });
-      tokens.push({
-        text: token.content,
-        color: token.color
-          ? (colors[token.color.toLowerCase()] ?? token.color)
-          : undefined,
-      });
-      offset = token.offset + token.content.length;
-    }
-  if (offset < source.length) tokens.push({ text: source.slice(offset) });
+  }).map((token) => ({
+    ...token,
+    color: token.color
+      ? (colors[token.color.toLowerCase()] ?? token.color)
+      : undefined,
+  }));
   if (cache.size >= 64) cache.delete(cache.keys().next().value!);
   cache.set(key, tokens);
   return tokens;
