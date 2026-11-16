@@ -9,13 +9,15 @@ const visibilityOptions = [
 
 function DesignVisibilityField(_handle: Handle) {
   return () => (
-    <Field id="design-visibility" label="Visibility">
-      <Select
-        name="visibility"
-        defaultValue="published"
-        options={visibilityOptions}
-      />
-    </Field>
+    <div inert aria-busy="true" data-cms-hydration>
+      <Field id="design-visibility" label="Visibility">
+        <Select
+          name="visibility"
+          defaultValue="published"
+          options={visibilityOptions}
+        />
+      </Field>
+    </div>
   );
 }
 

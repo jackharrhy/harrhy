@@ -236,6 +236,5 @@ const toolsStyles = css({
     borderRadius: "var(--hui-panel-radius)",
     background: "var(--hui-surface)",
   },
-  "& #tea-visual-dialog": { width: "min(480px, calc(100vw - 28px))" },
   "& .tea-actions": { marginBlock: "1rem" },
 });

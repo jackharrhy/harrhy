@@ -3,6 +3,9 @@ import { test, expect } from "@playwright/test";
 test("design reference is public and shows live admin tokens", async ({
   page,
 }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("requestfailed", (request) => errors.push(request.url()));
   await page.goto("http://operator.localhost:4352/design");
   await expect(
     page.getByRole("heading", { name: "Design", exact: true }),
@@ -10,6 +13,10 @@ test("design reference is public and shows live admin tokens", async ({
   await expect(page.locator('[data-token-value="--accent"]')).not.toBeEmpty();
   await expect(page.getByText("Page list row")).toBeVisible();
   const fields = page.locator(".design-form-sample");
+  await expect(fields.locator("[data-cms-hydration]")).not.toHaveAttribute(
+    "inert",
+    "",
+  );
   const inputHeight = await fields
     .locator('input[type="text"]')
     .evaluate((element) => element.getBoundingClientRect().height);
@@ -27,6 +34,7 @@ test("design reference is public and shows live admin tokens", async ({
   await expect(select).toBeFocused();
   await select.press("ArrowDown");
   await expect(page.getByRole("listbox")).toBeVisible();
+  await expect(page.getByRole("listbox")).toBeFocused();
   await page.keyboard.press("Escape");
   await expect(page.getByRole("listbox")).not.toBeVisible();
   await expect(select).toBeFocused();
@@ -73,6 +81,7 @@ test("design reference is public and shows live admin tokens", async ({
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   ).toBe(true);
+  expect(errors).toEqual([]);
 });
 
 test("operator dashboard opens both isolated site editors", async ({
