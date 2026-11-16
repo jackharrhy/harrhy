@@ -54,6 +54,10 @@ jobs:
           node-version-file: .nvmrc
       - run: npm ci
       - run: npm run garden:check
+      - name: Build and smoke the real runtime before publication
+        run: |
+          docker build --tag garden-smoke --file apps/garden/Dockerfile .
+          node apps/garden/__tests__/image-smoke.mjs garden-smoke
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           cache-binary: false
