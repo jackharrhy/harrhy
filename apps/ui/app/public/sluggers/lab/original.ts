@@ -11,6 +11,9 @@ export const originalBlue = {
   900: "#112d70",
 } as const;
 
+// Original cell-gray oklch(57% .07 262.2), used at 30–40% in archive panels.
+export const originalSteel = "#6178a1";
+
 // Original html background: 7rem tiles, half-tile stagger, 2.5% white circles.
 // The original #bg-gradient masks the pattern through the top 70dvh.
 export const originalBackdrop = css({

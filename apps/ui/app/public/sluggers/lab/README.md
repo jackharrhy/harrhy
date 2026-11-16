@@ -1,6 +1,6 @@
 # Sluggers design cookoff
 
-Private experimental workbench at `/sluggers-lab?concept=pennant&screen=matchday`. This is an owner-authorized design comparison, not six new production theme APIs or a replacement for the original historical runtime.
+Private experimental workbench at `/sluggers-lab?concept=pennant-veranda&screen=matchday`. This is an owner-authorized design comparison, not twelve new production theme APIs or a replacement for the original historical runtime.
 
 ## Entry points and locality
 
@@ -14,9 +14,25 @@ Private experimental workbench at `/sluggers-lab?concept=pennant&screen=matchday
 
 `original.ts` records the original app's blue ramp, sampled from its live OKLCH values into sRGB: blue-400 `#2b70df`, blue-500 `#2165da`, blue-600 `#1d56bf`, blue-700 `#1948a5`. This is app-local presentation, not a change to shared `sluggersTheme` or other consumers.
 
-The original `app/app.css` uses blue-600 behind two repeating radial gradients: white at 2.5% opacity, `40%` then `transparent 21%`, 7rem tiles (112px in the verified original browser), offset by half a tile (56px). Its `#bg-gradient` masks the dots through the top 70dvh; its commented animation is intentionally inactive. The preview restores those exact observed dimensions and opacity, not an approximate image or oversized decorative circles. All six concepts share this original canvas and ramp while retaining their own density, radii, panel gradients and layout proportions. Opaque data panels keep the quiet dots behind content, not behind individual table cells.
+The original `app/app.css` uses blue-600 behind two repeating radial gradients: white at 2.5% opacity, `40%` then `transparent 21%`, 7rem tiles (112px in the verified original browser), offset by half a tile (56px). Its `#bg-gradient` masks the dots through the top 70dvh; its commented animation is intentionally inactive. The preview restores those exact observed dimensions and opacity, not an approximate image or oversized decorative circles. All six concepts share this original canvas and ramp while retaining their own density, radii, panel gradients and layout proportions. The original six retain opaque data panels. Three of the six offspring deliberately reveal the original circles through tinted data panes; their composited text contrast is checked against the brightest dot and every ancestor gradient stop.
 
 Browser regression checks pin the source-faithful canvas, two staggered circle layers and lack of animation across all six concepts and four viewport widths. A bounded contrast check covers brightest gradient stops, button overlay, status ink and the brightest dotted canvas; it is not WCAG certification.
+
+## Six offspring, original six preserved
+
+The original entries remain unchanged. Each new file imports its Pennant or Dugout parent, composes only its own token/part overrides, and supplies a bounded recipe; no screen renderer forks on these IDs.
+
+<!-- prettier-ignore -->
+| New concept | Parent | Material and composition |
+| --- | --- | --- |
+| Pennant Veranda | Pennant Park | Original unblurred steel tint, broad side-by-side windows and rounded fixtures |
+| Pennant Broadcast | Pennant Park | Opaque gradient board, dominant scores, narrow standings and four-column portrait shelves |
+| Pennant Canopy | Pennant Park | Light 3px frosting, full-width shelves, three-across fixtures and capsule portraits |
+| Dugout Frost | Dugout Link | Stronger 6px frosting, compact single-column records and fine keylines |
+| Dugout Ledger | Dugout Link | Opaque ruled stack, square fixtures and horizontal desktop player records |
+| Dugout Pocket | Dugout Link | Opaque centered 1080px shell, stacked screens and rounded compact chips |
+
+Actual original source uses `cell-gray` at 30–40% opacity with thin tinted borders and **no backdrop blur**, verified in its running browser. `originalSteel` records its sampled `oklch(57% .07 262.2)` color. New 3px/6px blur is explicitly an experiment, not a claim of original behavior. The glass variants add a cobalt glaze to keep colored result text readable, and preserve opaque heading strips and controls. `LabPartTokens.panelSurface` and `panelFilter` are optional local roles; existing entries default to their original surface and no filter. Unsupported `backdrop-filter` and `prefers-reduced-transparency: reduce` yield opaque blue panes only for translucent variants. Browser tests exercise the reduced-transparency fallback.
 
 ## Private activation
 

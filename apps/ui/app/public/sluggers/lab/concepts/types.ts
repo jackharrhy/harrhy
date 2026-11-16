@@ -4,6 +4,8 @@ import type { BaseballFieldPaint } from "@harrhy/ui/baseball";
 
 export interface LabPartTokens {
   panelImage: string;
+  panelSurface?: string;
+  panelFilter?: string;
   headingImage: string;
   headingInk: string;
   panelEdge: string;
@@ -14,6 +16,8 @@ export interface LabPartTokens {
 export function labPartStyles(parts: LabPartTokens) {
   return css({
     "--lab-panel-image": parts.panelImage,
+    "--lab-panel-surface": parts.panelSurface ?? "var(--hui-surface)",
+    "--lab-panel-filter": parts.panelFilter ?? "none",
     "--lab-heading-image": parts.headingImage,
     "--lab-heading-ink": parts.headingInk,
     "--lab-panel-edge": parts.panelEdge,
@@ -25,6 +29,7 @@ export function labPartStyles(parts: LabPartTokens) {
 export interface LabConcept {
   id: string;
   name: string;
+  parent?: "Pennant Park" | "Dugout Link";
   summary: string;
   source: string;
   changes: string;

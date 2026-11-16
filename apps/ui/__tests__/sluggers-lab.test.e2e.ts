@@ -114,7 +114,7 @@ it("keeps the private cookoff and curated assets unavailable without explicit ca
       404,
     );
 });
-it("switches six full cookoff recipes over the same data, preserves context, and keeps native field markers accessible", async (t) => {
+it("switches twelve full cookoff recipes over the same data, preserves context, and keeps native field markers accessible", async (t) => {
   const directory = await mkdtemp(join(tmpdir(), "sluggers-lab-test-"));
   t.after(() => rm(directory, { recursive: true, force: true }));
   await mkdir(join(directory, "assets"));
@@ -293,5 +293,32 @@ it("switches six full cookoff recipes over the same data, preserves context, and
       );
     }
   }
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Emulation.setEmulatedMedia", {
+    features: [{ name: "prefers-reduced-transparency", value: "reduce" }],
+  });
+  for (const concept of concepts.filter((c) => c.parts.panelSurface)) {
+    await page.goto(`/sluggers-lab?concept=${concept.id}&screen=matchday`);
+    await page.waitForFunction(
+      () => document.documentElement.dataset.uiReady === "true",
+    );
+    const panel = await page
+      .locator("[data-lab-panel]")
+      .first()
+      .evaluate((element) => {
+        const style = getComputedStyle(element);
+        return {
+          color: style.backgroundColor,
+          image: style.backgroundImage,
+          filter: style.backdropFilter,
+        };
+      });
+    assert.deepEqual(
+      panel,
+      { color: "rgb(29, 86, 191)", image: "none", filter: "none" },
+      `opaque reduced-transparency fallback ${concept.id}`,
+    );
+  }
+  await cdp.detach();
   assert.deepEqual(errors, []);
 });

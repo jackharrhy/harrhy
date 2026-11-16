@@ -291,6 +291,7 @@ export const SluggersLab = clientEntry(
           data-sluggers-lab
           data-concept={conceptId}
           data-screen={screen}
+          data-translucent={concept.parts.panelSurface ? true : undefined}
           mix={[
             themeStyles(concept.tokens),
             themeRoot,
@@ -315,19 +316,28 @@ export const SluggersLab = clientEntry(
           </header>
           <section data-lab-switcher aria-label="Design comparison">
             <nav aria-label="Design concepts">
-              {concepts.map((c) => (
-                <Button
-                  variant={conceptId === c.id ? "primary" : "secondary"}
-                  aria-pressed={conceptId === c.id}
-                  mix={on("click", () => change(c.id))}
-                >
-                  {c.name}
-                </Button>
+              <span data-concept-family>Original six</span>
+              {concepts.map((c, index) => (
+                <>
+                  {c.parent && c.parent !== concepts[index - 1]?.parent ? (
+                    <span data-concept-family>{c.parent} offspring</span>
+                  ) : null}
+                  <Button
+                    variant={conceptId === c.id ? "primary" : "secondary"}
+                    aria-pressed={conceptId === c.id}
+                    mix={on("click", () => change(c.id))}
+                  >
+                    {c.name}
+                  </Button>
+                </>
               ))}
             </nav>
             <div data-concept-description>
               <strong>{concept.name}</strong>
-              <span>{concept.summary}</span>
+              <span>
+                {concept.parent ? `Child of ${concept.parent} · ` : ""}
+                {concept.summary}
+              </span>
               <details>
                 <summary>What changes / source notes</summary>
                 <p>{concept.changes}</p>
@@ -339,8 +349,8 @@ export const SluggersLab = clientEntry(
                 <p>
                   Shared: native controls, semantic table parts, BaseballField
                   and BaseballScoreboard. Local: page grids, match rows, roster
-                  cards and experimental panel recipes. None of these six
-                  concepts is a stable public theme API.
+                  cards and experimental panel recipes. None of these concepts
+                  is a stable public theme API.
                 </p>
                 <p>
                   Archive: {data.teams.length} teams, {data.players.length}{" "}
@@ -736,6 +746,13 @@ const labStyles = css({
       color: "var(--hui-on-accent)",
     },
   },
+  "& [data-concept-family]": {
+    width: "100%",
+    gridColumn: "1 / -1",
+    color: "var(--hui-muted)",
+    fontSize: "12px",
+    marginTop: "4px",
+  },
   "& [data-concept-description]": {
     marginTop: "12px",
     display: "flex",
@@ -802,9 +819,23 @@ const labStyles = css({
     minWidth: 0,
     overflow: "hidden",
     backgroundImage: "var(--lab-panel-image)",
-    backgroundColor: "var(--hui-surface)",
+    backgroundColor: "var(--lab-panel-surface)",
+    backdropFilter: "var(--lab-panel-filter)",
     border: "var(--lab-panel-edge)",
     borderRadius: "var(--hui-panel-radius)",
+  },
+  "@supports not (backdrop-filter: blur(1px))": {
+    "&[data-translucent] [data-lab-panel]": {
+      backgroundColor: "var(--hui-surface)",
+      backgroundImage: "none",
+    },
+  },
+  "@media (prefers-reduced-transparency: reduce)": {
+    "&[data-translucent] [data-lab-panel]": {
+      backgroundColor: "var(--hui-surface)",
+      backgroundImage: "none",
+      backdropFilter: "none",
+    },
   },
   "& [data-panel-title]": {
     fontSize: "18px",
