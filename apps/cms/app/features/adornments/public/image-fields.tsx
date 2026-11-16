@@ -1,3 +1,4 @@
+import { Button, Input } from "@harrhy/ui/native";
 import { on, type Handle } from "remix/component";
 import type {
   ContentBlock,
@@ -62,16 +63,16 @@ export function ImageFields(
           ) : (
             <p className="muted">No image selected.</p>
           )}
-          <button
+          <Button
+            variant="quiet"
             type="button"
-            className="button"
             mix={on("click", () => {
               picking = true;
               handle.update();
             })}
           >
             {p.mediaId ? "Change image" : "Choose image"}
-          </button>
+          </Button>
         </div>
         <ImageAppearance
           value={p}
@@ -83,7 +84,7 @@ export function ImageFields(
         />
         <label>
           Alternative text
-          <input
+          <Input
             value={p.alt ?? ""}
             placeholder="Describe the image"
             mix={on("input", (e) => set("alt", e.currentTarget.value))}
@@ -92,8 +93,9 @@ export function ImageFields(
         <section className="image-adornments" aria-label="Image adornments">
           <div className="section-heading">
             <span>Adornments{refs.length ? ` · ${refs.length}` : ""}</span>
-            <button
-              className="button small"
+            <Button
+              variant="quiet"
+              className="small"
               type="button"
               aria-expanded={adding}
               disabled={refs.length >= 100}
@@ -103,7 +105,7 @@ export function ImageFields(
               })}
             >
               Add adornment
-            </button>
+            </Button>
           </div>
           {refs.map((r, index) => (
             <div
@@ -111,8 +113,8 @@ export function ImageFields(
               key={r.id}
               data-instance-id={r.id}
             >
-              <button
-                className="text-button"
+              <Button
+                variant="quiet"
                 type="button"
                 aria-pressed={selected === r.id}
                 mix={on("click", () => {
@@ -121,9 +123,9 @@ export function ImageFields(
                 })}
               >
                 {r.adornmentName} <small>{index + 1}</small>
-              </button>
-              <button
-                className="text-button"
+              </Button>
+              <Button
+                variant="quiet"
                 type="button"
                 aria-label={`Duplicate adornment ${index + 1}`}
                 disabled={refs.length >= 100}
@@ -141,9 +143,9 @@ export function ImageFields(
                 })}
               >
                 Duplicate
-              </button>
-              <button
-                className="text-button"
+              </Button>
+              <Button
+                variant="danger"
                 type="button"
                 aria-label={`Remove adornment ${index + 1}`}
                 mix={on("click", () => {
@@ -152,7 +154,7 @@ export function ImageFields(
                 })}
               >
                 Remove
-              </button>
+              </Button>
             </div>
           ))}
           {adding && (
@@ -161,9 +163,10 @@ export function ImageFields(
               aria-label="Choose adornment"
             >
               {adornments.map((a) => (
-                <button
+                <Button
+                  variant="quiet"
                   type="button"
-                  className="button small"
+                  className="small"
                   mix={on("click", () => {
                     selected = crypto.randomUUID();
                     adding = false;
@@ -177,7 +180,7 @@ export function ImageFields(
                     <img src={"/tea/api/media/file/" + a.media_id} alt="" />
                   )}
                   {a.name}
-                </button>
+                </Button>
               ))}
             </div>
           )}
@@ -200,7 +203,7 @@ export function ImageFields(
             ].map((key) => (
               <label>
                 {key}
-                <input
+                <Input
                   value={p[key] ?? ""}
                   mix={on("input", (e) => set(key, e.currentTarget.value))}
                 />

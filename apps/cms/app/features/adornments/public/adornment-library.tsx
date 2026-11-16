@@ -1,3 +1,5 @@
+import { Select } from "@harrhy/ui/interactive";
+import { Button, Input } from "@harrhy/ui/native";
 import { clientEntry, on, ref, type Handle } from "remix/component";
 import type { Adornment, Media } from "../../../ui/public/content-types.ts";
 import { ImageAppearance } from "../../../actions/admin/public/image-appearance.tsx";
@@ -31,8 +33,8 @@ export const AdornmentLibrary = clientEntry(
             </h1>
             <p className="muted">Tape and artwork placed around images.</p>
           </div>
-          <button
-            className="button primary"
+          <Button
+            variant="primary"
             mix={on("click", () => {
               editing = {
                 id: "",
@@ -45,7 +47,7 @@ export const AdornmentLibrary = clientEntry(
             })}
           >
             + New adornment
-          </button>
+          </Button>
         </div>
         {error && (
           <p className="notice error" role="alert">
@@ -59,7 +61,8 @@ export const AdornmentLibrary = clientEntry(
         )}
         <div className="adornment-grid">
           {items.map((a) => (
-            <button
+            <Button
+              variant="quiet"
               className="adornment-tile"
               mix={on("click", () => {
                 editing = structuredClone(a);
@@ -73,7 +76,7 @@ export const AdornmentLibrary = clientEntry(
                 )}
               </div>
               <strong>{a.name}</strong>
-            </button>
+            </Button>
           ))}
         </div>
         {editing && (
@@ -94,8 +97,8 @@ export const AdornmentLibrary = clientEntry(
           >
             <div className="section-heading">
               <h2>{editing.id ? editing.name : "New adornment"}</h2>
-              <button
-                className="button"
+              <Button
+                variant="quiet"
                 disabled={saving}
                 mix={on("click", () => {
                   editing = null;
@@ -103,7 +106,7 @@ export const AdornmentLibrary = clientEntry(
                 })}
               >
                 Close
-              </button>
+              </Button>
             </div>
             {error && (
               <p className="notice error" role="alert">
@@ -114,28 +117,25 @@ export const AdornmentLibrary = clientEntry(
               <div>
                 <label>
                   Preview image
-                  <select
-                    value={contextImage ?? ""}
-                    mix={on<HTMLSelectElement>("change", (e) => {
-                      contextImage = e.currentTarget.value || null;
+                  <Select
+                    aria-label="Preview image"
+                    key={contextImage ?? ""}
+                    defaultValue={contextImage ?? ""}
+                    options={[
+                      { value: "", label: "No image" },
+                      ...handle.props.media
+                        .filter(
+                          (m) =>
+                            m.mime_type.startsWith("image/") &&
+                            !items.some((a) => a.media_id === m.id),
+                        )
+                        .map((m) => ({ value: m.id, label: m.filename })),
+                    ]}
+                    onValueChange={(value) => {
+                      contextImage = value || null;
                       handle.update();
-                    })}
-                  >
-                    <option value="" selected={!contextImage}>
-                      No image
-                    </option>
-                    {handle.props.media
-                      .filter(
-                        (m) =>
-                          m.mime_type.startsWith("image/") &&
-                          !items.some((a) => a.media_id === m.id),
-                      )
-                      .map((m) => (
-                        <option value={m.id} selected={contextImage === m.id}>
-                          {m.filename}
-                        </option>
-                      ))}
-                  </select>
+                    }}
+                  />
                 </label>
                 <AdornmentCanvas
                   image={contextImage}
@@ -165,7 +165,7 @@ export const AdornmentLibrary = clientEntry(
                 <div className="field-grid">
                   <label>
                     Name
-                    <input
+                    <Input
                       value={editing.name}
                       required
                       mix={on("input", (e) => {
@@ -176,15 +176,15 @@ export const AdornmentLibrary = clientEntry(
                   </label>
                   <div>
                     <label>Artwork</label>
-                    <button
-                      className="button"
+                    <Button
+                      variant="quiet"
                       mix={on("click", () => {
                         picking = true;
                         handle.update();
                       })}
                     >
                       {editing.media_id ? "Change artwork" : "Choose artwork"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 <details className="advanced-placement">
@@ -205,7 +205,7 @@ export const AdornmentLibrary = clientEntry(
                     ].map((key) => (
                       <label>
                         {key}
-                        <input
+                        <Input
                           value={String(editing!.css[key] ?? "")}
                           placeholder={key === "rotation" ? "0" : ""}
                           mix={on("input", (e) => {
@@ -227,8 +227,8 @@ export const AdornmentLibrary = clientEntry(
               </div>
             </div>
             <div className="form-actions">
-              <button
-                className="button primary"
+              <Button
+                variant="primary"
                 disabled={saving}
                 mix={on("click", async () => {
                   saving = true;
@@ -254,10 +254,10 @@ export const AdornmentLibrary = clientEntry(
                 })}
               >
                 Save adornment
-              </button>
+              </Button>
               {editing.id && (
-                <button
-                  className="button danger"
+                <Button
+                  variant="danger"
                   mix={on("click", async () => {
                     const item = editing;
                     if (!item || saving || !confirm("Remove this adornment?"))
@@ -286,7 +286,7 @@ export const AdornmentLibrary = clientEntry(
                   })}
                 >
                   Remove adornment
-                </button>
+                </Button>
               )}
             </div>
           </dialog>

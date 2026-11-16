@@ -1,3 +1,5 @@
+import { Select } from "@harrhy/ui/interactive";
+import { Button, Input } from "@harrhy/ui/native";
 import { clientEntry, on, type Handle } from "remix/component";
 import type { Sidebar, Page } from "../../../../app/ui/public/content-types.ts";
 
@@ -65,13 +67,13 @@ export const NavigationEditor = clientEntry(
               Header links, social profiles, and footer email.
             </p>
           </div>
-          <button
-            className="button primary"
+          <Button
+            variant="primary"
             disabled={saving || !dirty}
             mix={on("click", () => void save())}
           >
             {saving ? "Saving…" : "Save navigation"}
-          </button>
+          </Button>
         </div>
         {error && (
           <p className="notice error" role="alert">
@@ -87,7 +89,7 @@ export const NavigationEditor = clientEntry(
             <div className="navigation-item">
               <label>
                 Link label
-                <input
+                <Input
                   value={item.text}
                   mix={on("input", (e) => {
                     item.text = e.currentTarget.value;
@@ -97,21 +99,26 @@ export const NavigationEditor = clientEntry(
               </label>
               <label>
                 Page
-                <select
-                  value={item.pageSlug}
-                  mix={on<HTMLSelectElement>("change", (e) => {
-                    item.pageSlug = e.currentTarget.value;
+                <Select
+                  aria-label="Page"
+                  key={`${i}:${item.pageSlug}`}
+                  defaultValue={item.pageSlug}
+                  options={[
+                    { value: "", label: "Homepage" },
+                    ...handle.props.pages.map((p) => ({
+                      value: p.slug,
+                      label: p.title,
+                    })),
+                  ]}
+                  onValueChange={(value) => {
+                    item.pageSlug = value;
                     change();
-                  })}
-                >
-                  <option value="">Homepage</option>
-                  {handle.props.pages.map((p) => (
-                    <option value={p.slug}>{p.title}</option>
-                  ))}
-                </select>
+                  }}
+                />
               </label>
               <div className="block-actions">
-                <button
+                <Button
+                  variant="quiet"
                   aria-label="Move link up"
                   disabled={!i}
                   mix={on("click", () => {
@@ -120,8 +127,9 @@ export const NavigationEditor = clientEntry(
                   })}
                 >
                   ↑
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="quiet"
                   aria-label="Move link down"
                   disabled={i === items.length - 1}
                   mix={on("click", () => {
@@ -130,8 +138,9 @@ export const NavigationEditor = clientEntry(
                   })}
                 >
                   ↓
-                </button>
-                <button
+                </Button>
+                <Button
+                  variant="danger"
                   aria-label="Remove link"
                   mix={on("click", () => {
                     items.splice(i, 1);
@@ -139,19 +148,20 @@ export const NavigationEditor = clientEntry(
                   })}
                 >
                   Remove
-                </button>
+                </Button>
               </div>
             </div>
           ))}
-          <button
-            className="button small"
+          <Button
+            variant="quiet"
+            className="small"
             mix={on("click", () => {
               items.push({ text: "New link", pageSlug: "" });
               change();
             })}
           >
             Add link
-          </button>
+          </Button>
         </section>
         <section className="panel">
           <h2>Social profiles and email</h2>
@@ -163,7 +173,7 @@ export const NavigationEditor = clientEntry(
             <div className="navigation-item">
               <label>
                 Service
-                <input
+                <Input
                   value={link.service}
                   mix={on("input", (e) => {
                     link.service = e.currentTarget.value;
@@ -173,7 +183,7 @@ export const NavigationEditor = clientEntry(
               </label>
               <label>
                 URL
-                <input
+                <Input
                   value={link.url}
                   mix={on("input", (e) => {
                     link.url = e.currentTarget.value;
@@ -181,8 +191,8 @@ export const NavigationEditor = clientEntry(
                   })}
                 />
               </label>
-              <button
-                className="text-button"
+              <Button
+                variant="danger"
                 aria-label="Remove external link"
                 mix={on("click", () => {
                   data.links.splice(i, 1);
@@ -190,18 +200,19 @@ export const NavigationEditor = clientEntry(
                 })}
               >
                 Remove
-              </button>
+              </Button>
             </div>
           ))}
-          <button
-            className="button small"
+          <Button
+            variant="quiet"
+            className="small"
             mix={on("click", () => {
               data.links.push({ service: "", url: "" });
               change();
             })}
           >
             Add external link
-          </button>
+          </Button>
         </section>
       </>
     );
