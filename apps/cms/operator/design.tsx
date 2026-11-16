@@ -24,6 +24,7 @@ import { AdminBrand } from "../app/ui/admin-brand.tsx";
 import { Document } from "../app/ui/document.tsx";
 import { designStyles } from "./design-styles.ts";
 import { operatorStyles } from "./operator-styles.ts";
+import { DesignVisibility } from "./public/design-fields.tsx";
 
 const colors = [
   ["--canvas", "Page background"],
@@ -78,7 +79,6 @@ export function Design(_handle: Handle) {
     <Document
       title="Design · teacms"
       admin
-      static
       styles={[operatorStyles, designStyles]}
       head={
         <>
@@ -257,9 +257,7 @@ export function Design(_handle: Handle) {
                 >
                   <Input type="text" placeholder="A new page" />
                 </Field>
-                <Field id="design-visibility" label="Visibility">
-                  <Input value="Published" readOnly />
-                </Field>
+                <DesignVisibility />
               </div>
               <Field id="design-field-2" label="Description">
                 <Textarea

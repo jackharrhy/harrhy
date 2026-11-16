@@ -13,21 +13,26 @@ test("design reference is public and shows live admin tokens", async ({
   const inputHeight = await fields
     .locator('input[type="text"]')
     .evaluate((element) => element.getBoundingClientRect().height);
-  const select = fields.locator("select");
+  const select = fields.getByRole("button", { name: /Visibility/ });
   expect(
     await select.evaluate((element) => element.getBoundingClientRect().height),
   ).toBe(inputHeight);
-  expect(
-    await select.evaluate((element) =>
-      parseFloat(getComputedStyle(element).paddingRight),
-    ),
-  ).toBeGreaterThanOrEqual(32);
+  await expect(select).toContainText("Published");
+  // Selection verifies the demo's clientEntry mounted, not just its SSR label.
+  await select.click();
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.getByRole("option", { name: "Draft", exact: true }).click();
+  await expect(select).toContainText("Draft");
+  await expect(fields.locator('input[name="visibility"]')).toHaveValue("draft");
+  await expect(select).toBeFocused();
+  await select.press("ArrowDown");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("listbox")).not.toBeVisible();
+  await expect(select).toBeFocused();
   const buttons = page.locator(".design-button-row");
-  for (const [label, property] of [
-    ["Save draft", "backgroundColor"],
-    ["Delete", "backgroundColor"],
-    ["Text button", "color"],
-  ] as const) {
+  for (const label of ["Save draft", "Delete", "Text button"]) {
+    const property = "filter" as const;
     const button = buttons.getByRole("button", { name: label });
     const before = await button.evaluate(
       (element, key) => getComputedStyle(element)[key],
@@ -43,6 +48,18 @@ test("design reference is public and shows live admin tokens", async ({
       )
       .not.toBe(before);
   }
+  await expect(
+    buttons.getByRole("button", { name: "Publish page" }),
+  ).toHaveAttribute("data-variant", "primary");
+  await expect(
+    buttons.getByRole("button", { name: "Delete", exact: true }),
+  ).toHaveAttribute("data-variant", "danger");
+  await expect(
+    buttons.getByRole("button", { name: "Unavailable" }),
+  ).toBeDisabled();
+  await expect(
+    page.getByRole("table", { name: "Example pages" }),
+  ).toBeVisible();
   await page.evaluate(() => document.fonts.ready);
   expect(
     await page.evaluate(() =>
