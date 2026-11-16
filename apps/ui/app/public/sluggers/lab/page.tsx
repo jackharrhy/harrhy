@@ -46,6 +46,19 @@ function portrait(p: LabPlayer, size = 48) {
 }
 
 const value = (n: number | null | undefined) => n ?? "—";
+function score(match: LabMatch) {
+  return (
+    <strong data-match-score>
+      <span data-result={matchResult(match, match.awayId) ?? undefined}>
+        {value(match.awayScore)}
+      </span>
+      <span data-score-separator>–</span>
+      <span data-result={matchResult(match, match.homeId) ?? undefined}>
+        {value(match.homeScore)}
+      </span>
+    </strong>
+  );
+}
 export const SluggersLab = clientEntry(
   import.meta.url,
   function SluggersLab(
@@ -100,19 +113,6 @@ export const SluggersLab = clientEntry(
             )}
           </span>
         </span>
-      );
-    }
-    function score(match: LabMatch) {
-      return (
-        <strong data-match-score>
-          <span data-result={matchResult(match, match.awayId) ?? undefined}>
-            {value(match.awayScore)}
-          </span>
-          <span data-score-separator>–</span>
-          <span data-result={matchResult(match, match.homeId) ?? undefined}>
-            {value(match.homeScore)}
-          </span>
-        </strong>
       );
     }
     function board(m: LabMatch) {
