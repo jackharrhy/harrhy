@@ -25,6 +25,8 @@ export async function reviewSourceFingerprint(root) {
     join(root, "__tests__/private-review-worker.ts"),
     join(root, "__tests__/cli-loopback-transport.ts"),
     join(repo, "package-lock.json"),
+    join(repo, "celld.json"),
+    join(repo, "scripts/celld-runtime.mjs"),
     join(repo, "packages/dev-auth/server.mjs"),
   );
   const hash = createHash("sha256");

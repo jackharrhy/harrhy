@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
@@ -21,12 +22,10 @@ const publicJWK = (point) => ({
 });
 process.umask(0o077);
 const repo = process.cwd();
-assert.equal(
-  repo,
-  fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""),
-);
-const binary =
-  "/home/jack/.local/state/form-harrhy-integration/candidate/tools/celld";
+assert.equal(repo, fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""));
+const binary = process.env.CELLD_BIN;
+if (!binary) throw new Error("Set CELLD_BIN to the canonical Celld binary");
+await verifyCelldBinary(binary);
 const state = await mkdtemp(join(tmpdir(), "fourm-push-celld-"));
 const evidence =
   "/home/jack/.local/state/form-harrhy-integration/candidate/push-celld-" +
@@ -120,9 +119,7 @@ import {deliverPush} from ${JSON.stringify(absolute("apps/4orm/app/push-delivery
     }),
   );
   const env = {
-    ...Object.fromEntries(
-      Object.entries(process.env).filter(([k]) => !k.startsWith("CELLD_")),
-    ),
+    ...Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith("CELLD_"))),
     CELLD_BUCKET: `sqlite://${join(state, "objects.sqlite3")}`,
     CELLD_WATCH: join(state, "replica"),
     CELLD_DURABILITY: "bucket",
@@ -170,10 +167,7 @@ import {deliverPush} from ${JSON.stringify(absolute("apps/4orm/app/push-delivery
   });
   assert.equal(response.status, 200);
   const observed = await response.json();
-  await writeFile(
-    join(evidence, "worker-result.json"),
-    JSON.stringify(observed, null, 2),
-  );
+  await writeFile(join(evidence, "worker-result.json"), JSON.stringify(observed, null, 2));
   assert.deepEqual(observed, { expired: true });
   assert.equal(requests, 1);
   await writeFile(
@@ -205,10 +199,7 @@ import {deliverPush} from ${JSON.stringify(absolute("apps/4orm/app/push-delivery
   for (const child of children) {
     if (child.exitCode === null && child.signalCode === null) {
       child.kill("SIGTERM");
-      await Promise.race([
-        new Promise((resolve) => child.once("exit", resolve)),
-        delay(15000),
-      ]);
+      await Promise.race([new Promise((resolve) => child.once("exit", resolve)), delay(15000)]);
       if (child.exitCode === null && child.signalCode === null) {
         child.kill("SIGKILL");
         await new Promise((resolve) => child.once("exit", resolve));

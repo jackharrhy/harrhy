@@ -1,3 +1,4 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import { reviewSourceFingerprint } from "./review-source.mjs";
 import { createServer } from "node:net";
 import { parse } from "jsonc-parser";
@@ -11,24 +12,19 @@ import { setTimeout as delay } from "node:timers/promises";
 process.umask(0o077);
 const root = fileURLToPath(new URL("..", import.meta.url));
 const repo = resolve(root, "../..");
-const state = resolve(
-  root,
-  process.env.FOURM_REVIEW_STATE ?? ".review/candidate",
-);
+const state = resolve(root, process.env.FOURM_REVIEW_STATE ?? ".review/candidate");
 const port = Number(process.env.FOURM_REVIEW_PORT ?? 18944);
 const issuerPort = Number(process.env.FOURM_REVIEW_ISSUER_PORT ?? 18945);
 const providerPort = Number(process.env.FOURM_REVIEW_PROVIDER_PORT ?? 18946);
 const origin = process.env.FOURM_REVIEW_ORIGIN ?? `http://127.0.0.1:${port}`;
 const cliCage = process.env.FOURM_REVIEW_CLI_CAGE === "1";
 const privateReview = process.env.FOURM_REVIEW_PRIVATE === "1";
-if (cliCage && privateReview)
-  throw new Error("Choose one isolated review transport");
+if (cliCage && privateReview) throw new Error("Choose one isolated review transport");
 const issuer = cliCage
   ? "https://auth.jackharrhy.dev"
   : (process.env.FOURM_REVIEW_ISSUER ?? `http://127.0.0.1:${issuerPort}`);
 const user = process.env.FOURM_REVIEW_USER ?? "jane";
-if (!/^[a-z]{3,20}$/.test(user))
-  throw new Error("Fixture name must be 3–20 lowercase letters");
+if (!/^[a-z]{3,20}$/.test(user)) throw new Error("Fixture name must be 3–20 lowercase letters");
 const subject = `fourm-fixture-${user}`;
 const binary = process.env.CELLD_BIN;
 if (!binary) throw new Error("Set CELLD_BIN to the reviewed Celld fork binary");
@@ -44,13 +40,12 @@ await Promise.all(
     (value) =>
       new Promise((accept, reject) => {
         const probe = createServer();
-        probe.once("error", () =>
-          reject(new Error(`Review port ${value} is already occupied`)),
-        );
+        probe.once("error", () => reject(new Error(`Review port ${value} is already occupied`)));
         probe.listen(value, "127.0.0.1", () => probe.close(accept));
       }),
   ),
 );
+await verifyCelldBinary(binary);
 await mkdir(state, { recursive: true, mode: 0o700 });
 const fingerprint = await reviewSourceFingerprint(root);
 let enrollmentKey;
@@ -106,9 +101,7 @@ function service(args, extra = {}) {
 function checkServices() {
   if (
     services.length !== 3 ||
-    services.some(
-      (child) => child.exitCode !== null || child.signalCode !== null,
-    )
+    services.some((child) => child.exitCode !== null || child.signalCode !== null)
   )
     throw new Error("Review service failed during startup");
 }
@@ -129,9 +122,7 @@ async function ready(url) {
         return;
       }
     } catch {}
-    if (
-      children.some((child) => child.exitCode !== null && child.exitCode !== 0)
-    )
+    if (children.some((child) => child.exitCode !== null && child.exitCode !== 0))
       throw new Error("Review child exited unexpectedly");
     await delay(150);
   }
@@ -228,21 +219,14 @@ try {
     AUTH_ORGANIZATION_ID: "fourm-local-org",
     AUTH_PUBLIC_ORIGIN: origin,
     AUTH_CLI_CLIENT_ID: cliCage ? "fourm-local-cli" : "fourm-local-browser",
-    ...(cliCage
-      ? { CLI_FIXTURE_ORIGIN: `http://127.0.0.1:${issuerPort}` }
-      : {}),
+    ...(cliCage ? { CLI_FIXTURE_ORIGIN: `http://127.0.0.1:${issuerPort}` } : {}),
     AUTH_INTROSPECTION_CLIENT_ID: "fourm-local-resource",
     AUTH_INTROSPECTION_SECRET: "isolated-local-resource-secret",
-    ...(privateReview
-      ? { REVIEW_FIXTURE_ORIGIN: `http://127.0.0.1:${issuerPort}` }
-      : {}),
+    ...(privateReview ? { REVIEW_FIXTURE_ORIGIN: `http://127.0.0.1:${issuerPort}` } : {}),
     ...(process.env.FOURM_REVIEW_COUNTER_PEER_KEY_FILE
       ? {
           COUNTER_PEER_KEY: (
-            await readFile(
-              process.env.FOURM_REVIEW_COUNTER_PEER_KEY_FILE,
-              "utf8",
-            )
+            await readFile(process.env.FOURM_REVIEW_COUNTER_PEER_KEY_FILE, "utf8")
           ).trim(),
         }
       : {}),
@@ -276,29 +260,17 @@ try {
   );
   await ready(`http://127.0.0.1:${port}/ready`);
   if ((cliCage || privateReview) && process.env.FOURM_REVIEW_BOOTSTRAP !== "0")
-    throw new Error(
-      "CLI cage requires explicit private archive import; bootstrap disabled",
-    );
+    throw new Error("CLI cage requires explicit private archive import; bootstrap disabled");
   if (process.env.FOURM_REVIEW_BOOTSTRAP !== "0") {
-    const tokenPath = join(
-      state,
-      `bootstrap-${randomBytes(8).toString("hex")}`,
-    );
+    const tokenPath = join(state, `bootstrap-${randomBytes(8).toString("hex")}`);
     try {
-      await command(
-        [
-          process.execPath,
-          join(repo, "packages/dev-auth/token.mjs"),
-          tokenPath,
-        ],
-        {
-          HARRHY_DEV_AUTH_ORIGIN: issuer,
-          HARRHY_DEV_AUTH_CALLBACK: origin + "/auth/callback",
-          HARRHY_DEV_AUTH_CLIENT_ID: "fourm-local-browser",
-          HARRHY_DEV_AUTH_PROJECT_ID: "fourm-local-project",
-          HARRHY_DEV_AUTH_ROLES: roles.join(","),
-        },
-      );
+      await command([process.execPath, join(repo, "packages/dev-auth/token.mjs"), tokenPath], {
+        HARRHY_DEV_AUTH_ORIGIN: issuer,
+        HARRHY_DEV_AUTH_CALLBACK: origin + "/auth/callback",
+        HARRHY_DEV_AUTH_CLIENT_ID: "fourm-local-browser",
+        HARRHY_DEV_AUTH_PROJECT_ID: "fourm-local-project",
+        HARRHY_DEV_AUTH_ROLES: roles.join(","),
+      });
       const token = await readFile(tokenPath, "utf8");
       const response = await fetch(origin + "/api/archive", {
         method: "POST",

@@ -1,56 +1,33 @@
+import { verifyCelldBinary } from "../../../scripts/celld-runtime.mjs";
 import { fileURLToPath } from "node:url";
 import assert from "node:assert/strict";
 import { spawn, spawnSync } from "node:child_process";
-import {
-  readFile,
-  writeFile,
-  mkdir,
-  copyFile,
-  open,
-  rm,
-} from "node:fs/promises";
+import { readFile, writeFile, mkdir, copyFile, open, rm } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { setTimeout as delay } from "node:timers/promises";
 import { createHash } from "node:crypto";
-import { exerciseChatCopies } from "./chat-copy-workflow.mjs";
-import { exercisePushCopies } from "./push-copy-workflow.mjs";
-import { exerciseAdminCopies } from "./admin-copy-workflow.mjs";
+
 process.umask(0o077);
 const workflow = process.env.FOURM_COPY_WORKFLOW ?? "chat";
 assert.ok(
-  [
-    "chat",
-    "push",
-    "admin",
-    "accounts",
-    "delete",
-    "forum-admin",
-    "widgets",
-  ].includes(workflow),
+  ["chat", "push", "admin", "accounts", "delete", "forum-admin", "widgets"].includes(workflow),
 );
-const exerciseCopies = [
-  "admin",
-  "accounts",
-  "delete",
-  "forum-admin",
-  "widgets",
-].includes(workflow)
+const root = "/home/jack/.local/state/form-harrhy-integration/candidate";
+const binary = process.env.CELLD_BIN ?? join(root, "tools/celld");
+await verifyCelldBinary(binary);
+const { exerciseChatCopies } = await import("./chat-copy-workflow.mjs");
+const { exercisePushCopies } = await import("./push-copy-workflow.mjs");
+const { exerciseAdminCopies } = await import("./admin-copy-workflow.mjs");
+const exerciseCopies = ["admin", "accounts", "delete", "forum-admin", "widgets"].includes(workflow)
   ? exerciseAdminCopies
   : workflow === "push"
     ? exercisePushCopies
     : exerciseChatCopies;
 const repo = process.cwd();
-assert.equal(
-  repo,
-  fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""),
-);
-const root = "/home/jack/.local/state/form-harrhy-integration/candidate";
+assert.equal(repo, fileURLToPath(new URL("../../..", import.meta.url)).replace(/\/$/, ""));
 const canonical = resolve("apps/4orm/.review/parity-local");
 const oracle = join(root, "python-oracle");
-const output = join(
-  root,
-  workflow + "-copy-" + new Date().toISOString().replace(/[:.]/g, ""),
-);
+const output = join(root, workflow + "-copy-" + new Date().toISOString().replace(/[:.]/g, ""));
 await mkdir(output, { mode: 0o700 });
 const target = join(output, "native"),
   source = join(output, "python-oracle");
@@ -88,12 +65,7 @@ async function alive(pid) {
 }
 async function stopPid(pid, needle, cwd) {
   assert.ok((await readFile(`/proc/${pid}/cmdline`, "utf8")).includes(needle));
-  assert.equal(
-    await import("node:fs/promises").then((fs) =>
-      fs.realpath(`/proc/${pid}/cwd`),
-    ),
-    cwd,
-  );
+  assert.equal(await import("node:fs/promises").then((fs) => fs.realpath(`/proc/${pid}/cwd`)), cwd);
   process.kill(pid, "SIGTERM");
   const deadline = Date.now() + 25000;
   while (await alive(pid)) {
@@ -116,7 +88,7 @@ async function startNative(state, persist = false) {
     cwd: repo,
     env: {
       ...process.env,
-      CELLD_BIN: join(root, "tools/celld"),
+      CELLD_BIN: binary,
       FOURM_REVIEW_STATE: state,
       FOURM_REVIEW_PORT: "18974",
       FOURM_REVIEW_ISSUER_PORT: "18975",
@@ -139,11 +111,7 @@ async function startNative(state, persist = false) {
     assert.equal(child.signalCode, null);
     try {
       const r = JSON.parse(await readFile(join(state, "runtime.json"), "utf8"));
-      if (
-        r.supervisorPid === child.pid &&
-        (await fetch("http://127.0.0.1:18974/ready")).ok
-      )
-        break;
+      if (r.supervisorPid === child.pid && (await fetch("http://127.0.0.1:18974/ready")).ok) break;
     } catch {}
     assert.ok(Date.now() < deadline, "Native readiness deadline exceeded");
     await delay(150);
@@ -151,9 +119,7 @@ async function startNative(state, persist = false) {
   if (persist) child.unref();
   return child;
 }
-const original = JSON.parse(
-  await readFile(join(oracle, "runtime.json"), "utf8"),
-);
+const original = JSON.parse(await readFile(join(oracle, "runtime.json"), "utf8"));
 assert.equal(original.productionTouched, false);
 const envEntries = (await readFile(`/proc/${original.pid}/environ`, "utf8"))
   .split("\0")
@@ -177,15 +143,9 @@ const allowed = new Set([
   "UVICORN_RELOAD",
 ]);
 assert.ok(Object.keys(sourceEnv).every((key) => allowed.has(key)));
-assert.equal(
-  sourceEnv.SECRET_KEY,
-  await readFile(join(oracle, "secret"), "utf8"),
-);
+assert.equal(sourceEnv.SECRET_KEY, await readFile(join(oracle, "secret"), "utf8"));
 assert.equal(sourceEnv.OIDC_ISSUER, "https://127.0.0.1:18965");
-await writeFile(
-  join(output, "source-recovery-env.json"),
-  JSON.stringify(sourceEnv),
-);
+await writeFile(join(output, "source-recovery-env.json"), JSON.stringify(sourceEnv));
 async function startSource(directory, persist = false) {
   const log = await open(
     join(output, persist ? "canonical-source.log" : "clone-source.log"),
@@ -291,10 +251,7 @@ try {
   await checkpoint();
   nativeHash = await digest(join(canonical, "objects.sqlite3"));
   sourceHash = await digest(join(oracle, "oracle.sqlite3"));
-  copyDatabase(
-    join(canonical, "objects.sqlite3"),
-    join(target, "objects.sqlite3"),
-  );
+  copyDatabase(join(canonical, "objects.sqlite3"), join(target, "objects.sqlite3"));
   copyDatabase(join(oracle, "oracle.sqlite3"), join(source, "oracle.sqlite3"));
   assert.ok(sourceEnv.FOURM_UPLOADS_DIR.startsWith(oracle + "/"));
   const mediaCopy = spawnSync(
@@ -304,18 +261,12 @@ try {
       "import json,sys,shutil; a,b=json.load(sys.stdin); shutil.copytree(a,b,copy_function=shutil.copy2)",
     ],
     {
-      input: JSON.stringify([
-        sourceEnv.FOURM_UPLOADS_DIR,
-        join(source, "uploads"),
-      ]),
+      input: JSON.stringify([sourceEnv.FOURM_UPLOADS_DIR, join(source, "uploads")]),
       encoding: "utf8",
     },
   );
   assert.equal(mediaCopy.status, 0, "Private source media copy failed");
-  await copyFile(
-    join(canonical, "enrollment-key"),
-    join(target, "enrollment-key"),
-  );
+  await copyFile(join(canonical, "enrollment-key"), join(target, "enrollment-key"));
   for (const name of ["run.py", "secret", "media-registry.json"])
     await copyFile(join(oracle, name), join(source, name));
   await copyFile(join(oracle, "alembic.ini"), join(source, "alembic.ini"));
@@ -330,19 +281,12 @@ try {
       encoding: "utf8",
     },
   );
-  assert.equal(
-    migrationCopy.status,
-    0,
-    "Private oracle migration configuration copy failed",
-  );
+  assert.equal(migrationCopy.status, 0, "Private oracle migration configuration copy failed");
   const cloneRunner = await readFile(join(source, "run.py"), "utf8");
   assert.ok(cloneRunner.includes("access_log=False)"));
   await writeFile(
     join(source, "run.py"),
-    cloneRunner.replace(
-      "access_log=False)",
-      "access_log=False,timeout_graceful_shutdown=5)",
-    ),
+    cloneRunner.replace("access_log=False)", "access_log=False,timeout_graceful_shutdown=5)"),
   );
   await writeFile(
     join(source, "runtime.json"),
@@ -395,11 +339,7 @@ try {
 } catch (error) {
   await writeFile(
     join(output, "failure.json"),
-    JSON.stringify(
-      { status: "FAIL", phase, message: error.message, stack: error.stack },
-      null,
-      2,
-    ),
+    JSON.stringify({ status: "FAIL", phase, message: error.message, stack: error.stack }, null, 2),
   );
   process.exitCode = 1;
 } finally {
@@ -434,18 +374,12 @@ try {
     assert.ok((await fetch("http://127.0.0.1:18974/ready")).ok);
     assert.equal(recoveryErrors.length, 0);
     restored = true;
-    phase = process.exitCode
-      ? "failed-canonical-restored"
-      : "pass-canonical-restored";
+    phase = process.exitCode ? "failed-canonical-restored" : "pass-canonical-restored";
     await checkpoint();
   } catch (error) {
     await writeFile(
       join(output, "recovery-failure.json"),
-      JSON.stringify(
-        { phase, message: error.message, recoveryErrors },
-        null,
-        2,
-      ),
+      JSON.stringify({ phase, message: error.message, recoveryErrors }, null, 2),
     );
     process.exitCode = 1;
   }
