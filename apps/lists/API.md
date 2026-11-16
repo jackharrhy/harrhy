@@ -6,7 +6,7 @@ are further restricted by scopes.
 
 ## Authentication and scopes
 
-Production REST and MCP requests use Central Auth bearer tokens with the Lists project audience. The resource server checks the issuer, active token, project and organization roles, exact operation scopes, and the local user's list assignments on every request. The `/admin/tokens` page documents this boundary; Lists does not issue personal tokens or OAuth clients. Silicon Harbour uses a dedicated service client for REST only, bound to local user 2 and list 4. It cannot call MCP or use browser sign-in.
+Production REST and MCP requests use Auth bearer tokens with the Lists project audience. The resource server checks the issuer, active token, project and organization roles, exact operation scopes, and the local user's list assignments on every request. The `/admin/tokens` page documents this boundary; Lists does not issue personal tokens or OAuth clients. Silicon Harbour uses a dedicated service client for REST only, bound to local user 2 and list 4. It cannot call MCP or use browser sign-in.
 
 The operation scopes are:
 
@@ -17,7 +17,7 @@ The operation scopes are:
 - `deliverability:read`
 - `dmarc:read`
 
-Central Auth represents these as project role scopes with hyphens (for example, `lists:read` becomes `urn:zitadel:iam:org:project:role:lists-read`). Lists maps only these ten known scopes to operations. Local development uses synthetic password accounts and local tokens to exercise mail behavior without production credentials.
+Auth represents these as project role scopes with hyphens (for example, `lists:read` becomes `urn:zitadel:iam:org:project:role:lists-read`). Lists maps only these ten known scopes to operations. Local development uses synthetic password accounts and local tokens to exercise mail behavior without production credentials.
 
 ## REST API
 
@@ -100,4 +100,4 @@ alternative. Scripts, event-handler attributes, embedded browsing contexts, dang
 and non-HTTPS remote assets are rejected. The admin UI at `/admin/templates` is read-only and renders
 previews in sandboxed frames; remote assets are blocked unless explicitly enabled for that preview.
 
-MCP clients discover the Lists resource at `/.well-known/oauth-protected-resource` and register with Central Auth. The MCP endpoint is `/mcp`; human clients use Central Auth consent and PKCE. The app does not serve a standalone OAuth authorization server or dynamic registration endpoint.
+MCP clients discover the Lists resource at `/.well-known/oauth-protected-resource` and register with Auth. The MCP endpoint is `/mcp`; human clients use Auth consent and PKCE. The app does not serve a standalone OAuth authorization server or dynamic registration endpoint.

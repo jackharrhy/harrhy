@@ -13,7 +13,7 @@ full application port.
 - Design for multiple leagues from the beginning. The owner's group is the
   first tenant, not an application-wide singleton.
 - Use `https://auth.jackharrhy.dev` for identity. If Discord OAuth is desirable,
-  add it as a supported provider on central Auth's login screen, not as a second
+  add it as a supported provider on Auth's login screen, not as a second
   Sluggers-specific login system. Adding the provider remains separate work.
 - Keep the league operator's Sluggers Stat Tracker external. Accept its existing
   exports first; consider cleaner output and optional submission later.
@@ -21,7 +21,7 @@ full application port.
   Starworks platform. Use the original product as the behavior/data reference.
 
 An earlier discussion suggested single-league-first and left the login provider
-open. Those suggestions are superseded by the multi-tenant and central Auth
+open. Those suggestions are superseded by the multi-tenant and Auth
 requirements above.
 
 ## Receiving agent: start in your own worktree
@@ -206,11 +206,11 @@ billing, a generalized permission engine, or Starworks' broad platform machinery
 
 ## Central identity: auth.jackharrhy.dev
 
-Integrate via the existing `@harrhy/identity` patterns and central Auth project
+Integrate via the existing `@harrhy/identity` patterns and Auth project
 configuration. Read its README and current consumers rather than inventing an
 OAuth callback or token-validation implementation.
 
-Central Auth establishes who a principal is; Sluggers enforces tenant membership
+Auth establishes who a principal is; Sluggers enforces tenant membership
 and domain permissions. Use stable issuer/subject identity mappings. Do not link
 old Discord accounts by display name, username, or unverified matching email.
 Plan an explicit verified linking/admin-assisted migration for existing users.
@@ -218,7 +218,7 @@ Do not expose old impersonation/admin conveniences without reviewing their
 authorization and audit behavior.
 
 Discord can remain useful for league/community integration. If offered as a
-login provider, it belongs on central Auth's login screen and should return the
+login provider, it belongs on Auth's login screen and should return the
 same Harrhy identity model. Provider setup, secrets, and production configuration
 are not part of the initial UI pass. Use Harrhy's `HARRHY_AUTH_*` conventions.
 
@@ -326,7 +326,7 @@ Proposed sequence after the first UI milestone:
 Questions still open include the operator's exact tracker release and exports,
 season/team continuity rules, commissioner publication/correction policy,
 production import storage/runtime, and the visual direction after UI exploration.
-Multi-tenancy, central Auth, external tracking ownership, and UI-first sequencing
+Multi-tenancy, Auth, external tracking ownership, and UI-first sequencing
 are settled requirements, not open questions.
 
 ## State at handoff
