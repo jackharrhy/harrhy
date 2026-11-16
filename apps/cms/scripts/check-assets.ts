@@ -2,6 +2,7 @@ import { assets } from "../app/assets.ts";
 const entries = [
   "apps/cms/app/actions/public/entry.ts",
   "apps/cms/app/actions/public/visual-tools.tsx",
+  "apps/cms/operator/public/design-fields.tsx",
   "apps/cms/app/actions/admin/public/editor.tsx",
   "apps/cms/app/actions/admin/public/media-library.tsx",
   "apps/cms/app/actions/admin/public/navigation-editor.tsx",

@@ -524,7 +524,7 @@ export const Editor = clientEntry(
                   </CollapsibleContent>
                 </Collapsible>
                 <noscript>
-                  <p className="notice">Enable JavaScript to edit.</p>
+                  <Notice className="notice">Enable JavaScript to edit.</Notice>
                 </noscript>
               </section>
             </>
