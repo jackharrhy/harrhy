@@ -1004,7 +1004,11 @@ const labStyles = css({
     textUnderlineOffset: "3px",
   },
   "& table": { fontVariantNumeric: "tabular-nums" },
-  "& [data-baseball-scoreboard] td:nth-last-child(3)": { color: "var(--hui-accent)", fontFamily: "var(--hui-font-display)", fontWeight: 700 },
+  "& [data-baseball-scoreboard] td:nth-last-child(3)": {
+    color: "var(--hui-accent)",
+    fontFamily: "var(--hui-font-display)",
+    fontWeight: 700,
+  },
   "& td, & thead th:not(:first-child)": {
     textAlign: "right",
     whiteSpace: "nowrap",
