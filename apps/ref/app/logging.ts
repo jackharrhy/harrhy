@@ -53,6 +53,8 @@ const privateKeys = new Set([
   "cookie",
   "session",
   "sessionid",
+  "sessionkey",
+  "authcode",
   "refsession",
   "code",
   "state",
@@ -97,7 +99,10 @@ function matchRoute(method: string, url: URL) {
   }
 }
 
-export function requestFields(request: Request) {
+export function requestFields(
+  request: Request,
+  privateValues: readonly string[] = privateRequestValues(request),
+) {
   const url = new URL(request.url);
   const match = matchRoute(
     request.method === "HEAD" ? "GET" : request.method,
@@ -145,7 +150,11 @@ export function requestFields(request: Request) {
       .getAll(key)
       .slice(0, 8)
       .map(safeQueryValue)
-      .filter((v) => v !== undefined);
+      .filter(
+        (v) =>
+          v !== undefined &&
+          !privateValues.some((secret) => secret && v.includes(secret)),
+      );
     if (values.length)
       fields[`http.query.${key.slice(0, 80)}`] =
         values.length === 1 ? values[0]! : JSON.stringify(values);
@@ -252,11 +261,11 @@ export async function logRequest(
   handle: (log: Log) => Promise<Response>,
   options: { logger?: Logger; privateValues?: readonly string[] } = {},
 ): Promise<Response> {
-  const fields = requestFields(request);
   const secrets = [
     ...privateRequestValues(request),
     ...(options.privateValues ?? []),
   ];
+  const fields = requestFields(request, secrets);
   return (options.logger ?? logger).open("request", fields).run(async (log) => {
     privateSources.set(log, secrets);
     requestIds.set(log, fields.request_id as string);

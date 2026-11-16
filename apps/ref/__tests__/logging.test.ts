@@ -31,7 +31,7 @@ describe("Ref completion events", () => {
     const fixture = setup();
     const response = await logRequest(
       new Request(
-        `https://ref.example/api/boards/${boardId}/snapshot?sort=newest&token_count=2&tag=a&tag=b&code=PRIVATE_CODE&state=PRIVATE_STATE&access_token=PRIVATE_TOKEN&code_verifier=PRIVATE_PKCE&session=PRIVATE_SESSION&payload=PRIVATE_BODY&url=${encodeURIComponent("https://example.test/photo?X-Amz-Signature=PRIVATE_SIGNATURE")}`,
+        `https://ref.example/api/boards/${boardId}/snapshot?sort=newest&token_count=2&tag=a&tag=b&session_key=PRIVATE_KEY&auth_code=PRIVATE_AUTH_CODE&other=PRIVATE_AUTH&alias=PRIVATE_COOKIE&code=PRIVATE_CODE&state=PRIVATE_STATE&access_token=PRIVATE_TOKEN&code_verifier=PRIVATE_PKCE&session=PRIVATE_SESSION&payload=PRIVATE_BODY&url=${encodeURIComponent("https://example.test/photo?X-Amz-Signature=PRIVATE_SIGNATURE")}`,
         {
           headers: {
             Cookie: "ref_session=PRIVATE_COOKIE",

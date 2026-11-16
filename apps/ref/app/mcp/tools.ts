@@ -328,13 +328,11 @@ export async function callRefTool(
       operation,
     );
     if (result.type === "rejected") {
-      log
-        ?.warn("mcp.operation_rejected")
-        .set({
-          "mcp.outcome": "error",
-          "error.code": "BOARD_OPERATION_REJECTED",
-          "error.message": result.reason,
-        });
+      log?.warn("mcp.operation_rejected").set({
+        "mcp.outcome": "error",
+        "error.code": "BOARD_OPERATION_REJECTED",
+        "error.message": result.reason,
+      });
       return {
         ...success(
           {
