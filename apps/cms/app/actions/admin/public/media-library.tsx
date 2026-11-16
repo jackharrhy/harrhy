@@ -1,4 +1,4 @@
-import { Button, Input, Textarea } from "@harrhy/ui/native";
+import { Notice, Button, Input, Textarea } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
 import { clientEntry, css, on, type Handle } from "remix/component";
 import { buttonStyles } from "@harrhy/ui/recipes";
@@ -121,14 +121,14 @@ export const MediaLibrary = clientEntry(
           </label>
         </div>
         {error && (
-          <p className="notice error" role="alert">
+          <Notice className="notice error" role="alert" tone="danger">
             {error}
-          </p>
+          </Notice>
         )}
         {status && (
-          <p className="notice" role="status">
+          <Notice className="notice" role="status">
             {status}
-          </p>
+          </Notice>
         )}
         <div className="media-tools">
           <Input

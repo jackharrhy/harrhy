@@ -1,5 +1,5 @@
 import { restoreDialogFocus } from "./dialog-focus.ts";
-import { Button, Input, Textarea } from "@harrhy/ui/native";
+import { Notice, Button, Input, Textarea } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
 import { folderPath } from "../../../ui/public/folder-path.ts";
 export { folderPath } from "../../../ui/public/folder-path.ts";
@@ -140,9 +140,9 @@ export function Folders(
             })}
           >
             {error && (
-              <p role="alert" className="notice error">
+              <Notice role="alert" className="notice error" tone="danger">
                 {error}
-              </p>
+              </Notice>
             )}
             <label>
               Folder name

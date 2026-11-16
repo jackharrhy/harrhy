@@ -1,4 +1,4 @@
-import { Input, Textarea } from "@harrhy/ui/native";
+import { Notice, Input, Textarea } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
 import { PlainImageFields } from "./plain-image-fields.tsx";
 import type { Features } from "../../../ui/public/features.ts";
@@ -126,9 +126,9 @@ export function BlockFields(
       );
     if (b.type === "divider") return <hr />;
     return (
-      <p className="notice">
+      <Notice className="notice">
         Unsupported block: {b.type}. Saved without changes.
-      </p>
+      </Notice>
     );
   };
 }

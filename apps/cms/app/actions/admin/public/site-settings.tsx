@@ -1,4 +1,11 @@
-import { Button, Checkbox, Input, Textarea } from "@harrhy/ui/native";
+import {
+  Notice,
+  Panel,
+  Button,
+  Checkbox,
+  Input,
+  Textarea,
+} from "@harrhy/ui/native";
 import {
   checkboxLabelStyles,
   controlStyles,
@@ -81,13 +88,13 @@ export const SiteSettings = clientEntry(
           </Button>
         </div>
         {error && (
-          <p className="notice error" role="alert">
+          <Notice className="notice error" role="alert" tone="danger">
             {error}
-          </p>
+          </Notice>
         )}
         <p role="status">{status}</p>
         <div className="settings-columns">
-          <section className="panel">
+          <Panel className="panel">
             <h2>Identity & appearance</h2>
             <label>
               Website name
@@ -187,7 +194,7 @@ export const SiteSettings = clientEntry(
                 and sharing links.
               </small>
             </label>
-          </section>
+          </Panel>
           <aside className="help-panel">
             <h2>Public website</h2>
             <p>

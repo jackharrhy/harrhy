@@ -1,4 +1,4 @@
-import { Button, Input } from "@harrhy/ui/native";
+import { Notice, Panel, Button, Input } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
 import { clientEntry, on, type Handle } from "remix/component";
 import type { Sidebar, Media, Page } from "../../../ui/public/content-types.ts";
@@ -72,16 +72,16 @@ export const NavigationEditor = clientEntry(
           </Button>
         </div>
         {error && (
-          <p className="notice error" role="alert">
+          <Notice className="notice error" role="alert" tone="danger">
             {error}
-          </p>
+          </Notice>
         )}
         <p role="status" className="save-status">
           {status}
         </p>
         <div className="settings-columns">
           <section>
-            <div className="panel">
+            <Panel className="panel">
               <div className="section-heading">
                 <h2>Sidebar image</h2>
                 <Button
@@ -101,9 +101,9 @@ export const NavigationEditor = clientEntry(
                   alt="Sidebar image"
                 />
               )}
-            </div>
+            </Panel>
             {data.categories.map((category, index) => (
-              <section className="panel navigation-category">
+              <Panel className="panel navigation-category">
                 <div className="block-top">
                   <span>Category {index + 1}</span>
                   <div className="block-actions">
@@ -260,7 +260,7 @@ export const NavigationEditor = clientEntry(
                 >
                   + Add link
                 </Button>
-              </section>
+              </Panel>
             ))}
             <Button
               className="button"
@@ -274,7 +274,7 @@ export const NavigationEditor = clientEntry(
             >
               + Add category
             </Button>
-            <section className="panel">
+            <Panel className="panel">
               <h2>External links</h2>
               {data.links.map((link, i) => (
                 <div className="navigation-item">
@@ -321,7 +321,7 @@ export const NavigationEditor = clientEntry(
               >
                 + Add external link
               </Button>
-            </section>
+            </Panel>
           </section>
           <aside className="help-panel">
             <h2>Sidebar</h2>
