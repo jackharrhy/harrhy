@@ -1,4 +1,10 @@
-import { test, expect } from "@playwright/test";
+import { test, expect, type Locator, type Page } from "@playwright/test";
+
+async function choose(page: Page, trigger: Locator, label: string) {
+  await trigger.click();
+  await page.getByRole("option", { name: label, exact: true }).click();
+  await expect(trigger).toHaveText(label);
+}
 import { credentials } from "./fixture.ts";
 for (const site of ["andrew", "luke"]) {
   test(`${site}: native editor, drafts, publishing, settings and feature controls`, async ({
@@ -24,6 +30,16 @@ for (const site of ["andrew", "luke"]) {
     });
     if (site === "andrew") await expect(riso).toBeVisible();
     else await expect(riso).toHaveCount(0);
+    // Shared Select must follow restored block props, not retain its first default.
+    const headingSize = page.getByLabel("Heading size");
+    await expect(headingSize).toHaveText("Heading 1");
+    await choose(page, headingSize, "Heading 3");
+    await page.getByRole("button", { name: /Undo/ }).click();
+    await expect(headingSize).toHaveText("Heading 1");
+    await page.getByRole("button", { name: /Redo/ }).click();
+    await expect(headingSize).toHaveText("Heading 3");
+    await page.getByRole("button", { name: /Undo/ }).click();
+    await expect(headingSize).toHaveText("Heading 1");
     const fields = page.locator('[contenteditable="true"]');
     await expect(fields.first()).toBeVisible();
     await fields.first().fill(`Edited ${site} heading`);
@@ -67,6 +83,28 @@ for (const site of ["andrew", "luke"]) {
     await expect(
       page.getByLabel("Google Analytics measurement ID"),
     ).toHaveValue("G-FIXTURE123");
+    await page.goto(origin + "/tea/admin/media");
+    await page.getByRole("button", { name: "New folder", exact: true }).click();
+    let folderDialog = page.getByRole("dialog", { name: "New folder" });
+    await folderDialog.getByLabel("Folder name").fill("Select parent");
+    await folderDialog.getByRole("button", { name: "Save folder" }).click();
+    await expect(folderDialog).not.toBeVisible();
+    await page.getByRole("button", { name: "New folder", exact: true }).click();
+    folderDialog = page.getByRole("dialog", { name: "New folder" });
+    const inside = folderDialog.getByLabel("Inside");
+    await expect(inside).toHaveText("Select parent");
+    await choose(page, inside, "Library");
+    await folderDialog
+      .getByRole("button", { name: "Cancel", exact: true })
+      .click();
+    // Reopening changes the app-owned default back to the selected parent.
+    await page.getByRole("button", { name: "New folder", exact: true }).click();
+    await expect(inside).toHaveText("Select parent");
+    await folderDialog
+      .getByRole("button", { name: "Cancel", exact: true })
+      .click();
+    await choose(page, page.getByLabel("Filter media"), "Images");
+    await choose(page, page.getByLabel("Filter media"), "All files");
     await page.goto(origin);
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
