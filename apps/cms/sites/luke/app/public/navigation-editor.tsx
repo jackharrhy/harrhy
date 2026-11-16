@@ -1,5 +1,5 @@
 import { Select } from "@harrhy/ui/interactive";
-import { Button, Input } from "@harrhy/ui/native";
+import { Button, Input, Notice, Panel } from "@harrhy/ui/native";
 import { clientEntry, on, type Handle } from "remix/component";
 import type { Sidebar, Page } from "../../../../app/ui/public/content-types.ts";
 
@@ -76,14 +76,14 @@ export const NavigationEditor = clientEntry(
           </Button>
         </div>
         {error && (
-          <p className="notice error" role="alert">
+          <Notice tone="danger" role="alert">
             {error}
-          </p>
+          </Notice>
         )}
         <p role="status" className="save-status">
           {status}
         </p>
-        <section className="panel">
+        <Panel>
           <h2>Pages</h2>
           {items.map((item, i) => (
             <div className="navigation-item">
@@ -162,8 +162,8 @@ export const NavigationEditor = clientEntry(
           >
             Add link
           </Button>
-        </section>
-        <section className="panel">
+        </Panel>
+        <Panel>
           <h2>Social profiles and email</h2>
           <p className="muted">
             Use Instagram, SoundCloud, or YouTube for icons. Add a mailto: URL
@@ -213,7 +213,7 @@ export const NavigationEditor = clientEntry(
           >
             Add external link
           </Button>
-        </section>
+        </Panel>
       </>
     );
   },

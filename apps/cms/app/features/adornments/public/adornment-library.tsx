@@ -1,5 +1,5 @@
 import { Select } from "@harrhy/ui/interactive";
-import { Button, Input } from "@harrhy/ui/native";
+import { Button, Input, Notice } from "@harrhy/ui/native";
 import { clientEntry, on, ref, type Handle } from "remix/component";
 import type { Adornment, Media } from "../../../ui/public/content-types.ts";
 import { ImageAppearance } from "../../../actions/admin/public/image-appearance.tsx";
@@ -50,15 +50,11 @@ export const AdornmentLibrary = clientEntry(
           </Button>
         </div>
         {error && (
-          <p className="notice error" role="alert">
+          <Notice tone="danger" role="alert">
             {error}
-          </p>
+          </Notice>
         )}
-        {status && (
-          <p className="notice" role="status">
-            {status}
-          </p>
-        )}
+        {status && <Notice role="status">{status}</Notice>}
         <div className="adornment-grid">
           {items.map((a) => (
             <Button
@@ -109,9 +105,9 @@ export const AdornmentLibrary = clientEntry(
               </Button>
             </div>
             {error && (
-              <p className="notice error" role="alert">
+              <Notice tone="danger" role="alert">
                 {error}
-              </p>
+              </Notice>
             )}
             <div className="suite-layout">
               <div>
