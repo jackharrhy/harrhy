@@ -1,6 +1,8 @@
+import { restoreDialogFocus } from "./dialog-focus.ts";
 import { Button, Input } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
-import { on, ref, type Handle } from "remix/component";
+import { on, type Handle } from "remix/component";
+import { Dialog } from "@harrhy/ui/interactive";
 import type { Media } from "../../../ui/public/content-types.ts";
 
 export function MediaPicker(
@@ -10,19 +12,19 @@ export function MediaPicker(
     close: () => void;
   }>,
 ) {
+  const focusReturn = restoreDialogFocus();
   let query = "",
     folder = "all";
   return () => (
-    <dialog
+    <Dialog
+      open
+      title="Choose an image"
       className="media-dialog"
-      aria-label="Choose an image"
-      mix={[
-        ref((node) => node.showModal()),
-        on("cancel", () => handle.props.close()),
-      ]}
+      initialFocus='input[type="search"]'
+      mix={focusReturn}
+      onClose={() => handle.props.close()}
     >
       <div className="section-heading">
-        <h2>Choose an image</h2>
         <Button
           type="button"
           className="button"
@@ -92,6 +94,6 @@ export function MediaPicker(
         </a>
         , then save your edits and reload this page.
       </p>
-    </dialog>
+    </Dialog>
   );
 }

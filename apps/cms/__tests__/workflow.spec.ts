@@ -40,6 +40,19 @@ for (const site of ["andrew", "luke"]) {
     await expect(headingSize).toHaveText("Heading 3");
     await page.getByRole("button", { name: /Undo/ }).click();
     await expect(headingSize).toHaveText("Heading 1");
+    await page.getByRole("button", { name: "+ Image", exact: true }).click();
+    const chooseImage = page.getByRole("button", {
+      name: "Choose image",
+      exact: true,
+    });
+    await chooseImage.click();
+    const imageDialog = page.getByRole("dialog", { name: "Choose an image" });
+    await expect(imageDialog.getByLabel("Search images")).toBeFocused();
+    await choose(page, imageDialog.getByLabel("Image folder"), "Unfiled");
+    await page.keyboard.press("Escape");
+    await expect(imageDialog).not.toBeVisible();
+    await expect(chooseImage).toBeFocused();
+    await page.getByRole("button", { name: /Undo/ }).click();
     const fields = page.locator('[contenteditable="true"]');
     await expect(fields.first()).toBeVisible();
     await fields.first().fill(`Edited ${site} heading`);
@@ -86,6 +99,7 @@ for (const site of ["andrew", "luke"]) {
     await page.goto(origin + "/tea/admin/media");
     await page.getByRole("button", { name: "New folder", exact: true }).click();
     let folderDialog = page.getByRole("dialog", { name: "New folder" });
+    await expect(folderDialog.getByLabel("Folder name")).toBeFocused();
     await folderDialog.getByLabel("Folder name").fill("Select parent");
     await folderDialog.getByRole("button", { name: "Save folder" }).click();
     await expect(folderDialog).not.toBeVisible();

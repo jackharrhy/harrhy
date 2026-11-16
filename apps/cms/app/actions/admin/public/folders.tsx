@@ -1,8 +1,10 @@
+import { restoreDialogFocus } from "./dialog-focus.ts";
 import { Button, Input, Textarea } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
 import { folderPath } from "../../../ui/public/folder-path.ts";
 export { folderPath } from "../../../ui/public/folder-path.ts";
-import { on, ref, type Handle, type RemixNode } from "remix/component";
+import { on, type Handle, type RemixNode } from "remix/component";
+import { Dialog } from "@harrhy/ui/interactive";
 import type { MediaFolder } from "../../../ui/public/content-types.ts";
 
 export function Folders(
@@ -13,6 +15,7 @@ export function Folders(
     change: (folders: MediaFolder[]) => void;
   }>,
 ) {
+  const focusReturn = restoreDialogFocus();
   let editing: MediaFolder | null = null,
     error = "",
     busy = false;
@@ -97,19 +100,18 @@ export function Folders(
         </Button>
       )}
       {editing && (
-        <dialog
+        <Dialog
+          open
+          title={editing.id ? "Edit folder" : "New folder"}
           className="folder-dialog"
-          aria-label={editing.id ? "Edit folder" : "New folder"}
-          mix={[
-            ref((node) => node.showModal()),
-            on("cancel", (e) => {
-              e.preventDefault();
-              if (!busy) {
-                editing = null;
-                handle.update();
-              }
-            }),
-          ]}
+          initialFocus="input"
+          mix={focusReturn}
+          onClose={() => {
+            if (!busy) {
+              editing = null;
+              handle.update();
+            }
+          }}
         >
           <form
             inert={busy}
@@ -137,7 +139,6 @@ export function Folders(
               }
             })}
           >
-            <h2>{editing.id ? "Edit folder" : "New folder"}</h2>
             {error && (
               <p role="alert" className="notice error">
                 {error}
@@ -239,7 +240,7 @@ export function Folders(
               )}
             </div>
           </form>
-        </dialog>
+        </Dialog>
       )}
     </nav>
   );
