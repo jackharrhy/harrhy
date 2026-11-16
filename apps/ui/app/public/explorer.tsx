@@ -26,10 +26,10 @@ import {
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { CodeDiff } from "@harrhy/ui/code";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
-import { HighlightedCode } from "./highlight.tsx";
+import { HighlightedCode, prepareCode } from "./highlight.tsx";
 import type { DiffLine } from "@harrhy/ui/code";
 import { WorkbenchHeader } from "./workbench.tsx";
-import { themes } from "./themes.ts";
+import { themes, themeExports } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
 
 import {
@@ -507,8 +507,15 @@ function Story(
     const diffLines: readonly DiffLine[] = emptyDiff
       ? []
       : lineNumbers
-        ? demoDiff
-        : demoDiff.map((line) => ({ kind: line.kind, text: line.text }));
+        ? demoDiff.map((line) => ({
+            ...line,
+            tokens: prepareCode(line.text, "tsx", themes[theme].colorScheme),
+          }))
+        : demoDiff.map((line) => ({
+            kind: line.kind,
+            text: line.text,
+            tokens: prepareCode(line.text, "tsx", themes[theme].colorScheme),
+          }));
     const content =
       story === "range"
         ? `<label>Volume<Range name="volume" min="0" max="1" step="0.01" defaultValue="${rangeValue}"${disabled ? " disabled" : ""} /></label>`
@@ -549,12 +556,7 @@ function Story(
       : ["dialog", "tabs", "select"].includes(story)
         ? "@harrhy/ui/interactive"
         : "@harrhy/ui/native";
-    const themeImport =
-      theme === "clean"
-        ? "cleanTheme"
-        : theme === "tactile"
-          ? "tactileTheme"
-          : "brutalistTheme";
+    const themeImport = themeExports[theme];
     const declaration =
       story === "diff"
         ? `const lines = ${JSON.stringify(diffLines, null, 2)} satisfies readonly DiffLine[];
@@ -584,6 +586,7 @@ function Story(
               {story === "code" && (
                 <Stack>
                   <HighlightedCode
+                    colorScheme={themes[theme].colorScheme}
                     label="Collection action"
                     language={language}
                     source={shownSource}
@@ -1092,6 +1095,7 @@ function Story(
               </a>
             </p>
             <HighlightedCode
+              colorScheme={themes[theme].colorScheme}
               label={`Official ${story === "select" ? "Select" : "Tabs"} composition`}
               language="tsx"
               source={
@@ -1120,6 +1124,7 @@ function Story(
           </div>
           <div mix={css({ padding: "20px", minWidth: 0 })}>
             <HighlightedCode
+              colorScheme={themes[theme].colorScheme}
               label="Code example"
               language="tsx"
               source={example}

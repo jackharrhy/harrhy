@@ -39,7 +39,7 @@ import {
 } from "@harrhy/ui/interactive";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
-import { themes, type ThemeName } from "./themes.ts";
+import { themes, themeExports, type ThemeName } from "./themes.ts";
 import { HighlightedCode } from "./highlight.tsx";
 
 export const expandedStories = [
@@ -134,12 +134,7 @@ export function ExpandedStory(
                   ? "Menu, MenuTrigger, MenuContent, MenuItem, Select"
                   : "Stack, Heading, Text";
     const interactive = story === "accordion" || story === "menu";
-    const themeName =
-      theme === "clean"
-        ? "cleanTheme"
-        : theme === "tactile"
-          ? "tactileTheme"
-          : "brutalistTheme";
+    const themeName = themeExports[theme];
     const source = `import { ${names} } from "@harrhy/ui/${interactive ? "interactive" : "native"}";\n${story === "accordion" ? 'import { Heading } from "@harrhy/ui/native";\n' : story === "menu" ? 'import { Field } from "@harrhy/ui/native";\n' : ""}import { ${themeName}, themeStyles, themeRoot } from "@harrhy/ui/theme";\n${story === "menu" ? '\n// Inside an app-owned clientEntry; result starts as "No action selected."\n' : interactive ? "\n// Render inside an app-owned clientEntry and boot Remix run().\n" : ""}\n<section mix={[themeStyles(${themeName}), themeRoot]}>\n${content
       .split("\n")
       .map((line) => `  ${line}`)
@@ -360,6 +355,7 @@ export function ExpandedStory(
         <div data-source>
           <Heading level={2}>Code</Heading>
           <HighlightedCode
+            colorScheme={themes[theme].colorScheme}
             label="Example source"
             source={source}
             language="tsx"

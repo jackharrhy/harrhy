@@ -4,7 +4,7 @@ import { css } from "remix/component";
 import { routes } from "./routes.ts";
 import { createAssets } from "./assets.ts";
 import { Scenes } from "./public/scenes.tsx";
-import type { ThemeName } from "./public/themes.ts";
+import { themes, type ThemeName } from "./public/themes.ts";
 import { Explorer, stories } from "./public/explorer.tsx";
 
 import { defaultHosts } from "./hosts.ts";
@@ -29,8 +29,8 @@ export function createApp(
     const url = new URL(request.url);
     const candidate = url.searchParams.get("theme");
     const theme: ThemeName =
-      candidate === "tactile" || candidate === "brutalist"
-        ? candidate
+      candidate && Object.hasOwn(themes, candidate)
+        ? (candidate as ThemeName)
         : "clean";
     const entry = await assets.getScriptEntry("apps/ui/app/public/entry.ts");
     const stream = renderToStream(
@@ -53,11 +53,9 @@ export function createApp(
           {url.searchParams.get("scene") === "radio" && (
             <link rel="stylesheet" href="/assets/ui/radio/fonts.css" />
           )}
-          {url.searchParams.get("view") === "scenes" &&
-            url.searchParams.get("scene") === "sluggers" &&
-            sluggersPrivateFonts && (
-              <link rel="stylesheet" href="/assets/ui/sluggers/fonts.css" />
-            )}
+          {sluggersPrivateFonts && (
+            <link rel="stylesheet" href="/assets/ui/sluggers/fonts.css" />
+          )}
           <ImportMap value={entry.importMap} />
           {entry.preloads.map((href) => (
             <link rel="modulepreload" href={href} />

@@ -2,6 +2,7 @@ import { css } from "remix/component";
 
 /** Semantic values and part recipes. Surfaces and images are deliberately separate. */
 export interface ThemeTokens {
+  colorScheme: "light" | "dark";
   canvas: string;
   surface: string;
   elevated: string;
@@ -16,8 +17,10 @@ export interface ThemeTokens {
   popupOffset: string;
   tableBorder: string;
   tableSurface: string;
+  tableContainerSurface: string;
   tableStripe: string;
   tableTextSize: string;
+  tableHeaderTextSize: string;
   tableCellPadding: string;
   tableColumnBorder: string;
   tableHeader: string;
@@ -71,6 +74,7 @@ export interface ThemeTokens {
 }
 
 export const cleanTheme: Readonly<ThemeTokens> = {
+  colorScheme: "light",
   canvas: "#f6f7f8",
   surface: "#ffffff",
   elevated: "#ffffff",
@@ -85,8 +89,10 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   popupOffset: "6px",
   tableBorder: "var(--hui-border)",
   tableSurface: "var(--hui-surface)",
+  tableContainerSurface: "var(--hui-table-surface)",
   tableStripe: "transparent",
   tableTextSize: "0.875rem",
+  tableHeaderTextSize: "inherit",
   tableCellPadding: "0.625rem 0.75rem",
   tableColumnBorder: "0 solid transparent",
   tableHeader: "var(--hui-surface)",
@@ -240,6 +246,48 @@ export const brutalistTheme = composeTheme(cleanTheme, {
   overlayShadow: "none",
 });
 
+/** Sluggers blue scorebook palette; private font assets are host-owned and opt-in. */
+export const sluggersTheme: Readonly<ThemeTokens> = composeTheme(cleanTheme, {
+  colorScheme: "dark",
+  canvas: "oklch(48.197% 0.17551 261.35)",
+  surface: "#304f8b",
+  elevated: "#294578",
+  ink: "#ffffff",
+  muted: "#d6e3fa",
+  border: "rgb(180 203 241 / 0.28)",
+  controlBorder: "#93add5",
+  hoverSurface: "rgb(142 170 215 / 0.2)",
+  selectedSurface: "#48699f",
+  selectedInk: "#ffffff",
+  disabledSurface: "#304b79",
+  accent: "#fff1a1",
+  onAccent: "#173866",
+  focus: "#ffe77d",
+  danger: "#ffc1c6",
+  onDanger: "#173866",
+  dangerSurface: "#58374d",
+  success: "#a6f0c2",
+  successSurface: "#234f53",
+  fontUi: '"SluggersCezanne", Arial, sans-serif',
+  fontDisplay: '"SluggersRodin", Arial, sans-serif',
+  fontDetail: '"SluggersCezanne", Arial, sans-serif',
+  textSize: "14px",
+  lineHeight: "1.45",
+  controlHeight: "36px",
+  controlTextSize: "16px",
+  buttonHeight: "36px",
+  buttonTextSize: "14px",
+  controlRadius: "6px",
+  panelRadius: "12px",
+  tableCellPadding: "10px 12px",
+  tableHeader: "rgb(106 130 174 / 0.3)",
+  tableSurface: "rgb(106 130 174 / 0.3)",
+  tableContainerSurface: "transparent",
+  tableTextSize: "14px",
+  tableHeaderTextSize: "12px",
+  space: "10px",
+});
+
 export function themeStyles(theme: Readonly<ThemeTokens>) {
   return css(
     Object.fromEntries(
@@ -260,6 +308,7 @@ const displayTypography = {
 export const displayStyles = css(displayTypography);
 
 export const themeRoot = css({
+  colorScheme: "var(--hui-color-scheme)",
   color: "var(--hui-ink)",
   backgroundColor: "var(--hui-canvas)",
   fontFamily: "var(--hui-font-ui)",
