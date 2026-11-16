@@ -1,0 +1,25 @@
+/* Private Sluggers review: original fonts, rights unresolved; see README.md. */
+@font-face {
+  font-family: SluggersHappiness;
+  src: url("./fonts/happiness.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: SluggersCezanne;
+  src: url("./fonts/cezanne.woff2") format("woff2");
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: SluggersRodin;
+  src: url("./fonts/rodin.woff2") format("woff2");
+  font-weight: 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: SluggersBolt;
+  src: url("./fonts/bolt.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}

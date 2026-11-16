@@ -11,6 +11,7 @@
     "./styles": "./styles.ts",
     "./theme": "./theme.ts",
     "./recipes": "./recipes.ts",
+    "./baseball": "./baseball.tsx",
     "./highlight": "./highlight.ts",
     "./rehype-highlight": "./rehype-highlight.ts"
   },

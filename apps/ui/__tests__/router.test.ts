@@ -32,3 +32,29 @@ it("does not expose server source", async (t) => {
   );
   assert.equal(response.status, 404);
 });
+
+it("registers the synthetic Sluggers scene and gates its private font stylesheet", async (t) => {
+  for (const sluggersPrivateFonts of [false, true]) {
+    const app = createApp(undefined, { sluggersPrivateFonts });
+    t.after(() => app.close());
+    for (const path of [
+      "/?view=scenes&scene=sluggers&theme=clean",
+      "/?view=scenes&scene=forms",
+      "/?component=button&scene=sluggers",
+    ]) {
+      const response = await app.fetch(new Request(`http://localhost${path}`));
+      assert.equal(response.status, 200);
+      const html = await response.text();
+      const isSluggers = path.includes("view=scenes&scene=sluggers");
+      assert.equal(
+        html.includes('href="/assets/ui/sluggers/fonts.css"'),
+        sluggersPrivateFonts,
+      );
+      if (isSluggers) {
+        assert.match(html, /Sluggers/);
+        assert.match(html, /Standings/);
+        assert.match(html, /Lil Slug Crew/);
+      }
+    }
+  }
+});
