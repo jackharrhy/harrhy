@@ -14,17 +14,21 @@ export const assets = createAssetServer({
   mounts: {
     "/cms": "apps/cms/app",
     "/rich-text": "packages/rich-text",
+    "/ui": "packages/ui",
     "/sites": "apps/cms/sites",
     "/npm": "node_modules",
   },
   allowFiles: [
     "apps/cms/app/routes.ts",
+    "apps/cms/app/ui/admin-theme.ts",
     "apps/cms/app/**/public/**",
     "apps/cms/sites/*/app/public/**",
   ],
   allowPackages: [
     "remix",
     "@harrhy/rich-text",
+    "@harrhy/ui",
+    "@remix-run/ui",
     "@tiptap/core",
     "@tiptap/pm",
     "@tiptap/starter-kit",

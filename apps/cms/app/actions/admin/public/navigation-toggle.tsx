@@ -1,3 +1,4 @@
+import { Button } from "@harrhy/ui/native";
 import { clientEntry, on, type Handle } from "remix/component";
 
 export function NavigationButton(handle: Handle) {
@@ -35,7 +36,7 @@ export function NavigationButton(handle: Handle) {
     } catch {}
   });
   return () => (
-    <button
+    <Button
       type="button"
       className="button small navigation-toggle"
       aria-controls="cms-navigation"
@@ -43,7 +44,7 @@ export function NavigationButton(handle: Handle) {
       mix={on("click", () => toggle(!collapsed))}
     >
       {collapsed ? "☰ Show navigation" : "☰ Hide navigation"}
-    </button>
+    </Button>
   );
 }
 export const NavigationToggle = clientEntry(

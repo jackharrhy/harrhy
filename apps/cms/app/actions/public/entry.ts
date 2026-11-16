@@ -29,6 +29,7 @@ const app = run({
 void app
   .ready()
   .then(() => {
+    document.body.removeAttribute("data-tea-visual-loading");
     const workspace = document.getElementById("workspace");
     workspace?.removeAttribute("inert");
     workspace?.removeAttribute("aria-busy");

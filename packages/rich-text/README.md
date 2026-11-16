@@ -6,7 +6,7 @@ This package holds the Inline document format and a Remix 3 rich text editor. Fo
 
 - `@harrhy/rich-text/inline.ts` defines the Inline content type.
 - `@harrhy/rich-text/text-document.ts` converts between Inline content and TipTap documents.
-- `@harrhy/rich-text/rich-text.tsx` provides the Remix browser editor and applies its styles through `rich-text-styles.ts`.
+- `@harrhy/rich-text/rich-text.tsx` provides the Remix browser editor and applies its styles through `rich-text-styles.ts`. Its toolbar and link form use `@harrhy/ui/native`; hosts supply a shared UI theme scope. Rich-text selection, formatting and TipTap behavior stay owned here, separate from shared button/input behavior.
 
 Do not import a host app or CMS storage here. Keep conversion separate from browser UI when extending the format.
 

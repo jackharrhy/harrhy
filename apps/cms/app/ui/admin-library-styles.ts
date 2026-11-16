@@ -4,16 +4,7 @@ export const adminLibraryStyles = css({
   "& .media-dialog": {
     width: "min(900px, 92vw)",
     "max-height": "85dvh",
-    border: "1px solid var(--line)",
-    "border-radius": "var(--radius)",
     padding: "26px",
-    color: "var(--ink)",
-    "box-shadow": "0 20px 80px var(--shadow)",
-    background: "var(--paper)",
-  },
-  "& .media-dialog::backdrop": {
-    background: "var(--backdrop)",
-    "backdrop-filter": "none",
   },
   "& .media-dialog .picker-grid": {
     "margin-top": "20px",
@@ -74,7 +65,7 @@ export const adminLibraryStyles = css({
   "& .media-tools input": {
     "max-width": "460px",
   },
-  "& .media-tools select": {
+  "& .media-tools [aria-haspopup=listbox]": {
     "max-width": "210px",
   },
   "& .media-workspace": {
@@ -220,7 +211,7 @@ export const adminLibraryStyles = css({
     "font-size": "12px",
     margin: "0px",
   },
-  "& .navigation-item input, & .navigation-item select": {
+  "& .navigation-item input, & .navigation-item [aria-haspopup=listbox]": {
     "font-size": "12px",
   },
   "& .category-art": {
@@ -602,7 +593,7 @@ export const adminLibraryStyles = css({
       "flex-direction": "column",
       gap: "10px",
     },
-    "& .media-tools select": {
+    "& .media-tools [aria-haspopup=listbox]": {
       "max-width": "100%",
     },
     "& .media-grid": {

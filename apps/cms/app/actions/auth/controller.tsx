@@ -1,3 +1,4 @@
+import { Button, ButtonLink, Input, Notice } from "@harrhy/ui/native";
 import { createController } from "remix/router";
 import type { Handle } from "remix/component";
 import { routes } from "../../routes.ts";
@@ -32,13 +33,14 @@ function Login(
         </section>
         <section className="login-panel">
           {handle.props.central ? (
-            <a
+            <ButtonLink
+              variant="primary"
               className="button primary"
               href={routes.auth.centralLogin.href()}
               data-rmx-document
             >
               Sign in
-            </a>
+            </ButtonLink>
           ) : (
             <form
               method="post"
@@ -47,13 +49,13 @@ function Login(
             >
               <h1>Sign in</h1>
               {handle.props.error && (
-                <p role="alert" className="notice error">
+                <Notice role="alert" tone="danger" className="notice error">
                   {handle.props.error}
-                </p>
+                </Notice>
               )}
               <label>
                 Email address
-                <input
+                <Input
                   name="email"
                   type="email"
                   autoComplete="username"
@@ -63,14 +65,20 @@ function Login(
               </label>
               <label>
                 Password
-                <input
+                <Input
                   name="password"
                   type="password"
                   autoComplete="current-password"
                   required
                 />
               </label>
-              <button className="button primary">Sign in</button>
+              <Button
+                type="submit"
+                className="button primary"
+                variant="primary"
+              >
+                Sign in
+              </Button>
               <a className="muted" href="/">
                 Open website ↗
               </a>

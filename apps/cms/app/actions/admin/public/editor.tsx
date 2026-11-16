@@ -1,3 +1,14 @@
+import {
+  Button,
+  Checkbox,
+  Input,
+  Textarea,
+  Notice,
+  Panel,
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@harrhy/ui/native";
 import type { Features } from "../../../ui/public/features.ts";
 import { clientEntry, on, type Handle } from "remix/component";
 import type {
@@ -237,52 +248,56 @@ export const Editor = clientEntry(
                     >
                       {status}
                     </span>
-                    <button
+                    <Button
                       type="button"
                       className="button"
                       disabled={saving || publishing || !dirty}
                       mix={on("click", () => void save())}
                     >
                       {saving ? "Saving…" : "Save draft"}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       className="button primary"
+                      variant="primary"
                       disabled={
                         saving || publishing || (!dirty && !page.hasDraft)
                       }
                       mix={on("click", () => void publish())}
                     >
                       {publishing ? "Publishing…" : "Publish"}
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 {error && (
-                  <div className="notice error" role="alert">
+                  <Notice className="notice error" tone="danger" role="alert">
                     {error}{" "}
-                    <button
+                    <Button
                       type="button"
                       className="text-button"
+                      variant="quiet"
                       mix={on("click", () => void save())}
                     >
                       Retry save
-                    </button>
-                  </div>
+                    </Button>
+                  </Notice>
                 )}
                 {recoverable && (
-                  <div className="notice">
+                  <Notice className="notice">
                     Unsaved draft found.{" "}
-                    <button
+                    <Button
                       className="text-button"
+                      variant="quiet"
                       mix={on("click", () => {
                         restore(JSON.stringify(recoverable));
                         recoverable = null;
                       })}
                     >
                       Recover draft
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       className="text-button"
+                      variant="quiet"
                       mix={on("click", () => {
                         localStorage.removeItem(storageKey);
                         recoverable = null;
@@ -290,12 +305,12 @@ export const Editor = clientEntry(
                       })}
                     >
                       Discard draft
-                    </button>
-                  </div>
+                    </Button>
+                  </Notice>
                 )}
                 <div className="editor-toolbar">
                   <div>
-                    <button
+                    <Button
                       type="button"
                       className="button small"
                       disabled={!undo.length}
@@ -305,8 +320,8 @@ export const Editor = clientEntry(
                       })}
                     >
                       ↶ Undo
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       type="button"
                       className="button small"
                       disabled={!redo.length}
@@ -316,13 +331,12 @@ export const Editor = clientEntry(
                       })}
                     >
                       ↷ Redo
-                    </button>
+                    </Button>
                     <span className="muted">{page.blocks.length} blocks</span>
                   </div>
                   <div>
                     <label className="check-label">
-                      <input
-                        type="checkbox"
+                      <Checkbox
                         checked={autosave}
                         mix={on("change", (e) => {
                           autosave = e.currentTarget.checked;
@@ -333,7 +347,7 @@ export const Editor = clientEntry(
                       />
                       Autosave draft
                     </label>
-                    <button
+                    <Button
                       className="button small"
                       mix={on("click", () => {
                         showPreview = !showPreview;
@@ -341,8 +355,8 @@ export const Editor = clientEntry(
                       })}
                     >
                       {showPreview ? "Hide preview" : "Show preview"}
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       className="button small"
                       mix={on("click", async () => {
                         historyOpen = !historyOpen;
@@ -356,11 +370,11 @@ export const Editor = clientEntry(
                       })}
                     >
                       History
-                    </button>
+                    </Button>
                   </div>
                 </div>
                 {historyOpen && (
-                  <section className="history-panel panel">
+                  <Panel className="history-panel panel">
                     <h2>Earlier versions</h2>
                     <p className="muted">
                       Loading a version changes the draft, not the published
@@ -376,7 +390,7 @@ export const Editor = clientEntry(
                               blocks
                             </small>
                           </span>
-                          <button
+                          <Button
                             className="button small"
                             mix={on("click", () => {
                               undo.push(JSON.stringify(page));
@@ -385,13 +399,13 @@ export const Editor = clientEntry(
                             })}
                           >
                             Load version
-                          </button>
+                          </Button>
                         </div>
                       ))
                     ) : (
                       <p>No earlier saves yet.</p>
                     )}
-                  </section>
+                  </Panel>
                 )}
               </div>
               <section
@@ -402,7 +416,7 @@ export const Editor = clientEntry(
                 {page.slug && (
                   <label className="page-title-field">
                     Page title
-                    <input
+                    <Input
                       value={page.title}
                       mix={on("input", (e) => {
                         page.title = e.currentTarget.value;
@@ -420,93 +434,95 @@ export const Editor = clientEntry(
                   previewLayout={previewLayout}
                   change={changed}
                 />
-                <details
+                <Collapsible
                   className="seo-panel panel"
                   id="search-sharing"
                   open={handle.props.searchOpen}
                 >
-                  <summary>Search & sharing</summary>
-                  <div className="field-grid">
+                  <CollapsibleTrigger>Search & sharing</CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="field-grid">
+                      <label>
+                        Search title
+                        <Input
+                          value={page.seo.title ?? ""}
+                          placeholder={page.title}
+                          mix={on("input", (e) => {
+                            page.seo.title = e.currentTarget.value || null;
+                            changed();
+                          })}
+                        />
+                      </label>
+                      <label>
+                        Canonical URL
+                        <Input
+                          type="url"
+                          value={page.seo.canonical ?? ""}
+                          placeholder="Page address (default)"
+                          mix={on("input", (e) => {
+                            page.seo.canonical = e.currentTarget.value || null;
+                            changed();
+                          })}
+                        />
+                      </label>
+                    </div>
                     <label>
-                      Search title
-                      <input
-                        value={page.seo.title ?? ""}
-                        placeholder={page.title}
+                      Search description
+                      <Textarea
+                        rows={3}
+                        value={page.seo.description ?? ""}
+                        placeholder="Summarize this page"
                         mix={on("input", (e) => {
-                          page.seo.title = e.currentTarget.value || null;
+                          page.seo.description = e.currentTarget.value || null;
                           changed();
                         })}
                       />
+                      <small>
+                        {page.seo.description?.length ?? 0} characters
+                      </small>
                     </label>
-                    <label>
-                      Canonical URL
-                      <input
-                        type="url"
-                        value={page.seo.canonical ?? ""}
-                        placeholder="Page address (default)"
-                        mix={on("input", (e) => {
-                          page.seo.canonical = e.currentTarget.value || null;
-                          changed();
-                        })}
-                      />
-                    </label>
-                  </div>
-                  <label>
-                    Search description
-                    <textarea
-                      rows={3}
-                      value={page.seo.description ?? ""}
-                      placeholder="Summarize this page"
-                      mix={on("input", (e) => {
-                        page.seo.description = e.currentTarget.value || null;
-                        changed();
-                      })}
-                    />
-                    <small>
-                      {page.seo.description?.length ?? 0} characters
-                    </small>
-                  </label>
-                  <div className="seo-image">
-                    {page.seo.image_id && (
-                      <img
-                        src={"/tea/api/media/file/" + page.seo.image_id}
-                        alt="Sharing image"
-                      />
-                    )}
-                    <button
-                      type="button"
-                      className="button"
-                      mix={on("click", () => {
-                        pickingSeo = true;
-                        handle.update();
-                      })}
-                    >
-                      Choose sharing image
-                    </button>
-                    {page.seo.image_id && (
-                      <button
-                        className="text-button"
+                    <div className="seo-image">
+                      {page.seo.image_id && (
+                        <img
+                          src={"/tea/api/media/file/" + page.seo.image_id}
+                          alt="Sharing image"
+                        />
+                      )}
+                      <Button
+                        type="button"
+                        className="button"
                         mix={on("click", () => {
-                          page.seo.image_id = null;
-                          changed();
+                          pickingSeo = true;
+                          handle.update();
                         })}
                       >
-                        Clear image
-                      </button>
-                    )}
-                  </div>
-                  <label className="check-label">
-                    <input
-                      type="checkbox"
-                      checked={page.seo.no_index}
-                      mix={on("change", (e) => {
-                        page.seo.no_index = e.currentTarget.checked;
-                        changed();
-                      })}
-                    />
-                    Hide this page from search engines
-                  </label>
-                </details>
+                        Choose sharing image
+                      </Button>
+                      {page.seo.image_id && (
+                        <Button
+                          className="text-button"
+                          variant="quiet"
+                          mix={on("click", () => {
+                            page.seo.image_id = null;
+                            changed();
+                          })}
+                        >
+                          Clear image
+                        </Button>
+                      )}
+                    </div>
+                    <label className="check-label">
+                      <Checkbox
+                        checked={page.seo.no_index}
+                        mix={on("change", (e) => {
+                          page.seo.no_index = e.currentTarget.checked;
+                          changed();
+                        })}
+                      />
+                      Hide this page from search engines
+                    </label>
+                  </CollapsibleContent>
+                </Collapsible>
                 <noscript>
                   <p className="notice">Enable JavaScript to edit.</p>
                 </noscript>
