@@ -52,7 +52,7 @@ function selectedWorkspaces(app) {
     path: `apps/${app}`,
     manifest: JSON.parse(read(`apps/${app}/package.json`)),
   });
-  return [...selected].sort();
+  return [...selected].toSorted((a, b) => a.localeCompare(b));
 }
 
 for (const app of apps) {
@@ -68,7 +68,7 @@ for (const app of apps) {
       ...prefix.matchAll(/^COPY ((?:apps|packages)\/[^/]+)\/package\.json /gm),
     ]
       .map((match) => match[1])
-      .sort();
+      .toSorted((a, b) => a.localeCompare(b));
     assert.deepEqual(manifests, selectedWorkspaces(app));
     assert.ok(!prefix.includes("ARG APP_REVISION"));
     assert.ok(!dockerfile.slice(install, source).includes("npm run build"));
