@@ -55,12 +55,10 @@ const variables = {
   RADIO_SESSION_SECRET: "disposable-image-smoke-session-secret",
   HARRHY_MAPS_REALTIME_TICKET_SECRET: "disposable-image-smoke-ticket-secret",
 };
-const environment = config.bun
-  ? []
-  : Object.entries(variables).flatMap(([key, value]) => [
-      "-e",
-      `CELLD_VAR_${key}=${value}`,
-    ]);
+const environment = Object.entries(variables).flatMap(([key, value]) => [
+  "-e",
+  `${config.bun ? "" : "CELLD_VAR_"}${key}=${value}`,
+]);
 const id = docker(
   "run",
   "-d",
@@ -75,6 +73,7 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 const origin = 'http://127.0.0.1:${config.port}';
+const restarted = false;
 for (const [path, status] of ${JSON.stringify(config.paths)}) {
   let response;
   for (let attempt = 0; attempt < 180; attempt++) {
@@ -100,14 +99,19 @@ async function assets(directory, prefix = '') {
     count++;
   }
 }
-if(existsSync(root)) { await assets(root); assert.ok(count > 0, 'built assets must be present'); }
+if(${JSON.stringify(app !== "maps-collaboration")}) {
+  assert.ok(existsSync(root), 'built browser directory must be present');
+  await assets(root); assert.ok(count > 0, 'built assets must be present');
+}
 console.log('exact built asset bodies: ' + count);
 ${
   config.bun
     ? `
 const {Database} = await import('bun:sqlite');
 const path='/tmp/image-smoke.sqlite';
-const db=new Database(path);db.exec("CREATE TABLE smoke(value TEXT); INSERT INTO smoke VALUES ('persisted')");db.close();
+const db=new Database(path);
+if(!restarted) db.exec("CREATE TABLE smoke(value TEXT); INSERT INTO smoke VALUES ('persisted')");
+assert.equal(db.query('SELECT count(*) AS count FROM smoke').get().count,1);db.close();
 const reopened=new Database(path);assert.equal(reopened.query('SELECT value FROM smoke').get().value,'persisted');reopened.close();
 `
     : `
@@ -117,7 +121,9 @@ const {createRequire}=await import('node:module');
 const require=createRequire(import.meta.url);
 const esbuild=require('esbuild');assert.equal(esbuild.transformSync('const value: number = 1', {loader:'ts'}).code.includes('const value = 1'), true);
 const {DatabaseSync}=await import('node:sqlite');
-const db=new DatabaseSync('/tmp/image-smoke.sqlite');db.exec("CREATE TABLE smoke(value TEXT); INSERT INTO smoke VALUES ('persisted')");db.close();
+const db=new DatabaseSync('/tmp/image-smoke.sqlite');
+if(!restarted) db.exec("CREATE TABLE smoke(value TEXT); INSERT INTO smoke VALUES ('persisted')");
+assert.equal(db.prepare('SELECT count(*) AS count FROM smoke').get().count,1);db.close();
 const reopened=new DatabaseSync('/tmp/image-smoke.sqlite');assert.equal(reopened.prepare('SELECT value FROM smoke').get().value,'persisted');reopened.close();
 ${app === "radio" ? `const azure=await import('@azure/storage-blob');assert.equal(typeof azure.BlobServiceClient,'function');assert.ok(existsSync('wrangler.celld-cutover.jsonc'));` : ""}
 `
@@ -139,16 +145,15 @@ console.log('selected runtime, compiler and SQLite write/reopen passed');
       "exec",
       id,
       ...(config.bun ? ["bun", "-e"] : ["node", "--input-type=module", "-e"]),
-      script.replaceAll(
-        "CREATE TABLE smoke(value TEXT); INSERT INTO smoke VALUES ('persisted')",
-        "CREATE TABLE IF NOT EXISTS smoke(value TEXT); INSERT INTO smoke VALUES ('persisted')",
-      ),
+      script.replace("const restarted = false;", "const restarted = true;"),
     ),
   );
-  console.log(`${app}: default CMD, assets, persistence and restart passed`);
+  console.log(
+    `${app}: default CMD, assets, SQLite capability and same-container restart passed`,
+  );
 } catch (error) {
   process.stderr.write(docker("logs", id));
   throw error;
 } finally {
-  docker("rm", "-f", id);
+  docker("rm", "-f", "-v", id);
 }
