@@ -1,5 +1,9 @@
 import { Button, Checkbox, Input, Textarea } from "@harrhy/ui/native";
-import { checkboxLabelStyles } from "@harrhy/ui/recipes";
+import {
+  checkboxLabelStyles,
+  controlStyles,
+  focusStyles,
+} from "@harrhy/ui/recipes";
 import { clientEntry, on, type Handle } from "remix/component";
 
 export const SiteSettings = clientEntry(
@@ -119,10 +123,14 @@ export const SiteSettings = clientEntry(
                       ? site.background_color
                       : "#ffffff"
                   }
-                  mix={on("input", (e) => {
-                    site.background_color = e.currentTarget.value;
-                    change();
-                  })}
+                  mix={[
+                    controlStyles,
+                    focusStyles,
+                    on("input", (e) => {
+                      site.background_color = e.currentTarget.value;
+                      change();
+                    }),
+                  ]}
                 />
                 <Input
                   aria-label="Background color value"

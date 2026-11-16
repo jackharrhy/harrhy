@@ -1,6 +1,7 @@
 import { Button, Input, Textarea } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
-import { clientEntry, on, type Handle } from "remix/component";
+import { clientEntry, css, on, type Handle } from "remix/component";
+import { buttonStyles } from "@harrhy/ui/recipes";
 import { Folders, folderPath } from "./folders.tsx";
 import type { Media, MediaFolder } from "../../../ui/public/content-types.ts";
 
@@ -96,6 +97,16 @@ export const MediaLibrary = clientEntry(
           <label
             className="button primary upload-button"
             aria-disabled={uploading}
+            data-variant="primary"
+            mix={[
+              buttonStyles,
+              css({
+                "&:focus-within": {
+                  outline: "2px solid var(--hui-focus)",
+                  outlineOffset: "3px",
+                },
+              }),
+            ]}
           >
             {uploading ? "Uploading…" : "Upload file"}
             <input

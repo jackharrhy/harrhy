@@ -1,4 +1,5 @@
 import { Range } from "@harrhy/ui/native";
+import { controlStyles, focusStyles } from "@harrhy/ui/recipes";
 import { CmsSelect } from "./cms-select.tsx";
 import { on, type Handle } from "remix/component";
 import type { ImageLayout } from "../../../ui/public/image-layout.ts";
@@ -100,9 +101,13 @@ export function ImageAppearance(
               /^#[\da-f]{6}$/i.test(current.color) ? current.color : colorHex
             }
             disabled={["none", "custom"].includes(current.style)}
-            mix={on("input", (e) =>
-              border(undefined, undefined, e.currentTarget.value),
-            )}
+            mix={[
+              controlStyles,
+              focusStyles,
+              on("input", (e) =>
+                border(undefined, undefined, e.currentTarget.value),
+              ),
+            ]}
           />
         </label>
       </div>
