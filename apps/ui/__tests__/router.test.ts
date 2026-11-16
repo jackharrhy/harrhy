@@ -48,7 +48,7 @@ it("registers the synthetic Sluggers scene and gates its private font stylesheet
       const isSluggers = path.includes("view=scenes&scene=sluggers");
       assert.equal(
         html.includes('href="/assets/ui/sluggers/fonts.css"'),
-        sluggersPrivateFonts && isSluggers,
+        sluggersPrivateFonts,
       );
       if (isSluggers) {
         assert.match(html, /Sluggers/);

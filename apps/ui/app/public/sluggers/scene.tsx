@@ -273,12 +273,10 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
               color: "var(--hui-on-accent)",
             },
             "& [role=region]": {
-              background: "var(--hui-table-header)",
               borderRadius: "8px",
               scrollbarColor: "var(--hui-control-border) var(--hui-elevated)",
             },
             "& table": { minWidth: "480px" },
-            "& thead th": { fontSize: "12px", color: "var(--hui-muted)" },
             "& th[scope=rowgroup]": {
               background: "var(--hui-table-header)",
               color: "var(--hui-muted)",
