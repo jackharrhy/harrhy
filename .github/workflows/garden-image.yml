@@ -12,6 +12,9 @@ on:
       - apps/garden/**
       - packages/ui/**
   workflow_dispatch:
+concurrency:
+  group: garden-image-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
