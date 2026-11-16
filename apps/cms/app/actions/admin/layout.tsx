@@ -1,3 +1,4 @@
+import { Button, NavigationMenu, NavigationMenuLink } from "@harrhy/ui/native";
 import type { Handle, RemixNode } from "remix/component";
 import { Document } from "../../ui/document.tsx";
 import { AdminBrand } from "../../ui/admin-brand.tsx";
@@ -36,31 +37,31 @@ export function AdminLayout(
       </a>
       <aside className="cms-sidebar" id="cms-navigation">
         {handle.props.editor && (
-          <button
+          <Button
             id="close-cms-navigation"
             type="button"
-            className="button small navigation-dismiss"
+            className="navigation-dismiss"
           >
             Close navigation
-          </button>
+          </Button>
         )}
         <AdminBrand href="/tea/admin" siteName={handle.props.siteName} />
-        <nav aria-label="CMS navigation">
+        <NavigationMenu aria-label="CMS navigation">
           {navigation
             .filter(
               ([href]) =>
                 href !== "/tea/admin/adornments" || handle.props.adornments,
             )
             .map(([href, label]) => (
-              <a
+              <NavigationMenuLink
                 data-rmx-document
                 href={href}
                 aria-current={handle.props.path === href ? "page" : undefined}
               >
                 {label}
-              </a>
+              </NavigationMenuLink>
             ))}
-        </nav>
+        </NavigationMenu>
         <div className="sidebar-footer">
           {handle.props.operatorOrigin && (
             <a href={handle.props.operatorOrigin} data-rmx-document>
@@ -71,7 +72,9 @@ export function AdminLayout(
             Open website <span>↗</span>
           </a>
           <form method="post" action="/tea/logout" data-rmx-document>
-            <button className="text-button">Sign out</button>
+            <Button variant="quiet" type="submit">
+              Sign out
+            </Button>
           </form>
         </div>
       </aside>

@@ -1,3 +1,19 @@
+import {
+  Field,
+  Badge,
+  Button,
+  ButtonLink,
+  Collapsible,
+  CollapsibleTrigger,
+  Input,
+  TableContainer,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+} from "@harrhy/ui/native";
 import type { SiteRuntime } from "../../site.ts";
 import type { Handle } from "remix/component";
 import type { Page } from "../../ui/public/content-types.ts";
@@ -23,95 +39,112 @@ export function Pages(
       <div className="page-heading">
         <div>
           <h1>
-            Pages<span className="count">{handle.props.pages.length}</span>
+            Pages<Badge>{handle.props.pages.length}</Badge>
           </h1>
         </div>
-        <a className="button primary" href="#new-page">
+        <ButtonLink href="#new-page" variant="primary">
           + New page
-        </a>
+        </ButtonLink>
       </div>
       <form className="search-bar" method="get" data-rmx-document>
-        <input
+        <Input
           aria-label="Search pages"
           name="q"
           type="search"
           placeholder="Find a page…"
           defaultValue={handle.props.query}
         />
-        <button className="button">Search</button>
+        <Button type="submit">Search</Button>
       </form>
-      <div className="page-list">
-        <div className="list-heading">
-          <span>PAGE</span>
-          <span>CONTENT</span>
-          <span>SEARCH</span>
-        </div>
-        {handle.props.pages.map((p) => {
-          const image = p.blocks.find((b) => b.type === "media")?.props.mediaId;
-          return (
-            <a
-              className="page-row"
-              href={"/tea/admin/pages/" + p.slug}
-              data-rmx-document
-            >
-              <div className="page-identity">
-                {image ? (
-                  <img src={mediaUrl(image)} alt="" loading="lazy" />
-                ) : (
-                  <span className="page-monogram">{p.title.slice(0, 1)}</span>
-                )}
-                <span>
-                  <strong>{p.title}</strong>
-                  <small>
-                    /{p.slug} ·{" "}
-                    {p.hasDraft
-                      ? p.published
-                        ? "Unpublished changes"
-                        : "Draft"
-                      : "Published"}
-                  </small>
-                </span>
-              </div>
-              <span className="muted">{p.blocks.length} blocks</span>
-              <span className={"badge " + (p.seo.description ? "good" : "")}>
-                {p.seo.no_index
-                  ? "Hidden"
-                  : p.seo.description
-                    ? "Ready"
-                    : "Needs description"}
-              </span>
-              <span className="row-arrow">↗</span>
-            </a>
-          );
-        })}
-        {!handle.props.pages.length && (
-          <p className="empty-state">
-            No pages found. Try another search or create a page.
-          </p>
-        )}
-      </div>
-      <details className="new-page panel" id="new-page">
-        <summary>Create a new page</summary>
+      <TableContainer>
+        <Table aria-label="Pages">
+          <TableHeader>
+            <TableRow>
+              <TableHead>Page</TableHead>
+              <TableHead>Content</TableHead>
+              <TableHead>Search</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {handle.props.pages.map((p) => {
+              const image = p.blocks.find((b) => b.type === "media")?.props
+                .mediaId;
+              return (
+                <TableRow>
+                  <TableCell>
+                    <a
+                      className="page-identity"
+                      href={"/tea/admin/pages/" + p.slug}
+                      data-rmx-document
+                    >
+                      {image ? (
+                        <img src={mediaUrl(image)} alt="" loading="lazy" />
+                      ) : (
+                        <span className="page-monogram">
+                          {p.title.slice(0, 1)}
+                        </span>
+                      )}
+                      <span>
+                        <strong>{p.title}</strong>
+                        <small>
+                          /{p.slug} ·{" "}
+                          {p.hasDraft
+                            ? p.published
+                              ? "Unpublished changes"
+                              : "Draft"
+                            : "Published"}
+                        </small>
+                      </span>
+                    </a>
+                  </TableCell>
+                  <TableCell>{p.blocks.length} blocks</TableCell>
+                  <TableCell>
+                    <Badge>
+                      {p.seo.no_index
+                        ? "Hidden"
+                        : p.seo.description
+                          ? "Ready"
+                          : "Needs description"}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+            {!handle.props.pages.length && (
+              <TableRow>
+                <TableCell colSpan={3}>
+                  No pages found. Try another search or create a page.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Collapsible className="new-page" id="new-page">
+        <CollapsibleTrigger>Create a new page</CollapsibleTrigger>
         <form method="post" action="/tea/admin/pages" data-rmx-document>
           <div className="field-grid">
-            <label>
-              Page title
-              <input name="title" required placeholder="A new project" />
-            </label>
-            <label>
-              Website URL
-              <input
+            <Field id="pages-field-1" label="Page title">
+              <Input name="title" required placeholder="A new project" />
+            </Field>
+            <Field
+              id="pages-field-2"
+              label="Website URL"
+              description="Lowercase words separated by hyphens."
+            >
+              <Input
                 name="slug"
                 required
                 pattern="[a-z0-9]+(-[a-z0-9]+)*"
                 placeholder="a-new-project"
               />
-              <small>Lowercase words separated by hyphens.</small>
-            </label>
+            </Field>
           </div>
-          <button className="button primary">Create page →</button>
+          <Button variant="primary" type="submit">
+            Create page →
+          </Button>
         </form>
-      </details>
+      </Collapsible>
     </AdminLayout>
   );
 }

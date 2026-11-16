@@ -1,3 +1,4 @@
+import { ButtonLink, Panel } from "@harrhy/ui/native";
 import type { SiteRuntime } from "../../site.ts";
 import type { Handle } from "remix/component";
 import type { ContentStore } from "../../data/content.ts";
@@ -33,16 +34,16 @@ export function Overview(
           <div>
             <h1>Overview</h1>
           </div>
-          <a className="button" href="/" target="_blank">
+          <ButtonLink href="/" target="_blank">
             Open website ↗
-          </a>
+          </ButtonLink>
         </div>
-        <section className="overview-feature">
+        <Panel className="overview-feature">
           <div>
             <h2>Homepage</h2>
-            <a className="button primary" href="/tea/admin/homepage">
+            <ButtonLink href="/tea/admin/homepage" variant="primary">
               Edit homepage
-            </a>
+            </ButtonLink>
             <div className="inventory">
               <span>
                 <strong>{pages.length}</strong> pages
@@ -63,7 +64,7 @@ export function Overview(
               alt={portrait.props.alt}
             />
           )}
-        </section>
+        </Panel>
         <div className="overview-columns">
           <section>
             <div className="section-heading">

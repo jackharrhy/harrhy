@@ -59,16 +59,9 @@ export const designStyles = css({
     padding: "62px 0 72px",
     "max-width": "650px",
   },
-  "& .design-kicker": {
-    color: "var(--tea)",
-    "font-size": "12px",
-    "font-weight": "600",
-    "letter-spacing": "0.02em",
-    margin: "0 0 14px",
-  },
   "& .design-intro h1": {
     "font-size": "clamp(42px, 6vw, 72px)",
-    "letter-spacing": "-0.065em",
+    "letter-spacing": "-0.03em",
     "line-height": "1",
     margin: "0 0 20px",
   },
@@ -86,19 +79,13 @@ export const designStyles = css({
   },
   "& .design-section-head": {
     display: "grid",
-    "grid-template-columns": "54px minmax(0, 1fr)",
+    "grid-template-columns": "minmax(0, 1fr)",
     gap: "14px",
     "margin-bottom": "30px",
   },
-  "& .design-section-head > span": {
-    color: "var(--muted)",
-    "font-size": "12px",
-    "font-variant-numeric": "tabular-nums",
-    "padding-top": "7px",
-  },
   "& .design-section-head h2": {
     "font-size": "28px",
-    "letter-spacing": "-0.05em",
+    "letter-spacing": "-0.03em",
     margin: "0 0 6px",
   },
   "& .design-section-head p": {
@@ -210,9 +197,6 @@ export const designStyles = css({
   },
   "& .design-sample": {
     padding: "26px",
-    border: "1px solid var(--line)",
-    "border-radius": "var(--radius)",
-    background: "var(--paper)",
   },
   "& .design-button-row, & .design-badges": {
     display: "flex",
@@ -237,7 +221,7 @@ export const designStyles = css({
   "& .design-badges": {
     "margin-bottom": "24px",
   },
-  "& .design-sample .notice": {
+  "& .design-sample [data-tone]": {
     margin: "12px 0",
   },
   "& .design-empty": {
@@ -258,15 +242,6 @@ export const designStyles = css({
     "font-weight": "600",
     "margin-bottom": "12px",
   },
-  "& .design-pattern .page-list, & .design-pattern .seo-preview, & .design-pattern .operator-sites":
-    {
-      border: "1px solid var(--line)",
-      "border-radius": "var(--radius)",
-      background: "var(--paper)",
-    },
-  "& .design-pattern .page-row": {
-    "border-top": "1px solid var(--line)",
-  },
   "& .design-pattern .task-row": {
     "border-top": "1px solid var(--line)",
     "max-width": "420px",
@@ -281,9 +256,6 @@ export const designStyles = css({
     display: "block",
   },
   "& .design-editor-fixture": {
-    border: "1px solid var(--line)",
-    "border-radius": "var(--radius)",
-    background: "var(--paper)",
     padding: "20px",
   },
   "& .design-editor-fixture .editor-heading h1": {

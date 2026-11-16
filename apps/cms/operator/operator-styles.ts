@@ -34,7 +34,8 @@ export const operatorStyles = css({
     margin: "0",
   },
   "& .operator-sites": {
-    "border-top": "1px solid var(--line)",
+    display: "grid",
+    gap: "16px",
     "padding-bottom": "64px",
   },
   "& .operator-site": {
@@ -42,8 +43,7 @@ export const operatorStyles = css({
     "grid-template-columns": "minmax(0, 1.4fr) minmax(260px, 1fr) 136px",
     "align-items": "center",
     gap: "28px",
-    padding: "28px 0",
-    "border-bottom": "1px solid var(--line)",
+    padding: "28px",
   },
   "& .operator-site-head": {
     display: "flex",
@@ -104,7 +104,7 @@ export const operatorStyles = css({
   },
   "& .operator-login form": {
     display: "grid",
-    gap: "2px",
+    gap: "16px",
   },
   "& .operator-login form button": {
     width: "100%",
@@ -148,7 +148,7 @@ export const operatorStyles = css({
     },
     "& .operator-site": {
       display: "block",
-      padding: "24px 0",
+      padding: "24px",
     },
     "& .operator-facts": {
       "grid-template-columns": "repeat(3, minmax(0, 1fr))",

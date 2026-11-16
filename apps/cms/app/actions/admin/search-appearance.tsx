@@ -1,3 +1,11 @@
+import {
+  Badge,
+  Collapsible,
+  CollapsibleTrigger,
+  NavigationMenu,
+  NavigationMenuLink,
+  Panel,
+} from "@harrhy/ui/native";
 import type { Handle } from "remix/component";
 import type { ContentStore } from "../../data/content.ts";
 import type { Page } from "../../ui/public/content-types.ts";
@@ -121,7 +129,7 @@ export function SearchAppearance(
             <h1>Search & sharing</h1>
           </div>
         </div>
-        <section className="seo-defaults" aria-label="Site defaults">
+        <Panel className="seo-defaults" aria-label="Site defaults">
           <div>
             <strong>Site description</strong>
             <p>{site.description || "No default description yet."}</p>
@@ -133,10 +141,13 @@ export function SearchAppearance(
           <a href={routes.admin.site.href()} data-rmx-document>
             Edit site defaults ↗
           </a>
-        </section>
-        <nav className="seo-filters" aria-label="Filter search checklist">
+        </Panel>
+        <NavigationMenu
+          className="seo-filters"
+          aria-label="Filter search checklist"
+        >
           {filters.map((filter) => (
-            <a
+            <NavigationMenuLink
               href={
                 routes.admin.seo.href() +
                 (filter.id === "all" ? "" : "?filter=" + filter.id)
@@ -145,40 +156,36 @@ export function SearchAppearance(
               aria-current={filter.id === selected.id ? "page" : undefined}
             >
               {filter.label} <span>{rows.filter(filter.matches).length}</span>
-            </a>
+            </NavigationMenuLink>
           ))}
-        </nav>
+        </NavigationMenu>
         <p className="muted seo-help">
           Previews use the website’s metadata. Search engines and sharing apps
           may display it differently.
         </p>
         <div className="seo-list">
           {visible.map((row) => (
-            <section className="seo-row" aria-label={row.title}>
+            <Panel className="seo-row" aria-label={row.title}>
               <header className="seo-row-heading">
                 <h2>{row.title}</h2>
-                <span className="badge">
-                  {row.live ? "Live" : "Not published"}
-                </span>
-                {row.live && row.draft && (
-                  <span className="badge">Unpublished changes</span>
-                )}
+                <Badge>{row.live ? "Live" : "Not published"}</Badge>
+                {row.live && row.draft && <Badge>Unpublished changes</Badge>}
                 <a href={row.editHref} data-rmx-document>
                   Edit search & sharing ↗
                 </a>
               </header>
               <AppearancePreview value={(row.live ?? row.draft)!} />
               {row.live && row.draft && (
-                <details className="seo-draft">
-                  <summary>Compare saved draft</summary>
+                <Collapsible className="seo-draft">
+                  <CollapsibleTrigger>Compare saved draft</CollapsibleTrigger>
                   <p className="seo-help muted">
                     Not live yet. Publish from the page editor to apply these
                     changes.
                   </p>
                   <AppearancePreview value={row.draft} />
-                </details>
+                </Collapsible>
               )}
-            </section>
+            </Panel>
           ))}
           {!visible.length && (
             <p className="empty-state">No pages in this view.</p>
