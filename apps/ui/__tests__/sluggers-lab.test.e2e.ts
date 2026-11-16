@@ -357,6 +357,23 @@ it("switches six curated cookoff recipes over the same data, preserves context, 
         `compact visual icon inside accessible card ${concept.id}`,
       );
       assert.equal(
+        await page.locator("[data-roster-grid]").evaluate((grid) => {
+          const rows = new Map<number, number[]>();
+          for (const card of grid.querySelectorAll("[data-roster-card]")) {
+            const top = Math.round(card.getBoundingClientRect().top);
+            const bottom = card
+              .querySelector("[data-card-stats]")!
+              .getBoundingClientRect().bottom;
+            rows.set(top, [...(rows.get(top) ?? []), bottom]);
+          }
+          return [...rows.values()].every(
+            (bottoms) => Math.max(...bottoms) - Math.min(...bottoms) <= 1,
+          );
+        }),
+        true,
+        `aligned stat baselines despite long names ${concept.id} ${width}`,
+      );
+      assert.equal(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
