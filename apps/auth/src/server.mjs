@@ -7,6 +7,10 @@ import { createSupportRoutes } from "./support-routes.mjs";
 import { createNativeAccess } from "./native-access.mjs";
 import { createAccessStore } from "./access-store.mjs";
 import { createAccessRoutes } from "./access-routes.mjs";
+import { createAccountInventory } from "./account-inventory.mjs";
+import { createMediaLifecycle } from "./media-lifecycle.mjs";
+import { createMediaProvisioningAdapters } from "./media-provisioning-adapters.ts";
+import { createInvitationRoute } from "./invitation-routes.mjs";
 import { createAccountRoutes } from "./account-routes.mjs";
 import { createOAuthBrowserRoutes } from "./oauth-browser-routes.mjs";
 import { createEmailRoutes } from "./email-routes.mjs";
@@ -42,6 +46,14 @@ const { renderGroups, renderGroupForm } = await import("./group-pages.tsx");
 const { renderAccessForm, renderChangePreview } =
   await import("./access-pages.tsx");
 const { renderPerson } = await import("./person-page.tsx");
+const {
+  renderConnectedAccounts,
+  renderAccountLinkReview,
+  renderAccountAction,
+} = await import("./connected-account-pages.tsx");
+const { renderMediaProvisioning, renderMediaProvisioningReview } =
+  await import("./media-provisioning-pages.tsx");
+const { renderOnboarding } = await import("./onboarding-page.tsx");
 import { createEmailActions } from "./email.mjs";
 import { applicationForClient, searchAll } from "./applications.mjs";
 import { createAccountActions } from "./accounts.mjs";
@@ -68,6 +80,16 @@ const api = createZitadel({
     process.env.MANAGEMENT_TOKEN_FILE || "/run/secrets/management-token.json",
   organizationId,
 });
+// Provisioning authority is explicit and separate from the management reader.
+const provisioningApi = process.env.AUTH_PROVISIONING_TOKEN_FILE
+  ? createZitadel({
+      baseUrl: process.env.ZITADEL_API_URL || origin,
+      loginTokenFile:
+        process.env.LOGIN_TOKEN_FILE || "/run/secrets/login-token.json",
+      managementTokenFile: process.env.AUTH_PROVISIONING_TOKEN_FILE,
+      organizationId,
+    })
+  : null;
 const emailActions = createEmailActions(api, origin);
 const accountActions = createAccountActions(api, organizationId);
 const applications = JSON.parse(
@@ -92,17 +114,37 @@ const integrations = JSON.parse(
   ),
 );
 const nativeAccess = createNativeAccess(api, organizationId);
+const mediaInventory = createAccountInventory(
+  process.env.AUTH_MEDIA_INSTANCES_FILE
+    ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_INSTANCES_FILE, "utf8"))
+    : [],
+);
 const accessFilename =
   process.env.ACCESS_DB_FILE ||
   (process.env.RADIO_ENROLLMENT_DB_FILE
     ? join(dirname(process.env.RADIO_ENROLLMENT_DB_FILE), "access.sqlite")
     : ":memory:");
+const mediaWriteInstances = process.env.AUTH_MEDIA_WRITES_FILE
+  ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_WRITES_FILE, "utf8"))
+  : [];
 let radioEnrollment;
 const accessStore = createAccessStore({
   filename: accessFilename,
   applications,
   services,
   native: nativeAccess,
+  mediaLifecycle: createMediaLifecycle(mediaWriteInstances),
+  mediaProvisioning: createMediaProvisioningAdapters(mediaWriteInstances),
+  mediaPeople: async () =>
+    (await searchAll(api, "/management/v1/users/_search"))
+      .filter(
+        (user) => user.human && user.details?.resourceOwner === organizationId,
+      )
+      .map((user) => ({
+        issuer: origin,
+        subject: user.id,
+        active: user.state === "USER_STATE_ACTIVE",
+      })),
   onIssued: async ({ after }) => {
     const radio = applications.find((app) => app.id === "radio");
     if (after.projectId !== radio?.projectId || !radioEnrollment) return;
@@ -119,6 +161,13 @@ const accessRoutes = createAccessRoutes({
   access: accessStore,
   native: nativeAccess,
   organizationId,
+  issuer: origin,
+  mediaInventory,
+  renderConnectedAccounts,
+  renderAccountLinkReview,
+  renderAccountAction,
+  renderMediaProvisioning,
+  renderMediaProvisioningReview,
   accountActions,
   endUserSessions,
   rateLimit,
@@ -128,6 +177,9 @@ const accessRoutes = createAccessRoutes({
   renderSessions,
   renderPeople,
   renderNewPerson,
+  renderOnboarding,
+  provisioningApi,
+  invitationCallbackUrl: new URL("/invitation", origin).href,
   renderServiceList,
   renderServiceDetail,
   renderIntegrations,
@@ -354,6 +406,17 @@ const oauthRoutes = createOAuthBrowserRoutes({
   renderDeviceCode,
   renderDeviceResult,
 });
+const invitationRoute = createInvitationRoute({
+  ledger: accessStore.onboarding,
+  issuer: origin,
+  organizationId,
+  provisioningApi,
+  loginApi: api,
+  emailActions,
+  rateLimit,
+  renderEmailForm,
+  renderEmailResult,
+});
 const supportBrowserRoute = (input) => supportRoutes?.browser(input) ?? false;
 
 async function handleBrowser(request, routeAction, routePhase) {
@@ -362,7 +425,10 @@ async function handleBrowser(request, routeAction, routePhase) {
     "Cache-Control": "no-store",
     "X-Content-Type-Options": "nosniff",
     // HTML forms need a same-origin referrer so browsers send their real Origin.
-    "Referrer-Policy": "same-origin",
+    "Referrer-Policy":
+      url.pathname === "/invitation" && url.searchParams.size
+        ? "no-referrer"
+        : "same-origin",
     "Content-Security-Policy": contentSecurityPolicy(undefined, {
       scripts: url.pathname === "/login",
     }),
@@ -609,6 +675,7 @@ const browserRouter = createBrowserRouter(handleBrowser, {
   accountRoutes,
   oauthRoutes,
   emailRoutes,
+  invitationRoute,
   accessRoutes,
   supportRoutes: supportBrowserRoute,
   loginRoutes,

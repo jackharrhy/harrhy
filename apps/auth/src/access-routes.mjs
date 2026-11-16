@@ -1,6 +1,6 @@
-import { randomUUID } from "node:crypto";
 import { directoryFor } from "./directory.mjs";
 import { searchAll } from "./applications.mjs";
+import { accountDiscrepancies } from "./connected-accounts.mjs";
 
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
@@ -12,6 +12,13 @@ export function createAccessRoutes({
   access,
   native,
   organizationId,
+  issuer,
+  mediaInventory,
+  renderConnectedAccounts,
+  renderAccountLinkReview,
+  renderAccountAction,
+  renderMediaProvisioning,
+  renderMediaProvisioningReview,
   accountActions,
   endUserSessions,
   rateLimit,
@@ -21,6 +28,9 @@ export function createAccessRoutes({
   renderSessions,
   renderPeople,
   renderNewPerson,
+  renderOnboarding,
+  provisioningApi,
+  invitationCallbackUrl,
   renderServiceList,
   renderServiceDetail,
   renderIntegrations,
@@ -141,6 +151,415 @@ export function createAccessRoutes({
       }
       return true;
     }
+    if (
+      url.pathname === "/manage/media" ||
+      url.pathname.startsWith("/manage/media/")
+    ) {
+      const creationPath = url.pathname.match(
+        /^\/manage\/media\/provisioning\/([a-f0-9-]{36})(?:\/(confirm))?$/,
+      );
+      if (creationPath) {
+        const action = access.provisioning.get(creationPath[1]);
+        if (!action || action.actor !== session.userId)
+          throw fail(404, "Creation review not found.");
+        if (request.method === "GET" && !creationPath[2]) {
+          await sendRemix((nonce) =>
+            renderMediaProvisioningReview(action, context, nonce),
+          );
+          return true;
+        }
+        if (request.method === "POST" && creationPath[2] === "confirm") {
+          rateLimit(`media-provisioning:${session.userId}`);
+          if (form.get("confirmed") !== "true")
+            throw fail(
+              400,
+              "Confirm the exact new-account permission profile.",
+            );
+          if (new URL(issuer).protocol !== "https:")
+            throw fail(503, "Native password submission requires HTTPS.");
+          await access.provisioning.confirm({
+            id: action.id,
+            actor: session.userId,
+            password: form.get("password"),
+          });
+          redirect(`/manage/media/provisioning/${action.id}`);
+          return true;
+        }
+        throw fail(404, "Creation action not found.");
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/provisioning/seerr-preview"
+      ) {
+        rateLimit(`media-provisioning:${session.userId}`);
+        const source = access.media
+          .mappings()
+          .find(
+            (item) =>
+              item.service === "jellyfin" &&
+              JSON.stringify([
+                item.instance,
+                item.nativeId,
+                item.issuer,
+                item.subject,
+              ]) === form.get("sourceMapping"),
+          );
+        if (!source)
+          throw fail(409, "A confirmed exact-ID Jellyfin mapping is required.");
+        const action = await access.provisioning.preview({
+          actor: session.userId,
+          reason: form.get("reason"),
+          target: {
+            service: "seerr",
+            instance: form.get("instance"),
+            issuer: source.issuer,
+            subject: source.subject,
+            sourceInstance: source.instance,
+            sourceNativeId: source.nativeId,
+          },
+        });
+        redirect(`/manage/media/provisioning/${action.id}`);
+        return true;
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/provisioning/preview"
+      ) {
+        rateLimit(`media-provisioning:${session.userId}`);
+        const action = await access.provisioning.preview({
+          actor: session.userId,
+          reason: form.get("reason"),
+          target: {
+            service: "jellyfin",
+            instance: form.get("instance"),
+            issuer,
+            subject: form.get("subject"),
+          },
+          username: form.get("username"),
+          folderIds: form.getAll("folderId"),
+        });
+        redirect(`/manage/media/provisioning/${action.id}`);
+        return true;
+      }
+      if (
+        request.method === "GET" &&
+        url.pathname === "/manage/media/provisioning"
+      ) {
+        const instances = mediaInventory
+          .instances()
+          .filter((item) => ["jellyfin", "seerr"].includes(item.service));
+        const service = url.searchParams.get("service") || "jellyfin";
+        const instance = url.searchParams.get("instance");
+        const selected = instances.find(
+          (item) => item.instance === instance && item.service === service,
+        );
+        if (instance && !selected) throw fail(404, "Media instance not found.");
+        const libraries =
+          selected?.service === "jellyfin"
+            ? await access.provisioning.libraries(selected)
+            : [];
+        const identities = (await people()).map((user) => ({
+          subject: user.id,
+          name: user.human?.profile?.displayName || user.userName || user.id,
+          active: user.state === "USER_STATE_ACTIVE",
+        }));
+        await sendRemix((nonce) =>
+          renderMediaProvisioning(
+            {
+              instances,
+              seerrInstances: mediaInventory
+                .instances()
+                .filter((item) => item.service === "seerr"),
+              sourceMappings: access.media
+                .mappings()
+                .filter((item) => item.service === "jellyfin"),
+              selected,
+              libraries,
+              people: identities,
+              actions: access.provisioning
+                .list()
+                .filter((action) => action.actor === session.userId),
+              context,
+            },
+            nonce,
+          ),
+        );
+        return true;
+      }
+      const actionPath = url.pathname.match(
+        /^\/manage\/media\/actions\/([a-f0-9-]{36})(?:\/(confirm|recover))?$/,
+      );
+      if (actionPath) {
+        const action = access.mediaActions.get(actionPath[1]);
+        if (!action || action.actor !== session.userId)
+          throw fail(404, "Service action review not found.");
+        if (request.method === "GET" && !actionPath[2]) {
+          await sendRemix((nonce) =>
+            renderAccountAction(action, context, nonce),
+          );
+          return true;
+        }
+        if (request.method === "POST" && actionPath[2]) {
+          rateLimit(`media-action:${session.userId}`);
+          if (form.get("confirmed") !== "true")
+            throw fail(400, "Confirm the reviewed service-specific effect.");
+          if (actionPath[2] === "confirm")
+            await access.mediaActions.confirm({
+              id: action.id,
+              actor: session.userId,
+              destructiveConfirmation: form.get("destructiveConfirmation"),
+            });
+          else
+            await access.mediaActions.recover({
+              id: action.id,
+              actor: session.userId,
+            });
+          redirect(`/manage/media/actions/${action.id}`);
+          return true;
+        }
+        throw fail(404, "Service action not found.");
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/actions/preview"
+      ) {
+        rateLimit(`media-action:${session.userId}`);
+        const mapping = access.media
+          .mappings()
+          .find((item) =>
+            ["service", "instance", "nativeId", "issuer", "subject"].every(
+              (key) => item[key] === form.get(key),
+            ),
+          );
+        if (!mapping)
+          throw fail(
+            409,
+            "An explicitly confirmed exact-ID mapping is required.",
+          );
+        const action = await access.mediaActions.preview({
+          actor: session.userId,
+          mapping,
+          reason: form.get("reason"),
+          operation: form.get("operation"),
+        });
+        redirect(`/manage/media/actions/${action.id}`);
+        return true;
+      }
+      const identities = async () =>
+        (await people()).map((user) => ({
+          issuer,
+          subject: user.id,
+          name: user.human?.profile?.displayName || user.userName || user.id,
+          active: user.state === "USER_STATE_ACTIVE",
+        }));
+      const instances = mediaInventory.instances();
+      if (
+        request.method === "GET" &&
+        ["/manage/media", "/manage/media/history"].includes(url.pathname)
+      ) {
+        await sendRemix((nonce) =>
+          renderConnectedAccounts(
+            instances,
+            undefined,
+            undefined,
+            [],
+            context,
+            nonce,
+            access.media.reviews(),
+            access.mediaActions
+              .list()
+              .filter((action) => action.actor === session.userId),
+            { mode: url.pathname.endsWith("/history") ? "history" : undefined },
+            access.provisioning
+              .list()
+              .filter((action) => action.actor === session.userId),
+          ),
+        );
+        return true;
+      }
+      if (
+        request.method === "POST" &&
+        url.pathname === "/manage/media/confirm"
+      ) {
+        if (form.get("confirmed") !== "true")
+          throw fail(400, "Confirm the exact identity correspondence.");
+        const review = access.media.review(form.get("operation"));
+        if (!review || review.actor !== session.userId)
+          throw fail(404, "Mapping review not found.");
+        const { service, instance } = review.body.mapping;
+        const result = access.media.confirm({
+          id: review.id,
+          actor: session.userId,
+          inventory: await mediaInventory.read(service, instance),
+          people: await identities(),
+        });
+        await sendRemix((nonce) =>
+          renderAccountLinkReview(result, context, nonce),
+        );
+        return true;
+      }
+      const audit = url.pathname.match(
+        /^\/manage\/media\/reviews\/([A-Za-z0-9-]{1,200})$/,
+      );
+      if (request.method === "GET" && audit) {
+        const review = access.media.review(audit[1]);
+        if (!review) throw fail(404, "Mapping review not found.");
+        await sendRemix((nonce) =>
+          renderAccountLinkReview(review, context, nonce),
+        );
+        return true;
+      }
+      const target = url.pathname.match(
+        /^\/manage\/media\/([a-z][a-z0-9-]{0,99})\/([A-Za-z0-9-]{1,100})(\/preview|\/accounts\/([^/]+)(?:\/(link|action))?)?$/,
+      );
+      const selected =
+        target &&
+        instances.find(
+          (item) => item.service === target[1] && item.instance === target[2],
+        );
+      if (!selected) throw fail(404, "Media instance not found.");
+      const inventory = await mediaInventory.read(
+        selected.service,
+        selected.instance,
+      );
+      const current = await identities();
+      if (request.method === "GET" && target[3] !== "/preview") {
+        const result = accountDiscrepancies({
+          snapshot: inventory,
+          mappings: access.media.mappings(),
+          people: current,
+        });
+        let nativeId;
+        try {
+          nativeId = target[4] ? decodeURIComponent(target[4]) : undefined;
+        } catch {
+          throw fail(400, "Invalid native account identifier.");
+        }
+        if (
+          nativeId &&
+          result.state === "available" &&
+          !result.rows.some(
+            (row) =>
+              (row.account?.nativeId ?? row.mapping?.nativeId) === nativeId,
+          )
+        )
+          throw fail(404, "Native account not found.");
+        const screen = {
+          nativeId,
+          mode: nativeId ? target[5] || "detail" : undefined,
+          q: (url.searchParams.get("q") || "").slice(0, 200),
+          state: url.searchParams.get("state") || "",
+        };
+        await sendRemix((nonce) =>
+          renderConnectedAccounts(
+            instances,
+            selected,
+            result,
+            current,
+            context,
+            nonce,
+            [],
+            [],
+            screen,
+          ),
+        );
+        return true;
+      }
+      if (request.method === "POST" && target[3] === "/preview") {
+        rateLimit(`media-link:${session.userId}`);
+        const review = access.media.preview({
+          actor: session.userId,
+          reason: form.get("reason"),
+          mapping: {
+            service: selected.service,
+            instance: selected.instance,
+            issuer,
+            subject: form.get("subject"),
+            nativeId: form.get("nativeId"),
+          },
+          inventory,
+          people: current,
+        });
+        await sendRemix((nonce) =>
+          renderAccountLinkReview(review, context, nonce),
+        );
+        return true;
+      }
+      throw fail(404, "Media action not found.");
+    }
+    if (request.method === "GET" && url.pathname === "/manage/people/new") {
+      await sendRemix((nonce) =>
+        renderNewPerson(
+          { ...context, onboardingEnabled: Boolean(provisioningApi) },
+          nonce,
+        ),
+      );
+      return true;
+    }
+    const onboardingPath = url.pathname.match(
+      /^\/manage\/onboarding(?:\/([a-f0-9-]{36})(?:\/(create|invite))?)?$/,
+    );
+    if (onboardingPath || url.pathname === "/manage/users") {
+      if (request.method === "POST" && !provisioningApi)
+        throw fail(
+          503,
+          "Reviewed identity provisioning is not configured. No native action was attempted.",
+        );
+      if (request.method === "POST" && url.pathname === "/manage/users") {
+        rateLimit(`admin-create:${session.userId}`);
+        const row = access.onboarding.preview({
+          actor: session.userId,
+          issuer,
+          organizationId,
+          username: form.get("username"),
+          name: form.get("name"),
+          email: form.get("email"),
+          reason: form.get("reason"),
+        });
+        redirect(`/manage/onboarding/${row.id}`);
+        return true;
+      }
+      const id = onboardingPath?.[1];
+      if (request.method === "GET" && onboardingPath && !onboardingPath[2]) {
+        const row = id ? access.onboarding.get(id) : null;
+        if (id && !row) throw fail(404, "Identity review not found.");
+        await sendRemix((nonce) =>
+          renderOnboarding(
+            row,
+            access.onboarding.recent(),
+            { ...context, onboardingEnabled: Boolean(provisioningApi) },
+            nonce,
+          ),
+        );
+        return true;
+      }
+      if (request.method === "POST" && id && onboardingPath[2]) {
+        rateLimit(`onboarding:${session.userId}`);
+        const shared = {
+          id,
+          actor: session.userId,
+          issuer,
+          organizationId,
+          confirmed: form.get("confirmed") === "yes",
+          api: provisioningApi,
+        };
+        try {
+          if (onboardingPath[2] === "create")
+            await access.onboarding.create(shared);
+          else
+            await access.onboarding.invite({
+              ...shared,
+              recipient: form.get("recipient"),
+              callbackUrl: invitationCallbackUrl,
+            });
+        } catch (error) {
+          if (error?.onboardingUncertain !== true) throw error;
+        }
+        redirect(`/manage/onboarding/${id}`);
+        return true;
+      }
+      throw fail(405, "Method not allowed.");
+    }
     access.observeUnmanaged(await native.list());
     const model = access.read();
     const domains = access.domains();
@@ -157,10 +576,6 @@ export function createAccessRoutes({
       await sendRemix((nonce) =>
         renderPeople(users, model, context, filter, nonce),
       );
-      return true;
-    }
-    if (request.method === "GET" && url.pathname === "/manage/people/new") {
-      await sendRemix((nonce) => renderNewPerson(context, nonce));
       return true;
     }
     const person = url.pathname.match(
@@ -425,49 +840,6 @@ export function createAccessRoutes({
           nonce,
         ),
       );
-      return true;
-    }
-    if (request.method === "POST" && url.pathname === "/manage/users") {
-      const username = form.get("username"),
-        name = form.get("name"),
-        email = form.get("email"),
-        password = form.get("password");
-      if (
-        !/^[a-z0-9_-]{2,32}$/.test(username || "") ||
-        !name ||
-        name.length > 100 ||
-        !password ||
-        password.length < 12 ||
-        password.length > 200 ||
-        (email && email.length > 250)
-      )
-        throw fail(
-          400,
-          "Check the account fields. Passwords need between 12 and 200 characters.",
-        );
-      rateLimit(`admin-create:${session.userId}`);
-      const userId = randomUUID();
-      await api("/v2/users/human", {
-        method: "POST",
-        management: true,
-        body: {
-          userId,
-          username,
-          organization: { orgId: organizationId },
-          profile: {
-            givenName: name.split(" ")[0],
-            familyName: name.split(" ").slice(1).join(" ") || "User",
-            displayName: name,
-          },
-          email: {
-            email: email || `${username}@pending.invalid`,
-            isVerified: false,
-          },
-          password: { password, changeRequired: false },
-        },
-      });
-      access.recordAccount(session.userId, userId, "account.created");
-      redirect("/manage/people");
       return true;
     }
     throw fail(404, "Administration page not found.");

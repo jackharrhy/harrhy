@@ -33,6 +33,13 @@ export function createZitadel({
       const error = new Error("Identity service rejected the request");
       error.status = response.status;
       error.code = result.code;
+      // Installed ZITADEL 4.20 rejects an invalid invite without consuming it.
+      error.invitationProofRejected =
+        /^\/v2\/users\/[^/]+\/invite_code\/verify$/.test(path) &&
+        response.status === 400 &&
+        result.code === 3 &&
+        typeof result.message === "string" &&
+        result.message.endsWith("(COMMAND-Wgn4q)");
       const passwordErrors = {
         "Password must contain upper case":
           "Include an uppercase letter in your password.",
