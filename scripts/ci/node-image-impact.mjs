@@ -46,8 +46,8 @@ export function selectNodeImages({
     const dockerfile = dockerfiles[app];
     if (typeof dockerfile !== "string")
       throw new Error(`Missing Dockerfile for ${app}`);
-    // COPY inputs need not be dependencies. In particular COPY . . in CMS
-    // and both maps images makes every workspace file an image input.
+    // COPY inputs need not be dependencies. A whole-context COPY in either
+    // compared revision still makes every workspace file an image input.
     // Unsupported COPY syntax conservatively selects the image.
     for (const line of dockerfile.split("\n")) {
       if (!/^\s*(?:COPY|ADD)\s/i.test(line) || /--from[=\s]/i.test(line))

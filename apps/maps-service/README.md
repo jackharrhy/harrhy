@@ -23,3 +23,11 @@ The MCP endpoint advertises `tea_maps_*` tools and returns Tea `/projects/:id` l
 The user table stores the Jack Auth subject in `auth_subject`. Startup rejects databases without that column. Back up the database and blobs together using a consistent SQLite snapshot. Browser sessions expire within an hour and never outlive their central identity proof.
 
 Tea issues `tea_maps_session`, `tea_maps_automation`, and `tea_maps_oauth` cookies.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

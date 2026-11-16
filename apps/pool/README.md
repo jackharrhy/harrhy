@@ -19,3 +19,11 @@ The Remix canvas ref owns each client instance. Its abort signal closes the WebS
 The private pre-update hook in `server/pre-update.ts` must succeed before a live restart. Unfinished matches, including disconnected seats, block admission drain. Never expose its loopback port through a proxy or restart over a blocked receipt. A successful drain latches new-match admission until process replacement or explicit local resume. If an update aborts or its receipt is uncertain, Infra must first confirm the original process is unchanged and the update attempt has fully settled, then use `bun dist/server/pre-update.js resume` in that runtime and require the confirmed open receipt; never reopen admission while replacement remains in flight. Live matches are in memory: recordings/results and SQLite backups do not restore unfinished games. Production routing, secrets, backups, and cutover belong to Infra and are outside this workspace.
 
 The hall document uses Remix CSP middleware and a per-response nonce for its game entry. Its WebSocket allowance follows the request origin; `data:` fetch, WASM compilation, and `unsafe-eval` support the current local pool physics bundle, which calls `Function` at runtime. Nonce-bearing HTML is private and never stored; game assets retain their static cache policy.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

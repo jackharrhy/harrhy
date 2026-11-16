@@ -7,3 +7,11 @@ From the repo root, run `npm ci`, build `@harrhy/worldview-renderer`, `@harrhy/m
 Request, asset, concurrency, log, timeout, and artifact limits remain configurable through `HARRHY_MAPS_COMPILER_*`. Browser origins must be listed in `HARRHY_MAPS_COMPILER_ORIGINS`; the default allows Tea Maps at `http://localhost:8790` or `http://127.0.0.1:8790`. Launch is disabled unless its absolute executable and directory settings are supplied.
 
 The Dockerfile packages the Node helper without native game tools. For a local container, set `ERICW_TOOLS_DIR` to an installed ericw-tools directory and run `docker compose --profile native-compiler up --build maps-compiler`. The compiler remains on the private Compose network; do not add a public route. A production host must also enforce resource limits and mount its trusted native tools read only. Host operations belong in the infrastructure repo. Newport now runs Tea's compiler service.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.

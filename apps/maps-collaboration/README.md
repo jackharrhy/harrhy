@@ -9,3 +9,11 @@ The Tea Worker is named `tea-maps-collaboration`. Its `MAP_CELLS` binding has an
 The Dockerfile pins the fork's Celld 0.6.2 image by digest and accepts `--build-arg CELLD_IMAGE=<image>` for another candidate runtime. Its `dev.jackharrhy.maps-collaboration.celld-image` image label records that selection. The published image contains the same binary as the local 0.6.2 release-profile image from `ed162bf` used in a disposable container check: startup through `start-celld.sh`, ticketed map and checkpoint creation, SIGKILL, empty replica cache, and exact map source hash and checkpoint ID after restarting on the same SQLite volume. The tested local Tea image ID was `sha256:822d152224ffb90366072fbbe0c0d8e2d12814fe30e82715e68b6d211971c2f1`. No running deployment was changed.
 
 Checkpoint metadata is listed at `GET /sync/maps/:mapId/checkpoints`. A ticketed `GET /sync/maps/:mapId/checkpoints/:checkpointId` returns its stored source for detached recovery; the endpoint does not change the live map.
+
+### Selected Docker inputs
+
+The Dockerfile installs only this app and its transitive workspace dependencies,
+with manifests and `.npmrc` before source for dependency caching. It preserves
+required inherited root configuration and whole selected workspace assets. See
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
+exceptions and the production-image smoke commands.
