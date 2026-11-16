@@ -95,7 +95,17 @@ export function Document(
           style={{ backgroundColor: handle.props.background }}
           data-tea-visual-loading={handle.props.visualEditing ? "" : undefined}
         >
-          {handle.props.children}
+          {handle.props.visualEditing ? (
+            <div
+              data-tea-visual-content
+              inert
+              mix={css({ display: "contents" })}
+            >
+              {handle.props.children}
+            </div>
+          ) : (
+            handle.props.children
+          )}
           {handle.props.editorSession && !handle.props.static && (
             <VisualTools
               active={Boolean(handle.props.visualEditing)}

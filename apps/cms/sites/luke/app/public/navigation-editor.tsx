@@ -1,4 +1,4 @@
-import { Select } from "@harrhy/ui/interactive";
+import { CmsSelect } from "../../../../app/actions/admin/public/cms-select.tsx";
 import { Button, Input, Notice, Panel } from "@harrhy/ui/native";
 import { clientEntry, on, type Handle } from "remix/component";
 import type { Sidebar, Page } from "../../../../app/ui/public/content-types.ts";
@@ -99,10 +99,9 @@ export const NavigationEditor = clientEntry(
               </label>
               <label>
                 Page
-                <Select
+                <CmsSelect
                   aria-label="Page"
-                  key={`${i}:${item.pageSlug}`}
-                  defaultValue={item.pageSlug}
+                  value={item.pageSlug}
                   options={[
                     { value: "", label: "Homepage" },
                     ...handle.props.pages.map((p) => ({

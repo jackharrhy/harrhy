@@ -1,4 +1,4 @@
-import { Select } from "@harrhy/ui/interactive";
+import { CmsSelect } from "../../../actions/admin/public/cms-select.tsx";
 import { Button, Input, Notice } from "@harrhy/ui/native";
 import { clientEntry, on, ref, type Handle } from "remix/component";
 import type { Adornment, Media } from "../../../ui/public/content-types.ts";
@@ -113,10 +113,9 @@ export const AdornmentLibrary = clientEntry(
               <div>
                 <label>
                   Preview image
-                  <Select
+                  <CmsSelect
                     aria-label="Preview image"
-                    key={contextImage ?? ""}
-                    defaultValue={contextImage ?? ""}
+                    value={contextImage ?? ""}
                     options={[
                       { value: "", label: "No image" },
                       ...handle.props.media
