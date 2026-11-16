@@ -18,6 +18,14 @@ against the active user grant both before showing consent and when approving it.
 `__tests__/ref-delegation.test.mjs` covers these policy boundaries independently
 of the generic browser archive-login fixture.
 
+Delegated request policy failures keep the same generic browser error. The existing
+server-only `request_failed` record includes a fixed `authorization_*` reason code
+for request shape, audience, delegation availability/hold, membership, permission,
+permission family, required/unexpected scope, or callback validation. It never
+adds client/request IDs, raw scopes, callback URLs, OAuth state, tokens, cookies,
+or user details. These codes diagnose future failures; they cannot reconstruct
+an earlier request whose metadata is unavailable, and do not change authorization.
+
 ### Real local sign-in
 
 The opt-in profile in `local-real/` uses pinned ZITADEL 4.20.0 and PostgreSQL 17 images, this Auth UI, and the actual Artbin OAuth callback. It creates one synthetic organization user and an Artbin member grant. Each worktree gets a separate Compose project and database, isolated from production; `@harrhy/dev-auth` remains the faster in-memory fixture for narrow checks. Docker is needed only for the provider and database. Node 26 and the repository dependencies run the two apps on loopback.
