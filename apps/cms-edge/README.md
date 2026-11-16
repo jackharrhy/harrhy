@@ -6,7 +6,7 @@ This Remix 3 Cloudflare Worker app serves a CMS editor and content API backed by
 
 Bind D1 as `DB` and R2 as `MEDIA`. Set `HARRHY_CMS_ADMIN_PASSWORD`, `HARRHY_CMS_SESSION_SECRET`, and `HARRHY_CMS_PREVIEW_SECRET` in ignored `.dev.vars` locally or as Worker secrets when deployed. Apply `db/schema.sql` to D1 before using the editor. `cloudflare.config.ts` has a placeholder D1 identifier; replace it with a real resource before deployment. Hostnames, account IDs, and production secrets belong in the infrastructure repo.
 
-For Central Auth instead of the prototype editor password, set
+For Auth instead of the prototype editor password, set
 `HARRHY_CMS_EDITOR_ORIGIN`, `HARRHY_AUTH_ISSUER`, `HARRHY_AUTH_CLIENT_ID`,
 `HARRHY_AUTH_PROJECT_ID`, `HARRHY_AUTH_ORGANIZATION_ID`, and a reviewed immutable
 `HARRHY_AUTH_OWNER_SUBJECT`. The exact public PKCE callback is
