@@ -30,6 +30,9 @@ void app
   .ready()
   .then(() => {
     document.body.removeAttribute("data-tea-visual-loading");
+    document
+      .querySelector("[data-tea-visual-content]")
+      ?.removeAttribute("inert");
     for (const element of document.querySelectorAll("[data-cms-hydration]")) {
       element.removeAttribute("inert");
       element.removeAttribute("aria-busy");
