@@ -212,6 +212,9 @@ export const designStyles = css({
   "& .design-form-sample": {
     "max-width": "700px",
   },
+  "& .design-form-sample .field-grid": {
+    "align-items": "start",
+  },
   "& .design-form-sample > label": {
     "margin-top": "2px",
   },
