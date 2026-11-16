@@ -69,6 +69,8 @@ jobs:
           context: .
           file: apps/ref/Dockerfile
           push: true
+          build-args: |
+            HARRHY_REF_VERSION=${{ github.sha }}
           tags: |
             ghcr.io/jackharrhy/ref:latest
             ghcr.io/jackharrhy/ref:sha-${{ github.sha }}

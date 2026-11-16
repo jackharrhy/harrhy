@@ -1,3 +1,4 @@
+import { logger, failOperation } from "../logging.ts";
 import { DurableObject } from "cloudflare:workers";
 import { BoardAssets } from "./board-assets.ts";
 import {
@@ -344,18 +345,49 @@ export class BoardCell extends DurableObject<Env> {
     const operation = parseOperation(input);
     if (!operation || !actorId || actorId.length > 512)
       throw new Error("Invalid board operation");
-    if (operation.kind === "remove")
-      await this.ctx.storage.setAlarm(Date.now() + 60_000);
-    const result = this.applyOperation(boardId, actorId, operation);
-    if (result.type === "applied") {
-      this.broadcast(result);
-      if (operation.kind === "remove") await this.assets.drainPendingDeletes();
-    }
-    return result;
+    return logger
+      .open("job", {
+        operation: `ref.board.${operation.kind}`,
+        job_id: operation.operationId,
+        "resource.boardId": boardId,
+        "resource.itemId":
+          operation.kind === "create" ? operation.item.id : operation.itemId,
+      })
+      .run(async (log) => {
+        try {
+          if (operation.kind === "remove")
+            await this.ctx.storage.setAlarm(Date.now() + 60_000);
+          const result = this.applyOperation(boardId, actorId, operation);
+          log.set({ "operation.result": result.type });
+          if (result.type === "applied") {
+            this.broadcast(result);
+            if (operation.kind === "remove")
+              await this.assets.drainPendingDeletes(log);
+          } else
+            log.warn("board.operation_rejected", { reason: result.reason });
+          return result;
+        } catch (error) {
+          failOperation(error, log);
+          throw error;
+        }
+      });
   }
 
   async alarm(): Promise<void> {
-    await this.assets.drainPendingDeletes();
+    await logger
+      .open("alarm", {
+        operation: "ref.assets.cleanup",
+        job_id: crypto.randomUUID(),
+        "resource.boardId": this.boardId() ?? undefined,
+      })
+      .run(async (log) => {
+        try {
+          await this.assets.drainPendingDeletes(log);
+        } catch (error) {
+          failOperation(error, log);
+          throw error;
+        }
+      });
   }
 
   private applyOperation(

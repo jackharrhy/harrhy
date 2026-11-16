@@ -1,3 +1,5 @@
+import { currentLog, type Log } from "@harrhy/logger";
+import { logger, errorContext } from "../logging.ts";
 import type { LinkPreview } from "./protocol.ts";
 
 interface LinkRow extends Record<string, SqlStorageValue> {
@@ -232,25 +234,40 @@ export class BoardAssets {
     }
   }
 
-  async drainPendingDeletes(): Promise<void> {
-    const pending = this.ctx.storage.sql
-      .exec<{ object_key: string }>(
-        "SELECT object_key FROM pending_deletes LIMIT 20",
-      )
-      .toArray();
-    if (!pending.length) return;
-    await this.ctx.storage.setAlarm(Date.now() + 60_000);
-    for (const row of pending) {
-      try {
-        await this.media.delete(row.object_key);
-        this.ctx.storage.sql.exec(
-          "DELETE FROM pending_deletes WHERE object_key = ?",
-          row.object_key,
-        );
-      } catch (error) {
-        console.error("Media cleanup failed", error);
+  async drainPendingDeletes(parentLog = currentLog()): Promise<void> {
+    const drain = async (log: Log) => {
+      const pending = this.ctx.storage.sql
+        .exec<{ object_key: string }>(
+          "SELECT object_key FROM pending_deletes LIMIT 20",
+        )
+        .toArray();
+      log.inc("cleanup.pending_count", pending.length);
+      if (!pending.length) return;
+      await this.ctx.storage.setAlarm(Date.now() + 60_000);
+      log.set({ "retry.scheduled": true });
+      for (const row of pending) {
+        try {
+          await this.media.delete(row.object_key);
+          this.ctx.storage.sql.exec(
+            "DELETE FROM pending_deletes WHERE object_key = ?",
+            row.object_key,
+          );
+          log.inc("cleanup.deleted_count");
+        } catch (error) {
+          log.inc("cleanup.failed_count");
+          log.warn("media.cleanup_failed").set(errorContext(error));
+        }
       }
-    }
+    };
+    const active = parentLog;
+    if (active) await drain(active);
+    else
+      await logger
+        .open("job", {
+          operation: "ref.assets.cleanup",
+          job_id: crypto.randomUUID(),
+        })
+        .run(drain);
   }
 
   private insertLink(assetId: string, preview: LinkPreview): void {

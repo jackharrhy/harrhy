@@ -1,3 +1,5 @@
+import { currentLog } from "@harrhy/logger";
+import { failOperation } from "../logging.ts";
 import {
   createIdentityClient,
   createLoginTransaction,
@@ -61,6 +63,7 @@ export default createController(routes.auth, {
       });
     },
     async callback(context) {
+      const log = currentLog();
       const central = context.get(AppIdentity);
       if (!central) return new Response("Not found", { status: 404 });
       const url = new URL(context.request.url);
@@ -102,14 +105,8 @@ export default createController(routes.auth, {
           typeof error.status === "number"
             ? error.status
             : 503;
-        console.error(
-          JSON.stringify({
-            event: "auth_callback_failed",
-            stage,
-            status,
-            type: error instanceof Error ? error.name : "Unknown",
-          }),
-        );
+        log?.set({ "auth.stage": stage });
+        failOperation(error, log);
         return new Response("Sign-in could not be completed", {
           status,
           headers: { "Set-Cookie": cleared! },

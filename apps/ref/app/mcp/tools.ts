@@ -1,3 +1,5 @@
+import { currentLog } from "@harrhy/logger";
+import { failOperation } from "../logging.ts";
 import { specTypeSchemas } from "@harrhy/mcp";
 import type { AppRuntimeService } from "../data/runtime.ts";
 import { parseOperation } from "../data/protocol.ts";
@@ -173,16 +175,6 @@ function uuid(args: Record<string, unknown>, key: string): string {
   if (!uuidPattern.test(value)) throw new TypeError("Invalid UUID");
   return value;
 }
-function success(value: Record<string, unknown>) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(value) }],
-    structuredContent: value,
-  };
-}
-function failure(message: string) {
-  return { content: [{ type: "text" as const, text: message }], isError: true };
-}
-
 export async function callRefTool(
   runtime: AppRuntimeService,
   access: RefMcpAccess,
@@ -190,7 +182,34 @@ export async function callRefTool(
   input: unknown,
   origin: string,
 ) {
+  const log = currentLog();
+  function success(
+    value: Record<string, unknown>,
+    outcome: "ok" | "error" = "ok",
+  ) {
+    log?.set({ "mcp.outcome": outcome });
+    return {
+      content: [{ type: "text" as const, text: JSON.stringify(value) }],
+      structuredContent: value,
+    };
+  }
+  function failure(message: string) {
+    log?.warn("mcp.rejected").set({ "mcp.outcome": "error" });
+    if (log?.outcome !== "error")
+      log?.set({ "error.code": "MCP_TOOL_REJECTED", "error.message": message });
+    return {
+      content: [{ type: "text" as const, text: message }],
+      isError: true,
+    };
+  }
+
   const definition = toolsFor(access).find((entry) => entry.name === name);
+  log?.set({
+    "mcp.method": "tools/call",
+    "mcp.tool": definition ? name : "unknown",
+    "actor.id": access.subject.slice(0, 128),
+    operation: definition ? `ref.mcp.${name}` : "ref.mcp.unknown",
+  });
   if (!definition) return failure("Unknown or unauthorized Ref tool");
   if (!input || typeof input !== "object" || Array.isArray(input))
     return failure("Tool input is invalid");
@@ -203,17 +222,22 @@ export async function callRefTool(
   )
     return failure("Tool input is invalid");
   try {
-    if (name === "boards_list")
-      return success({ boards: await runtime.directory.listBoards() });
+    if (name === "boards_list") {
+      const boards = await runtime.directory.listBoards();
+      log?.set({ "boards.count": boards.length, "mcp.outcome": "ok" });
+      return success({ boards });
+    }
     if (name === "board_create") {
       const created = await runtime.directory.createBoard(
         string(args, "title", 100),
       );
       if (!created) return failure("Enter a valid board name");
+      log?.set({ "resource.boardId": created.id });
       await runtime.board(created.id).initialize(created.id);
       return success({ board: created });
     }
     const boardId = uuid(args, "boardId");
+    log?.set({ "resource.boardId": boardId });
     const record = await runtime.directory.board(boardId);
     if (!record) return failure("Board not found");
     const cell = runtime.board(boardId);
@@ -278,6 +302,10 @@ export async function callRefTool(
     }
     const operationId = uuid(args, "operationId");
     const itemId = uuid(args, "itemId");
+    log?.set({
+      "resource.itemId": itemId,
+      "operation.id": operationId,
+    });
     const operation = parseOperation(
       name === "item_create"
         ? {
@@ -300,13 +328,23 @@ export async function callRefTool(
       operation,
     );
     if (result.type === "rejected") {
+      log
+        ?.warn("mcp.operation_rejected")
+        .set({
+          "mcp.outcome": "error",
+          "error.code": "BOARD_OPERATION_REJECTED",
+          "error.message": result.reason,
+        });
       return {
-        ...success({
-          applied: false,
-          operationId,
-          reason: result.reason,
-          ...(access.canRead ? { snapshot: result.snapshot } : {}),
-        }),
+        ...success(
+          {
+            applied: false,
+            operationId,
+            reason: result.reason,
+            ...(access.canRead ? { snapshot: result.snapshot } : {}),
+          },
+          "error",
+        ),
         isError: true,
       };
     }
@@ -319,13 +357,7 @@ export async function callRefTool(
       ...(access.canRead ? { item: result.item } : {}),
     });
   } catch (error) {
-    console.error(
-      JSON.stringify({
-        event: "mcp_tool_failed",
-        tool: name,
-        invalidInput: error instanceof TypeError,
-      }),
-    );
+    if (!(error instanceof TypeError)) failOperation(error, log);
     return failure(
       error instanceof TypeError
         ? "Tool input is invalid"

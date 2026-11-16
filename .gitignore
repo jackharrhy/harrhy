@@ -43,3 +43,5 @@ apps/artbin-cli/dist-ui/
 apps/4orm/worker-configuration.d.ts
 apps/4orm/.review/
 apps/4orm/.review-*.jsonc
+
+apps/ref/app/build-info.ts

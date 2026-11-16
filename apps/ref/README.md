@@ -100,6 +100,18 @@ retention bounds deduplication to roughly the latest 10,000 board edits.
 effort. Write-only tokens cannot list/read boards or receive conflict snapshots.
 The normal archive CLI and browser endpoints retain their separate authorization.
 
+## Logging pilot
+
+The approved [logging skill](../../.agents/skills/logging/SKILL.md) guides this pilot. `app/logging.ts` owns one wide JSON completion event per Worker request, including early rejection, assets, health and authentication errors. It uses `@harrhy/logger` with explicit `jsonSink`; no collector or remote logging client is required. The qualified Celld 0.6.3 runtime prefixes console messages with its timestamp/`INFO cell_console:` envelope (and `WARN`/`ERROR` where applicable), so its container lines are not raw NDJSON. Future collection must extract that known console envelope before parsing the application JSON, after decoding Docker’s wrapper. The Celld smoke verifies this actual transport shape. `scripts/build.mjs` generates ignored `app/build-info.ts` with environment/build identity; container publication supplies the exact source revision through `HARRHY_REF_VERSION`.
+
+Records contain operation, route template, app-generated request ID, final status, duration and selected resource/count/timing context. A bounded valid incoming request ID is retained only as `upstream_request_id`; it is never blindly echoed. Ordinary responses expose the app-owned `X-Request-Id` for support lookup. Existing error bodies, redirects, authentication policies and MCP tool contracts are unchanged. Expected returned 4xx are `degraded`; returned 5xx and caught unexpected exceptions are `error`. The SDK may return a streaming HTTP Response before its tool finishes: each list/call handler therefore owns a separate completion job correlated by `request_id`. Tool business errors remain visible even when the transport has already returned HTTP 200; no final tool outcome is fabricated on the response-preparation event. No sampling is enabled for Ref.
+
+Ordinary query parameters are logged by default as bounded named fields (24 keys, eight values per key, 512 characters per value). Credential/auth/session/private-payload keys and nested signed URLs are excluded. Controlled messages, stacks and one error cause retain useful diagnostics while removing known request/host credentials and credential-bearing URL fields. Headers, cookies, request bodies, board contents, titles and filenames are not dumped. IDs remain fields rather than stream labels.
+
+A request event measures response preparation, not streamed delivery; a WebSocket 101 is explicitly an upgrade and retains the runtime's socket capability. Accepted/validated board operation attempts own separate job events, linked across HTTP/MCP and Durable Objects by operation IDs where available; session hashes are never logged. Cleanup alarms own alarm events with retry/deletion counts; cleanup in an existing operation enriches it instead of duplicating events. Invalid socket frames and pings are not logged individually. This does not promise complete connection-delivery telemetry or visibility into failures before the Worker runs.
+
+Synthetic unit tests cover query/credential handling, real Worker early returns, HTTP/MCP outcomes, safe errors, upgrades/stream preparation and sink failure. Existing browser, MCP and Celld acceptance checks retain their disposable stores and ordinary protocol assertions.
+
 ## Browser WebMCP
 
 On an authenticated open board, native WebMCP tools register quietly after the

@@ -1,10 +1,14 @@
 # @harrhy/logger
 
-Tea's shared logger for request and job events. The CMS and Shell MCP Node hosts open one record per request; [`@harrhy/mcp`](../mcp/README.md) adds method and tool fields to that record. `Log.run` also covers non-HTTP work such as jobs.
+Harrhy's shared request and job event accumulator. CMS and CMS Edge open request records; Ref's logging pilot opts into JSON output and app-owned context. `@harrhy/mcp` does not automatically enrich these records: apps instrument their validated SDK handlers.
 
-`src/index.ts` exports `createLogger`, `createLog`, the `Log` interface, and `currentLog`. Hosts use `logger.request(request, handler)` to open and emit one record with HTTP method and status; `logger.open(kind).run(handler)` covers jobs. `@harrhy/logger/middleware` exposes the current log as `context.log` when a Remix router needs it. The current log uses Node `AsyncLocalStorage`; a Cloudflare Worker using it needs Node compatibility. Records include named fields and durations, but no URL, headers, body, exception message, or stack by default. Add only fields safe to retain. Failures keep error type, scalar code, and retriable flag.
+`src/index.ts` exports `createLogger`, `createLog`, `Log`, `currentLog` and `jsonSink`. Hosts use `logger.request(request, handler)` for HTTP method/status, or `logger.open(kind).run(handler)` for custom request/job boundaries. `@harrhy/logger/middleware` exposes the active record as `context.log`. Ambient context uses Node `AsyncLocalStorage`; Workers need Node compatibility. Browser bundles must not import it.
 
-Run `npm run check --workspace @harrhy/logger` from the root. Changes also need the MCP, CMS, and Shell MCP checks.
+All emitted records include completion `timestamp`, `kind`, `outcome` and `duration_ms`. Configure service/environment/version at startup. Default output remains console objects for existing consumers; explicitly select `sink: jsonSink` for one JSON string per line on stdout/stderr. Sink/serialization errors cannot replace an application result or exception. A failed custom sampling predicate retains the event. This is best-effort output, not a buffered delivery guarantee.
+
+The package still adds no URL/query, headers, bodies, correlation IDs, error message or stack by default. `fail` records error type, scalar code and retriable flag. Apps add useful safe diagnostics/context explicitly. `logger.request` records status but does not classify returned error responses: app boundaries must set error/degraded outcomes before sampling. Ref's app-owned policy and tests are described in [its guide](../../apps/ref/README.md#logging-pilot).
+
+Run `npm run check --workspace @harrhy/logger`. Changes also need CMS, CMS Edge and Ref consumer checks; run MCP's check when changing its integration. There is no Shell MCP workspace in this checkout.
 
 ---
 

@@ -1,3 +1,5 @@
+import { currentLog } from "@harrhy/logger";
+import { openLinkedJob } from "../logging.ts";
 import { createController } from "remix/router";
 import { createNativeHandler, Server } from "@harrhy/mcp";
 import { AppRuntime, AppIdentity, McpAccess } from "../data/runtime.ts";
@@ -13,6 +15,7 @@ export default createController(routes.mcp, {
       });
     },
     async endpoint(context) {
+      const requestLog = currentLog();
       const access = context.get(McpAccess);
       if (!access)
         return new Response("Bearer authorization required", { status: 401 });
@@ -24,19 +27,37 @@ export default createController(routes.mcp, {
             { name: "ref", version: "1.0.0" },
             { capabilities: { tools: { listChanged: false } } },
           );
-          server.setRequestHandler("tools/list", () => ({
-            tools: toolsFor(access),
-          }));
-          server.setRequestHandler("tools/call", async (message) =>
-            server.projectCallToolResult(
-              await callRefTool(
-                runtime,
-                access,
-                message.params.name,
-                message.params.arguments ?? {},
-                origin,
+          server.setRequestHandler("tools/list", () =>
+            openLinkedJob(
+              {
+                operation: "ref.mcp.tools_list",
+                "mcp.method": "tools/list",
+                "actor.id": access.subject.slice(0, 128),
+              },
+              requestLog,
+            ).run((log) => {
+              const tools = toolsFor(access);
+              log.set({ "tools.count": tools.length, "mcp.outcome": "ok" });
+              return { tools };
+            }),
+          );
+          server.setRequestHandler("tools/call", (message) =>
+            openLinkedJob(
+              {
+                operation: "ref.mcp.tool",
+              },
+              requestLog,
+            ).run(async () =>
+              server.projectCallToolResult(
+                await callRefTool(
+                  runtime,
+                  access,
+                  message.params.name,
+                  message.params.arguments ?? {},
+                  origin,
+                ),
+                undefined,
               ),
-              undefined,
             ),
           );
           return server;
