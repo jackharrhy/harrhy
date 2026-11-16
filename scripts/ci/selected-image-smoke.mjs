@@ -51,7 +51,7 @@ const variables = {
   AUTH_CLIENT_ID: "image-smoke",
   AUTH_PROJECT_ID: "image-smoke-project",
   AUTH_ORGANIZATION_ID: "image-smoke-org",
-  AUTH_PUBLIC_ORIGIN: `http://127.0.0.1:${config.port}`,
+  AUTH_PUBLIC_ORIGIN: "https://image-smoke.example.test",
   RADIO_SESSION_SECRET: "disposable-image-smoke-session-secret",
   HARRHY_MAPS_REALTIME_TICKET_SECRET: "disposable-image-smoke-ticket-secret",
 };
@@ -139,6 +139,10 @@ console.log('selected runtime, compiler and SQLite write/reopen passed');
     ),
   );
   docker("stop", "--time", "15", id);
+  if (!config.bun) {
+    // Startup diagnostics reject offline peers until Celld's 10-second lease expires.
+    await new Promise((resolve) => setTimeout(resolve, 15_000));
+  }
   docker("start", id);
   process.stdout.write(
     docker(

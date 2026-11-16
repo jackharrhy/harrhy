@@ -82,7 +82,9 @@ select all nine. An empty diff selects none. Run
 The Selected runtime images workflow builds the four Celld and three bundled Bun
 images serially. Its network-isolated smoke runs each default CMD, checks HTTP and
 exact emitted asset bodies, exercises startup esbuild and the Radio Azure import,
-checks SQLite write/reopen and restarts the same disposable container. It does not
-replace browser, authenticated collaboration or live Azurite acceptance tests.
+checks SQLite write/reopen and restarts the same disposable container. Celld
+restarts wait 15 seconds for the stopped node's default 10-second lease to expire
+before startup diagnostics; this is not an immediate-restart recovery test. It does
+not replace browser, authenticated collaboration or live Azurite acceptance tests.
 Garden retains its separate real-CMD fixture and highlighting smoke. These checks
 do not publish images or change normal publishers/updaters.
