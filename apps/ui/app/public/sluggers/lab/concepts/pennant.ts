@@ -25,7 +25,7 @@ export const pennant: LabConcept = {
     tableContainerSurface: "transparent",
     onDanger: "#173866",
     focus: "#fff1a1",
-    buttonImage: "linear-gradient(rgb(255 255 255 / .18),rgb(255 255 255 / 0))",
+    buttonImage: "linear-gradient(rgb(255 255 255 / .10),rgb(255 255 255 / 0))",
     buttonShadow: "0 2px 3px rgb(0 0 0 / .12)",
     canvas: "#1552ad",
     surface: "#245b9e",
@@ -42,7 +42,7 @@ export const pennant: LabConcept = {
   parts: {
     contentColumns: "minmax(0,1.3fr) minmax(360px,1fr)",
     panelImage: "linear-gradient(#2869ad, #204e8c)",
-    headingImage: "linear-gradient(#367fc6, #21569a)",
+    headingImage: "linear-gradient(#2d76bd, #21569a)",
     headingInk: "#ffffff",
     panelEdge: "2px solid #89b6e8",
     cardRadius: "12px",

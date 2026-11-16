@@ -24,7 +24,7 @@ export const dugout: LabConcept = {
     tableContainerSurface: "transparent",
     onDanger: "#173866",
     focus: "#fff1a1",
-    buttonImage: "linear-gradient(rgb(255 255 255 / .18),rgb(255 255 255 / 0))",
+    buttonImage: "linear-gradient(rgb(255 255 255 / .10),rgb(255 255 255 / 0))",
     buttonShadow: "0 2px 3px rgb(0 0 0 / .12)",
     canvas: "#224f86",
     surface: "#2d5b8e",
@@ -45,7 +45,7 @@ export const dugout: LabConcept = {
   parts: {
     contentColumns: "minmax(300px,0.9fr) minmax(0,1.6fr)",
     panelImage: "linear-gradient(#356496,#2a5384)",
-    headingImage: "linear-gradient(#477eaf,#2c588c)",
+    headingImage: "linear-gradient(#4077a8,#2c588c)",
     headingInk: "#ffffff",
     panelEdge: "1px solid #92b8dc",
     cardRadius: "4px",
