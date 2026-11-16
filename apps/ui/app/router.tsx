@@ -3,6 +3,7 @@ import { ImportMap, renderToStream } from "remix/component/server";
 import { css } from "remix/component";
 import { routes } from "./routes.ts";
 import { createAssets } from "./assets.ts";
+import { createSluggersLabRoutes } from "./public/sluggers/lab.server.tsx";
 import { Scenes } from "./public/scenes.tsx";
 import { themes, type ThemeName } from "./public/themes.ts";
 import { Explorer, stories } from "./public/explorer.tsx";
@@ -11,13 +12,17 @@ import { defaultHosts } from "./hosts.ts";
 export { defaultHosts } from "./hosts.ts";
 export function createApp(
   hosts: readonly string[] = defaultHosts,
-  options: { sluggersPrivateFonts?: boolean } = {},
+  options: {
+    sluggersPrivateFonts?: boolean;
+    sluggersLab?: { enabled: boolean; directory?: string };
+  } = {},
 ) {
   const sluggersPrivateFonts =
     options.sluggersPrivateFonts ??
     process.env.HARRHY_UI_SLUGGERS_PRIVATE_FONTS === "1";
   const assets = createAssets();
   const router = createRouter();
+  createSluggersLabRoutes(router, assets, options.sluggersLab);
   router.get(
     "/assets/*",
     async ({ request }) =>

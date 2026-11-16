@@ -1,0 +1,76 @@
+import { css } from "remix/component";
+import { composeTheme, sluggersTheme } from "@harrhy/ui/theme";
+import type { LabConcept } from "./types.ts";
+export const stadium: LabConcept = {
+  id: "stadium",
+  name: "Daylight Stadium",
+  summary:
+    "A bright stadium broadcast: sky-blue framing and yellow score digits.",
+  source: "Game pitching HUD; stadium match statistics",
+  changes:
+    "Stepped blue scoreboards, compact score cells, capsule-free controls and a panoramic field.",
+  tokens: composeTheme(sluggersTheme, {
+    ink: "#ffffff",
+    muted: "#e0edff",
+    accent: "#fff1a1",
+    onAccent: "#173866",
+    danger: "#ffd7df",
+    success: "#b6f7d1",
+    border: "#88b3df",
+    controlBorder: "#a4ccf4",
+    selectedInk: "#ffffff",
+    colorScheme: "dark",
+    fontUi: "SluggersCezanne, Arial, sans-serif",
+    tableHeaderTextSize: "12px",
+    tableContainerSurface: "transparent",
+    onDanger: "#173866",
+    focus: "#fff1a1",
+    buttonImage: "linear-gradient(rgb(255 255 255 / .18),rgb(255 255 255 / 0))",
+    buttonShadow: "0 2px 3px rgb(0 0 0 / .12)",
+    canvas: "#155ba4",
+    surface: "#235e9b",
+    elevated: "#1c5088",
+    tableSurface: "#1d548d",
+    tableHeader: "#16477b",
+    selectedSurface: "#16477b",
+    panelRadius: "10px",
+    controlRadius: "6px",
+    tableCellPadding: "8px 12px",
+    tableBorder: "#759cca",
+    dangerSurface: "#235e9b",
+    successSurface: "#235e9b",
+    hoverSurface: "#16477b",
+    disabledSurface: "#1c5088",
+  }),
+  parts: {
+    contentColumns: "minmax(0,1.6fr) minmax(330px,1fr)",
+    panelImage: "linear-gradient(#2c70ad,#21548e)",
+    headingImage: "linear-gradient(#4388c6,#225f9e)",
+    headingInk: "#ffffff",
+    panelEdge: "2px solid #81bae8",
+    cardRadius: "8px",
+    matchColumns: "repeat(2,minmax(0,1fr))",
+  },
+  field: {
+    grass: "#398466",
+    infield: "#aa8056",
+    line: "#e1f4d0",
+    marker: "#235e9b",
+    portraitSize: "32px",
+  },
+  recipe: css({
+    background: "linear-gradient(#2676b9,#18579c 70%)",
+    "& [data-baseball-scoreboard]": {
+      border: "2px solid #a4d7ff",
+      background: "#1d548d",
+    },
+    "& [data-baseball-scoreboard] [data-total]": {
+      background: "linear-gradient(#276ec0,#174f94)",
+      color: "#fff1a1",
+    },
+    "& [data-roster-card]": {
+      background: "linear-gradient(#2b6aab,#22568f)",
+      borderRadius: "6px",
+    },
+  }),
+};

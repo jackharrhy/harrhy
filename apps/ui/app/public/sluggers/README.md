@@ -2,6 +2,10 @@
 
 Four synthetic Sluggers compositions inside the existing `@harrhy/ui-app` Scenes interface. Mode: Operate / Read. Owner approved the blue scorebook proposal, original fonts and screenshot comparisons with the old UI. No production app, backend, upload/parser, Auth client or storage is initialized.
 
+## Private design cookoff
+
+The separate opt-in `/sluggers-lab` subpage compares six full experimental recipes against the same read-only sanitized archive and curated private images. See [lab/README.md](lab/README.md) for activation, architecture, provenance and rights boundaries. Normal synthetic scenes below are unchanged.
+
 ## Entry points
 
 - `scene.tsx`: `SluggersScene(handle: Handle<{theme: string}>)`; Standings, Box score, Lineup and Tracker review with local scenario controls.

@@ -10,7 +10,8 @@
     "./code": "./code.tsx",
     "./styles": "./styles.ts",
     "./theme": "./theme.ts",
-    "./recipes": "./recipes.ts"
+    "./recipes": "./recipes.ts",
+    "./baseball": "./baseball.tsx"
   },
   "scripts": {
     "check": "tsrs --noEmit && node --test __tests__/*.test.mjs"
