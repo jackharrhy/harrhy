@@ -7,6 +7,7 @@ type Context = Omit<DocumentProps, "title" | "children"> & {
   user?: string;
   supportEnabled?: boolean;
   jellyfinAccounts?: { instance: string; href: string }[];
+  jellyfinSetups?: { username: string; state: string; href?: string }[];
   supportTarget?: "ready" | "missing" | "ineligible" | "unavailable";
 };
 type Person = {
@@ -248,6 +249,31 @@ function PersonPage(
                   </a>
                 </li>
               ))}
+            </ul>
+          ) : context.jellyfinSetups?.length ? (
+            <ul>
+              {context.jellyfinSetups.map((setup) => {
+                const label =
+                  setup.state === "link-pending"
+                    ? "Finish linking account"
+                    : setup.state === "created"
+                      ? "Account created · link separately"
+                      : "Review uncertain account creation";
+                return (
+                  <li>
+                    {setup.href ? (
+                      <a href={setup.href}>
+                        {label} · {setup.username}
+                      </a>
+                    ) : (
+                      <span>
+                        {label} · {setup.username}. Ask the administrator who
+                        started this setup to review its receipt.
+                      </span>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           ) : user.state === "USER_STATE_ACTIVE" ? (
             <a

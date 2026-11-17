@@ -289,7 +289,7 @@ export function createAccessRoutes({
           reason: String(form.get("reason") || "").slice(0, 500),
           folderIds: form
             .getAll("folderId")
-            .filter((value) => typeof value === "string")
+            .filter((value) => typeof value === "string" && value.length <= 500)
             .slice(0, 100),
         };
         try {
@@ -634,6 +634,25 @@ export function createAccessRoutes({
           const observed = await native.list(user.id);
           const personContext = {
             ...context,
+            jellyfinSetups: access.provisioning
+              .list()
+              .filter(
+                (item) =>
+                  item.body.target.service === "jellyfin" &&
+                  item.body.target.issuer === issuer &&
+                  item.body.target.subject === user.id &&
+                  ["link-pending", "effect-unknown", "created"].includes(
+                    item.state,
+                  ),
+              )
+              .map((item) => ({
+                username: item.body.review.username,
+                state: item.state,
+                href:
+                  item.actor === session.userId
+                    ? `/manage/media/provisioning/${item.id}`
+                    : undefined,
+              })),
             jellyfinAccounts: access.media
               .mappings()
               .filter(

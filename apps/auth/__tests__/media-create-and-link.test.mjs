@@ -10,7 +10,7 @@ const target = {
   issuer: "https://auth.invalid",
   subject: "person",
 };
-function fixture({ uncertain = false } = {}) {
+function fixture({ uncertain = false, returnedId = "returned-exact-id" } = {}) {
   const db = new DatabaseSync(":memory:");
   const media = createConnectedAccountLedger(db);
   const person = { ...target, name: "Synthetic Person", active: true };
@@ -31,7 +31,7 @@ function fixture({ uncertain = false } = {}) {
       await effects.recordNativeId("returned-exact-id");
       if (uncertain)
         return { state: "effect-unknown", nativeId: "returned-exact-id" };
-      return { state: "created", nativeId: "returned-exact-id" };
+      return { state: "created", nativeId: returnedId };
     },
     inspectCreated: async (id) => {
       assert.equal(id, "returned-exact-id");
@@ -169,6 +169,60 @@ test("combined approval never links or replays an uncertain native effect even w
     assert.equal((await f.confirm(review.id)).state, "effect-unknown");
     assert.equal(f.media.mappings().length, 0);
     assert.equal(f.writes(), 1);
+  } finally {
+    f.db.close();
+  }
+});
+
+test("a success ID differing from the durable returned-ID checkpoint never links", async () => {
+  const f = fixture({ returnedId: "different-id" });
+  try {
+    const review = await f.preview();
+    await assert.rejects(f.confirm(review.id));
+    assert.equal(f.ledger().get(review.id).state, "effect-unknown");
+    assert.equal(f.ledger().get(review.id).native_id, "returned-exact-id");
+    await f.confirm(review.id);
+    assert.equal(f.media.mappings().length, 0);
+    assert.equal(f.writes(), 1);
+  } finally {
+    f.db.close();
+  }
+});
+
+test("concurrent finish-link attempts commit one mapping and one linked event", async () => {
+  const f = fixture();
+  try {
+    const review = await f.preview();
+    f.block("before-insert");
+    await f.confirm(review.id);
+    f.block("none");
+    await Promise.allSettled([f.confirm(review.id), f.confirm(review.id)]);
+    assert.equal(f.ledger().get(review.id).state, "linked");
+    assert.equal(f.media.mappings().length, 1);
+    assert.equal(
+      f
+        .ledger()
+        .events(review.id)
+        .filter((event) => event.state === "linked").length,
+      1,
+    );
+    assert.equal(f.writes(), 1);
+  } finally {
+    f.db.close();
+  }
+});
+
+test("unknown persisted combined approval versions fail closed", async () => {
+  const f = fixture();
+  try {
+    const review = await f.preview();
+    review.body.approval.kind = "create-and-link-v999";
+    f.db
+      .prepare("UPDATE media_provisioning SET body=? WHERE id=?")
+      .run(JSON.stringify(review.body), review.id);
+    await assert.rejects(f.confirm(review.id));
+    assert.equal(f.media.mappings().length, 0);
+    assert.equal(f.writes(), 0);
   } finally {
     f.db.close();
   }

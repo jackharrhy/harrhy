@@ -792,6 +792,53 @@ try {
       );
       await capture(page, `media-provisioning-link-pending-${width}`);
     }
+    for (const [requestOrigin, csrf] of [
+      ["https://wrong.example", creationCsrf],
+      [origin, "forged-csrf"],
+    ]) {
+      const rejected = await context.request.post(`${creationUrl}/confirm`, {
+        headers: { origin: requestOrigin },
+        form: { csrf, confirmed: "true" },
+      });
+      assert.equal(rejected.status(), 403);
+    }
+    const savedModel = localLedger
+      .prepare("SELECT body FROM access_model WHERE id=1")
+      .get().body;
+    const revokedModel = JSON.parse(savedModel);
+    revokedModel.memberships = revokedModel.memberships.filter(
+      (item) => item.group !== "auth-administrators",
+    );
+    try {
+      localLedger
+        .prepare("UPDATE access_model SET body=? WHERE id=1")
+        .run(JSON.stringify(revokedModel));
+      const revoked = await context.request.post(`${creationUrl}/confirm`, {
+        headers: { origin },
+        form: { csrf: creationCsrf, confirmed: "true" },
+      });
+      assert.equal(revoked.status(), 403);
+    } finally {
+      localLedger
+        .prepare("UPDATE access_model SET body=? WHERE id=1")
+        .run(savedModel);
+    }
+    assert.equal(fixture.nativeCreations, 1);
+    await page
+      .getByRole("link", { name: "Return to person", exact: true })
+      .click();
+    assert.equal(
+      await page
+        .getByRole("link", { name: "Set up Jellyfin", exact: true })
+        .count(),
+      0,
+    );
+    await page
+      .getByRole("link", {
+        name: "Finish linking account · synthetic-recipient",
+        exact: true,
+      })
+      .click();
     localLedger.exec("DROP TRIGGER synthetic_link_failure");
     await page.reload();
     await page

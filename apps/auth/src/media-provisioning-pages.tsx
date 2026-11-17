@@ -165,11 +165,14 @@ function ProvisioningPage(
                     maxLength={64}
                     pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
                     aria-describedby="username-help"
+                    autoComplete="username"
+                    spellCheck={false}
                   />
                 </label>
                 <p id="username-help" class="muted">
-                  Choose a new username. To use an existing account, link it
-                  from the account list instead.
+                  Use letters, digits, dots, underscores or hyphens; start with
+                  a letter or digit. To use an existing account, link it from
+                  the account list instead.
                 </p>
                 <fieldset>
                   <legend>Libraries</legend>
@@ -325,6 +328,19 @@ function ProvisioningReviewPage(
             </p>
           </>
         )}
+        {!isJellyfinCreation(body) && action.state === "review" && (
+          <section>
+            <h2>Import {review.username} from Jellyfin</h2>
+            <p>
+              Ordinary movie and TV requests will be automatically approved. No
+              administrator, management or 4K request permissions are added.
+            </p>
+            <p class="muted">
+              Seerr applies its defaults during import. An unexpected result
+              stops for investigation, without automatic repair or deletion.
+            </p>
+          </section>
+        )}
         {action.state === "linked" && (
           <section role="status">
             <p>
@@ -352,9 +368,10 @@ function ProvisioningReviewPage(
               >
                 <input type="hidden" name="csrf" value={context.csrf} />
                 <input type="hidden" name="confirmed" value="true" />
-                <button>Finish linking account</button>
+                <button class="primary">Finish linking account</button>
               </form>
             )}
+            <a href={`/manage/people/${target.subject}`}>Return to person</a>
           </section>
         )}
         <details mix={receiptDetailsStyles}>
