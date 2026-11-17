@@ -309,13 +309,13 @@ export class BoardCell extends DurableObject<Env> {
     if (!isRecord(frame)) return;
     if (frame.type !== "ping" && frame.type !== "operation") return;
     const boardId = this.boardId();
-    if (
-      !boardId ||
-      !(await this.env.DIRECTORY.getByName("main").socketAccess(
-        boardId,
-        attachment.sessionHash,
-      ))
-    ) {
+    const access = boardId
+      ? await this.env.DIRECTORY.getByName("main").socketAccess(
+          boardId,
+          attachment.sessionHash,
+        )
+      : null;
+    if (!boardId || !access) {
       this.endSocket(socket);
       return;
     }
@@ -333,6 +333,7 @@ export class BoardCell extends DurableObject<Env> {
       boardId,
       attachment.sessionHash,
       operation,
+      access.subject,
     );
     if (result.type === "rejected") this.send(socket, result);
   }
@@ -341,6 +342,7 @@ export class BoardCell extends DurableObject<Env> {
     boardId: string,
     actorId: string,
     input: unknown,
+    subject: string,
   ): Promise<Extract<BoardServerFrame, { type: "applied" | "rejected" }>> {
     this.assertBoard(boardId);
     const operation = parseOperation(input);
@@ -350,6 +352,7 @@ export class BoardCell extends DurableObject<Env> {
       .open("job", {
         operation: `ref.board.${operation.kind}`,
         job_id: operation.operationId,
+        "actor.id": subject.slice(0, 128),
         "resource.boardId": boardId,
         "resource.itemId":
           operation.kind === "create" ? operation.item.id : operation.itemId,
