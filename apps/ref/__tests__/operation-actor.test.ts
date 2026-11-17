@@ -21,6 +21,9 @@ it("concurrent socket operations use current verified subjects, not attachment o
     blockConcurrencyWhile() {},
     getWebSockets: () => [],
     storage: {
+      setAlarm: async () => {
+        await Promise.resolve();
+      },
       sql: {
         exec(query: string) {
           return {
@@ -79,16 +82,10 @@ it("concurrent socket operations use current verified subjects, not attachment o
           type: "operation",
           subject: "untrusted",
           operation: {
-            kind: "transform",
+            kind: "remove",
             operationId,
             itemId: crypto.randomUUID(),
             baseRevision: 1,
-            x: 1,
-            y: 2,
-            width: 100,
-            height: 100,
-            rotation: 0,
-            z: 1,
           },
         }),
       };
@@ -101,7 +98,7 @@ it("concurrent socket operations use current verified subjects, not attachment o
   for (const [index, subject] of ["subject-a", "subject-b"].entries()) {
     expect(
       records.find((event) => event.job_id === operations[index]!.operationId),
-    ).toMatchObject({ "actor.id": subject, operation: "ref.board.transform" });
+    ).toMatchObject({ "actor.id": subject, operation: "ref.board.remove" });
   }
   expect(operations[2]!.socket.close).toHaveBeenCalledWith(
     1008,
