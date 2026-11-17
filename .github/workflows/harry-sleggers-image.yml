@@ -1,0 +1,34 @@
+name: Harry Sleggers image
+on:
+  pull_request:
+    paths:
+      - .github/workflows/harry-sleggers-image.yml
+      - .dockerignore
+      - .npmrc
+      - package.json
+      - package-lock.json
+      - tsconfig.base.json
+      - apps/harry-sleggers/**
+      - packages/ui/**
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: harry-sleggers-image-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - run: docker build -t harry-sleggers-check -f apps/harry-sleggers/Dockerfile .
+      - name: Missing database configuration fails closed
+        run: |
+          if docker run --rm harry-sleggers-check > startup.log 2>&1; then
+            echo "Unexpected startup without a database" >&2
+            exit 1
+          fi
+          grep -q 'HARRHY_SLEGGERS_DATABASE_URL is required' startup.log

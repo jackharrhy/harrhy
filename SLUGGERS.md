@@ -1,9 +1,14 @@
 # Sluggers handoff
 
-Planning handoff, November 15, 2026. This records the owner's direction for a
-future Sluggers product in Harrhy. No new Sluggers app has been implemented here.
-The first milestone is a UI pass and Sluggers theme built on `@harrhy/ui`, not a
-full application port.
+Updated November 17, 2026. The owner has named the new app **Harry Sleggers**.
+`apps/harry-sleggers` is a read-only Remix 3 website over the same sanitized
+historical PostgreSQL database, with six selectable curated Sluggers styles.
+It does not migrate or write historical tables, replace the original runtime,
+or implement authentication and editing. Building and publishing an image is
+separate from production deployment.
+
+The multi-league, Auth and import directions below remain future product work;
+they do not authorize restructuring the historical database for this phase.
 
 ## Direction and settled decisions
 
