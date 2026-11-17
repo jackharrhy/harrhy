@@ -114,7 +114,7 @@ export async function createArchiveApp(
     const requested = url.searchParams.get("theme");
     const saved = context.request.headers
       .get("cookie")
-      ?.match(/(?:^|;\s*)sleggers-theme=([a-z-]+)/)?.[1];
+      ?.match(/(?:^|;\s*)sluggers-theme=([a-z-]+)/)?.[1];
     if (!requested && concepts.some((c) => c.id === saved))
       url.searchParams.set("theme", saved!);
     const view = page(await archive.read(), url, assets);
@@ -123,7 +123,7 @@ export async function createArchiveApp(
       headers:
         requested && concepts.some((c) => c.id === requested)
           ? {
-              "Set-Cookie": `sleggers-theme=${requested}; Path=/; SameSite=Lax; HttpOnly; Max-Age=31536000`,
+              "Set-Cookie": `sluggers-theme=${requested}; Path=/; SameSite=Lax; HttpOnly; Max-Age=31536000`,
             }
           : {},
     });

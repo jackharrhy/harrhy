@@ -25,7 +25,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/cms`](apps/cms/) | Multi-site CMS, operator dashboard, and Node host | [README](apps/cms/README.md) |
 | [`@harrhy/cms-edge`](apps/cms-edge/) | Cloudflare Worker CMS backed by D1 and R2 | [README](apps/cms-edge/README.md) |
 | [`@harrhy/4orm`](apps/4orm/) | Isolated native 4orm community candidate on Celld | [README](apps/4orm/README.md) |
-| [`@harrhy/harry-sleggers`](apps/harry-sleggers/) | Read-only historical Sluggers league website over PostgreSQL | [README](apps/harry-sleggers/README.md) |
+| [`@harrhy/harry-sluggers`](apps/harry-sluggers/) | Read-only historical Sluggers league website over PostgreSQL | [README](apps/harry-sluggers/README.md) |
 | [`@harrhy/garden`](apps/garden/) | Obsidian-backed personal website and publishing tools | [README](apps/garden/README.md) |
 | [`@harrhy/gurgur`](apps/gurgur/) | WebGPU world and Bun authoritative game server | [README](apps/gurgur/README.md) |
 | [`@harrhy/img`](apps/img/) | Native Rust/Rune image and GIF operation editor | [README](apps/img/README.md) |

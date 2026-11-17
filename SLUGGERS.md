@@ -1,7 +1,7 @@
 # Sluggers handoff
 
-Updated November 17, 2026. The owner has named the new app **Harry Sleggers**.
-`apps/harry-sleggers` is a read-only Remix 3 website over the same sanitized
+Updated November 17, 2026. The owner has named the new app **Harry Sluggers**.
+`apps/harry-sluggers` is a read-only Remix 3 website over the same sanitized
 historical PostgreSQL database, with six selectable curated Sluggers styles.
 It does not migrate or write historical tables, replace the original runtime,
 or implement authentication and editing. Building and publishing an image is
