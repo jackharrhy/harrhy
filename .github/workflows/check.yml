@@ -37,6 +37,12 @@ jobs:
           bun-version: 1.4.4
       - if: steps.select.outputs.any == 'true'
         run: npm ci
+      - name: Install Pi isolated browser prerequisites
+        if: contains(fromJSON(steps.select.outputs.selected), '@harrhy/pi')
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends bubblewrap
+          npx playwright install --with-deps chromium
       - name: Install Img native build dependencies
         if: contains(fromJSON(steps.select.outputs.selected), '@harrhy/img')
         run: |

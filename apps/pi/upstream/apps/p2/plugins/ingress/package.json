@@ -1,0 +1,5 @@
+{
+	"name": "ingress",
+	"private": true,
+	"type": "module"
+}

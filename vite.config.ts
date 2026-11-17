@@ -5,6 +5,7 @@ export default defineConfig({
     printWidth: 80,
     sortPackageJson: false,
     ignorePatterns: [
+      "apps/pi/upstream/**",
       ".agents/**",
       "package-lock.json",
       "apps/auth/public/style.css",
@@ -57,6 +58,7 @@ export default defineConfig({
       ],
     },
     ignorePatterns: [
+      "apps/pi/upstream/**",
       "node_modules/**",
       "apps/garden/app/ui/public/mug/pico-cad-viewer.js",
       "apps/cms/tmp/**",
