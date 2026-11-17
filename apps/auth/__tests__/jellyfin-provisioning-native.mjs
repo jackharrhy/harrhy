@@ -29,6 +29,8 @@ try {
     "isolated provisioning did not complete",
   );
   assert.deepEqual(effects, ["claimed", result.nativeId]);
+  phase = "finish-link-readback";
+  await adapter.inspectCreated(result.nativeId, review);
   phase = "recipient-sign-in";
   const recipient = await api("Users/AuthenticateByName", {
     method: "POST",

@@ -97,6 +97,33 @@ export function createConnectedAccountLedger(db) {
   };
   return {
     mappings,
+    // Runs inside the provisioning transaction after exact native readback.
+    recordCreated({ target, nativeId, actor, reason, now }) {
+      const mapping = { ...target, nativeId };
+      if (
+        mappings().some(
+          (item) =>
+            nativeKey(item) === nativeKey(mapping) ||
+            personKey(item) === personKey(mapping),
+        )
+      )
+        throw fail(
+          409,
+          "An account link already exists. Review the recorded account; do not create again.",
+        );
+      db.prepare(
+        "INSERT INTO media_identity_links VALUES (?,?,?,?,?,?,?,?)",
+      ).run(
+        target.service,
+        target.instance,
+        nativeId,
+        target.issuer,
+        target.subject,
+        actor,
+        reason,
+        new Date(now).toISOString(),
+      );
+    },
     review,
     reviews: () =>
       db

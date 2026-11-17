@@ -46,6 +46,7 @@ export function createAccessStore({
     people: mediaPeople,
     mappings: media.mappings,
     provisioning: mediaProvisioning,
+    recordCreated: media.recordCreated,
   });
   const onboarding = createIdentityOnboardingLedger(db);
   const nativeDomains = services

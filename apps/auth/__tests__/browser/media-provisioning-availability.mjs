@@ -29,12 +29,12 @@ try {
         .getByRole("link", { name: "Create account", exact: true })
         .click();
       await page
-        .getByRole("heading", { name: "Create Jellyfin account", exact: true })
+        .getByRole("heading", { name: "Set up Jellyfin", exact: true })
         .waitFor();
       if (enabled) {
         await page
           .getByRole("button", {
-            name: "Review new native account",
+            name: "Review setup",
             exact: true,
           })
           .waitFor();

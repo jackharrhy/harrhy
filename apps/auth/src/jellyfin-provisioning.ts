@@ -126,7 +126,7 @@ export function createJellyfinProvisioning(
       new Set(folderIds).size !== folderIds.length
     )
       throw invalidInput(
-        "Choose a valid native username and at least one library, without duplicate selections.",
+        "Use 1–64 letters, digits, dots, underscores or hyphens for the Jellyfin username, starting with a letter or digit. Choose at least one library without duplicate selections.",
       );
     const available = await libraries();
     const folders = folderIds
@@ -168,6 +168,23 @@ export function createJellyfinProvisioning(
   return {
     libraries,
     preview,
+    async inspectCreated(nativeId, review) {
+      if (!uuid.test(nativeId)) throw invalid();
+      const observed = nativeObject(await request(`Users/${nativeId}`));
+      const policy = nativeObject(observed.Policy);
+      const expected = newJellyfinPlaybackPolicy(
+        observed,
+        review.folders.map((folder) => folder.id),
+      );
+      // Failed-login counters are runtime state, not approval to broaden access.
+      const actual = { ...policy, InvalidLoginAttemptCount: 0 };
+      if (
+        observed.Id !== nativeId ||
+        observed.Name !== review.username ||
+        !isDeepStrictEqual(actual, expected)
+      )
+        throw invalid();
+    },
     async provision(review, { password, claimEffect, recordNativeId }) {
       if (
         typeof password !== "string" ||

@@ -156,6 +156,62 @@ export function createAccessRoutes({
       url.pathname === "/manage/media" ||
       url.pathname.startsWith("/manage/media/")
     ) {
+      async function showProvisioning(selection, values, error) {
+        const instances = mediaInventory
+          .instances()
+          .filter((item) => ["jellyfin", "seerr"].includes(item.service));
+        const service = selection.searchParams.get("service") || "jellyfin";
+        const instance = selection.searchParams.get("instance");
+        const candidates = instances.filter((item) => item.service === service);
+        const selected = instance
+          ? candidates.find((item) => item.instance === instance)
+          : selection.searchParams.has("subject") && candidates.length === 1
+            ? candidates[0]
+            : undefined;
+        if (instance && !selected) throw fail(404, "Media instance not found.");
+        const enabled = Boolean(selected && mediaProvisioningEnabled(selected));
+        const libraries =
+          enabled && selected.service === "jellyfin"
+            ? await access.provisioning.libraries(selected)
+            : [];
+        const identities = (enabled ? await people() : []).map((user) => ({
+          subject: user.id,
+          name: user.human?.profile?.displayName
+            ? `${user.human.profile.displayName} (${user.userName})`
+            : user.userName || "Person",
+          active: user.state === "USER_STATE_ACTIVE",
+        }));
+        await sendRemix(
+          (nonce) =>
+            renderMediaProvisioning(
+              {
+                instances,
+                seerrInstances: mediaInventory
+                  .instances()
+                  .filter((item) => item.service === "seerr"),
+                sourceMappings: access.media
+                  .mappings()
+                  .filter((item) => item.service === "jellyfin"),
+                selected,
+                selectedSubject:
+                  values?.subject ||
+                  selection.searchParams.get("subject") ||
+                  undefined,
+                values,
+                error,
+                enabled,
+                libraries,
+                people: identities,
+                actions: access.provisioning
+                  .list()
+                  .filter((action) => action.actor === session.userId),
+                context,
+              },
+              nonce,
+            ),
+          error ? 400 : 200,
+        );
+      }
       const creationPath = url.pathname.match(
         /^\/manage\/media\/provisioning\/([a-f0-9-]{36})(?:\/(confirm))?$/,
       );
@@ -227,66 +283,47 @@ export function createAccessRoutes({
         url.pathname === "/manage/media/provisioning/preview"
       ) {
         rateLimit(`media-provisioning:${session.userId}`);
-        const action = await access.provisioning.preview({
-          actor: session.userId,
-          reason: form.get("reason"),
-          target: {
-            service: "jellyfin",
-            instance: form.get("instance"),
-            issuer,
-            subject: form.get("subject"),
-          },
-          username: form.get("username"),
-          folderIds: form.getAll("folderId"),
-        });
-        redirect(`/manage/media/provisioning/${action.id}`);
+        const values = {
+          subject: String(form.get("subject") || "").slice(0, 500),
+          username: String(form.get("username") || "").slice(0, 64),
+          reason: String(form.get("reason") || "").slice(0, 500),
+          folderIds: form
+            .getAll("folderId")
+            .filter((value) => typeof value === "string" && value.length <= 500)
+            .slice(0, 100),
+        };
+        try {
+          const action = await access.provisioning.preview({
+            actor: session.userId,
+            reason: form.get("reason"),
+            target: {
+              service: "jellyfin",
+              instance: form.get("instance"),
+              issuer,
+              subject: form.get("subject"),
+            },
+            username: form.get("username"),
+            folderIds: form.getAll("folderId"),
+            createAndLink: true,
+          });
+          redirect(`/manage/media/provisioning/${action.id}`);
+        } catch (error) {
+          if (![400, 409].includes(error.status)) throw error;
+          const selection = new URL("/manage/media/provisioning", url);
+          selection.searchParams.set("service", "jellyfin");
+          selection.searchParams.set(
+            "instance",
+            String(form.get("instance") || ""),
+          );
+          await showProvisioning(selection, values, error.message);
+        }
         return true;
       }
       if (
         request.method === "GET" &&
         url.pathname === "/manage/media/provisioning"
       ) {
-        const instances = mediaInventory
-          .instances()
-          .filter((item) => ["jellyfin", "seerr"].includes(item.service));
-        const service = url.searchParams.get("service") || "jellyfin";
-        const instance = url.searchParams.get("instance");
-        const selected = instances.find(
-          (item) => item.instance === instance && item.service === service,
-        );
-        if (instance && !selected) throw fail(404, "Media instance not found.");
-        const enabled = Boolean(selected && mediaProvisioningEnabled(selected));
-        const libraries =
-          enabled && selected.service === "jellyfin"
-            ? await access.provisioning.libraries(selected)
-            : [];
-        const identities = (enabled ? await people() : []).map((user) => ({
-          subject: user.id,
-          name: user.human?.profile?.displayName || user.userName || user.id,
-          active: user.state === "USER_STATE_ACTIVE",
-        }));
-        await sendRemix((nonce) =>
-          renderMediaProvisioning(
-            {
-              instances,
-              seerrInstances: mediaInventory
-                .instances()
-                .filter((item) => item.service === "seerr"),
-              sourceMappings: access.media
-                .mappings()
-                .filter((item) => item.service === "jellyfin"),
-              selected,
-              enabled,
-              libraries,
-              people: identities,
-              actions: access.provisioning
-                .list()
-                .filter((action) => action.actor === session.userId),
-              context,
-            },
-            nonce,
-          ),
-        );
+        await showProvisioning(url);
         return true;
       }
       const actionPath = url.pathname.match(
@@ -352,7 +389,9 @@ export function createAccessRoutes({
         (await people()).map((user) => ({
           issuer,
           subject: user.id,
-          name: user.human?.profile?.displayName || user.userName || user.id,
+          name: user.human?.profile?.displayName
+            ? `${user.human.profile.displayName} (${user.userName})`
+            : user.userName || "Person",
           active: user.state === "USER_STATE_ACTIVE",
         }));
       const instances = mediaInventory.instances();
@@ -595,6 +634,28 @@ export function createAccessRoutes({
           const observed = await native.list(user.id);
           const personContext = {
             ...context,
+            jellyfinSetups: access.provisioning
+              .unfinishedForPerson({ issuer, subject: user.id })
+              .map((item) => ({
+                username: item.body.review.username,
+                state: item.state,
+                href:
+                  item.actor === session.userId
+                    ? `/manage/media/provisioning/${item.id}`
+                    : undefined,
+              })),
+            jellyfinAccounts: access.media
+              .mappings()
+              .filter(
+                (item) =>
+                  item.service === "jellyfin" &&
+                  item.issuer === issuer &&
+                  item.subject === user.id,
+              )
+              .map((item) => ({
+                instance: item.instance,
+                href: `/manage/media/jellyfin/${encodeURIComponent(item.instance)}/accounts/${encodeURIComponent(item.nativeId)}`,
+              })),
             supportTarget: context.supportEnabled
               ? await supportPreflight?.(context.user, user.id)
               : undefined,

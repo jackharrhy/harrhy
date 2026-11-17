@@ -3,9 +3,14 @@ import {
   type Creation,
   type Folder,
 } from "./media-contracts.ts";
-import { type Handle } from "remix/component";
+import { css, type Handle } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { Document, type DocumentProps } from "./document.tsx";
+
+const receiptDetailsStyles = css({
+  marginBlock: "24px",
+  maxWidth: "70ch",
+});
 
 type Context = Omit<DocumentProps, "title" | "children"> & { csrf: string };
 type Instance = { service: string; instance: string; name: string };
@@ -21,6 +26,14 @@ function ProvisioningPage(
       subject: string;
     }[];
     selected?: Instance;
+    selectedSubject?: string;
+    values?: {
+      subject: string;
+      username: string;
+      reason: string;
+      folderIds: string[];
+    };
+    error?: string;
     enabled: boolean;
     people: Person[];
     libraries: Folder[];
@@ -34,13 +47,16 @@ function ProvisioningPage(
       seerrInstances,
       sourceMappings,
       selected,
+      selectedSubject,
+      values,
+      error,
       enabled,
       people,
       libraries,
       context,
     } = handle.props;
     return (
-      <Document {...context} title="Create native account" active="services">
+      <Document {...context} title="Set up Jellyfin" active="services">
         <nav aria-label="Breadcrumb">
           <a href="/manage/media">Service accounts</a>
           {selected && (
@@ -59,15 +75,22 @@ function ProvisioningPage(
           {selected?.service === "seerr"
             ? "Import account into Seerr"
             : selected
-              ? "Create Jellyfin account"
+              ? "Set up Jellyfin"
               : "Choose a service"}
         </h1>
+        {error && (
+          <section role="alert" tabIndex={-1} autoFocus>
+            <h2>Check the account details</h2>
+            <p>{error}</p>
+            <p>No account was created. Your selections are kept below.</p>
+          </section>
+        )}
         {!selected && (
           <nav aria-label="Creation service">
             {instances.map((item) => (
               <p>
                 <a
-                  href={`/manage/media/provisioning?service=${item.service}&instance=${item.instance}`}
+                  href={`/manage/media/provisioning?service=${item.service}&instance=${item.instance}${selectedSubject ? `&subject=${encodeURIComponent(selectedSubject)}` : ""}`}
                 >
                   {item.name}
                 </a>
@@ -79,15 +102,25 @@ function ProvisioningPage(
           <section>
             <h2>Account creation is not enabled for {selected.name}</h2>
             <p>
-              The operator has connected a read-only account list, but has not
-              enabled account creation or import for this instance. No action
-              was attempted. You can still view and link existing accounts.
+              Creation is unavailable. You can still view and link existing
+              accounts; no action was attempted.
             </p>
           </section>
         )}
         {enabled && selected?.service === "jellyfin" && (
           <section>
-            <h2>{selected.name}</h2>
+            <p class="muted">
+              {selected.name} · Create an account and link it to one person.
+            </p>
+            {selectedSubject &&
+              !people.some(
+                (person) => person.subject === selectedSubject && person.active,
+              ) && (
+                <p role="status">
+                  This person is not active in Auth. Finish their account setup
+                  before setting up Jellyfin, or choose another active person.
+                </p>
+              )}
             {libraries.length === 0 ? (
               <p>
                 No libraries are available. Creation requires an explicit
@@ -95,6 +128,7 @@ function ProvisioningPage(
               </p>
             ) : (
               <form
+                data-rmx-document
                 method="post"
                 action="/manage/media/provisioning/preview"
                 class="form-stack"
@@ -106,55 +140,65 @@ function ProvisioningPage(
                   value={selected.instance}
                 />
                 <label>
-                  Existing Auth identity
-                  <select
-                    name="subject"
-                    required
-                    aria-label="Existing Auth identity"
-                  >
-                    <option value="">Choose an exact identity</option>
+                  Person
+                  <select name="subject" required aria-label="Person">
+                    <option value="">Choose a person</option>
                     {people
                       .filter((person) => person.active)
                       .map((person) => (
-                        <option value={person.subject}>
-                          {person.name} · {person.subject}
+                        <option
+                          value={person.subject}
+                          selected={person.subject === selectedSubject}
+                        >
+                          {person.name}
                         </option>
                       ))}
                   </select>
                 </label>
                 <label>
-                  New native username
+                  Jellyfin username
                   <input
                     name="username"
+                    value={values?.username || ""}
+                    title="Use 1–64 letters, digits, dots, underscores or hyphens; start with a letter or digit."
                     required
                     maxLength={64}
                     pattern="[A-Za-z0-9][A-Za-z0-9._-]{0,63}"
                     aria-describedby="username-help"
+                    autoComplete="username"
+                    spellCheck={false}
                   />
                 </label>
                 <p id="username-help" class="muted">
-                  1–64 ASCII letters, digits, dots, underscores or hyphens;
-                  start with a letter or digit. Existing usernames are rejected,
-                  never linked automatically.
+                  Use letters, digits, dots, underscores or hyphens; start with
+                  a letter or digit. To use an existing account, link it from
+                  the account list instead.
                 </p>
                 <fieldset>
-                  <legend>Libraries available for playback</legend>
+                  <legend>Libraries</legend>
                   {libraries.map((folder) => (
                     <label class="check">
                       <input
                         type="checkbox"
                         name="folderId"
                         value={folder.id}
+                        checked={values?.folderIds.includes(folder.id) || false}
                       />
                       {folder.name}
                     </label>
                   ))}
                 </fieldset>
                 <label>
-                  Reason
-                  <textarea name="reason" required maxLength={500} />
+                  Note for activity log
+                  <textarea
+                    aria-label="Note for activity log"
+                    name="reason"
+                    required
+                    maxLength={500}
+                    value={values?.reason || ""}
+                  />
                 </label>
-                <button>Review new native account</button>
+                <button>Review setup</button>
               </form>
             )}
           </section>
@@ -169,6 +213,7 @@ function ProvisioningPage(
             </p>
             {seerrInstances.length && sourceMappings.length ? (
               <form
+                data-rmx-document
                 method="post"
                 action="/manage/media/provisioning/seerr-preview"
                 class="form-stack"
@@ -205,7 +250,12 @@ function ProvisioningPage(
                 </label>
                 <label>
                   Import reason
-                  <textarea name="reason" required maxLength={500} />
+                  <textarea
+                    name="reason"
+                    required
+                    maxLength={500}
+                    value={values?.reason || ""}
+                  />
                 </label>
                 <button>Review Seerr exact-ID import</button>
               </form>
@@ -238,99 +288,189 @@ function ProvisioningReviewPage(
     const { action, context } = handle.props;
     const body = action.body;
     const { target, review, reason } = body;
+    const combined = body.approval?.kind === "create-and-link-v1";
+    const title =
+      action.state === "linked"
+        ? "Account created and linked"
+        : action.state === "link-pending"
+          ? "Account created · linking not finished"
+          : action.state === "effect-unknown"
+            ? "Creation needs investigation"
+            : combined
+              ? "Review Jellyfin setup"
+              : "Review native creation";
     return (
-      <Document {...context} title="Review native creation" active="services">
-        <h1>Review native creation</h1>
-        <p role="status">Creation status: {action.state}</p>
-        <dl>
-          <dt>Service / instance</dt>
-          <dd>
-            {target.service} / {target.instance}
-          </dd>
-          <dt>New username</dt>
-          <dd>{review.username}</dd>
-          <dt>Auth subject</dt>
-          <dd>
-            <code>{target.subject}</code>
-          </dd>
-          <dt>Auth issuer</dt>
-          <dd>
-            <code>{target.issuer}</code>
-          </dd>
-          <dt>Reason</dt>
-          <dd>{reason}</dd>
-          <dt>Reviewer</dt>
-          <dd>{action.actor}</dd>
-          <dt>Reviewed at</dt>
-          <dd>
-            <time dateTime={action.created_at}>{action.created_at}</time>
-          </dd>
-          {action.native_id && (
-            <>
-              <dt>Returned exact native ID</dt>
-              <dd>
-                <code>{action.native_id}</code>
-              </dd>
-            </>
-          )}
-        </dl>
-        {!isJellyfinCreation(body) ? (
-          <section>
-            <h2>Seerr request and auto-approve · 160</h2>
-            <p>
-              Import only the exact Jellyfin account from{" "}
-              {body.target.sourceInstance}:{" "}
-              <code>{body.target.sourceNativeId}</code>. Its existence is
-              checked through Seerr’s own configured Jellyfin server; existing
-              Seerr associations are rejected.
-            </p>
-            <p>
-              Native permission 160 means REQUEST (32) and AUTO_APPROVE (128).
-              Ordinary movie and TV requests are automatically approved; no
-              administrator, management or 4K request permission is added.
-              Import uses Jellyfin account type, not a local password account.
-            </p>
-            <p>
-              Seerr applies its global defaults during import, without an atomic
-              conditional-create API. Defaults are checked before import and
-              returned permissions are verified after creation. A race or
-              unexpected response requires manual investigation, never automatic
-              permission repair or deletion. No requests, Arr, download clients
-              or files are changed by this import.
-            </p>
-          </section>
-        ) : (
+      <Document {...context} title={title} active="services">
+        <h1>{title}</h1>
+        {combined && action.state === "review" && (
           <>
-            <h2>Selected-library playback</h2>
-            <ul>
-              {body.review.folders.map((folder) => (
-                <li>
-                  {folder.name} · {folder.id}
-                </li>
-              ))}
-            </ul>
+            <dl>
+              <dt>Person</dt>
+              <dd>{body.approval?.person}</dd>
+              <dt>Jellyfin username</dt>
+              <dd>{review.username}</dd>
+              <dt>Libraries</dt>
+              <dd>
+                {isJellyfinCreation(body)
+                  ? body.review.folders.map((folder) => folder.name).join(", ")
+                  : ""}
+              </dd>
+              <dt>Activity note</dt>
+              <dd>{reason}</dd>
+            </dl>
             <p>
-              New non-administrator account, hidden from the login list.
-              Playback, audio/video transcoding, remuxing, preferences, remote
-              access and ordinary devices are allowed only within the selected
-              libraries. No rating, tag, time, session-count or bitrate
-              restriction is added.
+              Can watch the selected libraries, without administration, deletion
+              or downloading. The account will be linked to this person in Auth.
             </p>
-            <p>
-              No library management, subtitle or lyric management, deletion,
-              downloading, sync transcoding, conversion, live TV, public
-              sharing, shared-device control, other-user control or SyncPlay.
-              Five failed logins lock the account.
+            <p class="muted">
+              This link records who owns the account. It does not enable single
+              sign-on or grant access to other services.
             </p>
           </>
         )}
-        <p>
-          The native password is separate from Auth. No invitation, service
-          grant, automatic identity link or other service change is made. No
-          incumbent password, history or watch state is changed.
-        </p>
+        {!isJellyfinCreation(body) && action.state === "review" && (
+          <section>
+            <h2>Import {review.username} from Jellyfin</h2>
+            <p>
+              Ordinary movie and TV requests will be automatically approved. No
+              administrator, management or 4K request permissions are added.
+            </p>
+            <p class="muted">
+              Seerr applies its defaults during import. An unexpected result
+              stops for investigation, without automatic repair or deletion.
+            </p>
+          </section>
+        )}
+        {action.state === "linked" && (
+          <section role="status">
+            <p>
+              Jellyfin account {review.username} is linked to{" "}
+              {body.approval?.person}. Share the separate Jellyfin password
+              privately. Sign-in has not been checked.
+            </p>
+            <a href={`/manage/people/${target.subject}`}>Return to person</a>
+          </section>
+        )}
+        {action.state === "link-pending" && (
+          <section role="status">
+            <p>
+              Jellyfin account {review.username} was created, but its link to{" "}
+              {body.approval?.person} is not confirmed. Do not create another
+              account. You can safely finish only the local link; the account
+              and password will not be created again.
+            </p>
+            {action.actor === context.user && (
+              <form
+                data-rmx-document
+                method="post"
+                action={`/manage/media/provisioning/${action.id}/confirm`}
+                class="form-stack"
+              >
+                <input type="hidden" name="csrf" value={context.csrf} />
+                <input type="hidden" name="confirmed" value="true" />
+                <button class="primary">Finish linking account</button>
+              </form>
+            )}
+            <a href={`/manage/people/${target.subject}`}>Return to person</a>
+          </section>
+        )}
+        <details mix={receiptDetailsStyles}>
+          <summary>Technical details</summary>
+          <p>Creation status: {action.state}</p>
+          <dl>
+            <dt>Service / instance</dt>
+            <dd>
+              {target.service} / {target.instance}
+            </dd>
+            <dt>New username</dt>
+            <dd>{review.username}</dd>
+            <dt>Auth subject</dt>
+            <dd>
+              <code>{target.subject}</code>
+            </dd>
+            <dt>Auth issuer</dt>
+            <dd>
+              <code>{target.issuer}</code>
+            </dd>
+            <dt>Reason</dt>
+            <dd>{reason}</dd>
+            <dt>Reviewer</dt>
+            <dd>{action.actor}</dd>
+            <dt>Reviewed at</dt>
+            <dd>
+              <time dateTime={action.created_at}>{action.created_at}</time>
+            </dd>
+            {action.native_id && (
+              <>
+                <dt>Returned exact native ID</dt>
+                <dd>
+                  <code>{action.native_id}</code>
+                </dd>
+              </>
+            )}
+          </dl>
+          {!isJellyfinCreation(body) ? (
+            <section>
+              <h2>Seerr request and auto-approve · 160</h2>
+              <p>
+                Import only the exact Jellyfin account from{" "}
+                {body.target.sourceInstance}:{" "}
+                <code>{body.target.sourceNativeId}</code>. Its existence is
+                checked through Seerr’s own configured Jellyfin server; existing
+                Seerr associations are rejected.
+              </p>
+              <p>
+                Native permission 160 means REQUEST (32) and AUTO_APPROVE (128).
+                Ordinary movie and TV requests are automatically approved; no
+                administrator, management or 4K request permission is added.
+                Import uses Jellyfin account type, not a local password account.
+              </p>
+              <p>
+                Seerr applies its global defaults during import, without an
+                atomic conditional-create API. Defaults are checked before
+                import and returned permissions are verified after creation. A
+                race or unexpected response requires manual investigation, never
+                automatic permission repair or deletion. No requests, Arr,
+                download clients or files are changed by this import.
+              </p>
+            </section>
+          ) : (
+            <>
+              <h2>Selected-library playback</h2>
+              <ul>
+                {body.review.folders.map((folder) => (
+                  <li>
+                    {folder.name} · {folder.id}
+                  </li>
+                ))}
+              </ul>
+              <p>
+                New non-administrator account, hidden from the login list.
+                Playback, audio/video transcoding, remuxing, preferences, remote
+                access and ordinary devices are allowed only within the selected
+                libraries. No rating, tag, time, session-count or bitrate
+                restriction is added.
+              </p>
+              <p>
+                No library management, subtitle or lyric management, deletion,
+                downloading, sync transcoding, conversion, live TV, public
+                sharing, shared-device control, other-user control or SyncPlay.
+                Five failed logins lock the account.
+              </p>
+            </>
+          )}
+          <p>
+            The native password is separate from Auth. No invitation, service
+            grant or other service change is made.{" "}
+            {combined
+              ? "Only the newly returned native ID is linked to the approved Auth subject."
+              : "Identity linking is a separate review."}{" "}
+            No incumbent password, history or watch state is changed.
+          </p>
+        </details>
         {action.state === "review" && action.actor === context.user && (
           <form
+            data-rmx-document
             method="post"
             action={`/manage/media/provisioning/${action.id}/confirm`}
             class="form-stack"
@@ -339,7 +479,7 @@ function ProvisioningReviewPage(
             {target.service === "jellyfin" && (
               <>
                 <label>
-                  Separate native password
+                  Jellyfin password
                   <input
                     type="password"
                     name="password"
@@ -351,23 +491,24 @@ function ProvisioningReviewPage(
                   />
                 </label>
                 <p id="native-password-help" class="muted">
-                  16–256 characters. Kept in memory only for this request, never
-                  stored in the review or displayed. Deliver it privately to the
-                  intended recipient.
+                  16–256 characters, separate from Auth. Share it privately; it
+                  is not saved in this review.
                 </p>
               </>
             )}
             <label class="check">
-              <input type="checkbox" name="confirmed" value="true" required />I
-              intend this new native account and reviewed the exact Auth
-              subject, exact native source or selected libraries and full
-              permission profile.
+              <input type="checkbox" name="confirmed" value="true" required />
+              {combined
+                ? `Create this Jellyfin account and link it to ${body.approval?.person}.`
+                : "Create this native account with the reviewed permissions."}
             </label>
             <p class="muted">
-              Review expires after five minutes. The exact native review, active
-              identity and required mappings are checked again before creation.
+              Confirm within five minutes. The person and account settings are
+              checked again before creation.
             </p>
-            <button class="primary">Create native account</button>
+            <button class="primary">
+              {combined ? "Create and link account" : "Create native account"}
+            </button>
           </form>
         )}
         {action.state === "created" && (
@@ -395,7 +536,7 @@ function ProvisioningReviewPage(
           </section>
         )}
         <a class="text-link" href="/manage/media/provisioning">
-          Return to creation reviews
+          Return to service setup
         </a>
       </Document>
     );

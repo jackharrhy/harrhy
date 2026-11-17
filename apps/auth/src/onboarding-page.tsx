@@ -56,7 +56,7 @@ function OnboardingPage(
       <Document {...context} title="Identity reviews" active="people">
         <div class="page-heading">
           <div>
-            <h1>Identity reviews</h1>
+            <h1>{row ? row.body.name : "Identity reviews"}</h1>
             <p class="muted">
               Creation, invitation delivery and recipient setup are separate
               steps. None grants service access.
@@ -75,7 +75,6 @@ function OnboardingPage(
         </p>
         {row ? (
           <>
-            <h2>{row.body.name}</h2>
             <p role="status">
               {states[row.state] || "Administrator review required"}
             </p>
@@ -168,6 +167,13 @@ function OnboardingPage(
                 it.
               </p>
             ) : null}
+            {["created", "invited", "completed"].includes(row.state) && (
+              <p>
+                <a href={`/manage/people/${row.body.subject}`}>
+                  Continue to {row.body.name}
+                </a>
+              </p>
+            )}
           </>
         ) : null}
         {!row && (
