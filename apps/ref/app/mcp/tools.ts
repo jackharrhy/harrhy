@@ -355,7 +355,7 @@ export async function callRefTool(
       ...(access.canRead ? { item: result.item } : {}),
     });
   } catch (error) {
-    if (!(error instanceof TypeError)) failOperation(error, log);
+    if (!(error instanceof TypeError)) failOperation(error);
     return failure(
       error instanceof TypeError
         ? "Tool input is invalid"

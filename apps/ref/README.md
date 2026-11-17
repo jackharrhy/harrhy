@@ -110,7 +110,9 @@ Ordinary query parameters are logged by default as bounded named fields (24 keys
 
 A request event measures response preparation, not streamed delivery; a WebSocket 101 is explicitly an upgrade and retains the runtime's socket capability. Accepted/validated board operation attempts own separate job events, linked across HTTP/MCP and Durable Objects by operation IDs where available; session hashes are never logged. Cleanup alarms own alarm events with retry/deletion counts; cleanup in an existing operation enriches it instead of duplicating events. Invalid socket frames and pings are not logged individually. This does not promise complete connection-delivery telemetry or visibility into failures before the Worker runs.
 
-Synthetic unit tests cover query/credential handling, real Worker early returns, HTTP/MCP outcomes, safe errors, upgrades/stream preparation and sink failure. Existing browser, MCP and Celld acceptance checks retain their disposable stores and ordinary protocol assertions.
+The Worker entry owns the outer ambient record, including pre-router early returns. Router middleware uses installed Remix 3.2 `asyncContext()` and the shared logger’s `log()` bridge to publish that same record through `CurrentLog`/`context.log`; deep helpers enrich with `currentLog()` without logger arguments. SDK handler registration uses `bindLogContext()` to restore the originating async request context when a deferred callback runs, then opens its own completed tool job with inherited request ID and private diagnostic context. Cleanup reuses its active operation/alarm scope or opens a standalone job when none exists. These are request-local ALS scopes, not mutable process-global context; Node compatibility is required and the exact pinned Celld acceptance checks the real runtime.
+
+Synthetic unit tests cover query/credential handling, real Worker early returns, HTTP/MCP outcomes, safe errors, upgrades/stream preparation, concurrent/deferred/nested context isolation, standalone cleanup and sink failure. Existing browser, MCP and Celld acceptance checks retain their disposable stores and ordinary protocol assertions.
 
 ## Browser WebMCP
 

@@ -244,6 +244,24 @@ try {
     (event) => event.kind === "job" && event["mcp.method"] === "tools/call",
   );
   assert.ok(toolEvents.length > 0);
+  assert.equal(
+    new Set(toolEvents.map((event) => event.job_id)).size,
+    toolEvents.length,
+  );
+  for (const event of toolEvents) {
+    assert.match(event.request_id ?? "", /^[a-f0-9-]{36}$/);
+    assert.equal(
+      applicationEvents().filter(
+        (request) =>
+          request.kind === "request" &&
+          request.request_id === event.request_id &&
+          request["http.route"] === "/mcp" &&
+          request["http.status"] === 200,
+      ).length,
+      1,
+      "every completed tool job retains its own HTTP preparation correlation",
+    );
+  }
   assert.ok(
     toolEvents.every((event) => ["ok", "error"].includes(event["mcp.outcome"])),
     "tool outcomes survive awaited Durable Object RPC",
@@ -263,7 +281,7 @@ try {
     "streamed HTTP 200 business failures stay observable in linked tool completions",
   );
   result.checks.push(
-    "MCP tool completion events retain outcomes after streamed HTTP responses and awaited Durable Object RPC",
+    "MCP tool completion events retain isolated correlation and outcomes across concurrent calls, streamed HTTP responses and awaited Durable Object RPC",
   );
 
   assert.equal(

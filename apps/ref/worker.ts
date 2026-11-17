@@ -1,4 +1,3 @@
-import type { Log } from "@harrhy/logger";
 import { logRequest, failOperation } from "./app/logging.ts";
 import { BoardCell } from "./app/data/board-cell.ts";
 import { DirectoryCell } from "./app/data/directory-cell.ts";
@@ -24,17 +23,13 @@ export { BoardCell, DirectoryCell };
 
 export default {
   fetch(request: Request, env: Env): Promise<Response> {
-    return logRequest(request, (log) => handleRequest(request, env, log), {
+    return logRequest(request, () => handleRequest(request, env), {
       privateValues: [env.AUTH_INTROSPECTION_SECRET ?? ""],
     });
   },
 } satisfies ExportedHandler<Env>;
 
-async function handleRequest(
-  request: Request,
-  env: Env,
-  log: Log,
-): Promise<Response> {
+async function handleRequest(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === "/health") return Response.json({ ok: true });
   const origin = request.headers.get("Origin");
@@ -221,7 +216,7 @@ async function handleRequest(
     );
     return withSecurityHeaders(await router.fetch(request), true);
   } catch (error) {
-    failOperation(error, log);
+    failOperation(error);
     return new Response("Internal Server Error", { status: 500 });
   }
 }

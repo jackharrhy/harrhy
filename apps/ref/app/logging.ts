@@ -243,22 +243,26 @@ export function errorContext(
 
 const privateSources = new WeakMap<Log, readonly string[]>();
 const requestIds = new WeakMap<Log, string>();
-export function openLinkedJob(fields: LogFields, parent = currentLog()) {
+export function openLinkedJob(fields: LogFields) {
+  const parent = currentLog();
+  const requestId = parent ? requestIds.get(parent) : undefined;
   const log = logger.open("job", {
     ...fields,
     job_id: crypto.randomUUID(),
-    request_id: parent ? requestIds.get(parent) : undefined,
+    request_id: requestId,
   });
   if (parent) privateSources.set(log, privateSources.get(parent) ?? []);
+  if (requestId) requestIds.set(log, requestId);
   return log;
 }
-export function failOperation(error: unknown, log = currentLog()) {
+export function failOperation(error: unknown) {
+  const log = currentLog();
   log?.fail(error, errorContext(error, log ? privateSources.get(log) : []));
 }
 
 export async function logRequest(
   request: Request,
-  handle: (log: Log) => Promise<Response>,
+  handle: () => Promise<Response>,
   options: { logger?: Logger; privateValues?: readonly string[] } = {},
 ): Promise<Response> {
   const secrets = [
@@ -271,7 +275,7 @@ export async function logRequest(
     requestIds.set(log, fields.request_id as string);
     let response: Response;
     try {
-      response = await handle(log);
+      response = await handle();
     } catch (error) {
       log.fail(error, errorContext(error, secrets));
       response = new Response("Internal Server Error", { status: 500 });

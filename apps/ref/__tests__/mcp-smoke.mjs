@@ -161,6 +161,11 @@ try {
       title: "Isolated MCP smoke",
     });
     const boardId = board.id;
+    const [concurrentRead] = await Promise.all([
+      call(current, "board_get", { boardId }),
+      call(old, "board_get", { boardId: "not-a-board-id" }, true),
+    ]);
+    assert.equal(concurrentRead.board.id, boardId);
     await call(current, "board_rename", {
       boardId,
       title: "Isolated MCP persistence",

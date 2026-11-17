@@ -1,4 +1,4 @@
-import { currentLog, type Log } from "@harrhy/logger";
+import { currentLog } from "@harrhy/logger";
 import { logger, errorContext } from "../logging.ts";
 import type { LinkPreview } from "./protocol.ts";
 
@@ -234,8 +234,9 @@ export class BoardAssets {
     }
   }
 
-  async drainPendingDeletes(parentLog = currentLog()): Promise<void> {
-    const drain = async (log: Log) => {
+  async drainPendingDeletes(): Promise<void> {
+    const drain = async () => {
+      const log = currentLog()!;
       const pending = this.ctx.storage.sql
         .exec<{ object_key: string }>(
           "SELECT object_key FROM pending_deletes LIMIT 20",
@@ -259,8 +260,7 @@ export class BoardAssets {
         }
       }
     };
-    const active = parentLog;
-    if (active) await drain(active);
+    if (currentLog()) await drain();
     else
       await logger
         .open("job", {

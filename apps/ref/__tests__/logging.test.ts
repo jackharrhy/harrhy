@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { createLogger, currentLog } from "@harrhy/logger";
+import { bindLogContext, createLogger, currentLog } from "@harrhy/logger";
 import {
   logRequest,
   requestFields,
@@ -338,11 +338,11 @@ it("linked SDK jobs keep the safe request ID and diagnostic secret context after
   const response = await logRequest(
     new Request("https://ref.example/mcp?code=PRIVATE_CODE"),
     async () => {
-      const job = openLinkedJob({ operation: "ref.mcp.fixture" });
-      complete = () =>
-        job.run((log) => {
-          failOperation(new Error("Dependency failed PRIVATE_CODE"), log);
-        });
+      complete = bindLogContext(() =>
+        openLinkedJob({ operation: "ref.mcp.fixture" }).run(() => {
+          failOperation(new Error("Dependency failed PRIVATE_CODE"));
+        }),
+      );
       return new Response("stream prepared");
     },
     fixture,
@@ -356,4 +356,54 @@ it("linked SDK jobs keep the safe request ID and diagnostic secret context after
     request_id: response.headers.get("X-Request-Id"),
   });
   expect(JSON.stringify(records)).not.toContain("PRIVATE_CODE");
+});
+
+it("concurrent deferred tool jobs and nested jobs inherit only their own request context", async () => {
+  const records: Record<string, unknown>[] = [];
+  for (const method of ["log", "warn", "error"] as const)
+    vi.spyOn(console, method).mockImplementation((line) =>
+      records.push(JSON.parse(String(line))),
+    );
+  const fixture = setup();
+  const callbacks: (() => Promise<void>)[] = [];
+  const responses = await Promise.all(
+    ["FIRST_SECRET", "SECOND_SECRET"].map((secret) =>
+      logRequest(
+        new Request(`https://ref.example/mcp?code=${secret}`),
+        async () => {
+          callbacks.push(
+            bindLogContext(() =>
+              openLinkedJob({ operation: "fixture.tool" }).run(async () => {
+                await Promise.resolve();
+                await openLinkedJob({ operation: "fixture.nested" }).run(() => {
+                  failOperation(new Error(`Dependency failed ${secret}`));
+                });
+                failOperation(new Error(`Tool failed ${secret}`));
+              }),
+            ),
+          );
+          return new Response("stream prepared");
+        },
+        fixture,
+      ),
+    ),
+  );
+  expect(fixture.records).toHaveLength(2);
+  await Promise.all(callbacks.toReversed().map((callback) => callback()));
+  expect(records).toHaveLength(4);
+  for (const response of responses) {
+    const events = records.filter(
+      (record) => record.request_id === response.headers.get("X-Request-Id"),
+    );
+    expect(events).toHaveLength(2);
+    expect(
+      events
+        .map((record) => String(record.operation))
+        .toSorted((a, b) => a.localeCompare(b)),
+    ).toEqual(["fixture.nested", "fixture.tool"]);
+    expect(events.every((record) => record.outcome === "error")).toBe(true);
+  }
+  expect(JSON.stringify(records)).not.toMatch(/FIRST_SECRET|SECOND_SECRET/);
+  expect(currentLog()).toBeUndefined();
+  expect(() => failOperation(new Error("no active operation"))).not.toThrow();
 });

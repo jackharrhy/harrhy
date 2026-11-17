@@ -1,5 +1,7 @@
 import { createRouter, type MiddlewareContext } from "remix/router";
 import type { IdentityConfig } from "@harrhy/identity";
+import { log } from "@harrhy/logger/middleware";
+import { asyncContext } from "remix/middleware/async-context";
 import { formData } from "remix/middleware/form-data";
 import { render } from "remix/middleware/render";
 import { csp } from "remix/middleware/csp";
@@ -21,7 +23,11 @@ import {
 import { routes } from "./routes.ts";
 
 export type AppContext = MiddlewareContext<
-  [ReturnType<typeof formData>, ReturnType<typeof render>]
+  [
+    ReturnType<typeof log>,
+    ReturnType<typeof formData>,
+    ReturnType<typeof render>,
+  ]
 >;
 
 declare module "remix/router" {
@@ -39,6 +45,8 @@ export function createAppRouter(
 ) {
   const router = createRouter<AppContext>({
     middleware: [
+      asyncContext(),
+      log(),
       (context, next) => {
         context.set(AppRuntime, runtime);
         context.set(Authenticated, authenticated);
