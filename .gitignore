@@ -45,3 +45,9 @@ apps/4orm/.review/
 apps/4orm/.review-*.jsonc
 
 apps/ref/app/build-info.ts
+
+# Restored by mise run skills; first-party skills stay tracked.
+.agents/skills/cloudflare/
+.agents/skills/durable-objects/
+.agents/skills/workers-best-practices/
+.agents/skills/wrangler/
