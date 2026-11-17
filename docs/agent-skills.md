@@ -7,7 +7,7 @@ No global skills or P2 source/configuration are changed. Internet access is need
 for a cold restore. Generated directories are ignored and disposable.
 
 The CLI installs real project skill directories in `.agents/skills` (`--agent pi`,
-copy mode). Existing first-party `logging` and `remix` stay tracked and untouched.
+copy mode). First-party `logging`, `remix` and `pr-description` stay tracked and untouched.
 Native P2 discovery of `.agents/skills` and ancestor directories is being added
 separately in P2; this repo does not create `.pi` copies or change P2 itself.
 Until that runtime update is applied and verified, read these skill files
@@ -26,7 +26,7 @@ Selected: `cloudflare` for product/docs discovery; `durable-objects` for RPC,
 WebSockets, alarms and testing; `workers-best-practices` for Worker review;
 `wrangler` for existing Wrangler projects. Use each workspace's installed CLI and
 configuration. Do not replace Wrangler with `cf` or migrate Remix 3 incidentally.
-Our logging and Remix skills remain first-party and are not replaced.
+Our logging, Remix and PR-description skills remain first-party and are not replaced.
 
 The reviewed upstream inventory has 22 skills. Deferred pending an actual consumer:
 `basin`, `k2`, `frameworks-on-cloudflare`, `nextjs-on-cloudflare`, `agents-sdk`,

@@ -17,6 +17,8 @@ Use the primary checkout for uncontended single-writer tasks; use a separate wor
 
 Keep dependencies, generated output, caches, runtime state, and build directories isolated per worktree. Give concurrent servers distinct ports. Do not change another task's checkout. Retry ordinary Git/GitHub races; update or rebase for actual conflicts, integration validation, or GitHub requirements, then rerun affected checks.
 
+Use the [PR description skill](.agents/skills/pr-description/SKILL.md) when opening or revising a pull request's title and body.
+
 Before merging, mark the PR ready, review its diff, run applicable local checks, and verify all expected PR workflows completed successfully on the exact current head. Draft checks have reduced coverage. Do not rely on required-only check queries: required checks are not currently enforced by GitHub. Do not bypass failures or safeguards.
 
 Ask for owner review through Familiar only for a specific unresolved product, security, or destructive decision, with the PR link and reason. Otherwise self-merge within the approved scope and notify Harrhy of the result. Remove finished worktrees once their work is preserved and private state and active users have been checked; never force removal to discard unknown data.
