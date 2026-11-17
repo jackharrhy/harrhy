@@ -113,6 +113,21 @@ async function start() {
   throw new Error(`Celld did not become ready\n${runtimeLogs.slice(-12000)}`);
 }
 
+function applicationEvents() {
+  return runtimeLogs.split("\n").flatMap((line) => {
+    try {
+      const message = line.replace(
+        /^.*? INFO cell_console: (?:WARN |ERROR )?/,
+        "",
+      );
+      const event = JSON.parse(message);
+      return event?.service === "ref" ? [event] : [];
+    } catch {
+      return [];
+    }
+  });
+}
+
 async function stop(signal) {
   if (!runtime?.pid || runtime.exitCode !== null || runtime.signalCode !== null)
     return;
@@ -225,6 +240,32 @@ try {
     "MCP legacy/current clients: upload, shared asset, browser broadcast, revision, dedupe and conflict",
   );
 
+  const toolEvents = applicationEvents().filter(
+    (event) => event.kind === "job" && event["mcp.method"] === "tools/call",
+  );
+  assert.ok(toolEvents.length > 0);
+  assert.ok(
+    toolEvents.every((event) => ["ok", "error"].includes(event["mcp.outcome"])),
+    "tool outcomes survive awaited Durable Object RPC",
+  );
+  assert.ok(
+    toolEvents.some(
+      (event) =>
+        event["mcp.outcome"] === "error" &&
+        event.outcome !== "ok" &&
+        applicationEvents().some(
+          (request) =>
+            request.kind === "request" &&
+            request.request_id === event.request_id &&
+            request["http.status"] === 200,
+        ),
+    ),
+    "streamed HTTP 200 business failures stay observable in linked tool completions",
+  );
+  result.checks.push(
+    "MCP tool completion events retain outcomes after streamed HTTP responses and awaited Durable Object RPC",
+  );
+
   assert.equal(
     runtime.exitCode,
     null,
@@ -251,6 +292,44 @@ try {
   });
   result.checks.push(
     "MCP empty-replica persistence and last-use asset cleanup",
+  );
+  const receiptResponse = await fetch(
+    `${origin}/health?sort=newest&code=fixture-private-code`,
+    {
+      headers: {
+        Authorization: "Bearer fixture-private-token",
+        Cookie: "ref_session=fixture-private-cookie",
+      },
+    },
+  );
+  const requestId = receiptResponse.headers.get("X-Request-Id");
+  assert.match(requestId ?? "", /^[a-f0-9-]{36}$/);
+  let receipt;
+  for (let attempt = 0; attempt < 20; attempt++) {
+    const events = applicationEvents().filter(
+      (event) => event.request_id === requestId,
+    );
+    assert.ok(
+      events.length <= 1,
+      "one canonical completion per Worker request",
+    );
+    if (events.length) {
+      receipt = events[0];
+      break;
+    }
+    await delay(50);
+  }
+  assert.ok(
+    receipt,
+    "Celld console envelope must carry one parseable JSON application event",
+  );
+  assert.equal(receipt["http.query.sort"], "newest");
+  assert.equal(receipt["http.status"], 200);
+  assert.equal(receipt.outcome, "ok");
+  assert.equal(typeof receipt.duration_ms, "number");
+  assert.ok(!JSON.stringify(receipt).includes("fixture-private-"));
+  result.checks.push(
+    "wide-event receipt: qualified Celld console envelope, one JSON completion, support ID, ordinary query and credential omission",
   );
   result.status = "passed";
 } catch (error) {

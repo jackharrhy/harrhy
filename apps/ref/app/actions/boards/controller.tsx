@@ -1,3 +1,4 @@
+import { currentLog } from "@harrhy/logger";
 import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
 import { AppRuntime, Authenticated } from "../../data/runtime.ts";
@@ -7,6 +8,7 @@ import { BoardPage } from "../page.tsx";
 export default createController(routes.boards, {
   actions: {
     async create(context) {
+      const log = currentLog();
       if (!context.get(Authenticated)) return redirect("/", 303);
       const form = context.get(FormData)!;
       const runtime = context.get(AppRuntime)!;
@@ -14,6 +16,7 @@ export default createController(routes.boards, {
         String(form.get("title") ?? ""),
       );
       if (!board) return redirect("/?error=Enter+a+board+name", 303);
+      log?.set({ "resource.boardId": board.id });
       await runtime.board(board.id).initialize(board.id);
       return redirect(`/boards/${board.id}`, 303);
     },

@@ -103,6 +103,16 @@ function errorFields(error: unknown) {
   };
 }
 
+export function jsonSink(
+  record: Readonly<Record<string, unknown>>,
+  outcome: LogOutcome,
+): void {
+  const line = JSON.stringify(record);
+  if (outcome === "error") console.error(line);
+  else if (outcome === "degraded") console.warn(line);
+  else console.log(line);
+}
+
 function writeToConsole(
   record: Readonly<Record<string, unknown>>,
   outcome: LogOutcome,
@@ -225,7 +235,11 @@ function openLog(
         try {
           return await fn(log);
         } catch (error) {
-          log.fail(error);
+          try {
+            log.fail(error);
+          } catch {
+            outcome = "error";
+          }
           throw error;
         } finally {
           log.emit();
@@ -241,9 +255,14 @@ function openLog(
       values.kind = log.kind;
       parent?.inc(`${log.kind}.count`);
       if (outcome !== "ok") degradeParent?.();
-      if (!shouldKeep(options.sample, outcome, values, duration)) return;
+      try {
+        if (!shouldKeep(options.sample, outcome, values, duration)) return;
+      } catch {
+        // A broken sampling predicate must not discard the operation.
+      }
 
       const record: Record<string, unknown> = Object.fromEntries(fields);
+      record.timestamp = new Date().toISOString();
       record.kind = log.kind;
       record.outcome = outcome;
       record.duration_ms = duration;
@@ -253,7 +272,11 @@ function openLog(
       if (options.version !== undefined) record.version = options.version;
       if (notes.length > 0) record.notes = notes;
       if (droppedNotes > 0) record["notes.dropped"] = droppedNotes;
-      (options.sink ?? writeToConsole)(record, outcome);
+      try {
+        (options.sink ?? writeToConsole)(record, outcome);
+      } catch {
+        // Logging must not replace the application result or exception.
+      }
     },
   };
 

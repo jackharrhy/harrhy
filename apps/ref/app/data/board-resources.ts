@@ -1,3 +1,4 @@
+import { currentLog } from "@harrhy/logger";
 import type { AppRuntimeService } from "./runtime.ts";
 import { imageType, MAX_UPLOAD_BYTES } from "./image-upload.ts";
 import {
@@ -25,6 +26,7 @@ export async function uploadBoardImage(
 ): Promise<
   BoardResourceResult<{ assetId: string; filename: string; url: string }>
 > {
+  const log = currentLog();
   if (
     !(file instanceof File) ||
     file.size === 0 ||
@@ -39,6 +41,11 @@ export async function uploadBoardImage(
       status: 415,
     };
   const assetId = crypto.randomUUID();
+  log?.set({
+    "resource.assetId": assetId,
+    "upload.bytes": file.size,
+    "asset.content_type": type,
+  });
   const objectKey = `boards/${boardId}/${assetId}`;
   await runtime.media.put(objectKey, await file.arrayBuffer(), {
     httpMetadata: { contentType: type },
@@ -69,11 +76,17 @@ export async function saveBoardLink(
   inputUrl: string,
   refresh = false,
 ): Promise<BoardResourceResult<SavedLink | RefreshedLink>> {
+  const log = currentLog();
   const url = normalizeLinkUrl(inputUrl);
   if (!url)
     return { ok: false, message: "Enter a public web URL", status: 400 };
+  log?.set({
+    "link.host": new URL(url).hostname,
+    "link.refresh": refresh,
+  });
   const board = runtime.board(boardId);
   const existing = await board.existingLink(boardId, url);
+  log?.set({ "link.existing": !!existing });
   if (existing && !refresh) return { ok: true, value: existing, status: 200 };
   if (refresh && !existing)
     return {
@@ -81,7 +94,8 @@ export async function saveBoardLink(
       message: "Link is no longer on this board",
       status: 404,
     };
-  const fetched = await previewLink(url);
+  const fetched = await (log?.time("preview.fetch", () => previewLink(url)) ??
+    previewLink(url));
   if (
     refresh &&
     ((!fetched.imageUrl && !fetched.videoUrl) ||
@@ -92,7 +106,12 @@ export async function saveBoardLink(
       message: "The post did not provide a usable preview yet",
       status: 422,
     };
-  const preview = await cachePreviewImage(fetched, runtime.media, boardId);
+  const preview = await (log?.time("preview.cache", () =>
+    cachePreviewImage(fetched, runtime.media, boardId),
+  ) ?? cachePreviewImage(fetched, runtime.media, boardId));
+  log?.set({
+    "preview.cached": !!preview.imageUrl?.startsWith(`/previews/${boardId}/`),
+  });
   if (
     refresh &&
     !preview.videoUrl &&

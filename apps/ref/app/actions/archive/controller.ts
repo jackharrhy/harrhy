@@ -1,3 +1,4 @@
+import { currentLog } from "@harrhy/logger";
 import { createController } from "remix/router";
 import { AppRuntime, Authenticated } from "../../data/runtime.ts";
 import {
@@ -17,14 +18,17 @@ import { routes } from "../../routes.ts";
 export default createController(routes.archive, {
   actions: {
     async boards(context) {
+      const log = currentLog();
       if (!context.get(Authenticated))
         return new Response("Forbidden", { status: 403 });
       const boards = await context.get(AppRuntime)!.directory.listBoards();
+      log?.set({ "boards.count": boards.length });
       return Response.json(boards, {
         headers: { "Cache-Control": "private, no-store" },
       });
     },
     async restoreBoard(context) {
+      const log = currentLog();
       if (!context.get(Authenticated))
         return new Response("Forbidden", { status: 403 });
       const record = parseJsonField(context.get(FormData)!, "record", 4096);
@@ -33,6 +37,7 @@ export default createController(routes.archive, {
       const runtime = context.get(AppRuntime)!;
       if (!(await runtime.directory.restoreBoard(board)))
         return new Response("Board conflicts with backup", { status: 409 });
+      log?.set({ "resource.boardId": board.id });
       await runtime.board(board.id).initialize(board.id);
       return Response.json(board);
     },

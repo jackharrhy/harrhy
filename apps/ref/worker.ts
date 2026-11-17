@@ -1,3 +1,5 @@
+import type { Log } from "@harrhy/logger";
+import { logRequest, failOperation } from "./app/logging.ts";
 import { BoardCell } from "./app/data/board-cell.ts";
 import { DirectoryCell } from "./app/data/directory-cell.ts";
 import { createRuntime } from "./app/data/runtime.ts";
@@ -21,208 +23,208 @@ import {
 export { BoardCell, DirectoryCell };
 
 export default {
-  async fetch(request, env): Promise<Response> {
-    const url = new URL(request.url);
-    if (url.pathname === "/health") return Response.json({ ok: true });
-    const origin = request.headers.get("Origin");
-    if (origin && origin !== url.origin) {
-      return new Response("Cross-origin requests are not accepted", {
-        status: 403,
-      });
-    }
-    if (
-      url.pathname === "/style.css" ||
-      url.pathname === "/favicon.svg" ||
-      url.pathname.startsWith("/assets/")
-    ) {
-      return withSecurityHeaders(await env.ASSETS.fetch(request));
-    }
-
-    let publicOrigin: URL | null = null;
-    if (env.AUTH_PUBLIC_ORIGIN) {
-      try {
-        publicOrigin = new URL(env.AUTH_PUBLIC_ORIGIN);
-      } catch {
-        return new Response("Sign-in is not configured", { status: 503 });
-      }
-    }
-    if (
-      !env.AUTH_ISSUER ||
-      !env.AUTH_CLIENT_ID ||
-      !env.AUTH_PROJECT_ID ||
-      !env.AUTH_ORGANIZATION_ID ||
-      !publicOrigin ||
-      (publicOrigin.protocol !== "https:" &&
-        !(
-          publicOrigin.protocol === "http:" &&
-          (["localhost", "127.0.0.1", "[::1]"].includes(
-            publicOrigin.hostname,
-          ) ||
-            publicOrigin.hostname.endsWith(".localhost"))
-        )) ||
-      publicOrigin.origin !== env.AUTH_PUBLIC_ORIGIN
-    )
-      return new Response("Sign-in is not configured", { status: 503 });
-    if (url.pathname === "/.well-known/oauth-protected-resource/mcp") {
-      return Response.json(
-        {
-          resource: `${env.AUTH_PUBLIC_ORIGIN}/mcp`,
-          authorization_servers: [env.AUTH_ISSUER],
-          bearer_methods_supported: ["header"],
-          scopes_supported: mcpScopes(env.AUTH_PROJECT_ID),
-        },
-        { headers: { "Cache-Control": "public, max-age=300" } },
-      );
-    }
-    if (url.pathname === "/.well-known/oauth-protected-resource/api/archive") {
-      return Response.json(
-        {
-          resource: `${env.AUTH_PUBLIC_ORIGIN}/api/archive`,
-          authorization_servers: [env.AUTH_ISSUER],
-          bearer_methods_supported: ["header"],
-          scopes_supported: [
-            "openid",
-            "profile",
-            projectAudienceScope(env.AUTH_PROJECT_ID),
-            PROJECT_ROLES_SCOPE,
-            ...["member", "admin", "archive-read", "archive-restore"].map(
-              roleScope,
-            ),
-          ],
-        },
-        { headers: { "Cache-Control": "public, max-age=300" } },
-      );
-    }
-
-    try {
-      const runtime = createRuntime(env);
-      if (url.pathname === "/ready") {
-        await runtime.directory.listBoards();
-        return Response.json({ ready: true });
-      }
-      let mcpAccess: RefMcpAccess | null = null;
-      if (url.pathname === "/mcp") {
-        const bearer = request.headers.get("Authorization");
-        if (!bearer?.startsWith("Bearer "))
-          return mcpAuthError(
-            env.AUTH_PUBLIC_ORIGIN,
-            401,
-            "Ref MCP bearer authorization is required",
-          );
-        if (!env.AUTH_INTROSPECTION_CLIENT_ID || !env.AUTH_INTROSPECTION_SECRET)
-          return mcpAuthError(
-            env.AUTH_PUBLIC_ORIGIN,
-            503,
-            "Ref MCP authentication is unavailable",
-          );
-        try {
-          const principal = await createIdentityClient({
-            issuer: env.AUTH_ISSUER,
-            clientId: env.AUTH_CLIENT_ID,
-            projectId: env.AUTH_PROJECT_ID,
-            organizationId: env.AUTH_ORGANIZATION_ID,
-          }).introspect(bearer.slice(7), {
-            clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
-            clientSecret: env.AUTH_INTROSPECTION_SECRET,
-          });
-          mcpAccess = authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
-        } catch (error) {
-          return mcpAuthError(
-            env.AUTH_PUBLIC_ORIGIN,
-            error instanceof IdentityError ? error.status : 503,
-            "Ref MCP authorization failed",
-          );
-        }
-      }
-      const token = readSessionCookie(request);
-      let authenticated = token
-        ? await runtime.directory.session(token)
-        : false;
-      const bearer = request.headers.get("Authorization");
-      const archive = url.pathname.startsWith("/api/archive/");
-      const archiveSnapshot =
-        request.method === "GET" &&
-        /^\/api\/boards\/[^/]+\/snapshot$/.test(url.pathname);
-      if (archive) authenticated = false;
-      if (
-        bearer?.startsWith("Bearer ") &&
-        (archive ||
-          archiveSnapshot ||
-          (!authenticated &&
-            (url.pathname.startsWith("/media/") ||
-              url.pathname.startsWith("/previews/"))))
-      ) {
-        if (!env.AUTH_INTROSPECTION_CLIENT_ID || !env.AUTH_INTROSPECTION_SECRET)
-          return new Response("Archive authentication is unavailable", {
-            status: 503,
-          });
-        try {
-          const principal = await createIdentityClient({
-            issuer: env.AUTH_ISSUER,
-            clientId: env.AUTH_CLIENT_ID,
-            projectId: env.AUTH_PROJECT_ID,
-            organizationId: env.AUTH_ORGANIZATION_ID,
-          }).introspect(bearer.slice(7), {
-            clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
-            clientSecret: env.AUTH_INTROSPECTION_SECRET,
-          });
-          const boardGrant =
-            principal.scopes.has(roleScope("boards-read")) ||
-            principal.scopes.has(roleScope("boards-write"));
-          if (!archive && boardGrant) {
-            if (!authorizeRefMcp(principal, env.AUTH_PROJECT_ID).canRead)
-              throw new IdentityError(
-                "Ref board read authorization is required",
-                403,
-              );
-          } else
-            authorizeArchive(
-              principal,
-              env.AUTH_PROJECT_ID,
-              archive && request.method !== "GET" ? "restore" : "read",
-            );
-          authenticated = true;
-        } catch (error) {
-          return new Response("Archive authorization failed", {
-            status: error instanceof IdentityError ? error.status : 503,
-          });
-        }
-      }
-      if (archive && !authenticated)
-        return new Response("Archive bearer token required", {
-          status: 401,
-          headers: {
-            "WWW-Authenticate": `Bearer resource_metadata="${env.AUTH_PUBLIC_ORIGIN}/.well-known/oauth-protected-resource/api/archive"`,
-          },
-        });
-      const router = createAppRouter(
-        runtime,
-        authenticated,
-        token,
-        {
-          config: {
-            issuer: env.AUTH_ISSUER,
-            clientId: env.AUTH_CLIENT_ID,
-            projectId: env.AUTH_PROJECT_ID,
-            organizationId: env.AUTH_ORGANIZATION_ID,
-          },
-          origin: env.AUTH_PUBLIC_ORIGIN,
-        },
-        mcpAccess,
-      );
-      return withSecurityHeaders(await router.fetch(request), true);
-    } catch (error) {
-      console.error(
-        JSON.stringify({
-          event: "request_failed",
-          message: errorMessage(error),
-          path: url.pathname,
-        }),
-      );
-      return new Response("Internal Server Error", { status: 500 });
-    }
+  fetch(request: Request, env: Env): Promise<Response> {
+    return logRequest(request, (log) => handleRequest(request, env, log), {
+      privateValues: [env.AUTH_INTROSPECTION_SECRET ?? ""],
+    });
   },
 } satisfies ExportedHandler<Env>;
+
+async function handleRequest(
+  request: Request,
+  env: Env,
+  log: Log,
+): Promise<Response> {
+  const url = new URL(request.url);
+  if (url.pathname === "/health") return Response.json({ ok: true });
+  const origin = request.headers.get("Origin");
+  if (origin && origin !== url.origin) {
+    return new Response("Cross-origin requests are not accepted", {
+      status: 403,
+    });
+  }
+  if (
+    url.pathname === "/style.css" ||
+    url.pathname === "/favicon.svg" ||
+    url.pathname.startsWith("/assets/")
+  ) {
+    return withSecurityHeaders(await env.ASSETS.fetch(request));
+  }
+
+  let publicOrigin: URL | null = null;
+  if (env.AUTH_PUBLIC_ORIGIN) {
+    try {
+      publicOrigin = new URL(env.AUTH_PUBLIC_ORIGIN);
+    } catch {
+      return new Response("Sign-in is not configured", { status: 503 });
+    }
+  }
+  if (
+    !env.AUTH_ISSUER ||
+    !env.AUTH_CLIENT_ID ||
+    !env.AUTH_PROJECT_ID ||
+    !env.AUTH_ORGANIZATION_ID ||
+    !publicOrigin ||
+    (publicOrigin.protocol !== "https:" &&
+      !(
+        publicOrigin.protocol === "http:" &&
+        (["localhost", "127.0.0.1", "[::1]"].includes(publicOrigin.hostname) ||
+          publicOrigin.hostname.endsWith(".localhost"))
+      )) ||
+    publicOrigin.origin !== env.AUTH_PUBLIC_ORIGIN
+  )
+    return new Response("Sign-in is not configured", { status: 503 });
+  if (url.pathname === "/.well-known/oauth-protected-resource/mcp") {
+    return Response.json(
+      {
+        resource: `${env.AUTH_PUBLIC_ORIGIN}/mcp`,
+        authorization_servers: [env.AUTH_ISSUER],
+        bearer_methods_supported: ["header"],
+        scopes_supported: mcpScopes(env.AUTH_PROJECT_ID),
+      },
+      { headers: { "Cache-Control": "public, max-age=300" } },
+    );
+  }
+  if (url.pathname === "/.well-known/oauth-protected-resource/api/archive") {
+    return Response.json(
+      {
+        resource: `${env.AUTH_PUBLIC_ORIGIN}/api/archive`,
+        authorization_servers: [env.AUTH_ISSUER],
+        bearer_methods_supported: ["header"],
+        scopes_supported: [
+          "openid",
+          "profile",
+          projectAudienceScope(env.AUTH_PROJECT_ID),
+          PROJECT_ROLES_SCOPE,
+          ...["member", "admin", "archive-read", "archive-restore"].map(
+            roleScope,
+          ),
+        ],
+      },
+      { headers: { "Cache-Control": "public, max-age=300" } },
+    );
+  }
+
+  try {
+    const runtime = createRuntime(env);
+    if (url.pathname === "/ready") {
+      await runtime.directory.listBoards();
+      return Response.json({ ready: true });
+    }
+    let mcpAccess: RefMcpAccess | null = null;
+    if (url.pathname === "/mcp") {
+      const bearer = request.headers.get("Authorization");
+      if (!bearer?.startsWith("Bearer "))
+        return mcpAuthError(
+          env.AUTH_PUBLIC_ORIGIN,
+          401,
+          "Ref MCP bearer authorization is required",
+        );
+      if (!env.AUTH_INTROSPECTION_CLIENT_ID || !env.AUTH_INTROSPECTION_SECRET)
+        return mcpAuthError(
+          env.AUTH_PUBLIC_ORIGIN,
+          503,
+          "Ref MCP authentication is unavailable",
+        );
+      try {
+        const principal = await createIdentityClient({
+          issuer: env.AUTH_ISSUER,
+          clientId: env.AUTH_CLIENT_ID,
+          projectId: env.AUTH_PROJECT_ID,
+          organizationId: env.AUTH_ORGANIZATION_ID,
+        }).introspect(bearer.slice(7), {
+          clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
+          clientSecret: env.AUTH_INTROSPECTION_SECRET,
+        });
+        mcpAccess = authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
+      } catch (error) {
+        return mcpAuthError(
+          env.AUTH_PUBLIC_ORIGIN,
+          error instanceof IdentityError ? error.status : 503,
+          "Ref MCP authorization failed",
+        );
+      }
+    }
+    const token = readSessionCookie(request);
+    let authenticated = token ? await runtime.directory.session(token) : false;
+    const bearer = request.headers.get("Authorization");
+    const archive = url.pathname.startsWith("/api/archive/");
+    const archiveSnapshot =
+      request.method === "GET" &&
+      /^\/api\/boards\/[^/]+\/snapshot$/.test(url.pathname);
+    if (archive) authenticated = false;
+    if (
+      bearer?.startsWith("Bearer ") &&
+      (archive ||
+        archiveSnapshot ||
+        (!authenticated &&
+          (url.pathname.startsWith("/media/") ||
+            url.pathname.startsWith("/previews/"))))
+    ) {
+      if (!env.AUTH_INTROSPECTION_CLIENT_ID || !env.AUTH_INTROSPECTION_SECRET)
+        return new Response("Archive authentication is unavailable", {
+          status: 503,
+        });
+      try {
+        const principal = await createIdentityClient({
+          issuer: env.AUTH_ISSUER,
+          clientId: env.AUTH_CLIENT_ID,
+          projectId: env.AUTH_PROJECT_ID,
+          organizationId: env.AUTH_ORGANIZATION_ID,
+        }).introspect(bearer.slice(7), {
+          clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
+          clientSecret: env.AUTH_INTROSPECTION_SECRET,
+        });
+        const boardGrant =
+          principal.scopes.has(roleScope("boards-read")) ||
+          principal.scopes.has(roleScope("boards-write"));
+        if (!archive && boardGrant) {
+          if (!authorizeRefMcp(principal, env.AUTH_PROJECT_ID).canRead)
+            throw new IdentityError(
+              "Ref board read authorization is required",
+              403,
+            );
+        } else
+          authorizeArchive(
+            principal,
+            env.AUTH_PROJECT_ID,
+            archive && request.method !== "GET" ? "restore" : "read",
+          );
+        authenticated = true;
+      } catch (error) {
+        return new Response("Archive authorization failed", {
+          status: error instanceof IdentityError ? error.status : 503,
+        });
+      }
+    }
+    if (archive && !authenticated)
+      return new Response("Archive bearer token required", {
+        status: 401,
+        headers: {
+          "WWW-Authenticate": `Bearer resource_metadata="${env.AUTH_PUBLIC_ORIGIN}/.well-known/oauth-protected-resource/api/archive"`,
+        },
+      });
+    const router = createAppRouter(
+      runtime,
+      authenticated,
+      token,
+      {
+        config: {
+          issuer: env.AUTH_ISSUER,
+          clientId: env.AUTH_CLIENT_ID,
+          projectId: env.AUTH_PROJECT_ID,
+          organizationId: env.AUTH_ORGANIZATION_ID,
+        },
+        origin: env.AUTH_PUBLIC_ORIGIN,
+      },
+      mcpAccess,
+    );
+    return withSecurityHeaders(await router.fetch(request), true);
+  } catch (error) {
+    failOperation(error, log);
+    return new Response("Internal Server Error", { status: 500 });
+  }
+}
 
 function withSecurityHeaders(
   response: Response,
@@ -239,8 +241,4 @@ function withSecurityHeaders(
     statusText: response.statusText,
     headers,
   });
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : "Request failed";
 }
