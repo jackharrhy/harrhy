@@ -1,6 +1,6 @@
 import { chromium } from "playwright";
 import assert from "node:assert/strict";
-const origin = process.env.HARRHY_SLEGGERS_TEST_URL ?? "http://127.0.0.1:18950";
+const origin = process.env.HARRHY_SLUGGERS_TEST_URL ?? "http://127.0.0.1:18950";
 const browser = await chromium.launch();
 try {
   const page = await browser.newPage();
@@ -8,7 +8,7 @@ try {
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(origin);
   await page.evaluate(() => {
-    window.sleggersNavigationProbe = true;
+    window.sluggersNavigationProbe = true;
   });
   await page
     .getByRole("navigation", { name: "League", exact: true })
@@ -16,7 +16,7 @@ try {
     .click();
   await page.waitForURL("**/players");
   assert.equal(
-    await page.evaluate(() => window.sleggersNavigationProbe),
+    await page.evaluate(() => window.sluggersNavigationProbe),
     true,
     "Remix navigation should preserve the document",
   );

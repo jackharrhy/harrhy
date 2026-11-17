@@ -941,7 +941,7 @@ export function document(title: string, body: RemixNode, url: URL) {
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <meta name="robots" content="noindex,nofollow" />
-        <title>{title} · Harry Sleggers</title>
+        <title>{title} · Harry Sluggers</title>
         <link rel="stylesheet" href="/fonts.css" />
         <script type="module" src="/runtime.js"></script>
       </head>
@@ -951,7 +951,7 @@ export function document(title: string, body: RemixNode, url: URL) {
         </a>
         <header>
           <a data-brand href="/">
-            Harry Sleggers
+            Harry Sluggers
           </a>
           <form method="get">
             <label>
@@ -983,7 +983,7 @@ export function document(title: string, body: RemixNode, url: URL) {
           <h1>{title}</h1>
           {body}
         </main>
-        <footer>Harry Sleggers · Historical league · Read-only</footer>
+        <footer>Harry Sluggers · Historical league · Read-only</footer>
       </body>
     </html>
   );

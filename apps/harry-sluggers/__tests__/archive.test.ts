@@ -189,7 +189,7 @@ test("SSR routes, missing records and theme persistence", async () => {
     const r = await app.fetch(new Request(`http://league.test${path}`));
     assert.equal(r.status, 200, path);
     const html = await r.text();
-    assert.match(html, /Harry Sleggers/);
+    assert.match(html, /Harry Sluggers/);
     assert.match(html, /Broadcast Prism/);
     assert.equal(r.headers.get("cache-control"), "no-store");
   }
@@ -210,11 +210,11 @@ test("SSR routes, missing records and theme persistence", async () => {
   );
   assert.match(
     themed.headers.get("set-cookie")!,
-    /sleggers-theme=frost-studio/,
+    /sluggers-theme=frost-studio/,
   );
   const saved = await app.fetch(
     new Request("http://league.test/teams", {
-      headers: { cookie: "sleggers-theme=frost-studio" },
+      headers: { cookie: "sluggers-theme=frost-studio" },
     }),
   );
   assert.match(await saved.text(), /data-theme="frost-studio"/);

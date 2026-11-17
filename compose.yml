@@ -1,11 +1,11 @@
 services:
-  harry-sleggers:
-    profiles: [harry-sleggers]
+  harry-sluggers:
+    profiles: [harry-sluggers]
     build:
       context: .
-      dockerfile: apps/harry-sleggers/Dockerfile
+      dockerfile: apps/harry-sluggers/Dockerfile
     environment:
-      HARRHY_SLEGGERS_DATABASE_URL: ${HARRHY_SLEGGERS_DATABASE_URL:-}
+      HARRHY_SLUGGERS_DATABASE_URL: ${HARRHY_SLUGGERS_DATABASE_URL:-}
     ports:
       - "127.0.0.1:18950:8080"
 
