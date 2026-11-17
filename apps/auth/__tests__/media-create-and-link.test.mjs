@@ -227,3 +227,51 @@ test("unknown persisted combined approval versions fail closed", async () => {
     f.db.close();
   }
 });
+
+test("person recovery finds old unresolved receipts beyond the global history limit", async () => {
+  const f = fixture();
+  try {
+    const review = await f.preview();
+    f.block("before-insert");
+    await f.confirm(review.id);
+    const unrelated = {
+      ...review.body,
+      target: { ...target, subject: "another-person" },
+    };
+    for (let index = 0; index < 101; index++) {
+      f.db
+        .prepare(
+          "INSERT INTO media_provisioning (id,actor,state,created_at,body) VALUES (?,?,?,?,?)",
+        )
+        .run(
+          `unrelated-${index}`,
+          "admin",
+          "review",
+          "2099-01-01T00:00:00.000Z",
+          JSON.stringify(unrelated),
+        );
+    }
+    assert.equal(
+      f
+        .ledger()
+        .list()
+        .some((row) => row.id === review.id),
+      false,
+    );
+    const scoped = f.ledger().unfinishedForPerson(target);
+    assert.deepEqual(
+      scoped.map((row) => row.id),
+      [review.id],
+    );
+    assert.deepEqual(
+      f.ledger().unfinishedForPerson({ ...target, subject: "another-person" }),
+      [],
+    );
+    f.block("none");
+    assert.equal((await f.confirm(scoped[0].id)).state, "linked");
+    assert.deepEqual(f.ledger().unfinishedForPerson(target), []);
+    assert.equal(f.writes(), 1);
+  } finally {
+    f.db.close();
+  }
+});

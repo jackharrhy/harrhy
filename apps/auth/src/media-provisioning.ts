@@ -266,6 +266,22 @@ export function createMediaProvisioningLedger(
         )
         .all()
         .map(decodeCreation),
+    unfinishedForPerson: ({
+      issuer,
+      subject,
+    }: {
+      issuer: string;
+      subject: string;
+    }) =>
+      db
+        .prepare(`SELECT * FROM media_provisioning
+        WHERE state IN ('link-pending','effect-unknown','created')
+          AND json_extract(body,'$.target.service')='jellyfin'
+          AND json_extract(body,'$.target.issuer')=?
+          AND json_extract(body,'$.target.subject')=?
+        ORDER BY created_at DESC, rowid DESC`)
+        .all(text(issuer), text(subject))
+        .map(decodeCreation),
     events: (id: string) =>
       db
         .prepare(

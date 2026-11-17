@@ -635,16 +635,7 @@ export function createAccessRoutes({
           const personContext = {
             ...context,
             jellyfinSetups: access.provisioning
-              .list()
-              .filter(
-                (item) =>
-                  item.body.target.service === "jellyfin" &&
-                  item.body.target.issuer === issuer &&
-                  item.body.target.subject === user.id &&
-                  ["link-pending", "effect-unknown", "created"].includes(
-                    item.state,
-                  ),
-              )
+              .unfinishedForPerson({ issuer, subject: user.id })
               .map((item) => ({
                 username: item.body.review.username,
                 state: item.state,
