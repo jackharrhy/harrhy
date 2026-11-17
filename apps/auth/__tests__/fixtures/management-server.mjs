@@ -19,7 +19,13 @@ function listenLoopback(listener, port = 0) {
   });
 }
 
-export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
+export async function createManagementFixture({
+  publicOrigin,
+  port = 0,
+  mediaWrites = true,
+  mediaProvisioningOnly = false,
+  mediaProvisioningDisabled = false,
+} = {}) {
   const directory = await mkdtemp(`${tmpdir()}/auth-management-`);
   let server, provider, nativeServer, proxy;
   async function close() {
@@ -689,6 +695,17 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
       await listenLoopback(proxy);
     }
     const origin = publicOrigin || `https://127.0.0.1:${proxy?.address().port}`;
+    if (mediaProvisioningOnly || mediaProvisioningDisabled)
+      await writeFile(
+        `${directory}/media-provisioning.json`,
+        JSON.stringify(
+          mediaProvisioningDisabled
+            ? []
+            : JSON.parse(
+                await readFile(`${directory}/media-writes.json`, "utf8"),
+              ).filter((item) => item.service === "jellyfin"),
+        ),
+      );
     server = spawn(process.execPath, ["src/server.mjs"], {
       cwd: fileURLToPath(new URL("../../", import.meta.url)),
       env: {
@@ -703,7 +720,14 @@ export async function createManagementFixture({ publicOrigin, port = 0 } = {}) {
         AUTH_PROVISIONING_TOKEN_FILE: `${directory}/key.json`,
         ACCESS_DB_FILE: `${directory}/access.sqlite`,
         AUTH_MEDIA_INSTANCES_FILE: `${directory}/media-instances.json`,
-        AUTH_MEDIA_WRITES_FILE: `${directory}/media-writes.json`,
+        ...(mediaWrites && !mediaProvisioningOnly
+          ? { AUTH_MEDIA_WRITES_FILE: `${directory}/media-writes.json` }
+          : {}),
+        ...(mediaProvisioningOnly || mediaProvisioningDisabled
+          ? {
+              HARRHY_AUTH_MEDIA_PROVISIONING_FILE: `${directory}/media-provisioning.json`,
+            }
+          : {}),
         ORGANIZATION_ID: "org",
         LORE_PROJECT_ID: "unused",
         LORE_CLIENT_ID: "unused",

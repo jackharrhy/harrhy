@@ -127,6 +127,12 @@ const accessFilename =
 const mediaWriteInstances = process.env.AUTH_MEDIA_WRITES_FILE
   ? JSON.parse(readFileSync(process.env.AUTH_MEDIA_WRITES_FILE, "utf8"))
   : [];
+const mediaProvisioningInstances = process.env
+  .HARRHY_AUTH_MEDIA_PROVISIONING_FILE
+  ? JSON.parse(
+      readFileSync(process.env.HARRHY_AUTH_MEDIA_PROVISIONING_FILE, "utf8"),
+    )
+  : mediaWriteInstances;
 let radioEnrollment;
 const accessStore = createAccessStore({
   filename: accessFilename,
@@ -134,7 +140,9 @@ const accessStore = createAccessStore({
   services,
   native: nativeAccess,
   mediaLifecycle: createMediaLifecycle(mediaWriteInstances),
-  mediaProvisioning: createMediaProvisioningAdapters(mediaWriteInstances),
+  mediaProvisioning: createMediaProvisioningAdapters(
+    mediaProvisioningInstances,
+  ),
   mediaPeople: async () =>
     (await searchAll(api, "/management/v1/users/_search"))
       .filter(
@@ -163,6 +171,10 @@ const accessRoutes = createAccessRoutes({
   organizationId,
   issuer: origin,
   mediaInventory,
+  mediaProvisioningEnabled: ({ service, instance }) =>
+    mediaProvisioningInstances.some(
+      (item) => item.service === service && item.instance === instance,
+    ),
   renderConnectedAccounts,
   renderAccountLinkReview,
   renderAccountAction,
