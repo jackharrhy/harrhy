@@ -50,3 +50,7 @@ Put tests and test-only fixtures in `__tests__/` beside the code they cover. Put
 Run checks for each affected workspace and its consumers when a package interface changes. Keep Dockerfiles with their apps; add containerized apps to root `compose.yml`. Host configuration, DNS, secrets, and production operations live in another repo.
 
 Give each new app or independently checked package a `check` script in its workspace manifest. CI discovers it, follows workspace dependencies, and runs affected checks after one install. Add app-specific CI steps only when its check needs external setup.
+
+## Managed agent skills
+
+Run `mise run skills` to restore locked project guidance; see [setup and scope](docs/agent-skills.md). Official Cloudflare skills supplement, never replace, first-party logging and Remix guidance.

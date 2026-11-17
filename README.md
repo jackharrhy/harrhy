@@ -99,3 +99,5 @@ CI installs once and runs the `check` scripts for affected workspaces. Package c
 
 The [project import guide](docs/project-imports.md) records the Ref, Radio, Maps, Marky, Letters to Steve, and Artbin transfers.
 The [Maps third-party notices](THIRD_PARTY_NOTICES.md) preserve attribution for the imported Maps code and test fixture.
+
+[Agent skills setup and scope](docs/agent-skills.md) covers locked Cloudflare guidance and native P2 discovery.
