@@ -284,6 +284,37 @@ try {
     "MCP tool completion events retain isolated correlation and outcomes across concurrent calls, streamed HTTP responses and awaited Durable Object RPC",
   );
 
+  const boardEvents = applicationEvents().filter(
+    (event) =>
+      event.kind === "job" && event.operation?.startsWith("ref.board."),
+  );
+  assert.ok(boardEvents.length > 0);
+  for (const event of boardEvents) {
+    assert.equal(event["actor.id"], "local-jack");
+    assert.match(event.job_id, /^[a-f0-9-]{36}$/);
+  }
+  const mutationEvents = toolEvents.filter((event) => event["operation.id"]);
+  assert.ok(mutationEvents.length > 0);
+  for (const event of mutationEvents) {
+    const operations = boardEvents.filter(
+      (board) => board.job_id === event["operation.id"],
+    );
+    assert.ok(operations.length > 0);
+    assert.ok(
+      operations.every((board) => board["actor.id"] === event["actor.id"]),
+    );
+  }
+  assert.ok(
+    boardEvents.some(
+      (board) =>
+        !mutationEvents.some((tool) => tool["operation.id"] === board.job_id),
+    ),
+    "browser WebSocket operations also carry the freshly authorized subject",
+  );
+  result.checks.push(
+    "WebSocket and MCP board completions retain verified actors and existing operation-ID joins",
+  );
+
   assert.equal(
     runtime.exitCode,
     null,

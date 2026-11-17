@@ -326,6 +326,7 @@ export async function callRefTool(
       boardId,
       await tokenHash(`mcp:${access.subject}`),
       operation,
+      access.subject,
     );
     if (result.type === "rejected") {
       log?.warn("mcp.operation_rejected").set({

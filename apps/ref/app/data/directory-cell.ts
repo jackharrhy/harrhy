@@ -148,21 +148,28 @@ export class DirectoryCell extends DurableObject<Env> {
   async socketAccess(
     boardId: string,
     sessionHash: string,
-  ): Promise<{ expiresAt: number } | null> {
+  ): Promise<{ expiresAt: number; subject: string } | null> {
     if (!this.board(boardId)) return null;
-    const expiresAt = await this.sessionExpiry(sessionHash);
-    return expiresAt === null ? null : { expiresAt };
+    return this.sessionAccess(sessionHash);
   }
 
   private async sessionExpiry(sessionHash: string): Promise<number | null> {
+    return (await this.sessionAccess(sessionHash))?.expiresAt ?? null;
+  }
+
+  private async sessionAccess(
+    sessionHash: string,
+  ): Promise<{ expiresAt: number; subject: string } | null> {
     const row = this.ctx.storage.sql
-      .exec<{ expires_at: number }>(
-        "SELECT expires_at FROM solo_sessions WHERE token_hash = ? AND expires_at > ? AND auth_subject <> ''",
+      .exec<{ expires_at: number; auth_subject: string }>(
+        "SELECT expires_at, auth_subject FROM solo_sessions WHERE token_hash = ? AND expires_at > ? AND auth_subject <> ''",
         sessionHash,
         Date.now(),
       )
       .toArray()[0];
-    return row?.expires_at ?? null;
+    return row
+      ? { expiresAt: row.expires_at, subject: row.auth_subject }
+      : null;
   }
 }
 
