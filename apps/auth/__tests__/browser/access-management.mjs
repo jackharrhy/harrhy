@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { writeFile, readFile, mkdir } from "node:fs/promises";
 import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 import { chromium } from "playwright";
 import { createManagementFixture } from "../fixtures/management-server.mjs";
 
@@ -671,30 +672,70 @@ try {
     ),
   );
   await recipientContext.close();
-  await page.goto(origin + "/manage/media/jellyfin/synthetic-server");
-  await page.getByRole("link", { name: "Create account", exact: true }).click();
+  await page.goto(origin + `/manage/people/${fixture.users.at(-1).id}`);
+  await page
+    .getByRole("link", { name: "Set up Jellyfin", exact: true })
+    .click();
   await capture(page, "media-provisioning-initial");
   await page
-    .getByRole("heading", { name: "Create Jellyfin account", exact: true })
+    .getByRole("heading", { name: "Set up Jellyfin", exact: true })
     .waitFor();
+  assert.equal(
+    await page.getByLabel("Person", { exact: true }).inputValue(),
+    fixture.users.at(-1).id,
+  );
   await page
-    .getByLabel("Existing Auth identity", { exact: true })
-    .selectOption(fixture.users.at(-1).id);
-  await page
-    .getByLabel("New native username", { exact: true })
+    .getByLabel("Jellyfin username", { exact: true })
     .fill("synthetic-recipient");
-  await page.getByLabel("Synthetic Movies", { exact: true }).check();
   await page
-    .getByLabel("Reason", { exact: true })
+    .getByLabel("Note for activity log", { exact: true })
     .fill("Explicit synthetic new-account review; no incumbent changes.");
-  await capture(page, "media-provisioning-form");
+  await page.getByRole("button", { name: "Review setup", exact: true }).click();
+  await page.getByRole("alert").waitFor();
+  assert.equal(fixture.nativeCreations, 0);
+  assert.equal(
+    await page.getByLabel("Person", { exact: true }).inputValue(),
+    fixture.users.at(-1).id,
+  );
+  assert.equal(
+    await page.getByLabel("Jellyfin username", { exact: true }).inputValue(),
+    "synthetic-recipient",
+  );
+  assert.equal(
+    await page
+      .getByLabel("Note for activity log", { exact: true })
+      .inputValue(),
+    "Explicit synthetic new-account review; no incumbent changes.",
+  );
+  assert(
+    await page
+      .getByRole("alert")
+      .evaluate((node) => node === document.activeElement),
+  );
+  await capture(page, "media-provisioning-validation");
+  await page.getByLabel("Synthetic Movies", { exact: true }).check();
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await capture(page, `media-provisioning-form-${width}`);
+  }
+  await page.getByRole("button", { name: "Review setup", exact: true }).click();
   await page
-    .getByRole("button", { name: "Review new native account", exact: true })
-    .click();
-  await page
-    .getByRole("heading", { name: "Review native creation", exact: true })
+    .getByRole("heading", { name: "Review Jellyfin setup", exact: true })
     .waitFor();
   assert.equal(fixture.nativeCreations, 0);
+  assert.equal(await page.locator("main details").getAttribute("open"), null);
+  await page.getByText("Technical details", { exact: true }).focus();
+  await page.keyboard.press("Enter");
+  assert.notEqual(
+    await page.locator("main details").getAttribute("open"),
+    null,
+  );
+  await page.keyboard.press("Enter");
   const creationUrl = page.url();
   const creationCsrf = await page.locator("main input[name=csrf]").inputValue();
   const forgedCreation = await context.request.post(`${creationUrl}/confirm`, {
@@ -717,17 +758,61 @@ try {
     await capture(page, `media-provisioning-review-${width}`);
   }
   await page
-    .getByLabel("Separate native password", { exact: true })
+    .getByLabel("Jellyfin password", { exact: true })
     .fill("Synthetic-native-passphrase-42");
   await page.getByRole("checkbox").check();
+  const localLedger = new DatabaseSync(`${directory}/access.sqlite`);
+  try {
+    localLedger.exec(
+      "CREATE TRIGGER synthetic_link_failure BEFORE INSERT ON media_identity_links BEGIN SELECT RAISE(ABORT, 'synthetic local link failure'); END",
+    );
+    await page
+      .getByRole("button", { name: "Create and link account", exact: true })
+      .click();
+    await page
+      .getByRole("heading", {
+        name: "Account created · linking not finished",
+        exact: true,
+      })
+      .waitFor();
+    assert.equal(fixture.nativeCreations, 1);
+    assert.equal(await page.locator("input[type=password]").count(), 0);
+    assert.equal(
+      await page
+        .getByRole("button", { name: "Create and link account", exact: true })
+        .count(),
+      0,
+    );
+    for (const width of [1440, 768, 390]) {
+      await page.setViewportSize({ width, height: 1000 });
+      assert(
+        await page.evaluate(
+          () => document.documentElement.scrollWidth <= innerWidth,
+        ),
+      );
+      await capture(page, `media-provisioning-link-pending-${width}`);
+    }
+    localLedger.exec("DROP TRIGGER synthetic_link_failure");
+    await page.reload();
+    await page
+      .getByRole("button", { name: "Finish linking account", exact: true })
+      .click();
+  } finally {
+    localLedger.close();
+  }
   await page
-    .getByRole("button", { name: "Create native account", exact: true })
-    .click();
-  await page
-    .getByRole("status")
-    .filter({ hasText: "Creation status: created" })
+    .getByRole("heading", { name: "Account created and linked", exact: true })
     .waitFor();
   assert.equal(fixture.nativeCreations, 1);
+  for (const width of [1440, 768, 390]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    );
+    await capture(page, `media-provisioning-linked-${width}`);
+  }
   await context.request.post(`${creationUrl}/confirm`, {
     headers: { origin },
     form: {
@@ -743,6 +828,21 @@ try {
     0,
   );
   assert(!fixture.logs.includes("Synthetic-native-passphrase-42"));
+  await page
+    .getByRole("link", { name: "Return to person", exact: true })
+    .click();
+  await page
+    .getByRole("link", {
+      name: "View linked Jellyfin account · synthetic-server",
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(
+    await page
+      .getByRole("link", { name: "Set up Jellyfin", exact: true })
+      .count(),
+    0,
+  );
   await page.setViewportSize({ width: 1440, height: 1000 });
   fixture.nativeSnapshot.accounts.push({
     nativeId: fixture.createdNativeId,
@@ -758,34 +858,7 @@ try {
   await page
     .getByRole("link", { name: "synthetic-recipient", exact: true })
     .click();
-  await page
-    .getByRole("link", { name: "Link Auth identity", exact: true })
-    .click();
-  const createdMappingForm = page
-    .locator("section")
-    .filter({
-      has: page.getByRole("heading", {
-        name: "synthetic-recipient",
-        exact: true,
-      }),
-    })
-    .locator("form");
-  await createdMappingForm
-    .getByLabel("Existing Auth identity")
-    .selectOption(fixture.users.at(-1).id);
-  await createdMappingForm
-    .getByLabel("Reason")
-    .fill("Separate explicit exact-ID mapping after new native creation.");
-  await createdMappingForm
-    .getByRole("button", { name: "Review identity link", exact: true })
-    .click();
-  await page.getByRole("checkbox").check();
-  await page
-    .getByRole("button", { name: "Record reviewed identity link", exact: true })
-    .click();
-  await page
-    .getByRole("heading", { name: "Identity link recorded", exact: true })
-    .waitFor();
+  await page.getByText("Linked", { exact: true }).waitFor();
   await page.goto(
     origin +
       "/manage/media/provisioning?service=seerr&instance=synthetic-server",
@@ -808,6 +881,7 @@ try {
   await page
     .getByRole("button", { name: "Review Seerr exact-ID import", exact: true })
     .click();
+  await page.getByText("Technical details", { exact: true }).click();
   await page
     .getByRole("heading", {
       name: "Seerr request and auto-approve · 160",
@@ -832,8 +906,10 @@ try {
     .getByRole("button", { name: "Create native account", exact: true })
     .click();
   await page
-    .getByRole("status")
-    .filter({ hasText: "Creation status: created" })
+    .getByRole("heading", {
+      name: "Account created · link separately",
+      exact: true,
+    })
     .waitFor();
   assert.equal(fixture.seerrImports, 1);
   await context.request.post(`${importUrl}/confirm`, {

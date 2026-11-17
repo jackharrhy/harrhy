@@ -151,6 +151,9 @@ const accessStore = createAccessStore({
       .map((user) => ({
         issuer: origin,
         subject: user.id,
+        name: user.human?.profile?.displayName
+          ? `${user.human.profile.displayName} (${user.userName})`
+          : user.userName,
         active: user.state === "USER_STATE_ACTIVE",
       })),
   onIssued: async ({ after }) => {

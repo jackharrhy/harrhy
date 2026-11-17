@@ -6,6 +6,7 @@ type Context = Omit<DocumentProps, "title" | "children"> & {
   csrf: string;
   user?: string;
   supportEnabled?: boolean;
+  jellyfinAccounts?: { instance: string; href: string }[];
   supportTarget?: "ready" | "missing" | "ineligible" | "unavailable";
 };
 type Person = {
@@ -236,6 +237,35 @@ function PersonPage(
             Preview auth
           </a>
         </div>
+        <section class="detail-section">
+          <h2>Jellyfin</h2>
+          {context.jellyfinAccounts?.length ? (
+            <ul>
+              {context.jellyfinAccounts.map((account) => (
+                <li>
+                  <a href={account.href}>
+                    View linked Jellyfin account · {account.instance}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          ) : user.state === "USER_STATE_ACTIVE" ? (
+            <a
+              class="button"
+              href={`/manage/media/provisioning?service=jellyfin&subject=${encodeURIComponent(user.id)}`}
+            >
+              Set up Jellyfin
+            </a>
+          ) : (
+            <p>
+              Finish this person’s Auth account setup before creating their
+              Jellyfin account.
+            </p>
+          )}
+          <p class="muted">
+            <a href="/manage/media">Link an existing Jellyfin account</a>
+          </p>
+        </section>
         <section class="detail-section">
           <div class="section-heading">
             <h2>Effective service access</h2>

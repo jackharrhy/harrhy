@@ -19,9 +19,18 @@ interface Mapping {
   subject: string;
 }
 interface LedgerDependencies {
-  people(): Promise<{ issuer: string; subject: string; active: unknown }[]>;
+  people(): Promise<
+    { issuer: string; subject: string; name?: string; active: unknown }[]
+  >;
   mappings(): Mapping[];
   provisioning: ProvisioningResolver;
+  recordCreated?(input: {
+    target: JellyfinTarget;
+    nativeId: string;
+    actor: string;
+    reason: string;
+    now: number;
+  }): void;
 }
 const record = (value: unknown): Record<string, unknown> => {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw fail();
@@ -48,6 +57,12 @@ function assertCreationBody(value: unknown): asserts value is CreationBody {
   const body = record(value);
   const target = parseTarget(body.target);
   text(body.reason);
+  if (body.approval !== undefined) {
+    const approval = record(body.approval);
+    if (target.service !== "jellyfin" || approval.kind !== "create-and-link-v1")
+      throw fail();
+    displayText(approval.person);
+  }
   const review = record(body.review);
   displayText(review.username);
   if (review.mapping !== "separate-exact-id-review") throw fail();
@@ -92,7 +107,11 @@ function decodeCreation(value: unknown): Creation {
     body,
   };
   if (!Number.isFinite(Date.parse(base.created_at))) throw fail();
-  if (row.state === "created")
+  if (
+    row.state === "created" ||
+    ((row.state === "link-pending" || row.state === "linked") &&
+      body.approval?.kind === "create-and-link-v1")
+  )
     return { ...base, state: row.state, native_id: text(row.native_id) };
   if (row.state === "review" && row.native_id === null)
     return { ...base, state: row.state, native_id: null };
@@ -124,7 +143,7 @@ const text = (value: unknown) => {
 // A native creation is never retried after its durable claim, even without a returned ID.
 export function createMediaProvisioningLedger(
   db: DatabaseSync,
-  { people, mappings, provisioning }: LedgerDependencies,
+  { people, mappings, provisioning, recordCreated }: LedgerDependencies,
 ) {
   db.exec(`CREATE TABLE IF NOT EXISTS media_provisioning (
     id TEXT PRIMARY KEY, actor TEXT NOT NULL, state TEXT NOT NULL,
@@ -202,6 +221,35 @@ export function createMediaProvisioningLedger(
       throw fail();
     return exact;
   };
+  async function finishLink(action: Creation, actor: string, now: number) {
+    const body = action.body;
+    if (
+      action.state !== "link-pending" ||
+      !isJellyfinCreation(body) ||
+      body.approval?.kind !== "create-and-link-v1" ||
+      !recordCreated
+    )
+      throw fail();
+    await validateTarget(body.target);
+    const adapter = provisioning(body.target);
+    if (!adapter.inspectCreated) throw fail();
+    await adapter.inspectCreated(action.native_id, body.review);
+    transaction(() => {
+      if (get(action.id)?.state !== "link-pending") throw fail();
+      recordCreated({
+        target: body.target,
+        nativeId: action.native_id,
+        actor,
+        reason: body.reason,
+        now,
+      });
+      db.prepare("UPDATE media_provisioning SET state='linked' WHERE id=?").run(
+        action.id,
+      );
+      event(action.id, actor, "linked", now);
+    });
+    return get(action.id);
+  }
   return {
     libraries: (target: { service: string; instance: string }) => {
       if (target.service !== "jellyfin") throw fail();
@@ -230,6 +278,7 @@ export function createMediaProvisioningLedger(
       target,
       username,
       folderIds,
+      createAndLink = false,
       now = Date.now(),
     }: {
       actor: string;
@@ -237,6 +286,7 @@ export function createMediaProvisioningLedger(
       target: unknown;
       username?: string;
       folderIds?: string[];
+      createAndLink?: boolean;
       now?: number;
     }) {
       text(actor);
@@ -259,6 +309,25 @@ export function createMediaProvisioningLedger(
                 jellyfinNativeId: exact.sourceNativeId,
               }),
             };
+      if (createAndLink) {
+        if (
+          exact.service !== "jellyfin" ||
+          !recordCreated ||
+          !provisioning(exact).inspectCreated
+        )
+          throw fail();
+        const person = (await people()).find(
+          (candidate) =>
+            candidate.issuer === exact.issuer &&
+            candidate.subject === exact.subject &&
+            candidate.active === true,
+        );
+        if (!person) throw fail();
+        body.approval = {
+          kind: "create-and-link-v1",
+          person: person.name || exact.subject,
+        };
+      }
       const id = randomUUID();
       transaction(() => {
         db.prepare(
@@ -281,6 +350,8 @@ export function createMediaProvisioningLedger(
     }) {
       const action = get(id);
       if (!action || action.actor !== actor) throw fail();
+      if (action.state === "link-pending")
+        return finishLink(action, actor, now);
       if (action.state !== "review") return action;
       const age = now - Date.parse(action.created_at);
       if (age < 0 || age > 300000) throw fail();
@@ -334,14 +405,28 @@ export function createMediaProvisioningLedger(
         transaction(() => {
           const changed = db
             .prepare(
-              "UPDATE media_provisioning SET state='created' WHERE id=? AND state='effect-unknown' AND native_id=?",
+              "UPDATE media_provisioning SET state=? WHERE id=? AND state='effect-unknown' AND native_id=?",
             )
-            .run(id, result.nativeId);
+            .run(
+              body.approval ? "link-pending" : "created",
+              id,
+              result.nativeId,
+            );
           if (changed.changes !== 1) throw fail();
-          event(id, actor, "created", now);
+          event(id, actor, body.approval ? "link-pending" : "created", now);
         });
       else if (result.state !== "effect-unknown") throw fail();
-      return get(id);
+      const completed = get(id);
+      if (completed?.state === "link-pending") {
+        // Native success is durable first. A failed local link remains recoverable
+        // without re-entering creation or sending the password again.
+        try {
+          return await finishLink(completed, actor, now);
+        } catch {
+          return get(id);
+        }
+      }
+      return completed;
     },
   };
 }

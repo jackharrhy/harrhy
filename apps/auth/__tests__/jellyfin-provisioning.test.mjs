@@ -64,6 +64,7 @@ function fixture({ failAt, drift = false } = {}) {
   return {
     adapter,
     effects,
+    changeAccount: (change) => change(account),
     options: {
       password: "synthetic-final-password",
       claimEffect: async () => {
@@ -181,4 +182,29 @@ test("stale review, invalid selection and failed durable claim cause zero native
     }),
   );
   assert.deepEqual(effects, []);
+});
+
+test("finish-link verification is exact-ID read-only, tolerates login counters but rejects policy or name drift", async () => {
+  const { adapter, effects, options, changeAccount } = fixture();
+  const review = await adapter.preview({
+    username: "synthetic-new",
+    folderIds: [folder],
+  });
+  await adapter.provision(review, options);
+  const writes = [...effects];
+  changeAccount((account) => {
+    account.Policy.InvalidLoginAttemptCount = 2;
+  });
+  await adapter.inspectCreated(id, review);
+  changeAccount((account) => {
+    account.Policy.EnableContentDownloading = true;
+  });
+  await assert.rejects(adapter.inspectCreated(id, review));
+  changeAccount((account) => {
+    account.Policy.EnableContentDownloading = false;
+    account.Name = "another";
+  });
+  await assert.rejects(adapter.inspectCreated(id, review));
+  await assert.rejects(adapter.inspectCreated("not-an-exact-id", review));
+  assert.deepEqual(effects, writes);
 });

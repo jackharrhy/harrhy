@@ -5,7 +5,12 @@ export interface CreationEffects {
 export type CreationResult =
   | { state: "created"; nativeId: string; mapping: "separate-exact-id-review" }
   | { state: "effect-unknown"; nativeId?: string };
-export type ProvisioningState = "review" | "effect-unknown" | "created";
+export type ProvisioningState =
+  | "review"
+  | "effect-unknown"
+  | "created"
+  | "link-pending"
+  | "linked";
 export type ProvisioningEventState = ProvisioningState | "native-id-recorded";
 export interface Folder {
   id: string;
@@ -29,6 +34,7 @@ export interface SeerrReview {
 }
 export interface JellyfinProvisioning {
   libraries(): Promise<Folder[]>;
+  inspectCreated?(nativeId: string, review: JellyfinReview): Promise<void>;
   preview(input: {
     username: string;
     folderIds: string[];
@@ -58,9 +64,12 @@ export interface SeerrTarget extends Target {
   sourceInstance: string;
   sourceNativeId: string;
 }
-export type CreationBody =
+export type CreationBody = {
+  approval?: { kind: "create-and-link-v1"; person: string };
+} & (
   | { target: JellyfinTarget; reason: string; review: JellyfinReview }
-  | { target: SeerrTarget; reason: string; review: SeerrReview };
+  | { target: SeerrTarget; reason: string; review: SeerrReview }
+);
 export function isJellyfinCreation(
   body: CreationBody,
 ): body is Extract<CreationBody, { target: JellyfinTarget }> {
@@ -74,7 +83,7 @@ export type Creation = {
 } & (
   | { state: "review"; native_id: null }
   | { state: "effect-unknown"; native_id: string | null }
-  | { state: "created"; native_id: string }
+  | { state: "created" | "link-pending" | "linked"; native_id: string }
 );
 export interface WriteConfig {
   baseUrl: string;
