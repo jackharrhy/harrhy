@@ -21,6 +21,7 @@ function ProvisioningPage(
       subject: string;
     }[];
     selected?: Instance;
+    enabled: boolean;
     people: Person[];
     libraries: Folder[];
     actions: Creation[];
@@ -33,6 +34,7 @@ function ProvisioningPage(
       seerrInstances,
       sourceMappings,
       selected,
+      enabled,
       people,
       libraries,
       context,
@@ -73,7 +75,17 @@ function ProvisioningPage(
             ))}
           </nav>
         )}
-        {selected?.service === "jellyfin" && (
+        {selected && !enabled && (
+          <section>
+            <h2>Account creation is not enabled for {selected.name}</h2>
+            <p>
+              The operator has connected a read-only account list, but has not
+              enabled account creation or import for this instance. No action
+              was attempted. You can still view and link existing accounts.
+            </p>
+          </section>
+        )}
+        {enabled && selected?.service === "jellyfin" && (
           <section>
             <h2>{selected.name}</h2>
             {libraries.length === 0 ? (
@@ -147,7 +159,7 @@ function ProvisioningPage(
             )}
           </section>
         )}
-        {selected?.service === "seerr" && (
+        {enabled && selected?.service === "seerr" && (
           <section>
             <h2>Import one Jellyfin account into Seerr</h2>
             <p>

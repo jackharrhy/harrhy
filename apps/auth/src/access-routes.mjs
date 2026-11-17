@@ -14,6 +14,7 @@ export function createAccessRoutes({
   organizationId,
   issuer,
   mediaInventory,
+  mediaProvisioningEnabled = () => false,
   renderConnectedAccounts,
   renderAccountLinkReview,
   renderAccountAction,
@@ -254,11 +255,12 @@ export function createAccessRoutes({
           (item) => item.instance === instance && item.service === service,
         );
         if (instance && !selected) throw fail(404, "Media instance not found.");
+        const enabled = Boolean(selected && mediaProvisioningEnabled(selected));
         const libraries =
-          selected?.service === "jellyfin"
+          enabled && selected.service === "jellyfin"
             ? await access.provisioning.libraries(selected)
             : [];
-        const identities = (await people()).map((user) => ({
+        const identities = (enabled ? await people() : []).map((user) => ({
           subject: user.id,
           name: user.human?.profile?.displayName || user.userName || user.id,
           active: user.state === "USER_STATE_ACTIVE",
@@ -274,6 +276,7 @@ export function createAccessRoutes({
                 .mappings()
                 .filter((item) => item.service === "jellyfin"),
               selected,
+              enabled,
               libraries,
               people: identities,
               actions: access.provisioning
