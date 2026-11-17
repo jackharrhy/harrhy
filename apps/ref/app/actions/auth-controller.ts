@@ -106,7 +106,7 @@ export default createController(routes.auth, {
             ? error.status
             : 503;
         log?.set({ "auth.stage": stage });
-        failOperation(error, log);
+        failOperation(error);
         return new Response("Sign-in could not be completed", {
           status,
           headers: { "Set-Cookie": cleared! },

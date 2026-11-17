@@ -8,6 +8,8 @@ vi.mock("cloudflare:workers", () => ({
   },
 }));
 import worker, { BoardCell } from "../worker.ts";
+import { createLogger, currentLog } from "@harrhy/logger";
+import { BoardAssets } from "../app/data/board-assets.ts";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -92,4 +94,58 @@ it("a real cleanup alarm emits one bounded retry summary without dumping object 
   expect(records[0]!["error.message"]).toBe("Object store unavailable");
   expect(JSON.stringify(records)).not.toContain("PRIVATE_OBJECT_KEY");
   expect(setAlarm).toHaveBeenCalledOnce();
+});
+
+it("cleanup reuses an ambient job, owns a standalone scope when absent, and preserves storage errors", async () => {
+  const records: Record<string, unknown>[] = [];
+  for (const method of ["log", "warn", "error"] as const)
+    vi.spyOn(console, method).mockImplementation((line) =>
+      records.push(JSON.parse(String(line))),
+    );
+  const failure = new Error("Storage unavailable");
+  let storageFails = false;
+  const ctx = {
+    storage: {
+      setAlarm: vi.fn().mockResolvedValue(undefined),
+      sql: {
+        exec() {
+          if (storageFails) throw failure;
+          return { toArray: () => [{ object_key: "PRIVATE_OBJECT_KEY" }] };
+        },
+      },
+    },
+  } as unknown as DurableObjectState;
+  const assets = new BoardAssets(ctx, {
+    delete: vi.fn().mockResolvedValue(undefined),
+  } as unknown as R2Bucket);
+  await assets.drainPendingDeletes();
+  expect(records).toHaveLength(1);
+  expect(records[0]).toMatchObject({
+    operation: "ref.assets.cleanup",
+    "cleanup.deleted_count": 1,
+  });
+  const fixture = createLogger({
+    service: "ambient-fixture",
+    sink: (record) => records.push(record),
+  });
+  await fixture.open("alarm", { operation: "fixture.alarm" }).run(async () => {
+    const active = currentLog();
+    await assets.drainPendingDeletes();
+    expect(currentLog()).toBe(active);
+    expect(records).toHaveLength(1);
+  });
+  expect(records).toHaveLength(2);
+  expect(records[1]).toMatchObject({
+    operation: "fixture.alarm",
+    "cleanup.deleted_count": 1,
+  });
+  storageFails = true;
+  await expect(assets.drainPendingDeletes()).rejects.toBe(failure);
+  expect(records).toHaveLength(3);
+  expect(records[2]).toMatchObject({
+    outcome: "error",
+    operation: "ref.assets.cleanup",
+  });
+  expect(currentLog()).toBeUndefined();
+  expect(JSON.stringify(records)).not.toContain("PRIVATE_OBJECT_KEY");
 });

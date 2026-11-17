@@ -11,7 +11,7 @@ Approved for the Ref pilot. Broader rollout requires review.
 
 ## Reuse the existing logger
 
-Read workspace guidance and actual request/job boundaries. Configure `@harrhy/logger` once per service with environment/build identity. Reuse the active record in middleware and handlers; accumulate through `set`, `inc`, `time` and bounded notes. Check runtime compatibility and current logger limitations before changing code.
+Read workspace guidance and actual request/job boundaries. Configure `@harrhy/logger` once per service with environment/build identity. Reuse the active record in middleware and handlers; accumulate through `set`, `inc`, `time` and bounded notes. Bridge Remix request context to ambient `currentLog()`; bind deferred callbacks at lifecycle boundaries, never pass loggers through business APIs or component props. Check runtime compatibility and current logger limitations before changing code.
 
 ## Build context, emit once
 

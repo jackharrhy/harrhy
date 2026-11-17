@@ -88,6 +88,12 @@ export function currentLog(): Log | undefined {
   return storage.getStore();
 }
 
+export function bindLogContext<Args extends unknown[], Result>(
+  handler: (...args: Args) => Result,
+): (...args: Args) => Result {
+  return AsyncLocalStorage.bind(handler);
+}
+
 function round(ms: number): number {
   return Math.round(ms * 10) / 10;
 }

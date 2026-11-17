@@ -1,3 +1,4 @@
+import { currentLog } from "@harrhy/logger";
 import { logger, failOperation } from "../logging.ts";
 import { DurableObject } from "cloudflare:workers";
 import { BoardAssets } from "./board-assets.ts";
@@ -353,21 +354,22 @@ export class BoardCell extends DurableObject<Env> {
         "resource.itemId":
           operation.kind === "create" ? operation.item.id : operation.itemId,
       })
-      .run(async (log) => {
+      .run(async () => {
         try {
           if (operation.kind === "remove")
             await this.ctx.storage.setAlarm(Date.now() + 60_000);
+          const log = currentLog()!;
           const result = this.applyOperation(boardId, actorId, operation);
           log.set({ "operation.result": result.type });
           if (result.type === "applied") {
             this.broadcast(result);
             if (operation.kind === "remove")
-              await this.assets.drainPendingDeletes(log);
+              await this.assets.drainPendingDeletes();
           } else
             log.warn("board.operation_rejected", { reason: result.reason });
           return result;
         } catch (error) {
-          failOperation(error, log);
+          failOperation(error);
           throw error;
         }
       });
@@ -380,11 +382,11 @@ export class BoardCell extends DurableObject<Env> {
         job_id: crypto.randomUUID(),
         "resource.boardId": this.boardId() ?? undefined,
       })
-      .run(async (log) => {
+      .run(async () => {
         try {
-          await this.assets.drainPendingDeletes(log);
+          await this.assets.drainPendingDeletes();
         } catch (error) {
-          failOperation(error, log);
+          failOperation(error);
           throw error;
         }
       });
