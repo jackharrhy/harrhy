@@ -155,6 +155,7 @@ const tokenFile = join(state, "mcp-token");
 const readTokenFile = join(state, "mcp-read-token");
 const writeTokenFile = join(state, "mcp-write-token");
 const mixedTokenFile = join(state, "mcp-mixed-token");
+const archiveTokenFile = join(state, "archive-token");
 const mcpResultFile = join(state, "mcp-result.json");
 const authConfigFile = join(state, "dev-auth.json");
 const mcpEnvironment = {
@@ -197,6 +198,7 @@ try {
     [readTokenFile, "admin,boards-read"],
     [writeTokenFile, "admin,boards-write"],
     [mixedTokenFile, "admin,boards-read,archive-read"],
+    [archiveTokenFile, "admin,archive-read,archive-restore"],
   ]) {
     await command(
       [process.execPath, "../../packages/dev-auth/token.mjs", file],
@@ -380,6 +382,95 @@ try {
   result.checks.push(
     "wide-event receipt: qualified Celld console envelope, one JSON completion, support ID, ordinary query and credential omission",
   );
+  const archiveHeaders = {
+    Authorization: `Bearer ${(await readFile(archiveTokenFile, "utf8")).trim()}`,
+  };
+  const imageId = "a".repeat(64);
+  const assetId = crypto.randomUUID();
+  const itemId = crypto.randomUUID();
+  const preview = {
+    url: "https://example.net/archive-fixture",
+    title: "Synthetic cached preview",
+    description: "",
+    imageUrl: `/previews/${first.boardId}/${imageId}`,
+    siteName: "Example",
+  };
+  async function archivePost(path, field, value) {
+    const body = new FormData();
+    body.set(field, value instanceof File ? value : JSON.stringify(value));
+    const response = await fetch(`${origin}${path}`, {
+      method: "POST",
+      headers: archiveHeaders,
+      body,
+    });
+    assert.equal(response.status, 204, await response.text());
+  }
+  await archivePost(
+    `/api/archive/boards/${first.boardId}/previews/${imageId}`,
+    "file",
+    new File(
+      [
+        Buffer.from(
+          "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aP1sAAAAASUVORK5CYII=",
+          "base64",
+        ),
+      ],
+      "synthetic.png",
+      { type: "image/png" },
+    ),
+  );
+  await archivePost(
+    `/api/archive/boards/${first.boardId}/links/${assetId}`,
+    "preview",
+    preview,
+  );
+  await archivePost(`/api/archive/boards/${first.boardId}/items`, "operation", {
+    kind: "create",
+    operationId: itemId,
+    item: {
+      id: itemId,
+      assetId,
+      x: 0,
+      y: 0,
+      width: 100,
+      height: 100,
+      rotation: 0,
+      z: 0,
+    },
+  });
+  const archivePath = join(state, "archive");
+  const archiveEnvironment = {
+    REF_URL: origin,
+    REF_ACCESS_TOKEN_FILE: archiveTokenFile,
+  };
+  await command(
+    [process.execPath, "scripts/archive.mjs", "backup", archivePath],
+    archiveEnvironment,
+  );
+  const archive = JSON.parse(
+    await readFile(join(archivePath, "manifest.json"), "utf8"),
+  );
+  assert.ok(
+    archive.boards.some((board) =>
+      board.previews.some((entry) => entry.id === imageId),
+    ),
+    "native archive must exercise cached preview restore, not just remote link URLs",
+  );
+  await browser.close();
+  browser = undefined;
+  await stop("SIGKILL");
+  environment.CELLD_BUCKET = `sqlite://${join(state, "archive-restored.sqlite3")}`;
+  environment.CELLD_WATCH = join(state, "archive-restored-replica");
+  await command([binary, "deploy", ".", "--bucket", environment.CELLD_BUCKET]);
+  await start();
+  for (let attempt = 0; attempt < 2; attempt++)
+    await command(
+      [process.execPath, "scripts/archive.mjs", "restore", archivePath],
+      archiveEnvironment,
+    );
+  result.checks.push(
+    "archive backup and repeated restore into an empty native store preserve media and preview IDs/bytes",
+  );
   result.status = "passed";
 } catch (error) {
   result.status = "failed";
@@ -390,9 +481,13 @@ try {
   await browser?.close();
   auth?.kill();
   await Promise.all(
-    [tokenFile, readTokenFile, writeTokenFile, mixedTokenFile].map((file) =>
-      rm(file, { force: true }),
-    ),
+    [
+      tokenFile,
+      readTokenFile,
+      writeTokenFile,
+      mixedTokenFile,
+      archiveTokenFile,
+    ].map((file) => rm(file, { force: true })),
   );
   try {
     await stop("SIGKILL");

@@ -63,13 +63,17 @@ it("a real cleanup alarm emits one bounded retry summary without dumping object 
     blockConcurrencyWhile() {},
     storage: {
       setAlarm,
+      getAlarm: async () => null,
+      transactionSync: (callback: () => unknown) => callback(),
       sql: {
         exec(query: string) {
           return {
             toArray() {
               return query.includes("board_info")
                 ? [{ board_id: "board_fixture" }]
-                : [{ object_key: "PRIVATE_OBJECT_KEY" }];
+                : query.includes("FROM pending_deletes")
+                  ? [{ object_key: "PRIVATE_OBJECT_KEY" }]
+                  : [];
             },
           };
         },
@@ -107,10 +111,17 @@ it("cleanup reuses an ambient job, owns a standalone scope when absent, and pres
   const ctx = {
     storage: {
       setAlarm: vi.fn().mockResolvedValue(undefined),
+      getAlarm: async () => null,
+      transactionSync: (callback: () => unknown) => callback(),
       sql: {
-        exec() {
+        exec(query: string) {
           if (storageFails) throw failure;
-          return { toArray: () => [{ object_key: "PRIVATE_OBJECT_KEY" }] };
+          return {
+            toArray: () =>
+              query.includes("FROM pending_deletes")
+                ? [{ object_key: "PRIVATE_OBJECT_KEY" }]
+                : [],
+          };
         },
       },
     },

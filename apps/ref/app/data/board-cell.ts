@@ -1,7 +1,7 @@
 import { currentLog } from "@harrhy/logger";
 import { logger, failOperation } from "../logging.ts";
 import { DurableObject } from "cloudflare:workers";
-import { BoardAssets } from "./board-assets.ts";
+import { BoardAssets, type AssetInput } from "./board-assets.ts";
 import {
   parseOperation,
   type BoardItem,
@@ -100,6 +100,13 @@ export class BoardCell extends DurableObject<Env> {
           actor_id TEXT PRIMARY KEY,
           version INTEGER NOT NULL
         );
+        CREATE TABLE IF NOT EXISTS pending_media_writes (
+          object_key TEXT PRIMARY KEY,
+          expires_at INTEGER NOT NULL,
+          restore_hash TEXT,
+          uncertain INTEGER NOT NULL DEFAULT 0,
+          state TEXT NOT NULL DEFAULT 'staged' CHECK (state IN ('staged', 'ready', 'abandoned', 'retained'))
+        );
         CREATE TABLE IF NOT EXISTS pending_deletes (
           object_key TEXT PRIMARY KEY
         );
@@ -135,18 +142,46 @@ export class BoardCell extends DurableObject<Env> {
     };
   }
 
-  recordAsset(
+  async storeAsset(
     boardId: string,
-    asset: {
-      id: string;
-      objectKey: string;
-      filename: string;
-      contentType: string;
-      size: number;
-    },
-  ): void {
+    asset: AssetInput,
+    bytes: ArrayBuffer,
+  ): Promise<void> {
     this.assertBoard(boardId);
-    this.assets.recordAsset(asset);
+    if (asset.objectKey !== `boards/${boardId}/${asset.id}`)
+      throw new Error("Invalid asset key");
+    await this.assets.storeAsset(asset, bytes);
+  }
+
+  async storePreview(
+    boardId: string,
+    imageId: string,
+    bytes: ArrayBuffer,
+    contentType: string,
+  ): Promise<void> {
+    this.assertBoard(boardId);
+    if (!/^[0-9a-f]{64}$/.test(imageId)) throw new Error("Invalid preview ID");
+    await this.assets.stageMedia(
+      `boards/${boardId}/previews/${imageId}`,
+      bytes,
+      contentType,
+    );
+  }
+
+  async restorePreview(
+    boardId: string,
+    imageId: string,
+    bytes: ArrayBuffer,
+    contentType: string,
+  ): Promise<void> {
+    this.assertBoard(boardId);
+    if (!/^[0-9a-f]{64}$/.test(imageId)) throw new Error("Invalid preview ID");
+    await this.assets.stageMedia(
+      `boards/${boardId}/previews/${imageId}`,
+      bytes,
+      contentType,
+      true,
+    );
   }
 
   restoreAsset(
@@ -360,7 +395,7 @@ export class BoardCell extends DurableObject<Env> {
       .run(async () => {
         try {
           if (operation.kind === "remove")
-            await this.ctx.storage.setAlarm(Date.now() + 60_000);
+            await this.assets.ensureCleanupAlarm();
           const log = currentLog()!;
           const result = this.applyOperation(boardId, actorId, operation);
           log.set({ "operation.result": result.type });

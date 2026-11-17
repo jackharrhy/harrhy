@@ -21,6 +21,8 @@ it("concurrent socket operations use current verified subjects, not attachment o
     blockConcurrencyWhile() {},
     getWebSockets: () => [],
     storage: {
+      transactionSync: (callback: () => unknown) => callback(),
+      getAlarm: async () => null,
       setAlarm: async () => {
         await Promise.resolve();
       },
