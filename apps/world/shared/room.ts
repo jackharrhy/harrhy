@@ -8,14 +8,7 @@ import {
   removeEntity,
 } from "bitecs";
 import { HALL_SPAWN } from "@harrhy/pool-simulation/geometry";
-import {
-  createHallPhysics,
-  motionPose,
-  motionState,
-  stepMotion,
-  type MotionOptions,
-  type MotionState,
-} from "./motion";
+import { motionPose, motionState, stepMotion, type MotionState } from "./motion";
 import { validateInput, type InputCommand, type Pose, type Snapshot } from "./protocol";
 
 function spawn(id: string, index: number): Pose {
@@ -28,6 +21,8 @@ function spawn(id: string, index: number): Pose {
     yaw: 0,
     pitch: 0,
     ack: 0,
+    velocityX: 0,
+    velocityZ: 0,
     verticalVelocity: 0,
     grounded: true,
     jumpHeld: false,
@@ -35,8 +30,7 @@ function spawn(id: string, index: number): Pose {
   };
 }
 
-export async function createRoom(options?: MotionOptions) {
-  const physics = await createHallPhysics(options);
+export async function createRoom() {
   const ecs = createWorld();
   const Player = aos<MotionState & { pending?: InputCommand[] }>();
   const ids = new Map<string, number>();
@@ -78,7 +72,7 @@ export async function createRoom(options?: MotionOptions) {
       if (disposed) throw new Error("Room is disposed");
       for (const eid of query(ecs, [Player])) {
         const player = Player[eid];
-        stepMotion(physics, player, player.pending?.shift());
+        stepMotion(player, player.pending?.shift());
       }
       tick++;
     },
@@ -94,7 +88,6 @@ export async function createRoom(options?: MotionOptions) {
       ids.clear();
       Player.length = 0;
       deleteWorld(ecs);
-      physics.dispose();
     },
   };
 }

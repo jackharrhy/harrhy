@@ -1,4 +1,5 @@
 import { BAR, HALL, STOOLS } from "@harrhy/pool-simulation/geometry";
+import { SURF_RAMP } from "../shared/surf-ramp";
 import * as THREE from "three/webgpu";
 
 export const hallTexturePaths = [
@@ -100,6 +101,43 @@ export function createHall(textures: readonly THREE.Texture[]) {
     group.add(stool);
     box(group, 0.12, y - 0.12, 0.12, x, (y - 0.12) / 2, z, darkWood, 1);
   }
+  const { highX, lowX, height, minZ, maxZ } = SURF_RAMP;
+  const rampGeometry = new THREE.BufferGeometry();
+  rampGeometry.setAttribute(
+    "position",
+    new THREE.Float32BufferAttribute(
+      [
+        highX,
+        0,
+        minZ,
+        lowX,
+        0,
+        minZ,
+        highX,
+        height,
+        minZ,
+        highX,
+        0,
+        maxZ,
+        lowX,
+        0,
+        maxZ,
+        highX,
+        height,
+        maxZ,
+      ],
+      3,
+    ),
+  );
+  rampGeometry.setIndex([0, 2, 1, 3, 4, 5, 2, 5, 1, 1, 5, 4, 0, 3, 5, 0, 5, 2]);
+  const rampFaces = rampGeometry.toNonIndexed();
+  rampGeometry.dispose();
+  rampFaces.computeVertexNormals();
+  const ramp = new THREE.Mesh(
+    rampFaces,
+    new THREE.MeshStandardMaterial({ color: 0x886547, roughness: 0.82, side: THREE.DoubleSide }),
+  );
+  group.add(ramp);
   return group;
 }
 

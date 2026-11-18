@@ -66,11 +66,11 @@ try {
   await expect(hall).toHaveAttribute("data-mode", "walk");
   const beforeClick = samples.at(-1).z;
   await page.bringToFront();
-  await page.mouse.click(400, 305);
+  await page.mouse.click(400, 275);
   await expect.poll(() => samples.at(-1)?.z, { timeout: 10_000 }).toBeLessThan(beforeClick - 0.3);
   await other.bringToFront();
   const beforeTap = otherPose.z;
-  await other.touchscreen.tap(195, 370);
+  await other.touchscreen.tap(195, 335);
   await expect.poll(() => otherPose?.z, { timeout: 10_000 }).toBeLessThan(beforeTap - 0.3);
   if (process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT)
     await other.screenshot({ path: process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT });
@@ -86,6 +86,34 @@ try {
     await expect.poll(() => samples.at(-1)?.z, { timeout: 10_000 }).toBeLessThan(before - 0.5);
   } finally {
     await page.keyboard.up("w");
+  }
+  const hopStart = samples.at(-1).y;
+  let rose = false;
+  let fell = false;
+  const hopSamples = [];
+  socket.on("framereceived", ({ payload }) => {
+    const message = JSON.parse(payload.toString());
+    if (message.type === "motion")
+      hopSamples.push(message.players.find((player) => player.id === self)?.y);
+  });
+  await page.keyboard.down("Space");
+  try {
+    await expect
+      .poll(
+        () => {
+          for (const y of hopSamples.splice(0)) {
+            if (typeof y !== "number") continue;
+            if (fell && y > hopStart + 0.25) return true;
+            if (y > hopStart + 0.5) rose = true;
+            if (rose && y < hopStart + 0.18) fell = true;
+          }
+          return false;
+        },
+        { timeout: 8_000 },
+      )
+      .toBe(true);
+  } finally {
+    await page.keyboard.up("Space");
   }
   await page.mouse.move(400, 250);
   await page.mouse.wheel(0, 500);

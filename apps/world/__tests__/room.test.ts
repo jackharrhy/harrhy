@@ -70,7 +70,7 @@ test("room accepts only newer inputs, advances once per tick, and isolates playe
   }
 });
 
-test("Box3D authority and predictor agree on yaw-relative motion, jump, landing and wall collision", async () => {
+test("Authority and predictor agree on yaw-relative motion, jump, landing and wall collision", async () => {
   const room = await createRoom();
   const initial = room.join("a");
   const predictor = await createMotion(initial);
@@ -79,20 +79,28 @@ test("Box3D authority and predictor agree on yaw-relative motion, jump, landing 
     let correction = initial;
     const replay: InputCommand[] = [];
     for (let seq = 1; seq <= TICK_HZ * 3; seq++) {
-      const cmd = command(seq, { forward: 1, yaw: Math.PI / 2, jump: seq >= 4 });
+      const cmd = command(seq, { forward: 1, yaw: Math.PI / 2, jump: seq === 15 });
       room.input("a", cmd);
       room.step();
       const pose = room.snapshot().players[0];
-      expect(pose).toEqual(predictor.step(cmd));
+      const predicted = predictor.step(cmd);
+      expect(predicted.x).toBeCloseTo(pose.x, 10);
+      expect(predicted.y).toBeCloseTo(pose.y, 10);
+      expect(predicted.z).toBeCloseTo(pose.z, 10);
+      expect(predicted.grounded).toBe(pose.grounded);
       peak = Math.max(peak, pose.y);
-      if (seq === 10) {
-        correction = pose;
+      if (seq === 18) {
+        correction = JSON.parse(JSON.stringify(pose));
         expect(correction.verticalVelocity).toBeGreaterThan(0);
       }
-      if (seq >= 10 && seq <= 30) replay.push(cmd);
+      if (seq >= 18 && seq <= 30) replay.push(cmd);
       if (seq === 30) {
-        expect(predictor.reconcile(correction, replay)).toEqual(pose);
-        expect(pose.x).toBeLessThan(initial.x - 2);
+        const reconciled = predictor.reconcile(correction, replay);
+        expect(reconciled.x).toBeCloseTo(pose.x, 10);
+        expect(reconciled.y).toBeCloseTo(pose.y, 10);
+        expect(reconciled.velocityX).toBeCloseTo(pose.velocityX, 10);
+        expect(reconciled.ack).toBe(pose.ack);
+        expect(pose.x).toBeLessThan(initial.x - 1);
         expect(pose.z).toBeCloseTo(initial.z);
       }
     }
@@ -104,4 +112,66 @@ test("Box3D authority and predictor agree on yaw-relative motion, jump, landing 
     predictor.dispose();
     room.dispose();
   }
+});
+
+async function spawnPose() {
+  const room = await createRoom();
+  const pose = room.join("a");
+  room.dispose();
+  return pose;
+}
+
+test("ground acceleration and friction, with capped wish-direction air acceleration", async () => {
+  const start = await spawnPose();
+  const motion = await createMotion(start);
+  expect(motion.step(command(1, { forward: 1 })).velocityZ).toBeCloseTo(-0.89);
+  for (let seq = 2; seq <= 20; seq++) motion.step(command(seq, { forward: 1 }));
+  expect(motion.pose().velocityZ).toBeCloseTo(-5.33);
+  expect(motion.step(command(21)).velocityZ).toBeGreaterThan(-5.33);
+  for (let seq = 22; seq <= 60; seq++) motion.step(command(seq));
+  expect(motion.pose().velocityZ).toBeCloseTo(0);
+
+  motion.reset({ ...start, y: 2, grounded: false, velocityX: 4 });
+  for (let seq = 1; seq <= 10; seq++) motion.step(command(seq, { forward: 1 }));
+  expect(motion.pose().velocityZ).toBeCloseTo(-0.5);
+  expect(motion.pose().velocityX).toBeCloseTo(4);
+});
+
+test("held jump preserves carried speed and re-launches on landing", async () => {
+  const start = await spawnPose();
+  const motion = await createMotion({ ...start, velocityZ: -10 });
+  const launched = motion.step(command(1, { jump: true }));
+  expect(launched.verticalVelocity).toBeGreaterThan(0);
+  expect(launched.velocityZ).toBeCloseTo(-10);
+  motion.reset(start);
+  let hops = 0;
+  let grounded = true;
+  for (let seq = 1; seq <= TICK_HZ * 3; seq++) {
+    const pose = motion.step(command(seq, { jump: true }));
+    if (grounded && !pose.grounded && pose.verticalVelocity > 0) hops++;
+    grounded = pose.grounded;
+  }
+  expect(hops).toBeGreaterThanOrEqual(3);
+});
+
+test("steep ramp redirects falling velocity downhill without grounding", async () => {
+  const motion = await createMotion({
+    ...(await spawnPose()),
+    x: -4.1,
+    y: 1.6,
+    z: -2,
+    grounded: false,
+    velocityZ: 1.5,
+    verticalVelocity: -4,
+  });
+  const start = motion.pose();
+  for (let seq = 1; seq <= 12; seq++) {
+    expect(motion.step(command(seq, { jump: true })).grounded).toBe(false);
+  }
+  const slide = motion.pose();
+  expect(slide.verticalVelocity).toBeLessThan(0);
+  expect(slide.velocityX).toBeGreaterThan(1);
+  expect(slide.velocityZ).toBeCloseTo(1.5);
+  expect(slide.x).toBeGreaterThan(start.x + 0.2);
+  expect(slide.y).toBeLessThan(start.y - 0.5);
 });

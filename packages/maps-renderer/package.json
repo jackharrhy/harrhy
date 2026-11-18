@@ -6,6 +6,7 @@
   "bugs": {
     "url": "https://github.com/jackharrhy/harrhy/issues"
   },
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/jackharrhy/harrhy.git",
@@ -19,11 +20,7 @@
     "LICENSE",
     "THIRD_PARTY_NOTICES.md"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
   "type": "module",
-  "license": "MIT",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -32,6 +29,10 @@
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core.js"
+    },
+    "./movement": {
+      "types": "./dist/movement.d.ts",
+      "import": "./dist/movement.js"
     },
     "./element": {
       "types": "./dist/element/index.d.ts",
@@ -49,6 +50,9 @@
       "types": "./dist/standalone.d.ts",
       "import": "./dist/standalone.js"
     }
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "vite build && vite build --config vite.standalone.config.ts && tsrs -p tsconfig.build.json --emitDeclarationOnly",

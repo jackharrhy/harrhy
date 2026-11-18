@@ -1,7 +1,6 @@
-import { PHYSICS_DT } from "@harrhy/gurgur-engine";
-
-export { PHYSICS_HZ as TICK_HZ, PHYSICS_DT as TICK_SECONDS } from "@harrhy/gurgur-engine";
-export const TICK_MS = PHYSICS_DT * 1000;
+export const TICK_HZ = 60;
+export const TICK_SECONDS = 1 / TICK_HZ;
+export const TICK_MS = TICK_SECONDS * 1000;
 
 export type InputCommand = {
   seq: number;
@@ -21,6 +20,8 @@ export type Pose = {
   yaw: number;
   pitch: number;
   ack: number;
+  velocityX: number;
+  velocityZ: number;
   verticalVelocity: number;
   grounded: boolean;
   jumpHeld: boolean;

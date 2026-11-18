@@ -79,7 +79,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           ? matchMedia("(pointer: coarse)").matches
             ? "Drag to orbit · Tap to walk"
             : "Right-drag to orbit · Click to walk · Scroll to zoom"
-          : "WASD to move · Space to jump · Scroll out for third person";
+          : "WASD to move · Hold Space to bhop · Scroll out for third person";
       destination = undefined;
       gesture = undefined;
       keys.clear();
@@ -162,7 +162,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             correction = self;
             if (predicted || starting) break;
             starting = true;
-            void createMotion(self, { locateFile: () => "/assets/box3d.wasm" })
+            void createMotion(self)
               .then((motion) => {
                 if (signal.aborted || ws !== socket || socket.readyState !== WebSocket.OPEN)
                   return motion.dispose();
@@ -353,11 +353,13 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         }
         if (distance < 0.14 || now - destination.progressAt > 500) destination = undefined;
         else {
-          forward = Math.max(
-            -1,
-            Math.min(1, (-dx * Math.sin(yaw) - dz * Math.cos(yaw)) / distance),
-          );
-          strafe = Math.max(-1, Math.min(1, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / distance));
+          const approach = Math.min(0.65, distance * 0.75);
+          forward =
+            approach *
+            Math.max(-1, Math.min(1, (-dx * Math.sin(yaw) - dz * Math.cos(yaw)) / distance));
+          strafe =
+            approach *
+            Math.max(-1, Math.min(1, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / distance));
         }
       }
       if (mode === "fps") facing = yaw;

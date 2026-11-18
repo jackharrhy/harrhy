@@ -1,6 +1,8 @@
 # @harrhy/worldview-renderer
 
-This package provides an embeddable WebGPU viewer and renderer-free BSP format core. It reads Quake BSP29, sanitized BSP2, GoldSrc BSP30, and Quake II BSP38 maps. The public entry points are `@harrhy/worldview-renderer`, `/core`, `/element`, `/runtime`, `/walkability`, and `/standalone`. The [viewer API guide](VIEWER_API.md) covers canvas setup and map assets. `src/core/` must stay free of DOM and WebGPU imports. This package never imports apps.
+This package provides an embeddable WebGPU viewer and renderer-free BSP format core. It reads Quake BSP29, sanitized BSP2, GoldSrc BSP30, and Quake II BSP38 maps. The public entry points are `@harrhy/worldview-renderer`, `/core`, `/movement`, `/element`, `/runtime`, `/walkability`, and `/standalone`. The [viewer API guide](VIEWER_API.md) covers canvas setup and map assets. `src/core/` must stay free of DOM and WebGPU imports. This package never imports apps.
+
+`/movement` exposes `moveGoldSrcPlayerWithSweep` for hosts with their own collision geometry. The callback sweeps a standing player hull between two centres in GoldSrc coordinates (Z up), and returns the fraction travelled, end position, solid flags and a unit contact normal. It needs no BSP, DOM or GPU. The BSP `/core` movement API and its defaults remain unchanged.
 
 From the repo root, run `npm ci`, then `npm run check --workspace @harrhy/worldview-renderer`. The check typechecks, runs the renderer and format tests in `__tests__/`, and builds the importable bundles. `@harrhy/worldview` is its first consumer. Run `npm run test:embed --workspace @harrhy/worldview` for an independent browser host check of the packaged standalone element, pointer lock, and sound.
 

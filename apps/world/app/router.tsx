@@ -16,7 +16,7 @@ const router = createRouter<Context>({
         const { host, protocol } = new URL(context.request.url);
         return {
           defaultSrc: ["'none'"],
-          scriptSrc: ["'self'", "'nonce-" + nonce + "'", "'unsafe-eval'"],
+          scriptSrc: ["'self'", "'nonce-" + nonce + "'"],
           styleSrc: ["'self'", "'nonce-" + nonce + "'"],
           styleSrcAttr: ["'unsafe-inline'"],
           connectSrc: ["'self'", (protocol === "https:" ? "wss://" : "ws://") + host],
