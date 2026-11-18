@@ -1,0 +1,5 @@
+/.celld/
+/.wrangler/
+/dist/
+/.dev.vars
+/worker-configuration.d.ts

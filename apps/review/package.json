@@ -1,0 +1,28 @@
+{
+  "name": "@harrhy/review",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "review": "./cli.mjs"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "dev": "npm run build && node dev.mjs",
+    "check": "npm run build && npm run types && tsrs --noEmit && tsrs -p tsconfig.browser.json",
+    "types": "wrangler types worker-configuration.d.ts",
+    "smoke": "npm run build && node __tests__/smoke.mjs"
+  },
+  "dependencies": {
+    "@harrhy/request-body": "0.1.0",
+    "@harrhy/ui": "0.1.0",
+    "@pierre/diffs": "^1.6.4",
+    "remix": "3.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.0",
+    "@types/node": "^26.6.6",
+    "esbuild": "^0.28.2",
+    "wrangler": "^4.161.0"
+  }
+}

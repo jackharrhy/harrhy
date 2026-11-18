@@ -1,0 +1,44 @@
+# Harrhy Review
+
+A local inbox for reviewing synthetic Git diffs. `review submit` resolves two commits and captures a PR-style merge-base-to-head patch. The Worker receives only commit IDs and patch text, not a repository path or a command. Moving either ref does not change a saved review.
+
+## Run locally
+
+Use Node.js 26.13+ and the [qualified Celld binary](../../docs/celld-runtime.md#native-use). From the Harrhy root:
+
+```sh
+npm ci
+export HARRHY_REVIEW_CELLD_BIN=/absolute/path/to/qualified/celld
+npm run dev -w @harrhy/review
+```
+
+Open <http://127.0.0.1:9867>. From a **synthetic** Git checkout, run the workspace's CLI (use its absolute path, or `review` if it is on `PATH`):
+
+```sh
+review submit --repo . --base main --head example --json
+review list
+review comments REVIEW_ID
+review note REVIEW_ID --file 0 --side new --line 1 --text 'Check this example'
+review reply REVIEW_ID THREAD_ID --text 'Looks good'
+review resolve REVIEW_ID THREAD_ID
+review reopen REVIEW_ID THREAD_ID
+```
+
+Omit `--json` on submit to print just the URL. File indices are zero-based in patch order. Notes target old or new line numbers in displayed hunks. In the browser, select a line number or use the line picker to add a note. Replies and resolve/reopen changes save immediately; resolved threads remain readable. Reload to see changes from another client. Deleting a review removes its snapshot and threads, not any repository data.
+
+## Boundaries
+
+This app has no accounts. The supported launcher binds to IPv4 loopback; do not proxy, forward or deploy the service. Host and browser Origin must match the configured numeric loopback origin. Mutations require a custom header. Local processes can still access the service. Use synthetic data only; do not submit company or other private material.
+
+Review snapshots and comments live in one SQLite-backed Durable Object. Celld keeps state in ignored `apps/review/.celld/dev` across restarts. Deleting a review removes live rows; it does not promise secure erasure from storage. Patches are limited to 512 KiB and 100 files, the inbox to 50 reviews, and each review to 100 threads of up to 25 messages (2,000 characters each). Binary data is not included. There is no Git write path, automated agent execution or live synchronization.
+
+`worker.ts` owns the Remix routes and request checks, `cell.ts` owns durable storage, and `page.tsx` / `browser.ts` use Harrhy UI styling and Pierre Diffs. CLI code lives in `cli.mjs`.
+
+## Checks
+
+```sh
+npm run check -w @harrhy/review
+npm run smoke -w @harrhy/review
+```
+
+The smoke requires the same Celld binary and Playwright Chromium (`npx playwright install chromium`). It runs on an ephemeral loopback port with a disposable store and synthetic Git repository, including a Celld restart.
