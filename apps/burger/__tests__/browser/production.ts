@@ -104,7 +104,7 @@ try {
   assert.ok(nonce);
   assert.match(policy, /connect-src 'self' ws:\/\//);
   const html = await document.text();
-  assert.match(html, /Burger · Tea/);
+  assert.match(html, /<title>Burger<\/title>/);
   assert(html.includes(`nonce="${nonce}"`));
   await waitFor(
     async () => (await fetch(`${origin}/assets/game.js`)).ok,
@@ -226,6 +226,7 @@ try {
 
   const adminAtlas = await admin.context.newPage();
   await adminAtlas.goto(`${origin}/atlas`);
+  assert.equal(await adminAtlas.title(), "Burger atlas");
   await adminAtlas.getByRole("region", { name: "Atlas grid" }).waitFor();
   await adminAtlas.getByRole("button", { name: "wall tile 0, 0" }).click();
   await adminAtlas
