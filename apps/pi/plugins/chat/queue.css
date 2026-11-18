@@ -1,0 +1,40 @@
+/* Queue-local layout: the existing .queued row styles still apply inside the scroll region. */
+.chat-queue {
+	width: var(--chat-size);
+	max-width: var(--chat-width);
+	margin: 0 auto;
+	background: var(--bg);
+	border-top: 1px solid var(--line);
+}
+.chat-queue > summary {
+	min-height: var(--row);
+	padding: var(--s3) var(--x);
+	color: var(--muted);
+	font-size: var(--fs-sm);
+	cursor: pointer;
+}
+.chat-queue > .queued {
+	width: 100%;
+	max-height: min(calc(3 * var(--row)), 20dvh);
+	overflow-y: auto;
+	overscroll-behavior-y: contain;
+	border-top: 0;
+}
+.chat-queue:not([open]) > .queued {
+	display: none;
+}
+.chat-queue .queue-edit,
+.chat-queue .queue-remove {
+	min-height: var(--row);
+}
+.chat-queue .queue-remove {
+	min-width: var(--row);
+}
+.chat-queue > summary:active {
+	background: var(--hover);
+}
+@media (hover: hover) {
+	.chat-queue > summary:hover {
+		background: var(--hover);
+	}
+}
