@@ -1,0 +1,10 @@
+{
+  "name": "harrhy-world-room-experiment",
+  "main": "worker.ts",
+  "compatibility_date": "2026-11-16",
+  "durable_objects": {
+    "bindings": [{ "name": "WORLD_ROOM", "class_name": "WorldRoomCell" }],
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["WorldRoomCell"] }],
+  "rules": [{ "type": "Data", "globs": ["**/*.bsp"] }],
+}
