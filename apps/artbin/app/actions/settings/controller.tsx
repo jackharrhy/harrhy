@@ -64,6 +64,7 @@ export default createController(routes.settings, {
                 ) : (
                   <form
                     method="post"
+                    data-rmx-document
                     action={routes.settings.action.href()}
                     mix={topMarginStyle}
                   >

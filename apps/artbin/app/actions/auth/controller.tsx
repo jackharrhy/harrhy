@@ -24,6 +24,11 @@ import {
   supportTargetEligibility,
 } from "#lib/support-login.server";
 
+import {
+  afterLogin,
+  bookmarkPath,
+  movedNotice,
+} from "../../login-destination.ts";
 import { routes } from "../../routes.ts";
 import { Document } from "../document.tsx";
 import { Button, ButtonLink } from "../../ui/primitives.tsx";
@@ -118,21 +123,24 @@ export default createController(routes.auth, {
         : redirectWithHeaders(routes.auth.login.href(), response.headers, 303);
     },
 
-    async login() {
+    async login(context) {
+      const redirectUri = browserRedirectUri(context.request);
       const transaction = createLoginTransaction();
       const cookieName = loginTransactionCookieName(
         "artbin_oauth",
         transaction.state,
       )!;
       return redirectWithHeaders(
-        await identityClient().authorizationUrl(
-          transaction,
-          browserRedirectUri(),
-        ),
+        await identityClient().authorizationUrl(transaction, redirectUri),
         {
           "Set-Cookie": oauthCookie(
             cookieName,
-            JSON.stringify(transaction),
+            JSON.stringify({
+              ...transaction,
+              redirectUri,
+              returnTo: bookmarkPath(context.url.searchParams.get("returnTo")),
+              moved: movedNotice(context.request),
+            }),
             600,
           ),
         },
@@ -147,13 +155,20 @@ export default createController(routes.auth, {
       const cookieName = loginTransactionCookieName("artbin_oauth", state);
       if (!cookieName) return terminalLoginError("missing_oauth_state");
 
-      const oauthData = readOauthCookie<LoginTransaction>(
-        context.request,
-        cookieName,
-      );
+      const redirectUri = browserRedirectUri(context.request);
+      const oauthData = readOauthCookie<
+        LoginTransaction & {
+          redirectUri?: string;
+          returnTo?: string;
+          moved?: boolean;
+        }
+      >(context.request, cookieName);
       if (!oauthData)
         return terminalLoginError("missing_oauth_state", cookieName);
-      if (!validLoginTransaction(oauthData, state)) {
+      if (
+        !validLoginTransaction(oauthData, state) ||
+        (oauthData.redirectUri ?? browserRedirectUri()) !== redirectUri
+      ) {
         return terminalLoginError("state_mismatch", cookieName);
       }
       if (oauthError) return terminalLoginError(oauthError, cookieName);
@@ -163,7 +178,7 @@ export default createController(routes.auth, {
         const identity = await identityClient().exchange(
           code,
           oauthData,
-          browserRedirectUri(),
+          redirectUri,
         );
         const user = await upsertUser({
           sub: identity.subject,
@@ -184,7 +199,10 @@ export default createController(routes.auth, {
         const headers = new Headers();
         headers.append("Set-Cookie", clearOauthCookie(cookieName));
         headers.append("Set-Cookie", getSessionCookie(sessionId));
-        return redirectWithHeaders(routes.folders.href(), headers);
+        return redirectWithHeaders(
+          afterLogin(context.request, oauthData.returnTo, oauthData.moved),
+          headers,
+        );
       } catch (error) {
         log.error(error instanceof Error ? error : new Error(String(error)), {
           step: "oauth-callback",

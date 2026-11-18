@@ -4,6 +4,8 @@ import { getContext } from "remix/middleware/async-context";
 import { getCspNonce } from "remix/middleware/csp";
 
 import { documentImportMap, entryScript } from "../assets.ts";
+import { movedNotice } from "../login-destination.ts";
+import { Alert } from "../ui/primitives.tsx";
 import { documentStyle } from "../ui/styles.ts";
 
 export interface DocumentProps {
@@ -47,7 +49,12 @@ export function Document(handle: Handle<DocumentProps>) {
           ))}
           <script type="module" src={entryScript.href} nonce={nonce}></script>
         </head>
-        <body>{children}</body>
+        <body>
+          {movedNotice(getContext().request) ? (
+            <Alert tone="info">Artbin has a new browser address.</Alert>
+          ) : null}
+          {children}
+        </body>
       </html>
     );
   };

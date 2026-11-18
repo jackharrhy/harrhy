@@ -13,7 +13,7 @@ import { routes } from "../../routes.ts";
 import { FolderRoutePage } from "./page.tsx";
 
 export default createController(routes.folder, {
-  middleware: [requireUser()],
+  middleware: [requireUser({ bookmarks: true })],
   actions: {
     async index(context) {
       if (!context.user) return redirect(routes.login.href(), 303);
