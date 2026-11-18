@@ -38,6 +38,7 @@ try {
     .locator('main a[href^="/days/"]')
     .first()
     .getAttribute("href");
+  const surfaces = new Map();
   for (const width of [1440, 768, 390, 320]) {
     await page.setViewportSize({ width, height: 1000 });
     for (const theme of [
@@ -79,7 +80,34 @@ try {
           `${path} at ${width} overflows`,
         );
         assert.equal(layout.broken, 0, `${path} has broken images`);
+        if (width === 1440) {
+          const paint = await page
+            .locator(`select[name="theme"]`)
+            .evaluate((el) => getComputedStyle(el).backgroundColor);
+          const card = page.locator("main [data-roster-card]").first();
+          const cardPaint = (await card.count())
+            ? await card.evaluate((el) => getComputedStyle(el).backgroundColor)
+            : null;
+          const score = page.locator("main [data-score] a").first();
+          const scorePaint = (await score.count())
+            ? await score.evaluate((el) => getComputedStyle(el).backgroundColor)
+            : null;
+          const entries = surfaces.get(path) ?? [];
+          entries.push({ paint, cardPaint, scorePaint });
+          surfaces.set(path, entries);
+        }
       }
+    }
+  }
+  for (const [path, entries] of surfaces) {
+    for (const role of ["paint", "cardPaint", "scorePaint"]) {
+      const actual = entries.map((entry) => entry[role]).filter(Boolean);
+      if (actual.length)
+        assert.equal(
+          new Set(actual).size,
+          6,
+          `${path}: ${role} must visibly respond to all six themes`,
+        );
     }
   }
   await page.goto(`${origin}/players`);

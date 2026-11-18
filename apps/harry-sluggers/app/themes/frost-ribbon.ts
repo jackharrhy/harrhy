@@ -26,6 +26,8 @@ export const frostRibbon: LabConcept = {
     panelImage: `linear-gradient(180deg, rgb(255 255 255 / .045), transparent 18%, ${originalBlue[900]}33 100%), linear-gradient(180deg, ${originalBlue[700]}73, ${originalBlue[800]}99)`,
     headingImage: glassHeadingImage,
     cardRadius: "14px",
+    cardSurface: "#2d4566",
+    insetSurface: "#21324c",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },

@@ -12,15 +12,21 @@ import { positiveId, result, type Archive, type Match } from "./database.ts";
 
 const styles = css({
   fontFamily: "var(--hui-font-ui)",
-  color: "#fff",
+  color: "var(--hui-ink)",
   minHeight: "100dvh",
   lineHeight: 1.5,
   "& *": { boxSizing: "border-box" },
   "& body": { margin: 0 },
   "& a": { color: "inherit", textUnderlineOffset: ".2em" },
-  "& a:hover": { color: "#fff1a1" },
-  "& :focus-visible": { outline: "3px solid #fff1a1", outlineOffset: "3px" },
-  "& ::selection": { background: "#112d70", color: "white" },
+  "& a:hover": { color: "var(--hui-accent)" },
+  "& :focus-visible": {
+    outline: "3px solid var(--hui-accent)",
+    outlineOffset: "3px",
+  },
+  "& ::selection": {
+    background: "var(--lab-inset-surface)",
+    color: "var(--hui-ink)",
+  },
   "& header, & main, & footer": {
     maxWidth: "1280px",
     margin: "auto",
@@ -31,7 +37,7 @@ const styles = css({
     flexWrap: "wrap",
     alignItems: "center",
     gap: "20px",
-    borderBottom: "1px solid #88b3df",
+    borderBottom: "1px solid var(--hui-border)",
   },
   "& nav": { display: "flex", flexWrap: "wrap", gap: "16px" },
   "& nav a, & button, & select": {
@@ -40,9 +46,9 @@ const styles = css({
     alignItems: "center",
   },
   "& select, & button, & input": {
-    background: "#153a8a",
-    color: "white",
-    border: "1px solid #a4ccf4",
+    background: "var(--lab-inset-surface)",
+    color: "var(--hui-ink)",
+    border: "1px solid var(--hui-control-border)",
     borderRadius: "6px",
     padding: "10px",
     font: "inherit",
@@ -98,10 +104,10 @@ const styles = css({
     maskImage: "linear-gradient(black,transparent)",
   },
   "@supports not (backdrop-filter: blur(1px))": {
-    "& [data-lab-panel]": { backgroundColor: "#1948a5" },
+    "& [data-lab-panel]": { backgroundColor: "var(--lab-card-surface)" },
   },
   "@media (prefers-reduced-transparency: reduce)": {
-    "& [data-lab-panel]": { backgroundColor: "#1948a5" },
+    "& [data-lab-panel]": { backgroundColor: "var(--lab-card-surface)" },
     "& [data-lab-panel]::before": { display: "none" },
   },
   "& [data-panel-title]": {
@@ -120,8 +126,8 @@ const styles = css({
     gridTemplateRows: "auto 1fr auto",
     alignContent: "start",
     padding: "12px",
-    background: "#203c61",
-    border: "1px solid #a4ccf455",
+    background: "var(--lab-card-surface)",
+    border: "1px solid var(--hui-table-border)",
     borderRadius: "var(--lab-card-radius)",
     overflowWrap: "anywhere",
   },
@@ -147,7 +153,11 @@ const styles = css({
   "& [data-roster-card] h3": { margin: "6px 0 3px", fontSize: "15px" },
   "& [data-player-card]": { textAlign: "center" },
   "& [data-player-card] [data-portrait]": { width: "40px", height: "40px" },
-  "& [data-badges]": { color: "#fff1a1", fontSize: "11px", minHeight: "16px" },
+  "& [data-badges]": {
+    color: "var(--hui-accent)",
+    fontSize: "11px",
+    minHeight: "16px",
+  },
   "& [data-team-side]": {
     display: "flex",
     flexDirection: "column",
@@ -176,18 +186,18 @@ const styles = css({
     fontSize: "12px",
   },
   "& [data-result=Win], & [data-win]": {
-    color: "#b6f7d1",
+    color: "var(--hui-success)",
   },
   "& [data-result=Loss], & [data-loss]": {
-    color: "#ffd7df",
+    color: "var(--hui-danger)",
   },
-  "& [data-result=Draw]": { color: "#fff1a1" },
+  "& [data-result=Draw]": { color: "var(--hui-accent)" },
   "& [data-score] a": {
     display: "grid",
     gridTemplateColumns: "1fr auto 1fr",
     alignItems: "center",
     gap: "3px",
-    background: "#172e50",
+    background: "var(--lab-inset-surface)",
     borderRadius: "4px",
     textDecoration: "none",
   },
@@ -204,7 +214,7 @@ const styles = css({
     gridTemplateColumns: "minmax(0,1fr) 104px minmax(0,1fr)",
     gap: "12px",
     alignItems: "center",
-    borderBottom: "1px solid #88b3df66",
+    borderBottom: "1px solid var(--hui-table-border)",
     padding: "16px 0",
   },
   "& [data-score]": {
@@ -214,7 +224,10 @@ const styles = css({
     fontVariantNumeric: "tabular-nums",
     whiteSpace: "nowrap",
   },
-  "& [data-scroll]": { overflowX: "auto", scrollbarColor: "#a4ccf4 #153a8a" },
+  "& [data-scroll]": {
+    overflowX: "auto",
+    scrollbarColor: "var(--hui-control-border) var(--lab-inset-surface)",
+  },
   "& table": {
     borderCollapse: "collapse",
     width: "100%",
@@ -223,15 +236,17 @@ const styles = css({
   "& th, & td": {
     padding: "10px",
     textAlign: "left",
-    borderBottom: "1px solid #88b3df66",
+    borderBottom: "1px solid var(--hui-table-border)",
     whiteSpace: "nowrap",
   },
-  "& th": { background: "#153a8a" },
-  "& [data-win]": { color: "#b6f7d1" },
-  "& [data-loss]": { color: "#ffd7df" },
-  "& [data-muted]": { color: "#eaf2ff", fontSize: "14px" },
+  "& th": { background: "var(--lab-inset-surface)" },
+  "& [data-muted]": { color: "var(--hui-muted)", fontSize: "14px" },
   "& [data-skip]": { position: "absolute", top: "-100px" },
-  "& [data-skip]:focus": { top: "4px", background: "#112d70", zIndex: 5 },
+  "& [data-skip]:focus": {
+    top: "4px",
+    background: "var(--lab-inset-surface)",
+    zIndex: 5,
+  },
   "@media (max-width: 800px)": {
     "& [data-columns]": { gridTemplateColumns: "minmax(0,1fr)" },
     "& header, & main, & footer": { padding: "14px" },
