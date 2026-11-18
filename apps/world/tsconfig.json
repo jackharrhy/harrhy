@@ -3,7 +3,7 @@
   "compilerOptions": {
     "module": "ESNext",
     "moduleResolution": "Bundler",
-    "types": ["bun", "node"],
+    "types": ["node"],
     "lib": ["ESNext", "DOM", "DOM.Iterable"]
   },
   "include": ["app", "shared", "server", "__tests__", "vite.config.ts"]

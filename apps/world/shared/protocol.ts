@@ -2,12 +2,11 @@ export const TICK_HZ = 60;
 export const TICK_SECONDS = 1 / TICK_HZ;
 export const TICK_MS = TICK_SECONDS * 1000;
 
-export const LEGACY_MAP_REVISION = "legacy-v1";
 export const BSP_MAP_PATH = "/maps/hall.bsp";
 
 export type MapReady = {
   status: "ready";
-  map: "legacy" | "bsp";
+  map: "bsp";
   revision: string;
 };
 
@@ -20,7 +19,7 @@ export type InputCommand = {
   pitch: number;
 };
 
-/** Three coordinates in metres (y at the feet), angles in radians. Yaw zero faces -Z. */
+/** World coordinates in metres (y at the feet), angles in radians. Yaw zero faces -Z. */
 export type Pose = {
   id: string;
   x: number;

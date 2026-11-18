@@ -3,13 +3,11 @@ import {
   moveGoldSrcPlayerWithSweep,
   type GoldSrcMovementState,
 } from "@harrhy/schmovement";
-import type { BspCollision } from "./bsp-collision";
 import {
-  HALF_HEIGHT,
-  sweepHall,
   UNITS_PER_METRE as SCALE,
-} from "./hall-collision";
-import { TICK_SECONDS, type InputCommand, type Pose } from "./protocol";
+  type BspCollision,
+} from "./bsp-collision.ts";
+import { TICK_SECONDS, type InputCommand, type Pose } from "./protocol.ts";
 
 const WORLD_MOVEMENT = {
   ...DEFAULT_GOLDSRC_MOVEMENT,
@@ -26,7 +24,7 @@ export type MotionState = {
   ack: number;
 };
 
-export function motionState(pose: Pose, halfHeight = HALF_HEIGHT): MotionState {
+export function motionState(pose: Pose, halfHeight: number): MotionState {
   return {
     id: pose.id,
     movement: {
@@ -45,7 +43,7 @@ export function motionState(pose: Pose, halfHeight = HALF_HEIGHT): MotionState {
   };
 }
 
-export function motionPose(state: MotionState, halfHeight = HALF_HEIGHT): Pose {
+export function motionPose(state: MotionState, halfHeight: number): Pose {
   const { origin, velocity, onGround, jumpHeld } = state.movement;
   return {
     id: state.id,
@@ -66,8 +64,8 @@ export function motionPose(state: MotionState, halfHeight = HALF_HEIGHT): Pose {
 
 export function stepMotion(
   state: MotionState,
-  cmd?: InputCommand,
-  sweep = sweepHall,
+  cmd: InputCommand | undefined,
+  sweep: BspCollision["sweep"],
 ) {
   state.movement = moveGoldSrcPlayerWithSweep(
     sweep,
@@ -88,8 +86,8 @@ export function stepMotion(
   }
 }
 
-export async function createMotion(initial: Pose, collision?: BspCollision) {
-  const { halfHeight, sweep } = collision ?? {};
+export async function createMotion(initial: Pose, collision: BspCollision) {
+  const { halfHeight, sweep } = collision;
   let state = motionState(initial, halfHeight);
   return {
     step(cmd: InputCommand): Pose {

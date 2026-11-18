@@ -1,8 +1,8 @@
-import { createView, type FloorPoint } from "./render";
+import type { FloorPoint } from "./bsp-render";
 import { loadBspCollision } from "../shared/bsp-collision";
 import { createMotion } from "../shared/motion";
 import {
-  LEGACY_MAP_REVISION,
+  BSP_MAP_PATH,
   TICK_MS,
   type InputCommand,
   type Pose,
@@ -59,20 +59,15 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     const health = await fetch("/healthz", { signal, cache: "no-store" });
     if (!health.ok) throw Error("The room is not ready");
     const { revision } = (await health.json()) as { revision: string };
-    const mapResponse =
-      revision === LEGACY_MAP_REVISION
-        ? undefined
-        : await fetch("/maps/hall.bsp", { signal });
-    if (mapResponse && !mapResponse.ok)
-      throw Error("Could not load the authored hall");
-    const bytes = await mapResponse?.arrayBuffer();
-    const collision = bytes ? await loadBspCollision(bytes) : undefined;
-    if (collision && collision.revision !== revision)
+    const mapResponse = await fetch(BSP_MAP_PATH, { signal });
+    if (!mapResponse.ok) throw Error("Could not load the authored hall");
+    const bytes = await mapResponse.arrayBuffer();
+    const collision = await loadBspCollision(bytes);
+    if (collision.revision !== revision)
       throw Error("The hall changed during loading; reload to join");
     if (signal.aborted) return;
-    const view = bytes
-      ? await (await import("./bsp-render")).createBspView(canvas, bytes)
-      : await createView(canvas);
+    const { createBspView } = await import("./bsp-render");
+    const view = await createBspView(canvas, bytes);
     if (signal.aborted) return view.dispose();
     let frame = 0,
       reconnect = 0;
@@ -484,8 +479,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           );
         } catch (error) {
           console.error(error);
-          status.textContent =
-            "Rendering stopped. Reload to retry, or use ?renderer=webgl.";
+          status.textContent = "Rendering stopped. Reload to retry.";
           stop();
           return;
         }

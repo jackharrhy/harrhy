@@ -6,8 +6,9 @@ import {
   type Vec3Tuple,
 } from "@harrhy/worldview-renderer/core";
 import type { GoldSrcHullSweep } from "@harrhy/schmovement";
-import { UNITS_PER_METRE as SCALE } from "./hall-collision";
-import type { Pose } from "./protocol";
+import type { Pose } from "./protocol.ts";
+
+export const UNITS_PER_METRE = 60;
 
 export type BspCollision = {
   sweep: GoldSrcHullSweep;
@@ -26,7 +27,7 @@ export async function loadBspCollision(
     throw new Error("World map has no standing collision hull");
 
   // Hull 1 is already expanded for the GoldSrc standing player (32 × 32 × 72).
-  const halfHeight = 36 / SCALE;
+  const halfHeight = 36 / UNITS_PER_METRE;
   const collisionWorld = {
     collision: world.collision,
     entities: world.entities,
@@ -65,9 +66,9 @@ export async function loadBspCollision(
     sweep,
     revision: `bsp30-v1-${digest}`,
     spawn: {
-      x: -y / SCALE,
-      y: z / SCALE - halfHeight,
-      z: -x / SCALE,
+      x: -y / UNITS_PER_METRE,
+      y: z / UNITS_PER_METRE - halfHeight,
+      z: -x / UNITS_PER_METRE,
       grounded: true,
     },
   };

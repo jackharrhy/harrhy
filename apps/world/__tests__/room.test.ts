@@ -1,14 +1,31 @@
-import { expect, test } from "bun:test";
-import { makeBsp } from "../../../packages/maps-renderer/__tests__/fixtures";
-import { loadBspCollision } from "../shared/bsp-collision";
-import { createMotion } from "../shared/motion";
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { test } from "node:test";
+import { makeBsp } from "../../../packages/maps-renderer/__tests__/fixtures.ts";
+import {
+  loadBspCollision,
+  type BspCollision,
+} from "../shared/bsp-collision.ts";
+import { createMotion } from "../shared/motion.ts";
 import {
   parseInput,
   TICK_HZ,
   validateInput,
   type InputCommand,
-} from "../shared/protocol";
-import { createRoom } from "../shared/room";
+} from "../shared/protocol.ts";
+import { createRoom } from "../shared/room.ts";
+
+async function authoredCollision() {
+  const bytes = await readFile(new URL("../content/hall.bsp", import.meta.url));
+  return loadBspCollision(Uint8Array.from(bytes).buffer);
+}
+
+function close(actual: number, expected: number, digits = 2) {
+  assert.ok(
+    Math.abs(actual - expected) < 0.5 * 10 ** -digits,
+    `${actual} ≈ ${expected}`,
+  );
+}
 
 function command(
   seq: number,
@@ -39,62 +56,75 @@ test("validates and copies movement input", () => {
     command(1, { pitch: Math.PI }),
     { ...command(1), jump: 1 },
   ]) {
-    expect(validateInput(value)).toBeNull();
+    assert.equal(validateInput(value), null);
   }
-  expect(parseInput("{")).toBeNull();
-  expect(
+  assert.equal(parseInput("{"), null);
+  assert.deepEqual(
     parseInput(JSON.stringify({ ...command(1, { yaw: 3 * Math.PI }), x: 100 })),
-  ).toEqual(command(1, { yaw: Math.PI }));
+    command(1, { yaw: Math.PI }),
+  );
 });
 
 test("room accepts only newer inputs, advances once per tick, and isolates players", async () => {
-  const room = await createRoom();
+  const room = await createRoom(await loadBspCollision(floorBsp()));
   try {
     const initial = room.join("a");
     const other = room.join("b");
-    expect(room.join("a")).toEqual(initial);
-    expect(other.x).not.toBe(initial.x);
-    expect(room.input("missing", command(1))).toBe(false);
-    expect(room.input("a", command(1, { forward: -1 }))).toBe(true);
-    expect(room.input("a", command(2, { forward: 1, pitch: 0.25 }))).toBe(true);
-    expect(room.input("a", command(1))).toBe(false);
-    expect(room.snapshot().players[0]).toEqual(initial);
+    assert.deepEqual(room.join("a"), initial);
+    assert.equal(other.x, initial.x);
+    assert.equal(other.z, initial.z);
+    assert.equal(room.input("missing", command(1)), false);
+    assert.equal(room.input("a", command(1, { forward: -1 })), true);
+    assert.equal(
+      room.input("a", command(2, { forward: 1, pitch: 0.25 })),
+      true,
+    );
+    assert.equal(room.input("a", command(1)), false);
+    assert.deepEqual(room.snapshot().players[0], initial);
     room.step();
     const moved = room.snapshot().players.find(({ id }) => id === "a")!;
-    expect(moved).toMatchObject({ ack: 1, pitch: 0 });
-    expect(moved.z).toBeGreaterThan(initial.z);
-    expect(room.input("a", command(2))).toBe(false);
+    assert.partialDeepStrictEqual(moved, { ack: 1, pitch: 0 });
+    assert.ok(moved.z > initial.z);
+    assert.equal(room.input("a", command(2)), false);
     room.step();
     const snapshot = room.snapshot();
-    expect(snapshot.tick).toBe(2);
-    expect(snapshot.players.find(({ id }) => id === "a")).toMatchObject({
-      ack: 2,
-      pitch: 0.25,
-    });
-    expect(snapshot.players.find(({ id }) => id === "b")).toMatchObject({
-      x: other.x,
-      z: other.z,
-      ack: 0,
-    });
-    expect(room.leave("a")).toBe(true);
-    expect(room.leave("a")).toBe(false);
-    expect(room.input("a", command(3))).toBe(false);
-    expect(room.join("c").ack).toBe(0);
-    expect(
+    assert.equal(snapshot.tick, 2);
+    assert.partialDeepStrictEqual(
+      snapshot.players.find(({ id }) => id === "a"),
+      {
+        ack: 2,
+        pitch: 0.25,
+      },
+    );
+    assert.partialDeepStrictEqual(
+      snapshot.players.find(({ id }) => id === "b"),
+      {
+        x: other.x,
+        z: other.z,
+        ack: 0,
+      },
+    );
+    assert.equal(room.leave("a"), true);
+    assert.equal(room.leave("a"), false);
+    assert.equal(room.input("a", command(3)), false);
+    assert.equal(room.join("c").ack, 0);
+    assert.deepEqual(
       room
         .snapshot()
         .players.map(({ id }) => id)
         .toSorted(),
-    ).toEqual(["b", "c"]);
+      ["b", "c"],
+    );
   } finally {
     room.dispose();
   }
 });
 
 test("Authority and predictor agree on yaw-relative motion, jump, landing and wall collision", async () => {
-  const room = await createRoom();
+  const collision = await authoredCollision();
+  const room = await createRoom(collision);
   const initial = room.join("a");
-  const predictor = await createMotion(initial);
+  const predictor = await createMotion(initial, collision);
   try {
     let peak = 0;
     let correction = initial;
@@ -109,30 +139,31 @@ test("Authority and predictor agree on yaw-relative motion, jump, landing and wa
       room.step();
       const pose = room.snapshot().players[0];
       const predicted = predictor.step(cmd);
-      expect(predicted.x).toBeCloseTo(pose.x, 10);
-      expect(predicted.y).toBeCloseTo(pose.y, 10);
-      expect(predicted.z).toBeCloseTo(pose.z, 10);
-      expect(predicted.grounded).toBe(pose.grounded);
+      close(predicted.x, pose.x, 10);
+      close(predicted.y, pose.y, 10);
+      close(predicted.z, pose.z, 10);
+      assert.equal(predicted.grounded, pose.grounded);
       peak = Math.max(peak, pose.y);
       if (seq === 18) {
         correction = JSON.parse(JSON.stringify(pose));
-        expect(correction.verticalVelocity).toBeGreaterThan(0);
+        assert.ok(correction.verticalVelocity > 0);
       }
       if (seq >= 18 && seq <= 30) replay.push(cmd);
       if (seq === 30) {
         const reconciled = predictor.reconcile(correction, replay);
-        expect(reconciled.x).toBeCloseTo(pose.x, 10);
-        expect(reconciled.y).toBeCloseTo(pose.y, 10);
-        expect(reconciled.velocityX).toBeCloseTo(pose.velocityX, 10);
-        expect(reconciled.ack).toBe(pose.ack);
-        expect(pose.x).toBeLessThan(initial.x - 1);
-        expect(pose.z).toBeCloseTo(initial.z);
+        close(reconciled.x, pose.x, 10);
+        close(reconciled.y, pose.y, 10);
+        close(reconciled.velocityX, pose.velocityX, 10);
+        assert.equal(reconciled.ack, pose.ack);
+        assert.ok(pose.x < initial.x - 1);
+        close(pose.z, initial.z);
       }
     }
     const final = room.snapshot().players[0];
-    expect(peak).toBeWithin(1, 1.5);
-    expect(final.y).toBeCloseTo(0, 1);
-    expect(final.x).toBeWithin(-5.3, -5.15);
+    assert.ok(peak >= 1 && peak < 1.5);
+    close(final.y, 0, 1);
+    assert.ok(final.x > -5.4 && final.x < -5.2);
+    close(final.velocityX, 0);
   } finally {
     predictor.dispose();
     room.dispose();
@@ -151,20 +182,17 @@ function floorBsp(version: 29 | 30 = 30, origin = "120 -60 48") {
 
 test("BSP30 revision identifies loaded bytes and requires a valid standing spawn", async () => {
   const a = await loadBspCollision(floorBsp());
-  expect(a.revision).toMatch(/^bsp30-v1-[0-9a-f]{64}$/);
-  expect((await loadBspCollision(floorBsp())).revision).toBe(a.revision);
-  expect(
+  assert.match(a.revision, /^bsp30-v1-[0-9a-f]{64}$/);
+  assert.equal((await loadBspCollision(floorBsp())).revision, a.revision);
+  assert.notEqual(
     (await loadBspCollision(floorBsp(30, "121 -60 48"))).revision,
-  ).not.toBe(a.revision);
+    a.revision,
+  );
   for (const [bytes, message] of [
     [floorBsp(29), "BSP30"],
     [floorBsp(30, "120 -60 0"), "walkable ground"],
   ] as const) {
-    const result = await loadBspCollision(bytes).catch(
-      (error: unknown) => error,
-    );
-    expect(result).toBeInstanceOf(Error);
-    expect((result as Error).message).toContain(message);
+    await assert.rejects(loadBspCollision(bytes), new RegExp(message));
   }
 });
 
@@ -174,57 +202,58 @@ test("BSP authority and prediction agree on hull-1 spawn, jumping and landing", 
   const initial = room.join("bsp");
   const predictor = await createMotion(initial, await loadBspCollision(bytes));
   try {
-    expect(initial).toMatchObject({ x: 1, z: -2, grounded: true });
-    expect(initial.y).toBeCloseTo(0, 2);
+    assert.partialDeepStrictEqual(initial, { x: 1, z: -2, grounded: true });
+    close(initial.y, 0, 2);
     let peak = initial.y;
     for (let seq = 1; seq <= 180; seq++) {
-      // The fixture has a floor but no walls, unlike the analytic hall.
       const cmd = command(seq, { forward: 1, jump: seq === 15 });
       room.input("bsp", cmd);
       room.step();
       const pose = room.snapshot().players[0];
-      expect(predictor.step(cmd)).toEqual(pose);
+      assert.deepEqual(predictor.step(cmd), pose);
       peak = Math.max(peak, pose.y);
     }
-    expect(peak).toBeGreaterThan(1);
-    expect(predictor.pose().z).toBeLessThan(-12);
-    expect(predictor.pose().grounded).toBe(true);
-    expect(predictor.pose().y).toBeCloseTo(0, 2);
+    assert.ok(peak > 1);
+    assert.ok(predictor.pose().z < -12);
+    assert.equal(predictor.pose().grounded, true);
+    close(predictor.pose().y, 0, 2);
   } finally {
     predictor.dispose();
     room.dispose();
   }
 });
 
-async function spawnPose() {
-  const room = await createRoom();
+async function spawnPose(collision: BspCollision) {
+  const room = await createRoom(collision);
   const pose = room.join("a");
   room.dispose();
   return pose;
 }
 
 test("ground acceleration and friction, with capped wish-direction air acceleration", async () => {
-  const start = await spawnPose();
-  const motion = await createMotion(start);
-  expect(motion.step(command(1, { forward: 1 })).velocityZ).toBeCloseTo(-0.89);
+  const collision = await loadBspCollision(floorBsp());
+  const start = await spawnPose(collision);
+  const motion = await createMotion(start, collision);
+  close(motion.step(command(1, { forward: 1 })).velocityZ, -0.89);
   for (let seq = 2; seq <= 20; seq++) motion.step(command(seq, { forward: 1 }));
-  expect(motion.pose().velocityZ).toBeCloseTo(-5.33);
-  expect(motion.step(command(21)).velocityZ).toBeGreaterThan(-5.33);
+  close(motion.pose().velocityZ, -5.33);
+  assert.ok(motion.step(command(21)).velocityZ > -5.33);
   for (let seq = 22; seq <= 60; seq++) motion.step(command(seq));
-  expect(motion.pose().velocityZ).toBeCloseTo(0);
+  close(motion.pose().velocityZ, 0);
 
   motion.reset({ ...start, y: 2, grounded: false, velocityX: 4 });
   for (let seq = 1; seq <= 10; seq++) motion.step(command(seq, { forward: 1 }));
-  expect(motion.pose().velocityZ).toBeCloseTo(-0.5);
-  expect(motion.pose().velocityX).toBeCloseTo(4);
+  close(motion.pose().velocityZ, -0.5);
+  close(motion.pose().velocityX, 4);
 });
 
 test("held jump preserves carried speed and re-launches on landing", async () => {
-  const start = await spawnPose();
-  const motion = await createMotion({ ...start, velocityZ: -10 });
+  const collision = await loadBspCollision(floorBsp());
+  const start = await spawnPose(collision);
+  const motion = await createMotion({ ...start, velocityZ: -10 }, collision);
   const launched = motion.step(command(1, { jump: true }));
-  expect(launched.verticalVelocity).toBeGreaterThan(0);
-  expect(launched.velocityZ).toBeCloseTo(-10);
+  assert.ok(launched.verticalVelocity > 0);
+  close(launched.velocityZ, -10);
   motion.reset(start);
   let hops = 0;
   let grounded = true;
@@ -233,27 +262,31 @@ test("held jump preserves carried speed and re-launches on landing", async () =>
     if (grounded && !pose.grounded && pose.verticalVelocity > 0) hops++;
     grounded = pose.grounded;
   }
-  expect(hops).toBeGreaterThanOrEqual(3);
+  assert.ok(hops >= 3);
 });
 
 test("steep ramp redirects falling velocity downhill without grounding", async () => {
-  const motion = await createMotion({
-    ...(await spawnPose()),
-    x: -4.1,
-    y: 1.6,
-    z: -2,
-    grounded: false,
-    velocityZ: 1.5,
-    verticalVelocity: -4,
-  });
+  const collision = await authoredCollision();
+  const motion = await createMotion(
+    {
+      ...(await spawnPose(collision)),
+      x: -4.1,
+      y: 1.95,
+      z: -2,
+      grounded: false,
+      velocityZ: 1.5,
+      verticalVelocity: -4,
+    },
+    collision,
+  );
   const start = motion.pose();
   for (let seq = 1; seq <= 12; seq++) {
-    expect(motion.step(command(seq, { jump: true })).grounded).toBe(false);
+    assert.equal(motion.step(command(seq, { jump: true })).grounded, false);
   }
   const slide = motion.pose();
-  expect(slide.verticalVelocity).toBeLessThan(0);
-  expect(slide.velocityX).toBeGreaterThan(1);
-  expect(slide.velocityZ).toBeCloseTo(1.5);
-  expect(slide.x).toBeGreaterThan(start.x + 0.2);
-  expect(slide.y).toBeLessThan(start.y - 0.5);
+  assert.ok(slide.verticalVelocity < 0);
+  assert.ok(slide.velocityX > 1);
+  close(slide.velocityZ, 1.5);
+  assert.ok(slide.x > start.x + 0.1);
+  assert.ok(slide.y < start.y - 0.3);
 });

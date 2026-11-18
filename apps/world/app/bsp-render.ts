@@ -3,12 +3,22 @@ import {
   type EmbeddedMapsScene,
 } from "@harrhy/worldview-renderer";
 import * as THREE from "three/webgpu";
-import { UNITS_PER_METRE as scale } from "../shared/hall-collision";
+import { UNITS_PER_METRE as scale } from "../shared/bsp-collision";
 import { billboardAtlasPath, loadBillboardLayout } from "./player-billboard";
-import type { createView } from "./render";
+import type { Pose } from "../shared/protocol";
 
-type View = Awaited<ReturnType<typeof createView>>;
-type Pose = Parameters<View["draw"]>[0];
+export type FloorPoint = { x: number; z: number };
+type View = {
+  draw(
+    local: Pose,
+    remotes: readonly Pose[],
+    destination?: FloorPoint,
+    avatar?: Pose,
+    orbitDistance?: number,
+  ): void;
+  pickFloor(x: number, y: number): FloorPoint | undefined;
+  dispose(): void;
+};
 type Layout = Awaited<ReturnType<typeof loadBillboardLayout>>;
 
 function bspPosition({

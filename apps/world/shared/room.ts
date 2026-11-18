@@ -7,49 +7,28 @@ import {
   query,
   removeEntity,
 } from "bitecs";
-import type { BspCollision } from "./bsp-collision";
-import { HALL_SPAWN } from "@harrhy/pool-simulation/geometry";
+import type { BspCollision } from "./bsp-collision.ts";
 import {
   motionPose,
   motionState,
   stepMotion,
   type MotionState,
-} from "./motion";
+} from "./motion.ts";
 import {
   validateInput,
   type InputCommand,
   type Pose,
   type Snapshot,
-} from "./protocol";
+} from "./protocol.ts";
 
-function spawn(id: string, index: number): Pose {
-  const slot = index % 48;
-  return {
-    id,
-    x: HALL_SPAWN.x + ((((slot % 9) + 4) % 9) - 4),
-    y: 0,
-    z: HALL_SPAWN.z - 2.5 - Math.floor(slot / 9),
-    yaw: 0,
-    pitch: 0,
-    ack: 0,
-    velocityX: 0,
-    velocityZ: 0,
-    verticalVelocity: 0,
-    grounded: true,
-    jumpHeld: false,
-    stepCooldown: 0,
-  };
-}
-
-export async function createRoom(collision?: BspCollision) {
-  const { halfHeight, sweep } = collision ?? {};
+export async function createRoom(collision: BspCollision) {
+  const { halfHeight, spawn, sweep } = collision;
   const ecs = createWorld();
   const Player = aos<
     (MotionState & { pending?: InputCommand[] }) | undefined
   >();
   const ids = new Map<string, number>();
   let tick = 0;
-  let nextSpawn = 0;
   let disposed = false;
 
   return {
@@ -61,7 +40,18 @@ export async function createRoom(collision?: BspCollision) {
       const eid = addEntity(ecs);
       addComponent(ecs, eid, Player);
       Player[eid] = motionState(
-        { ...spawn(id, nextSpawn++), ...collision?.spawn },
+        {
+          id,
+          ...spawn,
+          yaw: 0,
+          pitch: 0,
+          ack: 0,
+          velocityX: 0,
+          velocityZ: 0,
+          verticalVelocity: 0,
+          jumpHeld: false,
+          stepCooldown: 0,
+        },
         halfHeight,
       );
       ids.set(id, eid);
