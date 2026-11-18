@@ -1,3 +1,5 @@
+import { mountGraph } from "./force-graph.ts";
+import type { GraphData } from "./graph-data.ts";
 import { run } from "remix/component";
 const app = run({
   async loadModule() {
@@ -64,3 +66,28 @@ for (const type of ["pointerout", "focusout"] as const) {
       showChemistry(null, card.parentElement);
   });
 }
+
+let graphHost: HTMLElement | null = null;
+let disposeGraph: (() => void) | undefined;
+function syncGraph() {
+  const host = document.querySelector<HTMLElement>("[data-force-graph]");
+  if (host === graphHost) return;
+  disposeGraph?.();
+  graphHost = host;
+  if (!host) return;
+  const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "100%");
+  svg.setAttribute("height", "100%");
+  svg.setAttribute("aria-label", "Chemistry graph");
+  shadow.replaceChildren(svg);
+  disposeGraph = mountGraph(
+    svg,
+    JSON.parse(host.dataset.forceGraph ?? "{}") as GraphData,
+  );
+}
+new MutationObserver(syncGraph).observe(document.documentElement, {
+  childList: true,
+  subtree: true,
+});
+syncGraph();
