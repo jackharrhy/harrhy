@@ -145,18 +145,9 @@ const styles = css({
     objectFit: "contain",
   },
   "& [data-roster-card] h3": { margin: "6px 0 3px", fontSize: "15px" },
-  "& [data-card-stats]": {
-    display: "grid",
-    gridTemplateColumns: "repeat(3,1fr)",
-    gap: "2px",
-    textAlign: "center",
-    marginTop: "8px",
-    borderTop: "1px solid #bed4eb55",
-    padding: "5px 0 0",
-    fontSize: "11px",
-  },
-  "& [data-card-stats] b": { display: "block", fontSize: "15px" },
-  "& [data-badges]": { color: "#fff1a1", fontSize: "12px" },
+  "& [data-player-card]": { textAlign: "center" },
+  "& [data-player-card] [data-portrait]": { width: "40px", height: "40px" },
+  "& [data-badges]": { color: "#fff1a1", fontSize: "11px", minHeight: "16px" },
   "& [data-team-side]": {
     display: "flex",
     flexDirection: "column",
@@ -334,9 +325,8 @@ export function page(
       {players.map((p) => {
         const owner = team(p.team_id);
         const assignment = data.lineups.find((l) => l.player_id === p.id);
-        const stats = data.stats.find((s) => s.character === p.stats_character);
         return (
-          <article data-roster-card>
+          <article data-roster-card data-player-card>
             <div>
               {image("player", p.id, p.name)}
               <div data-badges>
@@ -352,17 +342,6 @@ export function page(
                   ? ` · ${assignment.fielding_position}`
                   : ""}
               </small>
-            </div>
-            <div data-card-stats aria-label="Character ratings">
-              <span>
-                BAT <b>{stats?.batting_css ?? "—"}</b>
-              </span>
-              <span>
-                FLD <b>{stats?.fielding_css ?? "—"}</b>
-              </span>
-              <span>
-                SPD <b>{stats?.speed_css ?? "—"}</b>
-              </span>
             </div>
           </article>
         );
