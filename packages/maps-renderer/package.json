@@ -30,10 +30,6 @@
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core.js"
     },
-    "./movement": {
-      "types": "./dist/movement.d.ts",
-      "import": "./dist/movement.js"
-    },
     "./element": {
       "types": "./dist/element/index.d.ts",
       "import": "./dist/element.js"
@@ -58,12 +54,16 @@
     "build": "vite build && vite build --config vite.standalone.config.ts && tsrs -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsrs -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm test && npm run build"
+    "check": "npm run typecheck && npm test && npm run build",
+    "prebuild": "npm run build --workspace @harrhy/schmovement",
+    "pretypecheck": "npm run build --workspace @harrhy/schmovement",
+    "pretest": "npm run build --workspace @harrhy/schmovement"
   },
   "dependencies": {
     "typegpu": "0.12.10",
     "wgpu-matrix": "^3.4.2",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@harrhy/schmovement": "0.1.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

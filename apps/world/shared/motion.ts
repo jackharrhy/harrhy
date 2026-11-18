@@ -2,7 +2,7 @@ import {
   DEFAULT_GOLDSRC_MOVEMENT,
   moveGoldSrcPlayerWithSweep,
   type GoldSrcMovementState,
-} from "@harrhy/worldview-renderer/movement";
+} from "@harrhy/schmovement";
 import { HALF_HEIGHT, sweepHall, UNITS_PER_METRE as SCALE } from "./hall-collision";
 import { TICK_SECONDS, type InputCommand, type Pose } from "./protocol";
 

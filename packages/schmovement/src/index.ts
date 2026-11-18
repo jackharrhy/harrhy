@@ -1,5 +1,4 @@
-import { cameraRight } from "./core/camera.js";
-import type { Vec3Tuple } from "./core/types.js";
+type Vec3Tuple = readonly [number, number, number];
 
 type MutableVec3 = [number, number, number];
 
@@ -135,7 +134,7 @@ function wishVelocity(
   const forwardAmount = Math.min(1, Math.max(-1, input.forward));
   const sideAmount = Math.min(1, Math.max(-1, input.side));
   const forward = [Math.cos(input.yaw), Math.sin(input.yaw), 0] as const;
-  const right = cameraRight(input.yaw);
+  const right = [Math.sin(input.yaw), -Math.cos(input.yaw)] as const;
   let x = forward[0] * forwardAmount + right[0] * sideAmount;
   let y = forward[1] * forwardAmount + right[1] * sideAmount;
   const magnitude = Math.hypot(x, y);

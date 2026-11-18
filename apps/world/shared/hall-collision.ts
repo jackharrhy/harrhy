@@ -1,5 +1,5 @@
 import { BAR, HALL, STOOLS } from "@harrhy/pool-simulation/geometry";
-import type { GoldSrcHullSweep } from "@harrhy/worldview-renderer/movement";
+import type { GoldSrcHullSweep } from "@harrhy/schmovement";
 import { SURF_RAMP } from "./surf-ramp";
 
 type Vec3 = readonly [number, number, number];

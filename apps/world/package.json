@@ -10,14 +10,15 @@
     "start": "bun dist/server/index.js",
     "dev": "npm run build && npm start",
     "test:browser": "node __tests__/browser-smoke.mjs",
-    "check": "npm run build:movement && npm run typecheck && npm test && npm run build",
-    "build:movement": "npm run build -w @harrhy/worldview-renderer",
-    "predev": "npm run build:movement"
+    "check": "npm run typecheck && npm test && npm run build",
+    "prebuild": "npm run build --workspace @harrhy/schmovement",
+    "pretypecheck": "npm run build --workspace @harrhy/schmovement",
+    "pretest": "npm run build --workspace @harrhy/schmovement"
   },
   "dependencies": {
     "@harrhy/pool-simulation": "0.1.0",
+    "@harrhy/schmovement": "0.1.0",
     "@harrhy/ui": "0.1.0",
-    "@harrhy/worldview-renderer": "0.2.0",
     "bitecs": "0.4.0",
     "remix": "3.2.0",
     "three": "0.187.0"

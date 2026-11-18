@@ -6,7 +6,7 @@ import {
   type GoldSrcMovementInput,
   type GoldSrcMovementResult as SweepResult,
   type GoldSrcMovementState,
-} from "../movement.js";
+} from "@harrhy/schmovement";
 
 export {
   createGoldSrcMovementState,
@@ -14,7 +14,7 @@ export {
   type GoldSrcMovementConfig,
   type GoldSrcMovementInput,
   type GoldSrcMovementState,
-} from "../movement.js";
+} from "@harrhy/schmovement";
 
 export type GoldSrcMovementResult = SweepResult<PlayerHullTraceResult>;
 

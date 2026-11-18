@@ -1,0 +1,26 @@
+{
+  "name": "@harrhy/schmovement",
+  "version": "0.1.0",
+  "description": "GoldSrc-style movement over a host-provided hull sweep",
+  "license": "MIT",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsrs -p tsconfig.json",
+    "test": "bun test __tests__",
+    "check": "npm run build && npm test"
+  }
+}
