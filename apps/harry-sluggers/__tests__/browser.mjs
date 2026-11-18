@@ -121,8 +121,23 @@ try {
   );
   assert.match(await page.locator("main").innerText(), /Mario/);
   await page.locator('select[name="theme"]').selectOption("frost-studio");
-  await page.getByRole("button", { name: "Apply style" }).click();
+  assert.equal(
+    await page.getByRole("button", { name: "Apply style" }).count(),
+    0,
+  );
   await page.waitForURL("**theme=frost-studio**");
+  assert.equal(new URL(page.url()).searchParams.get("q"), "Mario");
+  const card = page.locator("[data-player-card]").first();
+  assert.equal(
+    await card
+      .locator("h3 a")
+      .evaluate((el) => getComputedStyle(el).textDecorationLine),
+    "none",
+  );
+  assert.equal((await card.locator("[data-portrait]").boundingBox()).width, 56);
+  assert.ok(
+    await card.getByRole("img", { name: "Captain", exact: true }).count(),
+  );
   await page.waitForFunction(
     () => document.documentElement.dataset.theme === "frost-studio",
   );
