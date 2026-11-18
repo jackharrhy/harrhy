@@ -45,6 +45,12 @@ export type CommandTargetRow = {
 export function useCommandTargetRow(target: CommandTarget): CommandTargetRow {
 	const sources = useTargetSources();
 	const { type, id } = target;
+	const key = `${type}\n${id}\n${target.kind}\n${target.label}`;
+	// biome-ignore lint/correctness/useExhaustiveDependencies: key holds target by value, as in useCommandRouteTarget.
+	useEffect(() => {
+		if (same(sources.hovered, type, id)) sources.hovered = target;
+		if (same(sources.focused, type, id)) sources.focused = target;
+	}, [sources, key]);
 	useEffect(
 		() => () => {
 			if (same(sources.hovered, type, id)) sources.hovered = undefined;

@@ -15,7 +15,7 @@ function files(root) {
   });
 }
 test("retained source trees match the reviewed provenance", () => {
-  assert.equal(manifest.commit, "2a74fd2a6c78cce7f72d27655f4d132ecf2bf236");
+  assert.equal(manifest.commit, "c5ba02c3729d8b0a73fc4c5d36ba976e0ed60be0");
   for (const [directory, expected] of Object.entries(manifest.trees)) {
     const root = join(app, directory);
     const hash = createHash("sha256");

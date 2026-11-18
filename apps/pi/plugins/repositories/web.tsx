@@ -3,6 +3,7 @@ import { Access, BACKGROUND_CONTEXT, contribute, defineFacet, withCancel } from 
 import {
 	BranchIcon,
 	ConversationsIcon,
+	conversationRoute,
 	EyeIcon,
 	getNavigation,
 	inPage,
@@ -736,11 +737,19 @@ function LocationGroupRow({
 								href={
 									location.archived
 										? undefined
-										: href({ session: location.session, conversation: location.conversation, layers: [] })
+										: href({
+												session: location.session,
+												conversation: location.conversation,
+												exactConversation: true,
+												layers: [],
+											})
 								}
 								onActivate={() => {
 									if (!location.archived)
-										navigate({ session: location.session, conversation: location.conversation });
+										void getNavigation().closeThenPush((route) => ({
+											...conversationRoute(route, location.session, location.conversation),
+											exactConversation: true,
+										}));
 								}}
 								title={`${location.kind === "child" ? "Recorded subagent" : "Conversation"}${location.archived ? " · Archived" : ""} · ${location.cwd}`}
 								details={
