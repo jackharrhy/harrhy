@@ -232,6 +232,17 @@ export const refStyles = css({
     "background-size": "18px 18px",
     outline: "none",
   },
+  "& #card-picker": {
+    position: "absolute",
+    left: "12px",
+    top: "12px",
+    "max-width": "min(14em, 80%)",
+    "min-height": "28px",
+  },
+  "& .viewport:focus-visible, & #card-picker:focus-visible": {
+    outline: "3px solid #3767d6",
+    "outline-offset": "-3px",
+  },
   "& .viewport.drag-over": {
     "box-shadow": "inset 0 0 0 3px #799079",
   },
@@ -607,8 +618,9 @@ export const refStyles = css({
       padding: "0 10px",
       gap: "8px",
     },
-    "& .connection-text": {
-      display: "none",
+    "& .connection.online .connection-text": {
+      position: "absolute",
+      "clip-path": "inset(50%)",
     },
     "& .header-add, & .add-link-menu summary": {
       "--ui-action-padding": "8px",

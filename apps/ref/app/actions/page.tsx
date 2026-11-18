@@ -143,7 +143,7 @@ export function BoardPage(
             </form>
           </details>
           <div class="header-spacer"></div>
-          <div id="connection" class="connection connecting">
+          <div id="connection" class="connection connecting" role="status">
             <span class="connection-dot"></span>
             <span class="connection-text">Connecting</span>
           </div>
@@ -218,6 +218,9 @@ export function BoardPage(
                 +
               </button>
             </div>
+            <select id="card-picker" aria-label="Choose card" hidden>
+              <option value="">Choose card</option>
+            </select>
           </section>
           <aside id="inspector" class="inspector" hidden>
             <div class="inspector-top">
@@ -225,7 +228,7 @@ export function BoardPage(
               <button
                 id="inspector-close"
                 type="button"
-                aria-label="Close image details"
+                aria-label="Close card details"
               >
                 ×
               </button>

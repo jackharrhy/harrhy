@@ -1,5 +1,11 @@
 import assert from "node:assert/strict";
-import { chromium } from "@playwright/test";
+import {
+  installFrameGate,
+  checkUnconfirmedCard,
+  checkQueuedMove,
+  removeImageByKeyboard,
+} from "../__tests__/editor-browser.mjs";
+import { chromium, expect } from "@playwright/test";
 import {
   installWebMcpTestHost,
   checkWebMcpBrowser,
@@ -18,6 +24,7 @@ try {
   });
   const page = await context.newPage();
   await installWebMcpTestHost(page);
+  await installFrameGate(page);
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript(() => {
@@ -111,13 +118,20 @@ try {
 
   const second = await context.newPage();
   second.on("pageerror", (error) => errors.push(error.message));
+  await installFrameGate(second, "ready");
   await second.goto(`${base}/boards/${boardId}`);
+  await second.waitForFunction(() => !!window.refReleaseFrame);
+  await expect(second.locator(".connection-text")).toHaveText("Connecting");
+  await second.evaluate(() => window.refReleaseFrame());
   await second.locator("#connection.online").waitFor();
 
   const image = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==",
     "base64",
   );
+  await page.evaluate(() => {
+    window.refHoldFrame = "applied";
+  });
   await page.locator("#file-input").setInputFiles({
     name: "sample.png",
     mimeType: "image/png",
@@ -130,6 +144,7 @@ try {
     await second.locator(".board-item").getAttribute("data-item-id"),
     itemId,
   );
+  await checkUnconfirmedCard(page);
   await checkWebMcpBrowser(page, second, itemId);
   await page.locator(".board-item img[src]").waitFor();
   const mediaPath = await page
@@ -273,6 +288,8 @@ try {
     before,
   );
   await second.reload();
+  await second.waitForFunction(() => !!window.refReleaseFrame);
+  await second.evaluate(() => window.refReleaseFrame());
   await second.locator("#connection.online").waitFor();
   assert.notEqual(
     await second
@@ -282,10 +299,25 @@ try {
   );
 
   await page.locator("#link-menu summary").click();
+  // Miss the first link broadcast. The next link exposes a real sequence gap.
+  await second.evaluate(() => {
+    window.refHoldFrame = "applied";
+  });
   await page.locator("#link-url").fill("https://example.com/");
   await page.locator("#link-form button").click();
   await page.locator(".link-item").waitFor({ timeout: 20_000 });
-  await second.locator(".link-item").waitFor();
+  await second.waitForFunction(() => !!window.refReleaseFrame);
+  await second.evaluate(() => {
+    window.refReleaseFrame = null;
+    window.refHoldFrame = "ready";
+  });
+  const failedProbe = second.waitForResponse(
+    (response) =>
+      response.url().endsWith("/snapshot") && response.status() === 503,
+  );
+  await second.route("**/snapshot", (route) => route.fulfill({ status: 503 }), {
+    times: 1,
+  });
   assert.match(await page.locator(".link-card").innerText(), /example\.com/i);
   assert.equal(
     await page.evaluate(
@@ -316,6 +348,8 @@ try {
     );
   });
   await page.locator(".link-item").nth(1).waitFor({ timeout: 20_000 });
+  await failedProbe;
+  await checkQueuedMove(page, second, itemId);
   await second.locator(".link-item").nth(1).waitFor();
   await page.reload();
   await page.locator(".link-item").nth(1).waitFor();
@@ -330,8 +364,7 @@ try {
     "Renamed board",
   );
   await checkWebMcpRemoval(page, second);
-  await page.locator(`[data-item-id="${itemId}"]`).click();
-  await page.getByRole("button", { name: "Remove image" }).click();
+  await removeImageByKeyboard(page);
   await page
     .locator(`[data-item-id="${itemId}"]`)
     .waitFor({ state: "detached" });
@@ -359,7 +392,12 @@ try {
     }),
     true,
   );
-  await page.locator("#connection.offline").waitFor({ timeout: 5_000 });
+  await expect(page.locator(".connection-text")).toHaveText("Access ended");
+  await expect(addImages).toBeDisabled();
+  await expect(page.locator(".board-item")).toHaveCount(0);
+  await expect(
+    page.getByRole("link", { name: "Back to boards" }),
+  ).toBeVisible();
   assert.equal(
     (
       await context.request.get(`${base}/api/boards/${boardId}/snapshot`)
