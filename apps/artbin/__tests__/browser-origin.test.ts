@@ -1,4 +1,5 @@
 import { createServer, request as httpRequest } from "node:http";
+import { folders } from "#db";
 import { chromium } from "playwright";
 import { createRequestListener } from "remix/node-fetch-server";
 import { afterEach, beforeEach, expect, test, vi } from "vitest";
@@ -35,7 +36,10 @@ async function start(origin: string, path = "/auth/login") {
 
 test("starts and exchanges browser OAuth on its own host without sharing session cookies", async () => {
   const old = await start(canonical);
-  const browser = await start(alternate);
+  const browser = await start(
+    alternate,
+    "/auth/login?returnTo=%2Ffile%2Fmaps%2Ftower.bsp%3Fview%3Dall",
+  );
   expect(old.params.get("redirect_uri")).toBe(canonical + "/auth/callback");
   expect(browser.params.get("redirect_uri")).toBe(alternate + "/auth/callback");
   const token = vi.fn();
@@ -55,7 +59,7 @@ test("starts and exchanges browser OAuth on its own host without sharing session
       headers: { Cookie: `${old.cookie}; ${browser.cookie}` },
     }),
   );
-  expect(result.headers.get("location")).toBe("/folders");
+  expect(result.headers.get("location")).toBe("/file/maps/tower.bsp");
   expect(token).toHaveBeenCalledOnce();
   expect(token.mock.calls[0]![0].get("redirect_uri")).toBe(
     alternate + "/auth/callback",
@@ -196,14 +200,21 @@ test("Chromium keeps the alternate session on its own hostname and logs out by d
   vi.stubEnv("ARTBIN_URL", old);
   vi.stubEnv("HARRHY_ARTBIN_BROWSER_ORIGIN", next);
   try {
+    await harness.database.db
+      .insert(folders)
+      .values({ id: "maps", name: "Maps", slug: "maps" });
     const browser = await chromium.launch();
     try {
       const context = await browser.newContext();
       const page = await context.newPage();
       page.setDefaultTimeout(6000);
-      await page.goto(next + "/login?moved=1");
+      await page.goto(next + "/folder/maps?moved=1&view=map&unreviewed=1");
       await page.getByRole("link", { name: "Sign in" }).click();
-      await page.waitForURL(next + "/folders");
+      await page.waitForURL(next + "/folder/maps?moved=1");
+      await page.getByText("Artbin has a new browser address.").waitFor();
+      await page.goto(next + "/login?moved=1&returnTo=%2Ffolder%2Fmaps");
+      await page.waitForURL(next + "/folder/maps?moved=1");
+      await page.getByText("Artbin has a new browser address.").waitFor();
       expect(
         (await context.cookies(old)).some(
           ({ name }) => name === "artbin_session",
@@ -233,3 +244,47 @@ test("Chromium keeps the alternate session on its own hostname and logs out by d
     );
   }
 }, 30_000);
+
+test("only approved document paths are returned to; URL queries are not replayed", async () => {
+  for (const path of ["/folder/maps", "/file/maps/Tower%20one.bsp"]) {
+    const response = await router.fetch(
+      new Request(alternate + path + "?view=all&secret=discard", {
+        headers: { Accept: "text/html" },
+      }),
+    );
+    const login = new URL(response.headers.get("location")!, alternate);
+    expect(login.searchParams.get("returnTo")).toBe(path);
+  }
+  for (const request of [
+    new Request(alternate + "/folder/maps", {
+      method: "POST",
+      headers: { Accept: "text/html" },
+    }),
+    new Request(alternate + "/folder/maps", {
+      headers: { Accept: "application/json" },
+    }),
+  ]) {
+    expect((await router.fetch(request)).headers.get("location")).toBe(
+      "/login",
+    );
+  }
+  for (const returnTo of [
+    "//elsewhere.test",
+    "https://elsewhere.test",
+    "/auth/login",
+    "/api/assets",
+    "/mcp",
+    "/folder/../api/assets",
+    "/file/%2F%2Felsewhere.test",
+    "/folder/%5Celsewhere.test",
+  ]) {
+    const login = new URL("/login", alternate);
+    login.searchParams.set("returnTo", returnTo);
+    const response = await router.fetch(
+      new Request(login, {
+        headers: { Cookie: "artbin_session=member-session" },
+      }),
+    );
+    expect(response.headers.get("location"), returnTo).toBe("/folders");
+  }
+});

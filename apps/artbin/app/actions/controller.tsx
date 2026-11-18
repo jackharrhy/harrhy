@@ -14,7 +14,13 @@ import { MyUploadsPage } from "./my-uploads-page.tsx";
 import { Alert, ButtonLink } from "../ui/primitives.tsx";
 import { theme } from "../ui/styles.ts";
 import { serveFolderPreview, serveMediaFile } from "./media.ts";
-import { alternateBrowserOrigin, requestAuthority } from "#lib/oauth.server";
+import {
+  afterLogin,
+  bookmarkLogin,
+  bookmarkPath,
+  loginLink,
+  movedNotice,
+} from "../login-destination.ts";
 import { CliPage } from "./cli-page.tsx";
 
 const loginPageStyle = css({
@@ -56,7 +62,11 @@ export default createController(routes, {
     },
     home(context) {
       return redirect(
-        context.user ? routes.folders.href() : routes.login.href(),
+        loginLink(
+          context.user ? routes.folders.href() : routes.login.href(),
+          null,
+          movedNotice(context.request),
+        ),
         302,
       );
     },
@@ -65,11 +75,10 @@ export default createController(routes, {
     },
     async login(context) {
       const user = context.user;
-      if (user) return redirect(routes.folders.href(), 302);
-
-      const moved =
-        context.url.searchParams.get("moved") === "1" &&
-        alternateBrowserOrigin()?.host === requestAuthority(context.request);
+      const target = bookmarkPath(context.url.searchParams.get("returnTo"));
+      const moved = movedNotice(context.request);
+      if (user)
+        return redirect(afterLogin(context.request, target, moved), 302);
       const errorParam = context.url.searchParams.get("error");
       const errorMessage =
         errorParam === "access_denied"
@@ -82,14 +91,9 @@ export default createController(routes, {
         <Document title="Sign in - artbin">
           <main mix={loginPageStyle}>
             <h1 mix={loginTitleStyle}>artbin</h1>
-            {moved ? (
-              <Alert tone="info">
-                Artbin has a new browser address. Sign in here to continue.
-              </Alert>
-            ) : null}
             {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
             <ButtonLink
-              href={routes.auth.login.href()}
+              href={loginLink(routes.auth.login.href(), target, moved)}
               variant="primary"
               block
               document
@@ -121,11 +125,18 @@ export default createController(routes, {
       });
     },
     async file(context) {
-      if (!context.user) return redirect(routes.login.href(), 303);
+      if (!context.user) return redirect(bookmarkLogin(context.request), 303);
       const data = await loadFilePage(context.params.path, context.user);
       if (!data) return new Response("File not found", { status: 404 });
       if (data.page === "wad-redirect") {
-        return redirect(routes.folder.index.href({ path: data.path }), 302);
+        return redirect(
+          loginLink(
+            routes.folder.index.href({ path: data.path }),
+            null,
+            movedNotice(context.request),
+          ),
+          302,
+        );
       }
       return context.render(<FileRoutePage data={data} user={context.user} />);
     },

@@ -4,6 +4,7 @@ import { redirect } from "remix/response/redirect";
 import { getUserFromRequest, type RequestUser } from "#lib/auth.server";
 import { auditSupportMutation } from "#lib/support-login.server";
 
+import { bookmarkLogin } from "../login-destination.ts";
 import { routes } from "../routes.ts";
 
 export const userContext = createContextKey<RequestUser | null>();
@@ -28,9 +29,10 @@ export function loadUser(): Middleware<{
   };
 }
 
-export function requireUser(): Middleware {
+export function requireUser({ bookmarks = false } = {}): Middleware {
   return (context, next) => {
     if (!context.get(userContext)) {
+      if (bookmarks) return redirect(bookmarkLogin(context.request), 303);
       const returnTo = encodeURIComponent(
         context.url.pathname + context.url.search,
       );

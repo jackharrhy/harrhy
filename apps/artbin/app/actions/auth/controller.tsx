@@ -24,6 +24,11 @@ import {
   supportTargetEligibility,
 } from "#lib/support-login.server";
 
+import {
+  afterLogin,
+  bookmarkPath,
+  movedNotice,
+} from "../../login-destination.ts";
 import { routes } from "../../routes.ts";
 import { Document } from "../document.tsx";
 import { Button, ButtonLink } from "../../ui/primitives.tsx";
@@ -130,7 +135,12 @@ export default createController(routes.auth, {
         {
           "Set-Cookie": oauthCookie(
             cookieName,
-            JSON.stringify({ ...transaction, redirectUri }),
+            JSON.stringify({
+              ...transaction,
+              redirectUri,
+              returnTo: bookmarkPath(context.url.searchParams.get("returnTo")),
+              moved: movedNotice(context.request),
+            }),
             600,
           ),
         },
@@ -147,7 +157,11 @@ export default createController(routes.auth, {
 
       const redirectUri = browserRedirectUri(context.request);
       const oauthData = readOauthCookie<
-        LoginTransaction & { redirectUri?: string }
+        LoginTransaction & {
+          redirectUri?: string;
+          returnTo?: string;
+          moved?: boolean;
+        }
       >(context.request, cookieName);
       if (!oauthData)
         return terminalLoginError("missing_oauth_state", cookieName);
@@ -185,7 +199,10 @@ export default createController(routes.auth, {
         const headers = new Headers();
         headers.append("Set-Cookie", clearOauthCookie(cookieName));
         headers.append("Set-Cookie", getSessionCookie(sessionId));
-        return redirectWithHeaders(routes.folders.href(), headers);
+        return redirectWithHeaders(
+          afterLogin(context.request, oauthData.returnTo, oauthData.moved),
+          headers,
+        );
       } catch (error) {
         log.error(error instanceof Error ? error : new Error(String(error)), {
           step: "oauth-callback",
