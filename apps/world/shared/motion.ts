@@ -3,6 +3,7 @@ import {
   moveGoldSrcPlayerWithSweep,
   type GoldSrcMovementState,
 } from "@harrhy/schmovement";
+import type { BspCollision } from "./bsp-collision";
 import { HALF_HEIGHT, sweepHall, UNITS_PER_METRE as SCALE } from "./hall-collision";
 import { TICK_SECONDS, type InputCommand, type Pose } from "./protocol";
 
@@ -21,11 +22,11 @@ export type MotionState = {
   ack: number;
 };
 
-export function motionState(pose: Pose): MotionState {
+export function motionState(pose: Pose, halfHeight = HALF_HEIGHT): MotionState {
   return {
     id: pose.id,
     movement: {
-      origin: [-pose.z * SCALE, -pose.x * SCALE, (pose.y + HALF_HEIGHT) * SCALE],
+      origin: [-pose.z * SCALE, -pose.x * SCALE, (pose.y + halfHeight) * SCALE],
       velocity: [-pose.velocityZ * SCALE, -pose.velocityX * SCALE, pose.verticalVelocity * SCALE],
       onGround: pose.grounded,
       jumpHeld: pose.jumpHeld,
@@ -36,12 +37,12 @@ export function motionState(pose: Pose): MotionState {
   };
 }
 
-export function motionPose(state: MotionState): Pose {
+export function motionPose(state: MotionState, halfHeight = HALF_HEIGHT): Pose {
   const { origin, velocity, onGround, jumpHeld } = state.movement;
   return {
     id: state.id,
     x: -origin[1] / SCALE,
-    y: origin[2] / SCALE - HALF_HEIGHT,
+    y: origin[2] / SCALE - halfHeight,
     z: -origin[0] / SCALE,
     yaw: state.yaw,
     pitch: state.pitch,
@@ -55,9 +56,9 @@ export function motionPose(state: MotionState): Pose {
   };
 }
 
-export function stepMotion(state: MotionState, cmd?: InputCommand) {
+export function stepMotion(state: MotionState, cmd?: InputCommand, sweep = sweepHall) {
   state.movement = moveGoldSrcPlayerWithSweep(
-    sweepHall,
+    sweep,
     state.movement,
     {
       forward: cmd?.forward ?? 0,
@@ -75,24 +76,25 @@ export function stepMotion(state: MotionState, cmd?: InputCommand) {
   }
 }
 
-export async function createMotion(initial: Pose) {
-  let state = motionState(initial);
+export async function createMotion(initial: Pose, collision?: BspCollision) {
+  const { halfHeight, sweep } = collision ?? {};
+  let state = motionState(initial, halfHeight);
   return {
     step(cmd: InputCommand): Pose {
-      stepMotion(state, cmd);
-      return motionPose(state);
+      stepMotion(state, cmd, sweep);
+      return motionPose(state, halfHeight);
     },
     reset(pose: Pose) {
-      state = motionState(pose);
+      state = motionState(pose, halfHeight);
     },
     reconcile(authoritative: Pose, pending: readonly InputCommand[]): Pose {
-      state = motionState(authoritative);
+      state = motionState(authoritative, halfHeight);
       for (const cmd of pending) {
-        if (cmd.seq > state.ack) stepMotion(state, cmd);
+        if (cmd.seq > state.ack) stepMotion(state, cmd, sweep);
       }
-      return motionPose(state);
+      return motionPose(state, halfHeight);
     },
-    pose: () => motionPose(state),
+    pose: () => motionPose(state, halfHeight),
     dispose() {},
   };
 }

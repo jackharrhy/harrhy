@@ -7,6 +7,7 @@ import {
   query,
   removeEntity,
 } from "bitecs";
+import type { BspCollision } from "./bsp-collision";
 import { HALL_SPAWN } from "@harrhy/pool-simulation/geometry";
 import { motionPose, motionState, stepMotion, type MotionState } from "./motion";
 import { validateInput, type InputCommand, type Pose, type Snapshot } from "./protocol";
@@ -30,7 +31,8 @@ function spawn(id: string, index: number): Pose {
   };
 }
 
-export async function createRoom() {
+export async function createRoom(collision?: BspCollision) {
+  const { halfHeight, sweep } = collision ?? {};
   const ecs = createWorld();
   const Player = aos<MotionState & { pending?: InputCommand[] }>();
   const ids = new Map<string, number>();
@@ -42,12 +44,12 @@ export async function createRoom() {
     join(id: string): Pose {
       if (disposed) throw new Error("Room is disposed");
       const existing = ids.get(id);
-      if (existing !== undefined) return motionPose(Player[existing]);
+      if (existing !== undefined) return motionPose(Player[existing], halfHeight);
       const eid = addEntity(ecs);
       addComponent(ecs, eid, Player);
-      Player[eid] = motionState(spawn(id, nextSpawn++));
+      Player[eid] = motionState({ ...spawn(id, nextSpawn++), ...collision?.spawn }, halfHeight);
       ids.set(id, eid);
-      return motionPose(Player[eid]);
+      return motionPose(Player[eid], halfHeight);
     },
     leave(id: string): boolean {
       const eid = ids.get(id);
@@ -72,14 +74,16 @@ export async function createRoom() {
       if (disposed) throw new Error("Room is disposed");
       for (const eid of query(ecs, [Player])) {
         const player = Player[eid];
-        stepMotion(player, player.pending?.shift());
+        stepMotion(player, player.pending?.shift(), sweep);
       }
       tick++;
     },
     snapshot(): Snapshot {
       return {
         tick,
-        players: disposed ? [] : Array.from(query(ecs, [Player]), (eid) => motionPose(Player[eid])),
+        players: disposed
+          ? []
+          : Array.from(query(ecs, [Player]), (eid) => motionPose(Player[eid], halfHeight)),
       };
     },
     dispose() {

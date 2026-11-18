@@ -2,6 +2,11 @@ export const TICK_HZ = 60;
 export const TICK_SECONDS = 1 / TICK_HZ;
 export const TICK_MS = TICK_SECONDS * 1000;
 
+export const LEGACY_MAP_REVISION = "legacy-v1";
+export const BSP_MAP_PATH = "/maps/hall.bsp";
+
+export type MapReady = { status: "ready"; map: "legacy" | "bsp"; revision: string };
+
 export type InputCommand = {
   seq: number;
   forward: number;
@@ -31,7 +36,7 @@ export type Pose = {
 export type Snapshot = { tick: number; players: Pose[] };
 
 export type ServerMessage =
-  | { type: "welcome"; id: string }
+  | { type: "welcome"; id: string; revision: string }
   | { type: "joined"; id: string }
   | { type: "left"; id: string }
   | { type: "roster"; ids: string[] }

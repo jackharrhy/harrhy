@@ -3,7 +3,19 @@ import { chromium, expect } from "@playwright/test";
 
 const url = process.env.HARRHY_WORLD_TEST_URL ?? "http://127.0.0.1:3189/?renderer=webgl";
 const browser = await chromium.launch({
-  args: ["--enable-unsafe-webgpu", "--enable-unsafe-swiftshader", "--use-angle=swiftshader"],
+  args: [
+    "--enable-unsafe-webgpu",
+    "--enable-unsafe-swiftshader",
+    "--use-angle=swiftshader",
+    ...(process.env.HARRHY_WORLD_TEST_BSP
+      ? [
+          "--enable-features=Vulkan",
+          "--use-vulkan=swiftshader",
+          "--use-webgpu-adapter=swiftshader",
+          "--disable-vulkan-surface",
+        ]
+      : []),
+  ],
 });
 const errors = [];
 try {
@@ -15,7 +27,7 @@ try {
   });
   let otherPose;
   other.on("websocket", (socket) => {
-    if (!socket.url().endsWith("/room")) return;
+    if (new URL(socket.url()).pathname !== "/room") return;
     let id;
     socket.on("framereceived", ({ payload }) => {
       const message = JSON.parse(payload.toString());
@@ -27,7 +39,7 @@ try {
   let self;
   const samples = [];
   page.on("websocket", (value) => {
-    if (!value.url().endsWith("/room")) return;
+    if (new URL(value.url()).pathname !== "/room") return;
     socket = value;
     value.on("framereceived", ({ payload }) => {
       const message = JSON.parse(payload.toString());

@@ -15,3 +15,5 @@ Movement uses ground friction, capped wish-direction air acceleration and steep-
 - `server/index.ts` owns admission, roster, simulation ticks and snapshots. The preview uses one same-origin WebSocket with separate roster and motion messages. It reuses Gurgur's motion/prediction principles, not its WebRTC transport. Rejoining assigns a new ephemeral identity.
 
 `npm run check --workspace @harrhy/world` typechecks, tests authoritative motion and builds both bundles. With the built app running on loopback, `npm run test:browser --workspace @harrhy/world` drives two Chromium clients and checks desktop click and simulated mobile tap movement, FPS mode, departure and rejoin. Set `HARRHY_WORLD_TEST_URL` for a different disposable instance.
+
+For the authored hall use `HARRHY_WORLD_MAP=bsp npm run dev --workspace @harrhy/world`. This mode requires WebGPU and serves the same BSP bytes it uses for collision. See [Editing the Hall](content/README.md). The default legacy room retains the Three renderer.

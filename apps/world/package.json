@@ -6,19 +6,20 @@
   "scripts": {
     "typecheck": "tsrs -p tsconfig.json --noEmit",
     "test": "bun test __tests__/room.test.ts",
-    "build": "vite build && bun build server/index.ts --target=bun --outdir dist/server",
+    "build": "vite build && node scripts/copy-map.mjs && bun build server/index.ts --target=bun --outdir dist/server",
     "start": "bun dist/server/index.js",
     "dev": "npm run build && npm start",
     "test:browser": "node __tests__/browser-smoke.mjs",
     "check": "npm run typecheck && npm test && npm run build",
-    "prebuild": "npm run build --workspace @harrhy/schmovement",
-    "pretypecheck": "npm run build --workspace @harrhy/schmovement",
-    "pretest": "npm run build --workspace @harrhy/schmovement"
+    "prebuild": "npm run build --workspace @harrhy/worldview-renderer",
+    "pretypecheck": "npm run build --workspace @harrhy/worldview-renderer",
+    "pretest": "npm run build --workspace @harrhy/worldview-renderer"
   },
   "dependencies": {
     "@harrhy/pool-simulation": "0.1.0",
     "@harrhy/schmovement": "0.1.0",
     "@harrhy/ui": "0.1.0",
+    "@harrhy/worldview-renderer": "0.2.0",
     "bitecs": "0.4.0",
     "remix": "3.2.0",
     "three": "0.187.0"

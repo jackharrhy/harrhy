@@ -49,3 +49,5 @@ export type {
   MapsMovementUpdate,
   MapsViewer,
 } from "./viewer/types.js";
+
+export { createEmbeddedMapsScene, type EmbeddedMapsScene } from "./render/embedded-scene.js";

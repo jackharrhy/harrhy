@@ -1,4 +1,6 @@
 import { expect, test } from "bun:test";
+import { makeBsp } from "../../../packages/maps-renderer/__tests__/fixtures";
+import { loadBspCollision } from "../shared/bsp-collision";
 import { createMotion } from "../shared/motion";
 import { parseInput, TICK_HZ, validateInput, type InputCommand } from "../shared/protocol";
 import { createRoom } from "../shared/room";
@@ -108,6 +110,53 @@ test("Authority and predictor agree on yaw-relative motion, jump, landing and wa
     expect(peak).toBeWithin(1, 1.5);
     expect(final.y).toBeCloseTo(0, 1);
     expect(final.x).toBeWithin(-5.3, -5.15);
+  } finally {
+    predictor.dispose();
+    room.dispose();
+  }
+});
+
+function floorBsp(version: 29 | 30 = 30, origin = "120 -60 48") {
+  return new Uint8Array(
+    makeBsp({
+      version,
+      collision: true,
+      entityText: `{ "classname" "worldspawn" }\n{ "classname" "info_player_start" "origin" "${origin}" }\0`,
+    }),
+  ).buffer;
+}
+
+test("BSP30 revision identifies loaded bytes and requires a valid standing spawn", async () => {
+  const a = await loadBspCollision(floorBsp());
+  expect(a.revision).toMatch(/^bsp30-v1-[0-9a-f]{64}$/);
+  expect((await loadBspCollision(floorBsp())).revision).toBe(a.revision);
+  expect((await loadBspCollision(floorBsp(30, "121 -60 48"))).revision).not.toBe(a.revision);
+  await expect(loadBspCollision(floorBsp(29))).rejects.toThrow("BSP30");
+  await expect(loadBspCollision(floorBsp(30, "120 -60 0"))).rejects.toThrow("walkable ground");
+});
+
+test("BSP authority and prediction agree on hull-1 spawn, jumping and landing", async () => {
+  const bytes = floorBsp();
+  const room = await createRoom(await loadBspCollision(bytes));
+  const initial = room.join("bsp");
+  const predictor = await createMotion(initial, await loadBspCollision(bytes));
+  try {
+    expect(initial).toMatchObject({ x: 1, z: -2, grounded: true });
+    expect(initial.y).toBeCloseTo(0, 2);
+    let peak = initial.y;
+    for (let seq = 1; seq <= 180; seq++) {
+      // The fixture has a floor but no walls, unlike the analytic hall.
+      const cmd = command(seq, { forward: 1, jump: seq === 15 });
+      room.input("bsp", cmd);
+      room.step();
+      const pose = room.snapshot().players[0];
+      expect(predictor.step(cmd)).toEqual(pose);
+      peak = Math.max(peak, pose.y);
+    }
+    expect(peak).toBeGreaterThan(1);
+    expect(predictor.pose().z).toBeLessThan(-12);
+    expect(predictor.pose().grounded).toBe(true);
+    expect(predictor.pose().y).toBeCloseTo(0, 2);
   } finally {
     predictor.dispose();
     room.dispose();

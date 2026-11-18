@@ -1,0 +1,22 @@
+@SolidClass = worldspawn : "Hall envelope and static geometry"
+[
+  message(string) : "Map title" : "Hall"
+  mapversion(integer) : "Valve map version" : 220
+  wad(string) : "Material WADs" : "hall.wad"
+  _minlight(integer) : "Minimum light" : 35
+]
+
+@PointClass color(80 180 255) size(-16 -16 -36, 16 16 36) = info_player_start : "Default spawn"
+[
+  angle(angle) : "Yaw" : 0
+]
+
+@PointClass color(255 215 150) size(-8 -8 -8, 8 8 8) = light : "Baked point light"
+[
+  _light(color255) : "RGB and intensity" : "255 225 195 370"
+  delay(choices) : "Falloff" : 2 = [
+    0 : "Linear"
+    1 : "Inverse distance"
+    2 : "Inverse square"
+  ]
+]

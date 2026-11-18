@@ -1,6 +1,13 @@
 import { createView, type FloorPoint } from "./render";
+import { loadBspCollision } from "../shared/bsp-collision";
 import { createMotion } from "../shared/motion";
-import { TICK_MS, type InputCommand, type Pose, type ServerMessage } from "../shared/protocol";
+import {
+  LEGACY_MAP_REVISION,
+  TICK_MS,
+  type InputCommand,
+  type Pose,
+  type ServerMessage,
+} from "../shared/protocol";
 
 const movementKeys = new Set([
   "KeyW",
@@ -47,7 +54,20 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
 
   async function run(signal: AbortSignal) {
     status.textContent = "Preparing the hall…";
-    const view = await createView(canvas);
+    const health = await fetch("/healthz", { signal, cache: "no-store" });
+    if (!health.ok) throw Error("The room is not ready");
+    const { revision } = (await health.json()) as { revision: string };
+    const mapResponse =
+      revision === LEGACY_MAP_REVISION ? undefined : await fetch("/maps/hall.bsp", { signal });
+    if (mapResponse && !mapResponse.ok) throw Error("Could not load the authored hall");
+    const bytes = await mapResponse?.arrayBuffer();
+    const collision = bytes ? await loadBspCollision(bytes) : undefined;
+    if (collision && collision.revision !== revision)
+      throw Error("The hall changed during loading; reload to join");
+    if (signal.aborted) return;
+    const view = bytes
+      ? await (await import("./bsp-render")).createBspView(canvas, bytes)
+      : await createView(canvas);
     if (signal.aborted) return view.dispose();
     let frame = 0,
       reconnect = 0;
@@ -133,7 +153,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       if (signal.aborted) return;
       status.textContent = "Connecting to the hall…";
       const socket = new WebSocket(
-        `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/room`,
+        `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/room?revision=${encodeURIComponent(revision)}`,
       );
       ws = socket;
       socket.addEventListener("message", (event) => {
@@ -162,7 +182,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             correction = self;
             if (predicted || starting) break;
             starting = true;
-            void createMotion(self)
+            void createMotion(self, collision)
               .then((motion) => {
                 if (signal.aborted || ws !== socket || socket.readyState !== WebSocket.OPEN)
                   return motion.dispose();
