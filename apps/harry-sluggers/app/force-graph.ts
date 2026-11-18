@@ -113,6 +113,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
         drawEdges();
       });
   }
+  const rendered = new Map<string, { x: number; y: number }>();
   function drawEdges() {
     if (!context) return;
     const w = Math.round(element.clientWidth * scale),
@@ -150,10 +151,11 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
             (from.id === active || to.id === active) !== emphasized
           )
             continue;
-          const x = from.x ?? 0,
-            y = from.y ?? 0,
-            endX = to.x ?? 0,
-            endY = to.y ?? 0;
+          const start = rendered.get(from.id),
+            end = rendered.get(to.id);
+          if (!start || !end) continue;
+          const { x, y } = start,
+            { x: endX, y: endY } = end;
           const length = Math.hypot(endX - x, endY - y);
           if (length < 26) continue;
           const ux = (endX - x) / length,
@@ -176,6 +178,24 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     }
   }
 
+  let settleFrame = 0;
+  function settle() {
+    cancelAnimationFrame(settleFrame);
+    simulation.stop().alphaTarget(0).alpha(0.7);
+    function step() {
+      const deadline = performance.now() + 3;
+      do {
+        simulation.tick();
+      } while (simulation.alpha() > 0.025 && performance.now() < deadline);
+      if (simulation.alpha() > 0.025) settleFrame = requestAnimationFrame(step);
+      else {
+        settleFrame = 0;
+        draw();
+      }
+    }
+    settleFrame = requestAnimationFrame(step);
+  }
+
   // Draw nodes
   const node = g
     .append("g")
@@ -189,6 +209,8 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
       d3
         .drag<SVGGElement, GraphNode>()
         .on("start", (event, d) => {
+          cancelAnimationFrame(settleFrame);
+          settleFrame = 0;
           if (!event.active) simulation.alphaTarget(0.3).restart();
           d.fx = d.x;
           d.fy = d.y;
@@ -236,6 +258,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     .text((d) => d.character);
 
   function draw() {
+    for (const d of nodes) rendered.set(d.id, { x: d.x ?? 0, y: d.y ?? 0 });
     scheduleEdges();
     node.attr("transform", (d) => `translate(${d.x},${d.y})`);
   }
@@ -333,7 +356,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
         nodes.filter((d) => visibleNode(d.id)),
         visibleLinks,
       );
-      simulation.alpha(0.7).restart();
+      settle();
       canvas.dataset.positive = String(
         visibleLinks.filter((edge) => edge.type === "positive").length,
       );
@@ -347,6 +370,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     },
     dispose() {
       simulation.stop();
+      cancelAnimationFrame(settleFrame);
       resize.disconnect();
       cancelAnimationFrame(edgeFrame);
       canvas.remove();
