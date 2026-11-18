@@ -151,12 +151,39 @@ const styles = css({
     objectFit: "contain",
   },
   "& [data-roster-card] h3": { margin: "6px 0 3px", fontSize: "15px" },
-  "& [data-player-card]": { textAlign: "center" },
-  "& [data-player-card] [data-portrait]": { width: "40px", height: "40px" },
-  "& [data-badges]": {
-    color: "var(--hui-accent)",
+  "& [data-catalogue-grid]": { gap: "8px" },
+  "& [data-roster-grid] [data-player-card]": {
+    textAlign: "center",
+    padding: "6px 8px",
+    gap: "2px",
+  },
+  "& [data-player-card] [data-portrait]": { width: "56px", height: "56px" },
+  "& [data-player-card] h3": { margin: "2px 0 0" },
+  "& [data-player-card] h3 a": { textDecoration: "none" },
+  "& [data-portrait-lockup]": {
+    display: "inline-grid",
+    position: "relative",
+    justifySelf: "center",
+  },
+  "& [data-player-mark]": {
+    position: "absolute",
+    display: "grid",
+    placeItems: "center",
+    width: "18px",
+    height: "18px",
     fontSize: "11px",
-    minHeight: "16px",
+    fontWeight: 700,
+    borderRadius: "4px",
+    background: "var(--lab-inset-surface)",
+    color: "var(--hui-accent)",
+    bottom: 0,
+  },
+  "& [data-player-mark=captain]": { left: "-9px" },
+  "& [data-player-mark=star]": { right: "-9px" },
+  "& [data-player-mark] svg": {
+    width: "12px",
+    height: "12px",
+    fill: "currentColor",
   },
   "& [data-team-side]": {
     display: "flex",
@@ -342,12 +369,30 @@ export function page(
         const assignment = data.lineups.find((l) => l.player_id === p.id);
         return (
           <article data-roster-card data-player-card>
-            <div>
+            <div data-portrait-lockup>
               {image("player", p.id, p.name)}
-              <div data-badges>
-                {owner?.captain_id === p.id ? "Captain " : ""}
-                {assignment?.is_starred ? "Starred" : ""}
-              </div>
+              {owner?.captain_id === p.id && (
+                <span
+                  data-player-mark="captain"
+                  role="img"
+                  aria-label="Captain"
+                  title="Captain"
+                >
+                  C
+                </span>
+              )}
+              {assignment?.is_starred && (
+                <span
+                  data-player-mark="star"
+                  role="img"
+                  aria-label="Starred"
+                  title="Starred"
+                >
+                  <svg viewBox="0 0 20 20" aria-hidden="true">
+                    <path d="m10 1 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L1 7.6l6.2-.9Z" />
+                  </svg>
+                </span>
+              )}
             </div>
             <div>
               <h3>{playerLink(p.id)}</h3>
@@ -1109,7 +1154,7 @@ export function document(title: string, body: RemixNode, url: URL) {
           <form method="get">
             <label>
               Style{" "}
-              <select name="theme" defaultValue={concept.id}>
+              <select data-theme-picker name="theme" defaultValue={concept.id}>
                 {concepts.map((c) => (
                   <option value={c.id}>{c.name}</option>
                 ))}
@@ -1120,7 +1165,6 @@ export function document(title: string, body: RemixNode, url: URL) {
               .map(([key, value]) => (
                 <input type="hidden" name={key} value={value} />
               ))}
-            <button>Apply style</button>
           </form>
           <nav aria-label="League">
             <a href="/">Home</a>

@@ -5,3 +5,13 @@ const app = run({
   },
 });
 await app.ready();
+
+document.addEventListener("change", (event) => {
+  const select = event.target;
+  if (
+    select instanceof HTMLSelectElement &&
+    select.matches("[data-theme-picker]")
+  ) {
+    select.form?.requestSubmit();
+  }
+});
