@@ -24,6 +24,9 @@ try {
     .getByRole("link", { name: "Chemistry Graph", exact: true })
     .click();
   const node = page.locator("[data-force-graph] g[role=button]").first();
+  await node.hover();
+  assert.equal(await node.getAttribute("aria-pressed"), "false");
+  assert.equal(await node.getAttribute("opacity"), "1");
   await node.press("Enter");
   assert.equal(await node.getAttribute("aria-pressed"), "true");
   const canvas = page.locator("[data-force-graph] canvas");
