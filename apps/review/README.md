@@ -1,4 +1,4 @@
-# Harrhy Review
+# review
 
 A local inbox for reviewing synthetic Git diffs. `review submit` resolves two commits and captures a PR-style merge-base-to-head patch. The Worker receives only commit IDs and patch text, not a repository path or a command. Moving either ref does not change a saved review.
 

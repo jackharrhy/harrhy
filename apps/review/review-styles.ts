@@ -69,7 +69,6 @@ export const reviewStyles = css({
     textDecoration: "none",
     fontWeight: 730,
   },
-  "& .brand svg": { color: "#375e72" },
   "& .workspace": {
     width: "min(100%, 110rem)",
     marginInline: "auto",

@@ -12,25 +12,14 @@ function Document(handle: Handle<{ detail: boolean }>) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>Harrhy Review</title>
+        <title>review</title>
         <script type="module" src="/browser.js"></script>
       </head>
       <body>
         <header class="masthead">
           <a class="brand" href="/">
-            <svg
-              aria-hidden="true"
-              viewBox="0 0 24 24"
-              width="24"
-              height="24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.7"
-            >
-              <path d="M6 4v16m0-8h5a5 5 0 0 0 5-5V4m0 16v-4" />
-              <circle cx="16" cy="16" r="2" fill="currentColor" />
-            </svg>
-            Harrhy Review
+            <span aria-hidden="true">🔍</span>
+            review
           </a>
           <span class="muted">Local workspace</span>
         </header>

@@ -544,7 +544,7 @@ async function main(root: HTMLElement) {
     const retry = button("Retry", "retry");
     retry.addEventListener("click", () => location.reload());
     root.replaceChildren(
-      node("h1", "", "Harrhy Review"),
+      node("h1", "", "review"),
       node("div", "panel inset", notice, node("div", "row", retry, link("Review inbox", "/"))),
     );
   }
