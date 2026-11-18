@@ -87,7 +87,7 @@ export async function createArchiveApp(
         if (
           !assetRoot ||
           !assets.has(name) ||
-          !/^(?:(?:player|team)-[1-9]\d{0,8}\.png|(?:cezanne|rodin|happiness|bolt)\.woff2)$/.test(
+          !/^(?:(?:player(?:-side)?|team)-[1-9]\d{0,8}\.png|(?:cezanne|rodin|happiness|bolt)\.woff2)$/.test(
             name,
           )
         )
