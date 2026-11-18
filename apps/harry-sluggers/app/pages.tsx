@@ -32,12 +32,19 @@ const styles = css({
     margin: "auto",
     padding: "20px",
   },
-  "& header": {
+  "& [data-topbar]": {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: "20px",
+    gap: "8px 40px",
+    padding: "16px",
     borderBottom: "1px solid var(--hui-border)",
+  },
+  "& [data-topbar] nav": { gap: "0 32px" },
+  "& [data-topbar] nav a:not([aria-current])": { textDecoration: "none" },
+  "@media (max-width: 767px)": {
+    "& [data-topbar]": { gap: "4px 16px" },
+    "& [data-topbar] nav": { flexBasis: "100%", gap: "0 16px" },
   },
   "& nav": { display: "flex", flexWrap: "wrap", gap: "16px" },
   "& nav a, & button, & select": {
@@ -71,9 +78,10 @@ const styles = css({
   "& h2": { fontSize: "22px", margin: "0 0 16px" },
   "& p": { maxWidth: "72ch" },
   "& [data-brand]": {
-    fontSize: "22px",
+    fontSize: "20px",
+    fontWeight: 700,
+    fontFamily: "SluggersHappiness, var(--hui-font-display)",
     textDecoration: "none",
-    marginRight: "auto",
   },
   "& [data-columns]": {
     display: "grid",
@@ -1733,14 +1741,15 @@ export function document(title: string, body: RemixNode, url: URL) {
         <a href="#main" data-skip>
           Skip to content
         </a>
-        <header>
-          <a data-brand href="/">
-            Harry Sluggers
-          </a>
+        <header data-topbar>
           <form method="get">
             <label>
-              Style{" "}
-              <select data-theme-picker name="theme" defaultValue={concept.id}>
+              <select
+                aria-label="Style"
+                data-theme-picker
+                name="theme"
+                defaultValue={concept.id}
+              >
                 {concepts.map((c) => (
                   <option value={c.id}>{c.name}</option>
                 ))}
@@ -1752,14 +1761,38 @@ export function document(title: string, body: RemixNode, url: URL) {
                 <input type="hidden" name={key} value={value} />
               ))}
           </form>
+          <a data-brand href="/">
+            @harrhy/sluggers
+          </a>
           <nav aria-label="League">
-            <a href="/">Home</a>
-            <a href="/players">Players</a>
-            <a href="/teams">Teams</a>
-            <a href="/matches">Matches</a>
-            <a href="/draft">Draft</a>
-            <a href="/events">Events</a>
-            <a href="/trades">Trades</a>
+            {[
+              ["/", "Home"],
+              ["/teams", "Teams"],
+              ["/players", "Players"],
+              ["/events", "Events"],
+              ["/matches", "Matches"],
+              ["/draft", "Drafting"],
+              ["/trades", "Trading"],
+            ].map(([href, label]) => {
+              const active =
+                url.pathname === href ||
+                (href !== "/" && url.pathname.startsWith(`${href}/`)) ||
+                (href === "/matches" && url.pathname.startsWith("/days/"));
+              return (
+                <a
+                  href={href}
+                  aria-current={
+                    active
+                      ? url.pathname === href
+                        ? "page"
+                        : "location"
+                      : undefined
+                  }
+                >
+                  {label}
+                </a>
+              );
+            })}
           </nav>
         </header>
         <main id="main">
