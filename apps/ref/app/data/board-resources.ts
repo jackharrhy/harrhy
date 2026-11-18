@@ -47,22 +47,18 @@ export async function uploadBoardImage(
     "asset.content_type": type,
   });
   const objectKey = `boards/${boardId}/${assetId}`;
-  await runtime.media.put(objectKey, await file.arrayBuffer(), {
-    httpMetadata: { contentType: type },
-  });
   const filename = file.name.slice(0, 160) || "Image";
-  try {
-    await runtime.board(boardId).recordAsset(boardId, {
+  await runtime.board(boardId).storeAsset(
+    boardId,
+    {
       id: assetId,
       objectKey,
       filename,
       contentType: type,
       size: file.size,
-    });
-  } catch (error) {
-    await runtime.media.delete(objectKey);
-    throw error;
-  }
+    },
+    await file.arrayBuffer(),
+  );
   return {
     ok: true,
     value: { assetId, filename, url: `/media/${boardId}/${assetId}` },
@@ -106,9 +102,23 @@ export async function saveBoardLink(
       message: "The post did not provide a usable preview yet",
       status: 422,
     };
-  const preview = await (log?.time("preview.cache", () =>
-    cachePreviewImage(fetched, runtime.media, boardId),
-  ) ?? cachePreviewImage(fetched, runtime.media, boardId));
+  const cache = () =>
+    cachePreviewImage(
+      fetched,
+      {
+        async put(key, bytes, options) {
+          const imageId = key.split("/").at(-1)!;
+          await board.storePreview(
+            boardId,
+            imageId,
+            bytes,
+            options.httpMetadata.contentType,
+          );
+        },
+      },
+      boardId,
+    );
+  const preview = await (log?.time("preview.cache", cache) ?? cache());
   log?.set({
     "preview.cached": !!preview.imageUrl?.startsWith(`/previews/${boardId}/`),
   });

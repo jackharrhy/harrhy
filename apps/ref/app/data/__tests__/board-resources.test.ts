@@ -5,7 +5,7 @@ import * as previews from "../link-preview.ts";
 
 function setup() {
   const board = {
-    recordAsset: vi.fn().mockResolvedValue(undefined),
+    storeAsset: vi.fn().mockResolvedValue(undefined),
     existingLink: vi.fn().mockResolvedValue(null),
     recordLink: vi.fn(),
     refreshLink: vi.fn(),
@@ -70,24 +70,28 @@ it("uses detected MIME, bounds filenames, and returns the stored asset URL", asy
       url: `/media/board/${assetId}`,
     },
   });
-  expect(media.put).toHaveBeenCalledWith(
-    `boards/board/${assetId}`,
+  expect(media.put).not.toHaveBeenCalled();
+  expect(board.storeAsset).toHaveBeenCalledWith(
+    "board",
+    {
+      id: assetId,
+      objectKey: `boards/board/${assetId}`,
+      filename: "x".repeat(160),
+      contentType: "image/png",
+      size: 4,
+    },
     expect.any(ArrayBuffer),
-    { httpMetadata: { contentType: "image/png" } },
   );
-  expect(board.recordAsset).toHaveBeenCalledWith("board", {
-    id: assetId,
-    objectKey: `boards/board/${assetId}`,
-    filename: "x".repeat(160),
-    contentType: "image/png",
-    size: 4,
-  });
 });
 
-it("rolls back object storage and propagates a failed asset write", async () => {
+it("does not delete committed media when the metadata RPC response is lost", async () => {
   const { runtime, board, media } = setup();
   const failure = new Error("Write failed");
-  board.recordAsset.mockRejectedValue(failure);
+  let committed = false;
+  board.storeAsset.mockImplementation(async () => {
+    committed = true;
+    throw failure;
+  });
   await expect(
     uploadBoardImage(
       runtime,
@@ -95,7 +99,8 @@ it("rolls back object storage and propagates a failed asset write", async () => 
       new File([new Uint8Array([255, 216, 255])], "photo"),
     ),
   ).rejects.toBe(failure);
-  expect(media.delete).toHaveBeenCalledWith(media.put.mock.calls[0]![0]);
+  expect(committed).toBe(true);
+  expect(media.delete).not.toHaveBeenCalled();
 });
 
 it("rejects private URLs and returns existing normalized links without fetching", async () => {

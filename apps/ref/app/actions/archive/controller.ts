@@ -79,12 +79,10 @@ export default createController(routes.archive, {
         return new Response("Invalid image", { status: 400 });
       const type = await imageType(file, MAX_PREVIEW_BYTES);
       if (!type) return new Response("Invalid image", { status: 415 });
-      const media = context.get(AppRuntime)!.media;
-      const objectKey = `boards/${boardId}/previews/${imageId}`;
-      if (!(await media.head(objectKey)))
-        await media.put(objectKey, await file.arrayBuffer(), {
-          httpMetadata: { contentType: type },
-        });
+      await context
+        .get(AppRuntime)!
+        .board(boardId)
+        .restorePreview(boardId, imageId, await file.arrayBuffer(), type);
       return new Response(null, { status: 204 });
     },
     async restoreLink(context) {

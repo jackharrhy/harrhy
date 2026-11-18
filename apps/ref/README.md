@@ -100,6 +100,44 @@ retention bounds deduplication to roughly the latest 10,000 board edits.
 effort. Write-only tokens cannot list/read boards or receive conflict snapshots.
 The normal archive CLI and browser endpoints retain their separate authorization.
 
+## Durable media lifecycle
+
+`BoardCell` owns ordinary upload and cached-preview writes. It persists a
+`pending_media_writes` intent before writing bytes, marks a confirmed put ready,
+and consumes that intent in the same SQLite transaction as the asset/link
+metadata. A lost RPC response does not trigger caller-side deletion of media
+that may already be committed. Unattached ready writes expire after 15 minutes;
+active writes in the current instance are not reclaimed.
+
+Cached previews use fresh immutable 64-hex generation IDs rather than source-URL
+hashes. Removing and re-adding the same URL cannot attach the generation an old
+deletion is retrying. Reference replacement and deletion enqueue are one SQL
+transaction. Cleanup rechecks legacy references, serializes overlapping drains,
+and blocks attachment/restore of a queued generation while external deletion is
+in flight. Existing preview URLs and archive IDs remain readable; preview
+restore writes go through the same BoardCell staging path.
+
+Interrupted or uncertain puts expire into retained `abandoned` tombstones. Their
+ordinary write keys cannot be reused; alarms retry deletion daily so a late
+object-store write after instance loss is eventually reclaimed. Archive preview
+restores bind their intent to a SHA-256 of the supplied bytes: retrying the same
+ID with identical bytes can resume after interruption, but never during an
+in-flight deletion or with different pending bytes. These exceptional rows are
+retained indefinitely (and keep a daily alarm for the board). A resumed uncertain
+restore keeps a `retained` tombstone even after attachment: cleanup protects
+current references but can reclaim an old put arriving after later last-use
+removal. Confirmed-ready or committed writes without uncertain history do not
+retain tombstones. SQLite and object storage are not one atomic
+transaction: recovery depends on alarm delivery and object-store availability,
+and does not promise immediate reclamation after a crash.
+
+`__tests__/media-lifecycle.test.ts` exercises the real BoardCell/SQLite paths with
+controlled storage delays, failures, instance reconstruction, and late completion.
+The qualified native Celld smoke checks ordinary browser/MCP media flows and
+cold restore, plus archive backup and repeated restore (including cached
+previews) into an empty native store. It does not inject object-store response
+loss into Celld itself.
+
 ## Logging pilot
 
 The approved [logging skill](../../.agents/skills/logging/SKILL.md) guides this pilot. `app/logging.ts` owns one wide JSON completion event per Worker request, including early rejection, assets, health and authentication errors. It uses `@harrhy/logger` with explicit `jsonSink`; no collector or remote logging client is required. The qualified Celld 0.6.3 runtime prefixes console messages with its timestamp/`INFO cell_console:` envelope (and `WARN`/`ERROR` where applicable), so its container lines are not raw NDJSON. Future collection must extract that known console envelope before parsing the application JSON, after decoding Docker’s wrapper. The Celld smoke verifies this actual transport shape. `scripts/build.mjs` generates ignored `app/build-info.ts` with environment/build identity; container publication supplies the exact source revision through `HARRHY_REF_VERSION`.

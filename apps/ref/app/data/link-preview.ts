@@ -324,17 +324,20 @@ async function youtubePreview(url: string): Promise<LinkPreview | null> {
 
 export async function cachePreviewImage(
   preview: LinkPreview,
-  media: R2Bucket,
+  media: {
+    put(
+      key: string,
+      bytes: ArrayBuffer,
+      options: { httpMetadata: { contentType: string } },
+    ): Promise<unknown>;
+  },
   boardId: string,
 ): Promise<LinkPreview> {
   if (!preview.imageUrl) return preview;
-  const hash = await tokenHash(preview.imageUrl);
+  const hash = await tokenHash(crypto.randomUUID());
   const key = `boards/${boardId}/previews/${hash}`;
   const signal = AbortSignal.timeout(10_000);
   try {
-    const existing = await media.head(key);
-    if (existing)
-      return { ...preview, imageUrl: `/previews/${boardId}/${hash}` };
     const fetched = await fetchPublic(preview.imageUrl, signal, {
       Accept: "image/*",
     });
