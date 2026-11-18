@@ -22,6 +22,10 @@ Set `CHROMIUM_BIN` for separately installed Chromium. The check installs the iso
 
 `npm start --workspace @harrhy/pi` runs only in a disposable namespace: no host HOME, credentials, production data or outbound network is mounted; loopback is private to that namespace. State disappears on exit. This command is not the separately authorized private review preview. New production settings must use `HARRHY_PI_*`; the retained `P2_*` ABI is not renamed.
 
+## Configuration
+
+The retained settings/model APIs use the selected instance's data directory, not Harrhy repository files. Read `plugins/models/model-config.ts` and `src/runtime/settings.ts` before changing settings. Never point a fixture or preview at live `P2_DATA_DIR`, copy production auth/configuration, or treat `P2_FAKE` alone as isolation. The preview and fixture wrappers must supply an explicit reviewed plugin selection and network/filesystem boundary.
+
 ## Boundaries
 
 Synthetic checks cover equal retries and conflicts, retained admissions across complete server restart, schedule recovery, exact conversation branch links, plugin updates in place, base-update reloads and stale-client refusal. They do not qualify every external integration or native daemon. Native daemon source/build inputs are retained; production binaries and private plugins are not imported.

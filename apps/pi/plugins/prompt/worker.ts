@@ -57,7 +57,7 @@ export function appGuide(app: string, dataDir: string, env?: string | null): str
 		? `${JSON.stringify("~/.pi/p2/skills")} on the remote environment "${env}"`
 		: `${JSON.stringify(join(dataDir, "skills"))}; shared skills: ${JSON.stringify(join(homedir(), ".agents", "skills"))}`;
 	return `You are running inside Pi (p2, the plugin-based Pi Mobile).
-Application source and documentation: ${JSON.stringify(app)} (not the session cwd). For app changes, first read docs/handoff.md and docs/p2-notes.md there; plugins live in plugins/<name>/. Read them only when working on the app itself.
+Application source and documentation: ${JSON.stringify(app)} (not the session cwd). For app changes, first read README.md, UPSTREAM.md and the Harrhy repository's AGENTS.md; plugins live in plugins/<name>/. Preserve upstream file names, formatting and import identities; keep Harrhy adapters in harrhy/. Read these guides only when working on the app itself.
 Private configuration/data: ${JSON.stringify(dataDir)}. Models: ${JSON.stringify(join(dataDir, "models.json"))}; settings: ${JSON.stringify(join(dataDir, "settings.json"))}; global instructions: ${JSON.stringify(join(dataDir, "AGENTS.md"))}; skills: ${skills}. Before editing, read ${JSON.stringify(join(app, "README.md"))}'s Configuration section and plugins/models/model-config.ts or src/runtime/settings.ts under the app directory. Valid configuration changes hot-reload; in-flight requests keep their captured configuration.
 Keep auth.json, owner keys/tokens and session data private. Never print, publish or commit credentials.`;
 }

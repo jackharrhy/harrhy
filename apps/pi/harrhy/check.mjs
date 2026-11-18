@@ -55,6 +55,13 @@ sandbox(
     "--test-concurrency=1",
     "__tests__/p2/ui-exact-conversation.test.ts",
     "__tests__/p2/ui-web-surface.test.ts",
+    "__tests__/p2/activity-model.test.ts",
+    "__tests__/p2/session-activity.test.ts",
+    "__tests__/p2/files.test.ts",
+    "__tests__/p2/history.test.ts",
+    "__tests__/p2/tree.test.ts",
+    "__tests__/p2/plugins.test.ts",
+    "__tests__/p2/stimuli-migration.test.ts",
   ],
   { chromium },
 );

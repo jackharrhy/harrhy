@@ -4,11 +4,12 @@ Customized source: `jackharrhy/pi`, exact clean commit `2a74fd2a6c78cce7f72d2765
 
 App runtime, plugins, public assets, original scripts and voice sidecar live directly in this app. Nine shared compatibility packages retain their original package names and internal topology under `compat/packages/`. Their source and native build inputs are local; no external app fork, custom published artifact, source-fetching build or opaque archive is required. Compatibility packages remain app-owned implementation inputs, not new independent Harrhy products.
 
-`provenance.json` pins SHA-256 tree digests of retained source, guides, focused tests and public catalog. Its digest format is explicit and checked by `__tests__/provenance.test.mjs`. It also records the baseline hashes of the only four changed retained implementation/test files:
+`provenance.json` pins SHA-256 tree digests of retained source, guides, focused tests and public catalog. Its digest format is explicit and checked by `__tests__/provenance.test.mjs`. It also records the baseline hashes of the only five changed retained implementation/test files:
 
 - `src/source-resolver.ts`: compatibility-root aliases with app-root containment, retaining the host-owned `@p2` singleton.
 - `src/hosts/dev-modules.ts`: local compatibility package path.
 - `plugins/terminals/daemon.ts`: local native daemon package path.
+- `plugins/prompt/worker.ts`: agent guidance points to Harrhy's retained guides and preserves upstream-compatible editing.
 - `__tests__/p2/web-sources.test.ts`: path-mapped source-resolution comparison.
 
 Harrhy-only adapters live in `harrhy/`. Root/app TypeScript and npm manifests express the same source aliases and isolated dependency identities in the new topology. The nested lock is derived from the pinned source lock and reconciled for the moved workspaces; dependencies are installed without lifecycle scripts. TypeScript 5.9 checks the app; the retained compatibility build toolchain is separate. Root marked 18.0.11 and app-local marked 18.0.14 preserve the original type boundary.

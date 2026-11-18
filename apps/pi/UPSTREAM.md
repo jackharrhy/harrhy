@@ -1,8 +1,8 @@
 # Updating the Pi source
 
-## Source boundary (restructuring in progress)
+## Source boundary
 
-Pi is first-class Harrhy source, with upstream file names, formatting, import specifiers and module identities retained. It is not an independently developed external app. The intended path map is:
+Pi is first-class Harrhy source, with upstream file names, formatting, import specifiers and module identities retained. It is not an independently developed external app. The path map is:
 
 <!-- prettier-ignore -->
 | Pi source | Harrhy source |
@@ -12,7 +12,7 @@ Pi is first-class Harrhy source, with upstream file names, formatting, import sp
 | App qualification tests | `apps/pi/__tests__/p2/**` |
 | Root license | `apps/pi/LICENSE` |
 
-Harrhy-only startup, sandbox and qualification adapters belong in `apps/pi/harrhy/`, not upstream's `scripts/`. The compatibility directory is an isolated npm boundary, not a tarball store or source-download mechanism. Normal installs must work from this checkout and registry dependencies alone. Preserve nested React/marked/type identities rather than relying on Harrhy root hoisting. Exact package selection and the replacement lock remain under validation; the old `upstream/` copy is temporary, not a second implementation to retain.
+Harrhy-only startup, sandbox and qualification adapters belong in `apps/pi/harrhy/`, not upstream's `scripts/`. The compatibility directory is an isolated npm boundary, not a tarball store or source-download mechanism. Normal installs must work from this checkout and registry dependencies alone. Preserve nested React/marked/type identities rather than relying on Harrhy root hoisting. All nine compatibility packages (ai, chord, codemode, durable, env, mcp, schema, telemetry and tui) are retained locally; the relocated lock and focused checks are validated. The superseded `upstream/` copy is removed.
 
 Keep app files and package-internal relative paths unchanged. Limit topology adaptations to manifests, TypeScript aliases, the source resolver and host asset/build entry points. Keep `@p2/app/v1` and subpaths a single host-owned module identity; do not rewrite plugin imports, wire IDs, receipts or deduplication contracts. Record each actual adapter in provenance when the restructuring is complete. Do not run a bulk formatter over retained source.
 

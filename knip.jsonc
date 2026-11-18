@@ -10,6 +10,7 @@
     "apps/pi/docs/**",
     "apps/pi/public/**",
     "apps/pi/__tests__/p2/**",
+    "apps/pi/__tests__/fixtures/**",
   ],
   "workspaces": {
     "apps/pi": {
