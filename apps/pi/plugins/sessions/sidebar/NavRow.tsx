@@ -61,6 +61,7 @@ export function NavRow({
 			className={`nav-row ${selected ? "selected" : ""} ${className}`}
 			{...target}
 			onPointerLeave={(event) => {
+				target?.onPointerLeave();
 				// The whole row owns hover: crossing its chevron must not dismiss the name's tooltip.
 				if (activity && event.pointerType === "mouse" && !event.currentTarget.contains(document.activeElement))
 					event.currentTarget.querySelector<HTMLDivElement>(".session-activity-popover")?.hidePopover();

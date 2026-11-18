@@ -83,6 +83,21 @@ const NO_OUTGOING: readonly Outgoing[] = [];
 const DOUBLE_CTRL_C_MS = 500;
 const DOUBLE_ESCAPE_MS = 500;
 
+/** pi-tui reuses rendered output while scrolling: report viewport changes after layout. */
+class TranscriptScrollView extends ScrollView {
+	private laidOutTop = 0;
+	private laidOutHeight = 0;
+	onScrolled: (() => void) | undefined;
+
+	override updateLayout(contentHeight: number, viewportHeight: number, requestRender: () => void): void {
+		super.updateLayout(contentHeight, viewportHeight, requestRender);
+		if (this.scrollTop === this.laidOutTop && this.viewportHeight === this.laidOutHeight) return;
+		this.laidOutTop = this.scrollTop;
+		this.laidOutHeight = this.viewportHeight;
+		this.onScrolled?.();
+	}
+}
+
 export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 	readonly [CHAT_SURFACE] = true as const;
 	readonly runtime: TuiRuntime;
@@ -203,7 +218,7 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 			{ expanded: runtime.expandedTools, showThinking: runtime.showThinking },
 			{ render: (width) => runtime.header.render(width), invalidate: () => runtime.header.invalidate() },
 		);
-		this.scroll = new ScrollView(this.transcript, {
+		const scroll = new TranscriptScrollView(this.transcript, {
 			follow: "end",
 			primary: true,
 			overscroll: "chain",
@@ -211,6 +226,8 @@ export class ChatSurface implements TuiSurface, ChatSurfaceApi {
 			scrollbarTrackStyle: (text) => runtime.theme.current.fg("scrollbarTrack", text),
 			scrollbarThumbStyle: (text) => runtime.theme.current.fg("scrollbarThumb", text),
 		});
+		scroll.onScrolled = () => this.transcript.viewportChanged();
+		this.scroll = scroll;
 		this.transcript.attach(this.scroll);
 		this.transcript.onTop = () => this.loadEarlier();
 		this.transcript.onVisibleGap = (item) => this.fillGap(item.gap);
