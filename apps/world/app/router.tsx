@@ -59,13 +59,6 @@ const inputStyles = css({
   "& button": { pointerEvents: "auto" },
 });
 const hintStyles = css({ marginTop: "0.375rem", fontSize: "0.8125rem" });
-const modeStyles = css({
-  '&[aria-pressed="true"]': {
-    backgroundColor: "var(--hui-accent)",
-    color: "var(--hui-on-accent)",
-  },
-});
-
 router.map(routes.home, (context) =>
   context.render(
     <html lang="en">
@@ -81,9 +74,6 @@ router.map(routes.home, (context) =>
           <Canvas />
           <Panel aria-label="Movement controls" mix={[hudStyles, inputStyles]}>
             <Inline>
-              <Button id="mode" aria-pressed={false} disabled mix={modeStyles}>
-                FPS mode
-              </Button>
               <Button id="enter" disabled>
                 Click to look
               </Button>
@@ -92,7 +82,7 @@ router.map(routes.home, (context) =>
               Loading the hall…
             </Text>
             <Text id="controls" mix={hintStyles}>
-              Right-drag to orbit · Click the floor to walk
+              Right-drag to orbit · Click to walk · Scroll to zoom
             </Text>
           </Panel>
           <span class="reticle" aria-hidden="true" />

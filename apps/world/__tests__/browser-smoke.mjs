@@ -49,11 +49,6 @@ try {
   const canvas = page.locator("canvas");
   await canvas.focus();
   assert.equal(await canvas.evaluate((element) => getComputedStyle(element).outlineStyle), "none");
-  await page.mouse.move(400, 250);
-  await page.waitForTimeout(300);
-  const beforeZoom = await canvas.screenshot();
-  await page.mouse.wheel(0, -800);
-  await expect.poll(async () => (await canvas.screenshot()).equals(beforeZoom)).toBe(false);
   const beforeOrbit = await canvas.screenshot();
   await page.mouse.move(430, 260);
   await page.mouse.down({ button: "right" });
@@ -81,9 +76,10 @@ try {
     await other.screenshot({ path: process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT });
   await page.bringToFront();
   const before = samples.at(-1).z;
-  await page.locator("#mode").click();
+  await expect(page.locator("#mode")).toHaveCount(0);
+  await page.mouse.move(400, 250);
+  await page.mouse.wheel(0, -800);
   await expect(hall).toHaveAttribute("data-mode", "fps");
-  await expect(page.locator("#mode")).toHaveAttribute("aria-pressed", "true");
   await page.locator("canvas").focus();
   await page.keyboard.down("w");
   try {
@@ -91,7 +87,8 @@ try {
   } finally {
     await page.keyboard.up("w");
   }
-  await page.locator("#mode").click();
+  await page.mouse.move(400, 250);
+  await page.mouse.wheel(0, 500);
   await expect(hall).toHaveAttribute("data-mode", "walk");
   if (process.env.HARRHY_WORLD_TEST_SCREENSHOT)
     await page.screenshot({ path: process.env.HARRHY_WORLD_TEST_SCREENSHOT });

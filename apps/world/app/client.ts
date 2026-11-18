@@ -20,7 +20,6 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
   const root = canvas.closest<HTMLElement>("#hall")!;
   const status = root.querySelector<HTMLElement>("#status")!;
   const button = root.querySelector<HTMLButtonElement>("#enter")!;
-  const modeButton = root.querySelector<HTMLButtonElement>("#mode")!;
   const controls = root.querySelector<HTMLElement>("#controls")!;
   let stop = () => {};
   function start() {
@@ -79,9 +78,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         mode === "walk"
           ? matchMedia("(pointer: coarse)").matches
             ? "Drag to orbit · Tap to walk"
-            : "Right-drag to orbit · Click to walk"
-          : "WASD to move · Space to jump · Esc releases the mouse";
-      modeButton.setAttribute("aria-pressed", String(mode === "fps"));
+            : "Right-drag to orbit · Click to walk · Scroll to zoom"
+          : "WASD to move · Space to jump · Scroll out for third person";
       destination = undefined;
       gesture = undefined;
       keys.clear();
@@ -111,7 +109,6 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       samples.length = 0;
       keys.clear();
       button.disabled = true;
-      modeButton.disabled = true;
       destination = undefined;
       gesture = undefined;
     }
@@ -172,7 +169,6 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
                 predicted = motion;
                 yaw = self.yaw;
                 pitch = mode === "walk" ? -0.28 : self.pitch;
-                modeButton.disabled = false;
                 button.disabled = false;
                 updateStatus();
               })
@@ -200,14 +196,6 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       void Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
     };
     button.addEventListener("click", focus, { signal });
-    modeButton.addEventListener(
-      "click",
-      () => {
-        setMode(mode === "walk" ? "fps" : "walk");
-        canvas.focus();
-      },
-      { signal },
-    );
     canvas.addEventListener(
       "click",
       (event) => {
@@ -280,13 +268,17 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     canvas.addEventListener(
       "wheel",
       (event) => {
-        if (mode !== "walk" || !predicted || event.ctrlKey || !event.deltaY) return;
+        if (!predicted || event.ctrlKey || !event.deltaY) return;
         event.preventDefault();
         const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1;
-        orbitDistance = Math.max(
-          1.4,
-          Math.min(6.5, orbitDistance * Math.exp(event.deltaY * scale * 0.002)),
-        );
+        const next = orbitDistance * Math.exp(event.deltaY * scale * 0.002);
+        orbitDistance = Math.max(1.4, Math.min(6.5, next));
+        if (mode === "walk" && next <= 1.4) {
+          setMode("fps");
+          canvas.focus();
+        } else if (mode === "fps" && event.deltaY > 0) {
+          setMode("walk");
+        }
       },
       { signal, passive: false },
     );
