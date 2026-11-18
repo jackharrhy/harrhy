@@ -4,27 +4,29 @@ import type { BaseballFieldPaint } from "@harrhy/ui/baseball";
 
 export interface LabPartTokens {
   panelImage: string;
-  panelSurface?: string;
   panelFilter?: string;
   headingImage: string;
   headingInk: string;
-  panelEdge: string;
   cardRadius: string;
-  cardSurface: string;
+  surfaceTint: string;
   insetSurface: string;
   matchColumns: string;
   contentColumns: string;
 }
 export function labPartStyles(parts: LabPartTokens) {
+  // The original tiles use the same tint at 40% for the fill and 50% for the edge.
+  const fill = `color-mix(in srgb, ${parts.surfaceTint} 40%, transparent)`;
+  const edge = `color-mix(in srgb, ${parts.surfaceTint} 50%, transparent)`;
   return css({
     "--lab-panel-image": parts.panelImage,
-    "--lab-panel-surface": parts.panelSurface ?? "var(--hui-surface)",
+    "--lab-panel-surface": fill,
     "--lab-panel-filter": parts.panelFilter ?? "none",
     "--lab-heading-image": parts.headingImage,
     "--lab-heading-ink": parts.headingInk,
-    "--lab-panel-edge": parts.panelEdge,
+    "--lab-surface-edge": edge,
+    "--lab-solid-surface": `color-mix(in srgb, ${parts.surfaceTint} 40%, var(--hui-canvas))`,
     "--lab-card-radius": parts.cardRadius,
-    "--lab-card-surface": parts.cardSurface,
+    "--lab-card-surface": fill,
     "--lab-inset-surface": parts.insetSurface,
     "--lab-match-columns": parts.matchColumns,
     "--lab-content-columns": parts.contentColumns,

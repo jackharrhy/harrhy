@@ -86,7 +86,7 @@ const styles = css({
     isolation: "isolate",
     background: "var(--lab-panel-surface)",
     backgroundImage: "var(--lab-panel-image)",
-    border: "var(--lab-panel-edge)",
+    border: "2px solid var(--lab-surface-edge)",
     borderRadius: "var(--hui-panel-radius)",
     padding: "16px",
     marginBottom: "24px",
@@ -104,10 +104,10 @@ const styles = css({
     maskImage: "linear-gradient(black,transparent)",
   },
   "@supports not (backdrop-filter: blur(1px))": {
-    "& [data-lab-panel]": { backgroundColor: "var(--lab-card-surface)" },
+    "& [data-lab-panel]": { backgroundColor: "var(--lab-solid-surface)" },
   },
   "@media (prefers-reduced-transparency: reduce)": {
-    "& [data-lab-panel]": { backgroundColor: "var(--lab-card-surface)" },
+    "& [data-lab-panel]": { backgroundColor: "var(--lab-solid-surface)" },
     "& [data-lab-panel]::before": { display: "none" },
   },
   "& [data-panel-title]": {
@@ -127,7 +127,7 @@ const styles = css({
     alignContent: "start",
     padding: "12px",
     background: "var(--lab-card-surface)",
-    border: "1px solid var(--hui-table-border)",
+    border: "1px solid var(--lab-surface-edge)",
     borderRadius: "var(--lab-card-radius)",
     overflowWrap: "anywhere",
   },
@@ -169,7 +169,7 @@ const styles = css({
   },
   "& [data-roster-grid] [data-player-card]:hover": {
     background:
-      "color-mix(in srgb, var(--lab-card-surface), var(--hui-ink) 10%)",
+      "color-mix(in srgb, var(--lab-card-surface) 85%, var(--lab-solid-surface))",
     color: "var(--hui-ink)",
   },
   "& [data-player-card] [data-portrait]": { width: "32px", height: "32px" },
@@ -274,7 +274,7 @@ const styles = css({
     gridTemplateColumns: "minmax(0,1fr) 104px minmax(0,1fr)",
     gap: "12px",
     alignItems: "center",
-    borderBottom: "1px solid var(--hui-table-border)",
+    borderBottom: "1px solid var(--lab-surface-edge)",
     padding: "16px 0",
   },
   "& [data-score]": {
@@ -296,7 +296,7 @@ const styles = css({
   "& th, & td": {
     padding: "10px",
     textAlign: "left",
-    borderBottom: "1px solid var(--hui-table-border)",
+    borderBottom: "1px solid var(--lab-surface-edge)",
     whiteSpace: "nowrap",
   },
   "& th": { background: "var(--lab-inset-surface)" },

@@ -37,7 +37,6 @@ export const glassHeadingImage = `linear-gradient(180deg, rgb(255 255 255 / .07)
 export const glassEdges = {
   boxShadow:
     "inset 0 1px 0 rgb(255 255 255 / .22), inset 0 -1px 0 rgb(17 45 112 / .20), 0 8px 20px rgb(17 45 112 / .18)",
-  borderColor: "rgb(164 204 244 / .55)",
 };
 
 export const archiveField: BaseballFieldPaint = {

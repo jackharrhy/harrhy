@@ -1,6 +1,6 @@
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
-import { originalBlue, originalSteel } from "../original.ts";
+import { originalSteel } from "../original.ts";
 import { dugoutFrost } from "./dugout-frost.ts";
 import { glassEdges, glassHeadingImage } from "./foundation.ts";
 import type { LabConcept } from "./types.ts";
@@ -24,14 +24,13 @@ export const broadcastPrism: LabConcept = {
   }),
   parts: {
     ...dugoutFrost.parts,
-    panelSurface: `${originalSteel}4d`,
     panelFilter: "blur(18px) saturate(1.15)",
-    panelImage: `linear-gradient(132deg, rgb(255 255 255 / .055), transparent 26%, ${originalBlue[900]}33 100%), linear-gradient(180deg, ${originalBlue[700]}66, ${originalBlue[800]}99)`,
+    panelImage:
+      "linear-gradient(132deg, rgb(255 255 255 / .04), transparent 48%)",
     headingImage: glassHeadingImage,
-    panelEdge: "1px solid #a4ccf4",
     cardRadius: "10px",
-    cardSurface: "#203c61",
-    insetSurface: "#172e50",
+    surfaceTint: originalSteel,
+    insetSurface: "#204c90",
     matchColumns: "minmax(0,1fr)",
     contentColumns: "minmax(0,1.4fr) minmax(340px,1fr)",
   },
@@ -40,7 +39,7 @@ export const broadcastPrism: LabConcept = {
     "& [data-panel-title]": { fontSize: "20px", padding: "12px 16px" },
     "& [data-match]": {
       padding: "12px",
-      background: `linear-gradient(135deg, ${originalBlue[600]}52, ${originalBlue[800]}66)`,
+      background: "var(--lab-card-surface)",
     },
     "& [data-match-meta]": { marginBottom: "8px" },
     "& [data-roster-card]": {
