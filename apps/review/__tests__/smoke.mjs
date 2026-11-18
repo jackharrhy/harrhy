@@ -366,11 +366,16 @@ try {
     (await scopedNote({ scope: "file", file: 1, text: "Bad file" })).status,
     400,
   );
+  await expect(page.getByTestId("review-comments")).toBeHidden();
+  await page.getByTestId("review-comment-open").click();
   await page
     .getByRole("textbox", { name: "Comment on this review" })
     .fill("Review note");
   await page.getByTestId("review-comment").click();
   await expect(page.getByText("Review note", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.getByTestId("review-comments")).toBeHidden();
+  await page.getByTestId("file-comment-open").click();
   await page
     .getByRole("textbox", { name: "Comment on this file" })
     .fill("File note");
@@ -379,8 +384,12 @@ try {
   const scopes = (await cli("comments", id)).slice(2).map(({ scope }) => scope);
   assert.deepEqual(scopes, ["review", "file"]);
   await page.reload();
+  await page.getByTestId("review-comment-open").click();
   await expect(page.getByText("Review note", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await page.getByTestId("file-comment-open").click();
   await expect(page.getByText("File note", { exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
   assert.equal((await setViewed(0, true)).status, 200);
   await writeFile(source, 'export const color = "orange";\n');
   git("add", ".");

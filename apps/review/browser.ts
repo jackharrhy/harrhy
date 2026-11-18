@@ -169,6 +169,7 @@ function detail(root: HTMLElement, review: Review) {
   );
   titleEditor.id = "review-title-editor";
   titleEditor.hidden = true;
+  const reviewComments = scopedComments({ scope: "review" });
   const header = node(
     "div",
     "review-header",
@@ -183,7 +184,7 @@ function detail(root: HTMLElement, review: Review) {
       "·",
       date(review.created),
     ),
-    remove,
+    node("div", "row", reviewComments.trigger, remove),
     status,
   );
   const viewed = new Set(review.viewedFiles);
@@ -212,7 +213,7 @@ function detail(root: HTMLElement, review: Review) {
   const content = node("div", "files");
   root.replaceChildren(
     header,
-    scopedComments({ scope: "review" }).panel,
+    reviewComments.panel,
     files.length
       ? node("div", "review-layout", nav, content)
       : node("p", "panel inset", "No file changes in this review."),
@@ -418,6 +419,14 @@ function detail(root: HTMLElement, review: Review) {
       form,
     );
     panel.dataset.testid = `${testId}s`;
+    panel.popover = "auto";
+    panel.setAttribute("aria-label", commentsHeading.textContent ?? "Comments");
+    panel.setAttribute("role", "dialog");
+    const trigger = button(
+      isReview ? "Comment" : "File comments",
+      `${testId}-open`,
+    );
+    trigger.popoverTargetElement = panel;
     function refresh() {
       const scoped = threads.filter((thread) =>
         target.scope === "review"
@@ -427,10 +436,14 @@ function detail(root: HTMLElement, review: Review) {
       list.replaceChildren(
         ...scoped.map((thread) => renderThread(thread, refresh)),
       );
+      const label = isReview ? "Comment" : "File comments";
+      trigger.textContent = scoped.length
+        ? `${label} (${scoped.length})`
+        : label;
       onChange?.();
     }
     refresh();
-    return { panel };
+    return { panel, trigger };
   }
 
   // Open sections without constructing offscreen diffs.
@@ -455,27 +468,21 @@ function detail(root: HTMLElement, review: Review) {
     check.dataset.testid = "file-viewed";
     check.setAttribute("aria-label", `Viewed: ${path}`);
     const viewedLabel = node("label", "viewed-label", check, "Viewed");
+    const comments = scopedComments({ scope: "file", file }, updateCount);
     const summary = node(
       "summary",
       "",
       node("span", "file-heading", node("span", "path", path), count),
-      viewedLabel,
+      node("span", "file-actions", comments.trigger, viewedLabel),
     );
     const host = node("div", "diff-host");
     summary.dataset.testid = "file-heading";
-    const comments = scopedComments({ scope: "file", file }, updateCount);
-    const section = node(
-      "details",
-      "panel diff-file",
-      summary,
-      host,
-      comments.panel,
-    );
+    const section = node("details", "panel diff-file", summary, host);
     section.id = `file-${file}`;
     section.dataset.testid = "diff-file";
     section.dataset.fileIndex = String(file);
     section.open = !check.checked;
-    content.appendChild(section);
+    content.append(section, comments.panel);
     const jump = link("", `#${section.id}`);
     jump.appendChild(node("span", "path", path));
     jump.addEventListener("click", () => {
