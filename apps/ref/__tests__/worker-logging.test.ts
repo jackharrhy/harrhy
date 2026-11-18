@@ -203,3 +203,33 @@ it("keeps machine resource identity stable with an alternate browser origin", as
     ).status,
   ).toBe(403);
 });
+
+it("preserves a moved board in the sign-in link only on the alternate host", async () => {
+  const env = {
+    AUTH_PUBLIC_ORIGIN: "https://old.example",
+    HARRHY_REF_ALTERNATE_BROWSER_ORIGIN: "https://new.example",
+    AUTH_ISSUER: "https://issuer.example",
+    AUTH_CLIENT_ID: "client",
+    AUTH_PROJECT_ID: "project",
+    AUTH_ORGANIZATION_ID: "organization",
+    DIRECTORY: { getByName: () => ({}) },
+  } as unknown as Env;
+  const path = "/boards/example-id?moved=1&ignored=extra";
+  const moved = await worker.fetch(
+    new Request(`https://new.example${path}`),
+    env,
+  );
+  expect(moved.status).toBe(200);
+  const html = await moved.text();
+  expect(html).toContain("update your bookmark");
+  expect(html).toContain(
+    "/auth/login?returnTo=%2Fboards%2Fexample-id%3Fmoved%3D1",
+  );
+  expect(html).not.toContain("ignored");
+  const legacy = await worker.fetch(
+    new Request(`https://old.example${path}`),
+    env,
+  );
+  expect(legacy.status).toBe(303);
+  expect(legacy.headers.get("Location")).toBe("/");
+});
