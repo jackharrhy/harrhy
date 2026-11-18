@@ -2,6 +2,7 @@ import { createRouter } from "remix/router";
 import { readRequestBody } from "@harrhy/request-body";
 import { ReviewCell, error } from "./cell.ts";
 import { page } from "./page.tsx";
+import { normalizeTitle, titleError } from "./title.ts";
 
 export { ReviewCell };
 const limit = 512 * 1024;
@@ -22,9 +23,7 @@ async function json(request: Request, maxBytes: number) {
       "Missing, unreadable or oversized request body",
     );
   try {
-    const data: unknown = JSON.parse(
-      new TextDecoder("utf-8", { fatal: true }).decode(body.bytes),
-    );
+    const data: unknown = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(body.bytes));
     if (data && typeof data === "object" && !Array.isArray(data))
       return data as Record<string, unknown>;
   } catch {}
@@ -33,22 +32,13 @@ async function json(request: Request, maxBytes: number) {
 
 type CellRpc = {
   [
-    K in
-      | "list"
-      | "get"
-      | "threads"
-      | "exists"
-      | "submit"
-      | "remove"
-      | "add"
-      | "update"
+    K in "list" | "get" | "threads" | "exists" | "submit" | "rename" | "remove" | "add" | "update"
   ]: (...args: Parameters<ReviewCell[K]>) => Promise<ReturnType<ReviewCell[K]>>;
 };
 function routerFor(env: Env) {
   const router = createRouter();
   const namespace = env.REVIEWS;
-  const cell = () =>
-    namespace.get(namespace.idFromName("inbox")) as unknown as CellRpc;
+  const cell = () => namespace.get(namespace.idFromName("inbox")) as unknown as CellRpc;
   router.get("/", ({ request }) => page(request));
   router.get("/reviews/:id", async ({ request, params }) =>
     idPattern.test(params.id) && (await cell().exists(params.id))
@@ -61,8 +51,7 @@ function routerFor(env: Env) {
     return result ? Response.json(result) : error(404, "Review not found");
   });
   router.get("/api/reviews/:id/threads", async ({ params }) => {
-    const result =
-      idPattern.test(params.id) && (await cell().threads(params.id));
+    const result = idPattern.test(params.id) && (await cell().threads(params.id));
     return result ? Response.json(result) : error(404, "Review not found");
   });
   router.post("/api/reviews", async ({ request }) => {
@@ -77,17 +66,20 @@ function routerFor(env: Env) {
       !patch.startsWith("diff --git ")
     )
       return error(400, "Expected commit IDs and a Git patch");
-    if (utf8.encode(patch).length > limit)
-      return error(413, "Patch exceeds 512 KiB");
-    return cell().submit(
-      { base, head, mergeBase, patch },
-      env.HARRHY_REVIEW_ORIGIN,
-    );
+    if (utf8.encode(patch).length > limit) return error(413, "Patch exceeds 512 KiB");
+    const title = normalizeTitle(data.title);
+    if (data.title !== undefined && title === null) return error(400, titleError);
+    return cell().submit({ base, head, mergeBase, patch }, env.HARRHY_REVIEW_ORIGIN, title);
+  });
+  router.patch("/api/reviews/:id", async ({ params, request }) => {
+    if (!idPattern.test(params.id)) return error(404, "Review not found");
+    const data = await json(request, 4096);
+    if (data instanceof Response) return data;
+    const title = normalizeTitle(data.title);
+    return title === null ? error(400, titleError) : cell().rename(params.id, title);
   });
   router.delete("/api/reviews/:id", ({ params }) =>
-    idPattern.test(params.id)
-      ? cell().remove(params.id)
-      : error(404, "Review not found"),
+    idPattern.test(params.id) ? cell().remove(params.id) : error(404, "Review not found"),
   );
   router.post("/api/reviews/:id/threads", async ({ request, params }) => {
     if (!idPattern.test(params.id)) return error(404, "Review not found");
@@ -104,10 +96,7 @@ function routerFor(env: Env) {
       line < 1 ||
       !note(text)
     )
-      return error(
-        400,
-        "Expected file index, old/new side, line and note (up to 2000 characters)",
-      );
+      return error(400, "Expected file index, old/new side, line and note (up to 2000 characters)");
     return cell().add(params.id, { file, side, line }, text.trim());
   });
   router.post("/api/reviews/:id/threads/:tid", async ({ request, params }) => {
@@ -141,15 +130,10 @@ export default {
       url.origin !== origin ||
       request.headers.get("host") !== url.host ||
       (suppliedOrigin !== null && suppliedOrigin !== origin) ||
-      (fetchSite !== null &&
-        fetchSite !== "same-origin" &&
-        fetchSite !== "none")
+      (fetchSite !== null && fetchSite !== "same-origin" && fetchSite !== "none")
     ) {
       response = error(403, "Only local same-origin requests are accepted");
-    } else if (
-      request.method !== "GET" &&
-      request.headers.get("x-harrhy-review") !== "1"
-    ) {
+    } else if (request.method !== "GET" && request.headers.get("x-harrhy-review") !== "1") {
       response = error(403, "Missing review mutation header");
     } else {
       response = await routerFor(env).fetch(request);
