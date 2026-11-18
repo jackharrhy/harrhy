@@ -20,6 +20,16 @@ try {
     true,
     "Remix navigation should preserve the document",
   );
+  await page
+    .getByRole("link", { name: "Chemistry Graph", exact: true })
+    .click();
+  const node = page.locator("svg[aria-label^=Chemistry] a").first();
+  const target = await node.getAttribute("href");
+  await node.focus();
+  await node.press("Enter");
+  await page.waitForURL(`${origin}${target}`);
+  await page.getByRole("link", { name: "Leaderboard", exact: true }).click();
+  await page.waitForURL(`${origin}/players`);
   const player = await page
     .locator('main a[href^="/players/"]')
     .first()
@@ -52,6 +62,9 @@ try {
       for (const path of [
         "/",
         "/players",
+        "/players/grid",
+        "/players/chemistry",
+        "/players/chemistry-graph",
         player,
         "/teams",
         team,
@@ -119,7 +132,7 @@ try {
   await page.getByRole("heading", { name: "Team standings" }).waitFor();
   await page.getByRole("heading", { name: "Team History" }).waitFor();
   assert.equal(await page.locator("[data-field-slot]").count(), 9);
-  await page.goto(`${origin}/players`);
+  await page.goto(`${origin}/players/grid`);
   const chemistrySource = page
     .locator("[data-player-card]")
     .filter({ hasText: /^.*Mario$/ })
@@ -145,11 +158,11 @@ try {
   ]) {
     await page.getByRole("heading", { name, exact: true }).waitFor();
   }
-  await page.goto(`${origin}/players`);
+  await page.goto(`${origin}/players/grid`);
   const totalPlayers = await page.locator("[data-roster-card]").count();
   await page.getByLabel("Player name").fill("Mario");
   await page.getByRole("button", { name: "Find players" }).click();
-  await page.waitForURL("**/players?*");
+  await page.waitForURL("**/players/grid?*");
   await page.waitForFunction(
     (total) => document.querySelectorAll("[data-roster-card]").length < total,
     totalPlayers,
@@ -216,7 +229,7 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "336 live-data route/theme/viewport checks passed; Remix navigation, search and theme persistence passed.",
+    "408 live-data route/theme/viewport checks passed; Remix navigation, search and theme persistence passed.",
   );
 } finally {
   await browser.close();
