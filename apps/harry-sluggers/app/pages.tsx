@@ -46,6 +46,26 @@ const styles = css({
     gap: "8px 40px",
     padding: "16px",
   },
+  "& body:has([data-graph-page])": {
+    display: "flex",
+    flexDirection: "column",
+    minHeight: "100dvh",
+  },
+  "& main[data-graph-page]": {
+    flex: 1,
+    width: "100%",
+    maxWidth: "none",
+    margin: 0,
+    padding: 0,
+    display: "flex",
+    flexDirection: "column",
+  },
+  "& [data-graph-page] > nav": {
+    width: "100%",
+    maxWidth: "1280px",
+    marginInline: "auto",
+    paddingInline: "16px",
+  },
   "& [data-topbar-shell]": {
     position: "relative",
     borderBottom: "1px solid var(--hui-border)",
@@ -1835,7 +1855,13 @@ export function document(title: string, body: RemixNode, url: URL) {
             </form>
           </div>
         </header>
-        <main id="main">
+        <main
+          id="main"
+          data-graph-page={
+            url.pathname.replace(/\/$/, "") === "/players/chemistry-graph" ||
+            undefined
+          }
+        >
           <h1
             data-page-title-hidden={
               [...leagueLinks, ...playerViews].some(

@@ -26,7 +26,9 @@ try {
   const node = page.locator("[data-force-graph] g[role=button]").first();
   await node.press("Enter");
   assert.equal(await node.getAttribute("aria-pressed"), "true");
-  assert.ok(await page.locator("[data-force-graph] line[marker-end]").count());
+  assert.ok(
+    await page.locator("[data-force-graph] path[data-graph-edges]").count(),
+  );
   await page.getByRole("link", { name: "Leaderboard", exact: true }).click();
   await page.waitForURL(`${origin}/players`);
   const player = await page

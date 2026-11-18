@@ -213,7 +213,13 @@ export function forceGraph(data: Archive, assets: ReadonlySet<string>) {
   return (
     <div
       data-force-graph={JSON.stringify({ edges, icons })}
-      mix={css({ height: "clamp(320px,70dvh,900px)", cursor: "grab" })}
+      mix={css({
+        flex: 1,
+        minHeight: "220px",
+        position: "relative",
+        overflow: "hidden",
+        cursor: "grab",
+      })}
     >
       <noscript>Enable JavaScript to use the chemistry graph.</noscript>
     </div>
