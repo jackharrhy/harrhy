@@ -69,87 +69,50 @@ export type BoardServerFrame =
 
 export function parseOperation(value: unknown): BoardOperation | null {
   if (!isRecord(value) || !isUuid(value.operationId)) return null;
-  if (value.kind === "create" && isRecord(value.item)) {
-    const item = value.item;
-    if (!isUuid(item.id) || !isUuid(item.assetId) || !validGeometry(item))
+  const { kind, operationId } = value;
+  if (kind === "create") {
+    const { item } = value;
+    if (
+      !isRecord(item) ||
+      !isUuid(item.id) ||
+      !isUuid(item.assetId) ||
+      !validGeometry(item)
+    )
       return null;
     return {
-      kind: "create",
-      operationId: value.operationId,
-      item: {
-        id: item.id,
-        assetId: item.assetId,
-        x: item.x,
-        y: item.y,
-        width: item.width,
-        height: item.height,
-        rotation: item.rotation,
-        z: item.z,
-      },
+      kind,
+      operationId,
+      item: { id: item.id, assetId: item.assetId, ...itemGeometry(item) },
     };
   }
-  if (
-    value.kind === "transform" &&
-    isUuid(value.itemId) &&
-    validRevision(value.baseRevision) &&
-    validGeometry(value)
-  ) {
-    return {
-      kind: "transform",
-      operationId: value.operationId,
-      itemId: value.itemId,
-      baseRevision: value.baseRevision,
-      x: value.x,
-      y: value.y,
-      width: value.width,
-      height: value.height,
-      rotation: value.rotation,
-      z: value.z,
-    };
-  }
-  if (
-    value.kind === "remove" &&
-    isUuid(value.itemId) &&
-    validRevision(value.baseRevision)
-  ) {
-    return {
-      kind: "remove",
-      operationId: value.operationId,
-      itemId: value.itemId,
-      baseRevision: value.baseRevision,
-    };
-  }
+  const { itemId, baseRevision } = value;
+  if (!isUuid(itemId) || !validRevision(baseRevision)) return null;
+  if (kind === "remove") return { kind, operationId, itemId, baseRevision };
+  if (kind === "transform" && validGeometry(value))
+    return { kind, operationId, itemId, baseRevision, ...itemGeometry(value) };
   return null;
+}
+
+export function itemGeometry(item: ItemGeometry): ItemGeometry {
+  const { x, y, width, height, rotation, z } = item;
+  return { x, y, width, height, rotation, z };
+}
+
+function bounded(value: unknown, min: number, max: number): value is number {
+  return typeof value === "number" && value >= min && value <= max;
 }
 
 function validGeometry(
   value: Record<string, unknown>,
-): value is Record<"x" | "y" | "width" | "height" | "rotation" | "z", number> &
-  Record<string, unknown> {
-  const numbers = [
-    value.x,
-    value.y,
-    value.width,
-    value.height,
-    value.rotation,
-    value.z,
-  ];
-  if (
-    !numbers.every(
-      (number) =>
-        typeof number === "number" &&
-        Number.isFinite(number) &&
-        Math.abs(number) <= 1_000_000,
-    )
-  )
-    return false;
+): value is Record<string, unknown> & ItemGeometry {
   return (
-    (value.width as number) >= 24 &&
-    (value.width as number) <= 20_000 &&
-    (value.height as number) >= 24 &&
-    (value.height as number) <= 20_000 &&
-    Number.isInteger(value.z) &&
-    Math.abs(value.rotation as number) <= 360_000
+    bounded(value.x, -1_000_000, 1_000_000) &&
+    bounded(value.y, -1_000_000, 1_000_000) &&
+    bounded(value.width, 24, 20_000) &&
+    bounded(value.height, 24, 20_000) &&
+    bounded(value.rotation, -360_000, 360_000) &&
+    bounded(value.z, -1_000_000, 1_000_000) &&
+    Number.isInteger(value.z)
   );
 }
 
@@ -157,11 +120,11 @@ function validRevision(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+export function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function isUuid(value: unknown): value is string {
+export function isUuid(value: unknown): value is string {
   return (
     typeof value === "string" &&
     /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value)

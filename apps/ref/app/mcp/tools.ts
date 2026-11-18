@@ -2,7 +2,7 @@ import { currentLog } from "@harrhy/logger";
 import { failOperation } from "../logging.ts";
 import { specTypeSchemas } from "@harrhy/mcp";
 import type { AppRuntimeService } from "../data/runtime.ts";
-import { parseOperation } from "../data/protocol.ts";
+import { isUuid, parseOperation } from "../data/protocol.ts";
 import { tokenHash } from "../data/crypto.ts";
 import { uploadBoardImage, saveBoardLink } from "../data/board-resources.ts";
 import { MAX_UPLOAD_BYTES } from "../data/image-upload.ts";
@@ -23,10 +23,12 @@ function tool(
   name: string,
   description: string,
   properties: Record<string, unknown>,
-  readOnlyHint: boolean,
-  destructiveHint = false,
-  idempotentHint = true,
-  openWorldHint = false,
+  annotations: {
+    readOnlyHint?: boolean;
+    destructiveHint?: boolean;
+    idempotentHint?: boolean;
+    openWorldHint?: boolean;
+  } = {},
 ) {
   return {
     name,
@@ -38,10 +40,11 @@ function tool(
       additionalProperties: false,
     },
     annotations: {
-      readOnlyHint,
-      destructiveHint,
-      idempotentHint,
-      openWorldHint,
+      readOnlyHint: false,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+      ...annotations,
     },
   };
 }
@@ -51,34 +54,30 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
       "boards_list",
       "List the shared boards visible to all approved Ref members.",
       {},
-      true,
+      { readOnlyHint: true },
     ),
     tool(
       "board_get",
       "Read a shared board and its current items, geometry, revisions and link metadata.",
       board,
-      true,
+      { readOnlyHint: true },
     ),
     tool(
       "asset_get",
       "Inspect an uploaded image asset: content type, size and authenticated media URL; does not return image bytes.",
       { ...board, assetId: uuidSchema },
-      true,
+      { readOnlyHint: true },
     ),
     tool(
       "board_create",
       "Create a shared board. Retrying may create another board.",
       { title: { type: "string", minLength: 1, maxLength: 100 } },
-      false,
-      false,
-      false,
+      { idempotentHint: false },
     ),
-    tool(
-      "board_rename",
-      "Rename an existing shared board.",
-      { ...board, title: { type: "string", minLength: 1, maxLength: 100 } },
-      false,
-    ),
+    tool("board_rename", "Rename an existing shared board.", {
+      ...board,
+      title: { type: "string", minLength: 1, maxLength: 100 },
+    }),
     tool(
       "asset_upload",
       "Upload PNG/JPEG/GIF/WebP base64 bytes (at most20MB) to a board; use item_create to place the returned asset. Retrying creates another asset.",
@@ -91,27 +90,19 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
           maxLength: Math.ceil(MAX_UPLOAD_BYTES / 3) * 4,
         },
       },
-      false,
-      false,
-      false,
+      { idempotentHint: false },
     ),
     tool(
       "link_add",
       "Save a public web link and best-effort cached preview; use item_create to place its asset. Existing links return their existing asset.",
       { ...board, url: { type: "string", format: "uri", maxLength: 2048 } },
-      false,
-      false,
-      true,
-      true,
+      { openWorldHint: true },
     ),
     tool(
       "link_refresh",
       "Replace a saved link preview/metadata from its public source, preserving placed items. May reclaim the previous cached preview.",
       { ...board, url: { type: "string", format: "uri", maxLength: 2048 } },
-      false,
-      true,
-      false,
-      true,
+      { destructiveHint: true, idempotentHint: false, openWorldHint: true },
     ),
     tool(
       "item_create",
@@ -123,7 +114,6 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
         assetId: uuidSchema,
         ...geometry,
       },
-      false,
     ),
     tool(
       "item_transform",
@@ -135,7 +125,6 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
         baseRevision: revision,
         ...geometry,
       },
-      false,
     ),
     tool(
       "item_remove",
@@ -146,8 +135,7 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
         itemId: uuidSchema,
         baseRevision: revision,
       },
-      false,
-      true,
+      { destructiveHint: true },
     ),
   ],
 });
@@ -159,7 +147,6 @@ export function toolsFor(access: RefMcpAccess) {
     readTools.has(t.name) ? access.canRead : access.canWrite,
   );
 }
-const uuidPattern = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 function string(
   args: Record<string, unknown>,
   key: string,
@@ -172,7 +159,7 @@ function string(
 }
 function uuid(args: Record<string, unknown>, key: string): string {
   const value = string(args, key, 36);
-  if (!uuidPattern.test(value)) throw new TypeError("Invalid UUID");
+  if (!isUuid(value)) throw new TypeError("Invalid UUID");
   return value;
 }
 export async function callRefTool(

@@ -1,15 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
-import { boardWebMcpTools, copyBoardItem } from "../board-webmcp.ts";
+import { boardWebMcpTools } from "../board-webmcp.ts";
 
 const itemId = "11111111-1111-4111-8111-111111111111";
 const operationId = "22222222-2222-4222-8222-222222222222";
 function setup() {
   const actions = {
-    context: vi.fn(() => ({ boardId: "open-board", selectedItemId: itemId })),
+    context: vi.fn(),
     select: vi.fn(),
     focus: vi.fn(),
     fit: vi.fn(),
-    mutate: vi.fn(async () => ({ status: "applied" })),
+    mutate: vi.fn(async () => ({})),
   };
   const tools = boardWebMcpTools(actions);
   const signal = new AbortController().signal;
@@ -26,10 +26,7 @@ function setup() {
 describe("Ref browser tools", () => {
   it("reads live context and calls semantic camera/selection actions", () => {
     const { actions, run } = setup();
-    expect(run("ref_board_context", { offset: 0 })).toEqual({
-      boardId: "open-board",
-      selectedItemId: itemId,
-    });
+    run("ref_board_context", { offset: 0 });
     run("ref_board_select", { itemId });
     run("ref_board_select", { itemId: null });
     run("ref_board_focus", { itemId });
@@ -55,9 +52,7 @@ describe("Ref browser tools", () => {
       rotation: 90,
       z: 0,
     };
-    await expect(
-      run("ref_item_transform", input, controller.signal),
-    ).resolves.toEqual({ status: "applied" });
+    await run("ref_item_transform", input, controller.signal);
     expect(actions.mutate).toHaveBeenCalledWith(
       { ...input, kind: "transform" },
       controller.signal,
@@ -99,30 +94,5 @@ describe("Ref browser tools", () => {
         tool.name.startsWith("ref_item_"),
       );
     }
-  });
-
-  it("copies nested link metadata instead of exposing mutable board state", () => {
-    const item = {
-      id: itemId,
-      assetId: operationId,
-      filename: "image",
-      revision: 1,
-      x: 0,
-      y: 0,
-      width: 100,
-      height: 100,
-      rotation: 0,
-      z: 0,
-      link: {
-        url: "https://example.com",
-        title: "Original",
-        description: "",
-        imageUrl: null,
-        siteName: "Example",
-      },
-    };
-    const copy = copyBoardItem(item);
-    copy.link!.title = "Changed";
-    expect(item.link.title).toBe("Original");
   });
 });

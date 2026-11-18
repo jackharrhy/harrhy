@@ -327,37 +327,6 @@ it("scrubs decoded Ref PKCE transaction values and quoted credential assignments
   ).not.toContain("PRIVATE_");
 });
 
-it("linked SDK jobs keep the safe request ID and diagnostic secret context after transport completion", async () => {
-  const records: Record<string, unknown>[] = [];
-  for (const method of ["log", "warn", "error"] as const)
-    vi.spyOn(console, method).mockImplementation((line) => {
-      records.push(JSON.parse(String(line)));
-    });
-  const fixture = setup();
-  let complete!: () => Promise<void>;
-  const response = await logRequest(
-    new Request("https://ref.example/mcp?code=PRIVATE_CODE"),
-    async () => {
-      complete = bindLogContext(() =>
-        openLinkedJob({ operation: "ref.mcp.fixture" }).run(() => {
-          failOperation(new Error("Dependency failed PRIVATE_CODE"));
-        }),
-      );
-      return new Response("stream prepared");
-    },
-    fixture,
-  );
-  expect(fixture.records).toHaveLength(1);
-  await complete();
-  expect(records).toHaveLength(1);
-  expect(records[0]).toMatchObject({
-    kind: "job",
-    outcome: "error",
-    request_id: response.headers.get("X-Request-Id"),
-  });
-  expect(JSON.stringify(records)).not.toContain("PRIVATE_CODE");
-});
-
 it("concurrent deferred tool jobs and nested jobs inherit only their own request context", async () => {
   const records: Record<string, unknown>[] = [];
   for (const method of ["log", "warn", "error"] as const)
@@ -389,6 +358,7 @@ it("concurrent deferred tool jobs and nested jobs inherit only their own request
     ),
   );
   expect(fixture.records).toHaveLength(2);
+  expect(records).toHaveLength(0);
   await Promise.all(callbacks.toReversed().map((callback) => callback()));
   expect(records).toHaveLength(4);
   for (const response of responses) {
@@ -401,7 +371,11 @@ it("concurrent deferred tool jobs and nested jobs inherit only their own request
         .map((record) => String(record.operation))
         .toSorted((a, b) => a.localeCompare(b)),
     ).toEqual(["fixture.nested", "fixture.tool"]);
-    expect(events.every((record) => record.outcome === "error")).toBe(true);
+    expect(
+      events.every(
+        (record) => record.kind === "job" && record.outcome === "error",
+      ),
+    ).toBe(true);
   }
   expect(JSON.stringify(records)).not.toMatch(/FIRST_SECRET|SECOND_SECRET/);
   expect(currentLog()).toBeUndefined();

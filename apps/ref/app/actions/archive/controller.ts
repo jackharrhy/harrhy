@@ -1,9 +1,9 @@
+import { isUuid } from "../../data/protocol.ts";
 import { currentLog } from "@harrhy/logger";
 import { createController } from "remix/router";
 import { AppRuntime, Authenticated } from "../../data/runtime.ts";
 import {
   HASH_PATTERN,
-  UUID_PATTERN,
   parseArchivedPreview,
   parseBoardRecord,
 } from "../../data/archive.ts";
@@ -45,7 +45,7 @@ export default createController(routes.archive, {
       if (!(await boardAccess(context)))
         return new Response("Forbidden", { status: 403 });
       const { boardId, assetId } = context.params;
-      if (!UUID_PATTERN.test(assetId))
+      if (!isUuid(assetId))
         return new Response("Invalid asset ID", { status: 400 });
       const file = context.get(FormData)!.get("file");
       if (!(file instanceof File) || file.name.length > 160)
@@ -89,7 +89,7 @@ export default createController(routes.archive, {
       if (!(await boardAccess(context)))
         return new Response("Forbidden", { status: 403 });
       const { boardId, assetId } = context.params;
-      if (!UUID_PATTERN.test(assetId))
+      if (!isUuid(assetId))
         return new Response("Invalid asset ID", { status: 400 });
       const input = parseJsonField(context.get(FormData)!, "preview", 4096);
       const preview = parseArchivedPreview(input, boardId);
@@ -135,7 +135,7 @@ function parseJsonField(form: FormData, key: string, limit: number): unknown {
 async function boardAccess(
   context: AppContext & { params: { boardId: string } },
 ) {
-  if (!context.get(Authenticated) || !UUID_PATTERN.test(context.params.boardId))
+  if (!context.get(Authenticated) || !isUuid(context.params.boardId))
     return null;
   return context.get(AppRuntime)!.directory.board(context.params.boardId);
 }

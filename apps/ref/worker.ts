@@ -100,37 +100,45 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     );
   }
 
+  const config = {
+    issuer: env.AUTH_ISSUER,
+    clientId: env.AUTH_CLIENT_ID,
+    projectId: env.AUTH_PROJECT_ID,
+    organizationId: env.AUTH_ORGANIZATION_ID,
+  };
   try {
     const runtime = createRuntime(env);
     if (url.pathname === "/ready") {
       await runtime.directory.listBoards();
       return Response.json({ ready: true });
     }
+    const bearer = request.headers.get("Authorization");
+    const introspection =
+      env.AUTH_INTROSPECTION_CLIENT_ID && env.AUTH_INTROSPECTION_SECRET
+        ? {
+            clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
+            clientSecret: env.AUTH_INTROSPECTION_SECRET,
+          }
+        : null;
     let mcpAccess: RefMcpAccess | null = null;
     if (url.pathname === "/mcp") {
-      const bearer = request.headers.get("Authorization");
       if (!bearer?.startsWith("Bearer "))
         return mcpAuthError(
           env.AUTH_PUBLIC_ORIGIN,
           401,
           "Ref MCP bearer authorization is required",
         );
-      if (!env.AUTH_INTROSPECTION_CLIENT_ID || !env.AUTH_INTROSPECTION_SECRET)
+      if (!introspection)
         return mcpAuthError(
           env.AUTH_PUBLIC_ORIGIN,
           503,
           "Ref MCP authentication is unavailable",
         );
       try {
-        const principal = await createIdentityClient({
-          issuer: env.AUTH_ISSUER,
-          clientId: env.AUTH_CLIENT_ID,
-          projectId: env.AUTH_PROJECT_ID,
-          organizationId: env.AUTH_ORGANIZATION_ID,
-        }).introspect(bearer.slice(7), {
-          clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
-          clientSecret: env.AUTH_INTROSPECTION_SECRET,
-        });
+        const principal = await createIdentityClient(config).introspect(
+          bearer.slice(7),
+          introspection,
+        );
         mcpAccess = authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
       } catch (error) {
         return mcpAuthError(
@@ -142,7 +150,6 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     }
     const token = readSessionCookie(request);
     let authenticated = token ? await runtime.directory.session(token) : false;
-    const bearer = request.headers.get("Authorization");
     const archive = url.pathname.startsWith("/api/archive/");
     const archiveSnapshot =
       request.method === "GET" &&
@@ -156,20 +163,15 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
           (url.pathname.startsWith("/media/") ||
             url.pathname.startsWith("/previews/"))))
     ) {
-      if (!env.AUTH_INTROSPECTION_CLIENT_ID || !env.AUTH_INTROSPECTION_SECRET)
+      if (!introspection)
         return new Response("Archive authentication is unavailable", {
           status: 503,
         });
       try {
-        const principal = await createIdentityClient({
-          issuer: env.AUTH_ISSUER,
-          clientId: env.AUTH_CLIENT_ID,
-          projectId: env.AUTH_PROJECT_ID,
-          organizationId: env.AUTH_ORGANIZATION_ID,
-        }).introspect(bearer.slice(7), {
-          clientId: env.AUTH_INTROSPECTION_CLIENT_ID,
-          clientSecret: env.AUTH_INTROSPECTION_SECRET,
-        });
+        const principal = await createIdentityClient(config).introspect(
+          bearer.slice(7),
+          introspection,
+        );
         const boardGrant =
           principal.scopes.has(roleScope("boards-read")) ||
           principal.scopes.has(roleScope("boards-write"));
@@ -204,12 +206,7 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       authenticated,
       token,
       {
-        config: {
-          issuer: env.AUTH_ISSUER,
-          clientId: env.AUTH_CLIENT_ID,
-          projectId: env.AUTH_PROJECT_ID,
-          organizationId: env.AUTH_ORGANIZATION_ID,
-        },
+        config,
         origin: env.AUTH_PUBLIC_ORIGIN,
       },
       mcpAccess,

@@ -1,3 +1,4 @@
+import type { SavedLink } from "./board-assets.ts";
 import { currentLog } from "@harrhy/logger";
 import type { AppRuntimeService } from "./runtime.ts";
 import { imageType, MAX_UPLOAD_BYTES } from "./image-upload.ts";
@@ -11,12 +12,6 @@ import {
 export type BoardResourceResult<T> =
   | { ok: true; value: T; status: number }
   | { ok: false; message: string; status: number };
-
-type BoardService = ReturnType<AppRuntimeService["board"]>;
-type SavedLink = NonNullable<Awaited<ReturnType<BoardService["existingLink"]>>>;
-type RefreshedLink = NonNullable<
-  Awaited<ReturnType<BoardService["refreshLink"]>>
->;
 
 // Callers authorize access and confirm the board exists before writing resources.
 export async function uploadBoardImage(
@@ -71,7 +66,7 @@ export async function saveBoardLink(
   boardId: string,
   inputUrl: string,
   refresh = false,
-): Promise<BoardResourceResult<SavedLink | RefreshedLink>> {
+): Promise<BoardResourceResult<SavedLink & { changed?: boolean }>> {
   const log = currentLog();
   const url = normalizeLinkUrl(inputUrl);
   if (!url)
@@ -102,22 +97,7 @@ export async function saveBoardLink(
       message: "The post did not provide a usable preview yet",
       status: 422,
     };
-  const cache = () =>
-    cachePreviewImage(
-      fetched,
-      {
-        async put(key, bytes, options) {
-          const imageId = key.split("/").at(-1)!;
-          await board.storePreview(
-            boardId,
-            imageId,
-            bytes,
-            options.httpMetadata.contentType,
-          );
-        },
-      },
-      boardId,
-    );
+  const cache = () => cachePreviewImage(fetched, boardId, board);
   const preview = await (log?.time("preview.cache", cache) ?? cache());
   log?.set({
     "preview.cached": !!preview.imageUrl?.startsWith(`/previews/${boardId}/`),

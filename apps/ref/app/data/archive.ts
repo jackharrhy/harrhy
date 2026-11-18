@@ -1,31 +1,31 @@
 import type { BoardRecord } from "./directory-cell.ts";
-import type { LinkPreview } from "./protocol.ts";
+import { isRecord, isUuid, type LinkPreview } from "./protocol.ts";
 import { normalizeLinkUrl, normalizeXVideoUrl } from "./link-preview.ts";
 
-export const UUID_PATTERN = /^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 export const HASH_PATTERN = /^[0-9a-f]{64}$/;
 
 export function parseBoardRecord(value: unknown): BoardRecord | null {
   if (!isRecord(value)) return null;
   const { id, title, createdAt, updatedAt } = value;
   if (
-    typeof id !== "string" ||
-    !UUID_PATTERN.test(id) ||
+    !isUuid(id) ||
     typeof title !== "string" ||
     title.trim() !== title ||
     title.length < 1 ||
     title.length > 100 ||
+    typeof createdAt !== "number" ||
+    typeof updatedAt !== "number" ||
     !Number.isSafeInteger(createdAt) ||
     !Number.isSafeInteger(updatedAt) ||
-    (createdAt as number) <= 0 ||
-    (updatedAt as number) < (createdAt as number)
+    createdAt <= 0 ||
+    updatedAt < createdAt
   )
     return null;
   return {
     id,
     title,
-    createdAt: createdAt as number,
-    updatedAt: updatedAt as number,
+    createdAt,
+    updatedAt,
   };
 }
 
@@ -65,8 +65,4 @@ export function parseArchivedPreview(
     videoUrl: (videoUrl ?? null) as string | null,
     siteName,
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

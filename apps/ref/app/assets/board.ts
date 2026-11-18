@@ -1,3 +1,4 @@
+import { itemGeometry } from "../data/protocol.ts";
 import type {
   BoardItem,
   BoardOperation,
@@ -14,7 +15,7 @@ import { boardImages } from "./board-images.ts";
 import { wheelNavigation } from "./board-navigation.ts";
 import { registerWebMcpTools } from "@harrhy/webmcp";
 import type { WebMcpRegistration } from "@harrhy/webmcp";
-import { boardWebMcpTools, copyBoardItem } from "./board-webmcp.ts";
+import { boardWebMcpTools } from "./board-webmcp.ts";
 
 const app = document.querySelector<HTMLElement>("#board-app");
 if (!app) throw new Error("Board root is missing");
@@ -83,9 +84,7 @@ scrollModeButton.addEventListener("click", () => {
   updateScrollMode();
   try {
     localStorage.setItem("ref-scroll-mode", scrollMode);
-  } catch {
-    // The current tab still retains the preference.
-  }
+  } catch {}
 });
 let drag: Drag | null = null;
 let offsetX = 0;
@@ -147,7 +146,7 @@ const browserToolCatalog = boardWebMcpTools({
     totalItems: items.size,
     offset,
     nextOffset: offset + 200 < items.size ? offset + 200 : null,
-    items: [...items.values()].slice(offset, offset + 200).map(copyBoardItem),
+    items: structuredClone([...items.values()].slice(offset, offset + 200)),
   }),
   select(id) {
     requireToolBoard();
@@ -342,9 +341,7 @@ async function scheduleReconnect() {
       toast("Your board access ended. Return to your boards.");
       return;
     }
-  } catch {
-    /* network may recover */
-  }
+  } catch {}
   if (pageHidden) return;
   reconnectTimer = window.setTimeout(connect, reconnectDelay);
   reconnectDelay = Math.min(reconnectDelay * 1.8, 8000);
@@ -376,7 +373,7 @@ function receive(frame: BoardServerFrame) {
     toolOperations.get(frame.operationId)?.resolve({
       status: "applied",
       sequence: frame.sequence,
-      item: frame.item ? copyBoardItem(frame.item) : null,
+      item: structuredClone(frame.item),
     });
     if (frame.sequence <= sequence) return;
     if (frame.sequence > sequence + 1) {
@@ -615,6 +612,15 @@ function renderInspector() {
   if (changed && selectedId && !drag) revealSelected();
 }
 
+async function postBoardForm(resource: "assets" | "links", body: FormData) {
+  const response = await fetch(`/api/boards/${boardId}/${resource}`, {
+    method: "POST",
+    body,
+  });
+  if (!response.ok) throw new Error(await response.text());
+  return response;
+}
+
 async function refreshSelectedLink(): Promise<void> {
   const link = selectedId ? items.get(selectedId)?.link : null;
   if (!link) return;
@@ -623,11 +629,7 @@ async function refreshSelectedLink(): Promise<void> {
   form.set("refresh", "1");
   toast("Refreshing preview…");
   try {
-    const response = await fetch(`/api/boards/${boardId}/links`, {
-      method: "POST",
-      body: form,
-    });
-    if (!response.ok) throw new Error(await response.text());
+    await postBoardForm("links", form);
     await refreshSnapshot();
     toast("Preview refreshed");
   } catch (error) {
@@ -909,12 +911,7 @@ function handlePointerUp(event: PointerEvent) {
         operationId: crypto.randomUUID(),
         itemId: item.id,
         baseRevision: drag.original.revision,
-        x: item.x,
-        y: item.y,
-        width: item.width,
-        height: item.height,
-        rotation: item.rotation,
-        z: item.z,
+        ...itemGeometry(item),
       });
     renderInspector();
   }
@@ -969,12 +966,7 @@ function addBoardItem(
     item: {
       id: item.id,
       assetId: item.assetId,
-      x: item.x,
-      y: item.y,
-      width: item.width,
-      height: item.height,
-      rotation: item.rotation,
-      z: item.z,
+      ...itemGeometry(item),
     },
   });
 }
@@ -995,11 +987,7 @@ async function uploadFiles(files: FileList | File[]) {
       const dimensions = await imageDimensions(file);
       const form = new FormData();
       form.set("file", file);
-      const response = await fetch(`/api/boards/${boardId}/assets`, {
-        method: "POST",
-        body: form,
-      });
-      if (!response.ok) throw new Error(await response.text());
+      const response = await postBoardForm("assets", form);
       const uploaded = (await response.json()) as {
         assetId: string;
         filename: string;
@@ -1023,11 +1011,7 @@ async function addLink(url: string, point?: Point) {
   form.set("url", url);
   try {
     toast("Adding link…");
-    const response = await fetch(`/api/boards/${boardId}/links`, {
-      method: "POST",
-      body: form,
-    });
-    if (!response.ok) throw new Error(await response.text());
+    const response = await postBoardForm("links", form);
     const saved = (await response.json()) as {
       assetId: string;
       preview: LinkPreview;

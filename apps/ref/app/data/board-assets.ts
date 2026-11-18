@@ -20,6 +20,12 @@ interface AssetRow extends Record<string, SqlStorageValue> {
   size: number;
 }
 
+export interface SavedLink {
+  assetId: string;
+  preview: LinkPreview;
+  existingItemId: string | null;
+}
+
 export interface AssetInput {
   id: string;
   objectKey: string;
@@ -223,11 +229,7 @@ export class BoardAssets {
     return true;
   }
 
-  recordLink(preview: LinkPreview): {
-    assetId: string;
-    preview: LinkPreview;
-    existingItemId: string | null;
-  } {
+  recordLink(preview: LinkPreview): SavedLink {
     const existing = this.existingLink(preview.url);
     if (existing) return existing;
     const assetId = crypto.randomUUID();
@@ -235,11 +237,7 @@ export class BoardAssets {
     return { assetId, preview, existingItemId: null };
   }
 
-  existingLink(url: string): {
-    assetId: string;
-    preview: LinkPreview;
-    existingItemId: string | null;
-  } | null {
+  existingLink(url: string): SavedLink | null {
     const existing = this.ctx.storage.sql
       .exec<LinkRow>("SELECT * FROM links WHERE url = ?", url)
       .toArray()[0];
@@ -261,12 +259,7 @@ export class BoardAssets {
     boardId: string,
     assetId: string,
     preview: LinkPreview,
-  ): {
-    assetId: string;
-    preview: LinkPreview;
-    existingItemId: string | null;
-    changed: boolean;
-  } | null {
+  ): (SavedLink & { changed: boolean }) | null {
     const existing = this.existingLink(preview.url);
     if (!existing || existing.assetId !== assetId) return null;
     const changed =

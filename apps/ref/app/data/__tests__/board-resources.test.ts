@@ -10,12 +10,10 @@ function setup() {
     recordLink: vi.fn(),
     refreshLink: vi.fn(),
   };
-  const media = { put: vi.fn(), delete: vi.fn() };
   const runtime = {
     board: vi.fn(() => board),
-    media,
   } as unknown as AppRuntimeService;
-  return { runtime, board, media };
+  return { runtime, board };
 }
 
 const preview = {
@@ -30,7 +28,7 @@ const saved = { assetId: "asset", preview, existingItemId: "item" };
 afterEach(() => vi.restoreAllMocks());
 
 it("validates image size and signatures before storing anything", async () => {
-  const { runtime, media } = setup();
+  const { runtime, board } = setup();
   expect(
     await uploadBoardImage(runtime, "board", new File([], "empty")),
   ).toEqual({
@@ -49,16 +47,15 @@ it("validates image size and signatures before storing anything", async () => {
     message: "PNG, JPEG, GIF, or WebP required",
     status: 415,
   });
-  expect(media.put).not.toHaveBeenCalled();
+  expect(board.storeAsset).not.toHaveBeenCalled();
 });
 
 it("uses detected MIME, bounds filenames, and returns the stored asset URL", async () => {
-  const { runtime, board, media } = setup();
+  const { runtime, board } = setup();
   const file = new File([new Uint8Array([137, 80, 78, 71])], "x".repeat(180), {
     type: "text/plain",
   });
   const result = await uploadBoardImage(runtime, "board", file);
-  expect(result.ok).toBe(true);
   if (!result.ok) throw new Error("Upload failed");
   const { assetId } = result.value;
   expect(result).toEqual({
@@ -70,7 +67,6 @@ it("uses detected MIME, bounds filenames, and returns the stored asset URL", asy
       url: `/media/board/${assetId}`,
     },
   });
-  expect(media.put).not.toHaveBeenCalled();
   expect(board.storeAsset).toHaveBeenCalledWith(
     "board",
     {
@@ -82,25 +78,6 @@ it("uses detected MIME, bounds filenames, and returns the stored asset URL", asy
     },
     expect.any(ArrayBuffer),
   );
-});
-
-it("does not delete committed media when the metadata RPC response is lost", async () => {
-  const { runtime, board, media } = setup();
-  const failure = new Error("Write failed");
-  let committed = false;
-  board.storeAsset.mockImplementation(async () => {
-    committed = true;
-    throw failure;
-  });
-  await expect(
-    uploadBoardImage(
-      runtime,
-      "board",
-      new File([new Uint8Array([255, 216, 255])], "photo"),
-    ),
-  ).rejects.toBe(failure);
-  expect(committed).toBe(true);
-  expect(media.delete).not.toHaveBeenCalled();
 });
 
 it("rejects private URLs and returns existing normalized links without fetching", async () => {
