@@ -14,6 +14,10 @@ import { AppIdentity, AppRuntime } from "../data/runtime.ts";
 import { sessionCookie } from "../middleware/session.ts";
 import { routes } from "../routes.ts";
 
+import { movedReturnPath } from "./move.ts";
+
+type RefLoginTransaction = LoginTransaction & { moved?: string };
+
 const transactionPrefix = "ref_oauth";
 
 function cookie(name: string, value: string, maxAge: number): string {
@@ -23,7 +27,7 @@ function cookie(name: string, value: string, maxAge: number): string {
 function readTransaction(
   request: Request,
   name: string | null,
-): LoginTransaction | null {
+): RefLoginTransaction | null {
   if (!name) return null;
   const value = request.headers
     .get("cookie")
@@ -44,7 +48,11 @@ export default createController(routes.auth, {
     async login(context) {
       const central = context.get(AppIdentity);
       if (!central) return new Response("Not found", { status: 404 });
-      const transaction = createLoginTransaction();
+      const transaction: RefLoginTransaction = createLoginTransaction();
+      if (central.onAlternate)
+        transaction.moved = movedReturnPath(
+          new URL(context.request.url).searchParams.get("returnTo"),
+        );
       const name = loginTransactionCookieName(
         transactionPrefix,
         transaction.state,
@@ -88,7 +96,10 @@ export default createController(routes.auth, {
         const token = await context
           .get(AppRuntime)!
           .directory.createCentralSession(profile.subject, profile.expiresAt);
-        const response = redirect(routes.home.href(), {
+        const returnPath = central.onAlternate
+          ? movedReturnPath(transaction.moved)
+          : undefined;
+        const response = redirect(returnPath ?? routes.home.href(), {
           status: 303,
           headers: { "Set-Cookie": cleared! },
         });

@@ -24,15 +24,29 @@ function Document(handle: Handle<{ title: string; children?: RemixNode }>) {
   );
 }
 
-export function AuthPage(handle: Handle<{ error?: string }>) {
+function MoveNotice() {
+  return () => (
+    <p role="status">
+      Ref has moved. Please update your bookmark to this address.
+    </p>
+  );
+}
+
+export function AuthPage(handle: Handle<{ error?: string; moved?: string }>) {
   return () => (
     <Document title="Sign in">
       <main class="auth-page">
         <div class="auth-form">
           <h1 class="wordmark">ref</h1>
+          {handle.props.moved && <MoveNotice />}
           <a
             class="auth-link"
-            href="/auth/login"
+            href={
+              handle.props.moved
+                ? `/auth/login?returnTo=${encodeURIComponent(handle.props.moved)}`
+                : "/auth/login"
+            }
+            data-rmx-document
             mix={[uiActionStyles, uiPrimaryActionStyles]}
           >
             Sign in
@@ -49,7 +63,7 @@ export function AuthPage(handle: Handle<{ error?: string }>) {
 }
 
 export function HomePage(
-  handle: Handle<{ boards: BoardRecord[]; error?: string }>,
+  handle: Handle<{ boards: BoardRecord[]; error?: string; moved?: boolean }>,
 ) {
   return () => (
     <Document title="Boards">
@@ -66,6 +80,7 @@ export function HomePage(
         </header>
         <section class="home-content">
           <h1>Boards</h1>
+          {handle.props.moved && <MoveNotice />}
           {handle.props.error && (
             <p class="error" role="alert">
               {handle.props.error}
@@ -104,7 +119,7 @@ export function HomePage(
 }
 
 export function BoardPage(
-  handle: Handle<{ board: BoardRecord; error?: string }>,
+  handle: Handle<{ board: BoardRecord; error?: string; moved?: boolean }>,
 ) {
   const board = handle.props.board;
   return () => (
@@ -157,6 +172,7 @@ export function BoardPage(
             </form>
           </details>
         </header>
+        {handle.props.moved && <MoveNotice />}
         {handle.props.error && (
           <p class="error board-error" role="alert">
             {handle.props.error}

@@ -40,7 +40,7 @@ export function createAppRouter(
   runtime: AppRuntimeService,
   authenticated: boolean,
   token: string | null,
-  identity: { config: IdentityConfig; origin: string },
+  identity: { config: IdentityConfig; origin: string; onAlternate?: boolean },
   mcpAccess: RefMcpAccess | null = null,
 ) {
   const router = createRouter<AppContext>({

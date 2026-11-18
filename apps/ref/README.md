@@ -15,6 +15,13 @@ callback and subject-bound session code as production, with the disposable
 [`@harrhy/dev-auth`](../../packages/dev-auth/README.md) issuer. The archive CLI
 uses a delegated resource token.
 
+With `HARRHY_REF_ALTERNATE_BROWSER_ORIGIN` set to an additional exact HTTPS
+origin, the trusted ingress must deliver that origin as the Worker request URL
+and replace any client-supplied forwarding headers. Register its exact
+`/auth/callback` alongside the original. Session cookies remain host-only;
+MCP and archive resource identifiers stay on `AUTH_PUBLIC_ORIGIN`.
+Celld can pass the setting via `CELLD_VAR_HARRHY_REF_ALTERNATE_BROWSER_ORIGIN`.
+
 ## Run locally
 
 Requires Node.js 26 LTS (26.13.0+) and npm. From the Harrhy root:
