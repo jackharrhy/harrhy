@@ -142,7 +142,18 @@ try {
   const teamMark = await card.locator("[data-player-team]").boundingBox();
   const sprite = await portrait.boundingBox();
   assert.ok(
-    teamMark.x < sprite.x && teamMark.y < sprite.y && teamMark.x < tile.x + 16,
+    teamMark.x > sprite.x &&
+      teamMark.y < sprite.y &&
+      teamMark.x + teamMark.width > tile.x + tile.width - 12,
+  );
+  const name = await card.locator("[data-player-name]").boundingBox();
+  const center = tile.x + tile.width / 2;
+  assert.ok(Math.abs(sprite.x + sprite.width / 2 - center) < 1);
+  assert.ok(Math.abs(name.x + name.width / 2 - center) < 1);
+  assert.ok(
+    Math.abs(
+      sprite.y - tile.y - (tile.y + tile.height - name.y - name.height),
+    ) < 1,
   );
   for (const mark of ["captain", "star"]) {
     assert.ok(
