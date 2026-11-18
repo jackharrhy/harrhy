@@ -37,10 +37,16 @@ export class ReviewCell extends DurableObject<Env> {
 
   list() {
     return this.sql
-      .exec(
-        "SELECT id, base, head, mergeBase, created FROM reviews ORDER BY created DESC, id",
-      )
-      .toArray();
+      .exec<SnapshotRow>("SELECT * FROM reviews ORDER BY created DESC, id")
+      .toArray()
+      .map(({ patch, ...review }) => {
+        const changed = files(patch);
+        return {
+          ...review,
+          firstFile: changed[0]?.name,
+          fileCount: changed.length,
+        };
+      });
   }
 
   exists(id: string) {

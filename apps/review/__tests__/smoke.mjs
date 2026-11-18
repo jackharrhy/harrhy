@@ -169,6 +169,13 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.goto(origin);
+  const entry = page.getByTestId("review-link");
+  await expect(entry).toContainText("demo.ts");
+  await expect(entry.locator("code")).toHaveText([
+    initial.base.slice(0, 7),
+    initial.head.slice(0, 7),
+  ]);
+  await expect(entry).not.toContainText(initial.head);
   await page.locator(`a[href="/reviews/${id}"]`).click();
   await expect(
     page

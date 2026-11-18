@@ -101,6 +101,12 @@ export const reviewStyles = css({
     background: "var(--hui-hover-surface)",
   },
   "& .review-list a": { flexWrap: "wrap" },
+  "& .review-entry": {
+    display: "grid",
+    gap: ".25rem",
+    overflowWrap: "anywhere",
+  },
+  "& .review-header h1": { overflowWrap: "anywhere" },
   "& .path, & code": {
     fontFamily: "var(--hui-font-mono)",
     fontSize: ".875rem",

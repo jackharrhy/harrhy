@@ -80,17 +80,42 @@ async function request(path: string, method = "GET", data?: object) {
   return response;
 }
 
-function title(review: Summary) {
-  return `${review.base} → ${review.head}`;
+function shortHash(hash: string) {
+  return node("code", "", hash.slice(0, 7));
+}
+
+function comparison(review: Summary) {
+  return node(
+    "span",
+    "row muted",
+    "Base",
+    shortHash(review.base),
+    "→ Head",
+    shortHash(review.head),
+  );
+}
+
+function changeTitle(firstFile: string | undefined, count: number) {
+  return firstFile
+    ? `${firstFile}${count > 1 ? ` + ${count - 1} more` : ""}`
+    : "Files changed";
 }
 
 async function inbox(root: HTMLElement) {
-  const reviews: Summary[] = await (await request("/api/reviews")).json();
+  const reviews: (Summary & { firstFile?: string; fileCount: number })[] =
+    await (await request("/api/reviews")).json();
   const panel = node("ul", "panel review-list");
   for (const review of reviews) {
     const entry = link("", `/reviews/${encodeURIComponent(review.id)}`);
     entry.dataset.testid = "review-link";
-    entry.appendChild(node("span", "path", title(review)));
+    entry.appendChild(
+      node(
+        "span",
+        "review-entry",
+        node("strong", "", changeTitle(review.firstFile, review.fileCount)),
+        comparison(review),
+      ),
+    );
     entry.appendChild(date(review.created));
     panel.appendChild(node("li", "", entry));
   }
@@ -140,12 +165,13 @@ async function detail(root: HTMLElement, id: string) {
     "div",
     "review-header",
     link("← Review inbox", "/", "back"),
-    node("h1", "", title(review)),
+    node("h1", "", changeTitle(files[0]?.name, files.length)),
+    comparison(review),
     node(
       "div",
       "row muted",
       "Merge base",
-      node("code", "", review.mergeBase),
+      shortHash(review.mergeBase),
       "·",
       date(review.created),
     ),
