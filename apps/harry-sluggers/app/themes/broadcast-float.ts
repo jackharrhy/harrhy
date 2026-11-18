@@ -1,6 +1,5 @@
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
-import { originalBlue, originalSteel } from "../original.ts";
 import { broadcastPrism } from "./broadcast-prism.ts";
 import { glassEdges, glassHeadingImage } from "./foundation.ts";
 import type { LabConcept } from "./types.ts";
@@ -21,20 +20,23 @@ export const broadcastFloat: LabConcept = {
   }),
   parts: {
     ...broadcastPrism.parts,
-    panelSurface: `${originalSteel}3d`,
     panelFilter: "blur(24px) saturate(1.2)",
-    panelImage: `linear-gradient(165deg, rgb(255 255 255 / .07), transparent 20%, ${originalBlue[900]}40 100%), linear-gradient(180deg, ${originalBlue[700]}73, ${originalBlue[800]}a6)`,
+    panelImage:
+      "linear-gradient(165deg, rgb(255 255 255 / .04), transparent 48%)",
     headingImage: glassHeadingImage,
     cardRadius: "18px",
-    cardSurface: "#274879",
-    insetSurface: "#193560",
+    surfaceTint: "#628ec7",
+    insetSurface: "#22569b",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },
   recipe: css({
     "& [data-lab-panel]": glassEdges,
     "& [data-panel-title]": { fontSize: "20px", padding: "14px 20px" },
-    "& [data-match]": { padding: "14px", background: `${originalBlue[700]}59` },
+    "& [data-match]": {
+      padding: "14px",
+      background: "var(--lab-card-surface)",
+    },
     "& [data-roster-card]": {
       borderRadius: "20px",
       padding: "12px 10px",

@@ -24,18 +24,18 @@ export const pennantBroadcast: LabConcept = {
     headingInk: "#ffffff",
     matchColumns: "minmax(0,1fr)",
     headingImage: `linear-gradient(${originalBlue[400]}, ${originalBlue[700]})`,
-    panelImage: `linear-gradient(${originalBlue[600]}, ${originalBlue[800]})`,
-    panelEdge: "2px solid #88b3df",
+    panelImage:
+      "linear-gradient(180deg, rgb(255 255 255 / .04), transparent 48%)",
     cardRadius: "6px",
-    cardSurface: "#18437e",
-    insetSurface: "#142950",
+    surfaceTint: "#457dc8",
+    insetSurface: "#214984",
     contentColumns: "minmax(0,1.8fr) minmax(340px,1fr)",
   },
   recipe: css({
     "& [data-panel-title]": { padding: "16px", fontSize: "20px" },
     "& [data-match]": {
       padding: "18px 12px",
-      background: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
+      background: "var(--lab-card-surface)",
     },
     "& [data-roster-card]": {
       borderRadius: "6px",

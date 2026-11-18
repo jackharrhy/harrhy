@@ -1,6 +1,5 @@
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
-import { originalBlue, originalSteel } from "../original.ts";
 import { broadcastPrism } from "./broadcast-prism.ts";
 import { glassEdges, glassHeadingImage } from "./foundation.ts";
 import type { LabConcept } from "./types.ts";
@@ -21,13 +20,13 @@ export const frostRibbon: LabConcept = {
   }),
   parts: {
     ...broadcastPrism.parts,
-    panelSurface: `${originalSteel}52`,
     panelFilter: "blur(28px) saturate(1.25)",
-    panelImage: `linear-gradient(180deg, rgb(255 255 255 / .045), transparent 18%, ${originalBlue[900]}33 100%), linear-gradient(180deg, ${originalBlue[700]}73, ${originalBlue[800]}99)`,
+    panelImage:
+      "linear-gradient(180deg, rgb(255 255 255 / .04), transparent 48%)",
     headingImage: glassHeadingImage,
     cardRadius: "14px",
-    cardSurface: "#2d4566",
-    insetSurface: "#21324c",
+    surfaceTint: "#6782ad",
+    insetSurface: "#2b5087",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },
@@ -37,7 +36,7 @@ export const frostRibbon: LabConcept = {
     "& [data-panel-title]": { fontSize: "20px", padding: "10px 14px" },
     "& [data-match]": {
       padding: "10px 12px",
-      background: `${originalBlue[700]}59`,
+      background: "var(--lab-card-surface)",
     },
     "& [data-match-meta]": { marginBottom: "6px" },
     "& [data-roster-card]": {
