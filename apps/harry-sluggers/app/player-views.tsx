@@ -211,17 +211,56 @@ export function forceGraph(data: Archive, assets: ReadonlySet<string>) {
       edge.relationship === "positive" || edge.relationship === "negative",
   );
   return (
-    <div
-      data-force-graph={JSON.stringify({ edges, icons })}
+    <section
+      aria-label="Chemistry graph"
       mix={css({
         flex: 1,
-        minHeight: "220px",
-        position: "relative",
-        overflow: "hidden",
-        cursor: "grab",
+        display: "flex",
+        flexDirection: "column",
+        minWidth: 0,
       })}
     >
-      <noscript>Enable JavaScript to use the chemistry graph.</noscript>
-    </div>
+      <div
+        role="group"
+        aria-label="Graph visibility"
+        mix={css({
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "4px 20px",
+          padding: "4px 16px",
+          justifyContent: "center",
+          "& label": {
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "6px",
+            minHeight: "32px",
+          },
+          "& input": { width: "auto", accentColor: "var(--hui-accent)" },
+        })}
+      >
+        {[
+          ["miis", "Miis"],
+          ["positive", "Positive chemistry"],
+          ["negative", "Negative chemistry"],
+        ].map(([key, label]) => (
+          <label>
+            <input type="checkbox" data-graph-filter={key} defaultChecked />
+            {label}
+          </label>
+        ))}
+      </div>
+      <div
+        data-force-graph={JSON.stringify({ edges, icons })}
+        mix={css({
+          flex: 1,
+          minHeight: "220px",
+          position: "relative",
+          overflow: "hidden",
+          cursor: "grab",
+        })}
+      >
+        <noscript>Enable JavaScript to use the chemistry graph.</noscript>
+      </div>
+    </section>
   );
 }

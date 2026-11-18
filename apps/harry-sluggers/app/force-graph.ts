@@ -43,13 +43,10 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     link.target = nodeMap.get(link.target as string)!;
   });
 
-  const neighbors = new Map(nodes.map((node) => [node.id, new Set<string>()]));
   const charge = new Map(nodes.map((node) => [node.id, -800]));
   for (const edge of links) {
     const from = (edge.source as GraphNode).id;
     const to = (edge.target as GraphNode).id;
-    neighbors.get(from)?.add(to);
-    neighbors.get(to)?.add(from);
     const delta = edge.type === "positive" ? 100 : -150;
     charge.set(from, (charge.get(from) ?? -800) + delta);
     if (from !== to) charge.set(to, (charge.get(to) ?? -800) + delta);
@@ -111,10 +108,14 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
   );
   let hovered: string | null = null;
   let selected: string | null = null;
+  const hidden = new Set<string>();
+  const visibleNode = (id: string) =>
+    !hidden.has("miis") || !/\bmii\b/i.test(id);
+  let visibleLinks = links;
   function drawEdges() {
     const active = hovered ?? selected;
     const paths = batches.map(() => ({ line: "", arrow: "" }));
-    for (const edge of links) {
+    for (const edge of visibleLinks) {
       const from = edge.source as GraphNode;
       const to = edge.target as GraphNode;
       const x = from.x ?? 0,
@@ -235,7 +236,14 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
   }
   function paint() {
     const active = hovered ?? selected;
-    const connected = active ? neighbors.get(active) : undefined;
+    const connected = new Set<string>();
+    if (active)
+      for (const edge of visibleLinks) {
+        const from = (edge.source as GraphNode).id,
+          to = (edge.target as GraphNode).id;
+        if (from === active) connected.add(to);
+        if (to === active) connected.add(from);
+      }
     drawEdges();
     node
       .attr("aria-pressed", (d) => String(d.id === selected))
@@ -278,8 +286,24 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
       }
     });
   paint();
-  return () => {
-    simulation.stop();
-    svg.on(".zoom", null);
+  return {
+    filter(key: string, show: boolean) {
+      if (show) hidden.delete(key);
+      else hidden.add(key);
+      visibleLinks = links.filter(
+        (edge) =>
+          !hidden.has(edge.type) &&
+          visibleNode((edge.source as GraphNode).id) &&
+          visibleNode((edge.target as GraphNode).id),
+      );
+      node.attr("display", (d) => (visibleNode(d.id) ? null : "none"));
+      if (selected && !visibleNode(selected)) selected = null;
+      if (hovered && !visibleNode(hovered)) hovered = null;
+      paint();
+    },
+    dispose() {
+      simulation.stop();
+      svg.on(".zoom", null);
+    },
   };
 }
