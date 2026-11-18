@@ -151,38 +151,71 @@ const styles = css({
     objectFit: "contain",
   },
   "& [data-roster-card] h3": { margin: "6px 0 3px", fontSize: "15px" },
-  "& [data-catalogue-grid]": { gap: "8px" },
+  "& [data-catalogue-grid]": {
+    gridTemplateColumns: "repeat(auto-fill,minmax(132px,144px))",
+    gap: "16px",
+  },
   "& [data-roster-grid] [data-player-card]": {
-    textAlign: "center",
-    padding: "6px 8px",
-    gap: "2px",
-  },
-  "& [data-player-card] [data-portrait]": { width: "56px", height: "56px" },
-  "& [data-player-card] h3": { margin: "2px 0 0" },
-  "& [data-player-card] h3 a": { textDecoration: "none" },
-  "& [data-portrait-lockup]": {
-    display: "inline-grid",
     position: "relative",
-    justifySelf: "center",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    minHeight: "92px",
+    textAlign: "center",
+    padding: "16px 8px 8px",
+    gap: "8px",
+    borderWidth: "2px",
+    textDecoration: "none",
   },
+  "& [data-roster-grid] [data-player-card]:hover": {
+    background:
+      "color-mix(in srgb, var(--lab-card-surface), var(--hui-ink) 10%)",
+    color: "var(--hui-ink)",
+  },
+  "& [data-player-card] [data-portrait]": { width: "32px", height: "32px" },
+  "& [data-player-name]": { fontSize: "12px", lineHeight: 1.25 },
+  "& [data-player-team]": {
+    display: "flex",
+    alignItems: "center",
+    gap: "4px",
+    position: "absolute",
+    top: "2px",
+    left: "5px",
+    transform: "rotate(-8deg)",
+    color: "var(--hui-muted)",
+    fontSize: "10px",
+    lineHeight: 1,
+  },
+  "& [data-player-card] [data-player-team] [data-portrait]": {
+    width: "16px",
+    height: "16px",
+  },
+  "& [data-portrait-lockup]": { display: "inline-grid", position: "relative" },
   "& [data-player-mark]": {
     position: "absolute",
     display: "grid",
     placeItems: "center",
-    width: "18px",
-    height: "18px",
-    fontSize: "11px",
+    width: "14px",
+    height: "14px",
+    top: "-4px",
+    fontSize: "10px",
     fontWeight: 700,
-    borderRadius: "4px",
-    background: "var(--lab-inset-surface)",
-    color: "var(--hui-accent)",
-    bottom: 0,
+    borderRadius: "50%",
+    pointerEvents: "none",
   },
-  "& [data-player-mark=captain]": { left: "-9px" },
-  "& [data-player-mark=star]": { right: "-9px" },
+  "& [data-player-mark=captain]": {
+    left: "-4px",
+    background: "#f0446466",
+    color: "var(--hui-ink)",
+  },
+  "& [data-player-mark=star]": {
+    right: "-4px",
+    background: "#ffd94933",
+    color: "var(--hui-accent)",
+  },
   "& [data-player-mark] svg": {
-    width: "12px",
-    height: "12px",
+    width: "11px",
+    height: "11px",
     fill: "currentColor",
   },
   "& [data-team-side]": {
@@ -344,8 +377,17 @@ export function page(
     const name = `${type}-${n}.png`;
     return assets.has(name) ? `/assets/${name}` : undefined;
   };
-  const image = (type: "player" | "team", n: number, name: string) => {
-    const src = portraitSource(type, n);
+  const image = (
+    type: "player" | "team",
+    n: number,
+    name: string,
+    side = false,
+  ) => {
+    const sideName = `player-side-${n}.png`;
+    const src =
+      side && assets.has(sideName)
+        ? `/assets/${sideName}`
+        : portraitSource(type, n);
     return (
       <span data-portrait aria-hidden="true">
         {src ? (
@@ -368,9 +410,19 @@ export function page(
         const owner = team(p.team_id);
         const assignment = data.lineups.find((l) => l.player_id === p.id);
         return (
-          <article data-roster-card data-player-card>
+          <a data-roster-card data-player-card href={`/players/${p.id}`}>
+            <span data-player-team title={owner?.name ?? "Free agent"}>
+              {owner ? (
+                <>
+                  {image("team", owner.id, owner.abbreviation)}
+                  {owner.abbreviation}
+                </>
+              ) : (
+                "Free"
+              )}
+            </span>
             <div data-portrait-lockup>
-              {image("player", p.id, p.name)}
+              {image("player", p.id, p.name, true)}
               {owner?.captain_id === p.id && (
                 <span
                   data-player-mark="captain"
@@ -394,16 +446,8 @@ export function page(
                 </span>
               )}
             </div>
-            <div>
-              <h3>{playerLink(p.id)}</h3>
-              <small>
-                {owner ? teamLink(owner.id) : "Free agent"}
-                {assignment?.fielding_position
-                  ? ` · ${assignment.fielding_position}`
-                  : ""}
-              </small>
-            </div>
-          </article>
+            <span data-player-name>{p.name}</span>
+          </a>
         );
       })}
     </div>

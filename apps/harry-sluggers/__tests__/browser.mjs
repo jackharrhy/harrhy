@@ -129,12 +129,27 @@ try {
   assert.equal(new URL(page.url()).searchParams.get("q"), "Mario");
   const card = page.locator("[data-player-card]").first();
   assert.equal(
-    await card
-      .locator("h3 a")
-      .evaluate((el) => getComputedStyle(el).textDecorationLine),
+    await card.evaluate((el) => getComputedStyle(el).textDecorationLine),
     "none",
   );
-  assert.equal((await card.locator("[data-portrait]").boundingBox()).width, 56);
+  const portrait = card.locator("[data-portrait-lockup] [data-portrait]");
+  assert.equal((await portrait.boundingBox()).width, 32);
+  assert.match(
+    await portrait.locator("img").getAttribute("src"),
+    /player-side-1\.png$/,
+  );
+  const tile = await card.boundingBox();
+  const teamMark = await card.locator("[data-player-team]").boundingBox();
+  const sprite = await portrait.boundingBox();
+  assert.ok(
+    teamMark.x < sprite.x && teamMark.y < sprite.y && teamMark.x < tile.x + 16,
+  );
+  for (const mark of ["captain", "star"]) {
+    assert.ok(
+      (await card.locator(`[data-player-mark=${mark}]`).boundingBox()).y <
+        sprite.y,
+    );
+  }
   assert.ok(
     await card.getByRole("img", { name: "Captain", exact: true }).count(),
   );
