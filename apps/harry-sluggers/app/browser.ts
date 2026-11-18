@@ -68,11 +68,12 @@ for (const type of ["pointerout", "focusout"] as const) {
 }
 
 let graphHost: HTMLElement | null = null;
-let disposeGraph: (() => void) | undefined;
+let graph: ReturnType<typeof mountGraph> | undefined;
 function syncGraph() {
   const host = document.querySelector<HTMLElement>("[data-force-graph]");
   if (host === graphHost) return;
-  disposeGraph?.();
+  graph?.dispose();
+  graph = undefined;
   graphHost = host;
   if (!host) return;
   const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
@@ -83,7 +84,7 @@ function syncGraph() {
   svg.setAttribute("height", "100%");
   svg.setAttribute("aria-label", "Chemistry graph");
   shadow.replaceChildren(svg);
-  disposeGraph = mountGraph(
+  graph = mountGraph(
     svg,
     JSON.parse(host.dataset.forceGraph ?? "{}") as GraphData,
   );
@@ -93,3 +94,14 @@ new MutationObserver(syncGraph).observe(document.documentElement, {
   subtree: true,
 });
 syncGraph();
+
+document.addEventListener("change", (event) => {
+  const input = event.target;
+  if (
+    input instanceof HTMLInputElement &&
+    input.dataset.graphFilter &&
+    graphHost?.parentElement?.contains(input)
+  ) {
+    graph?.filter(input.dataset.graphFilter, input.checked);
+  }
+});

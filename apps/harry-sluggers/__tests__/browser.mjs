@@ -29,6 +29,33 @@ try {
   assert.ok(
     await page.locator("[data-force-graph] path[data-graph-edges]").count(),
   );
+  const mii = page.locator("[data-force-graph] g[aria-label*=Mii]").first();
+  await mii.waitFor();
+  await page.getByRole("checkbox", { name: "Miis", exact: true }).uncheck();
+  await mii.waitFor({ state: "hidden" });
+  await page.getByRole("checkbox", { name: "Miis", exact: true }).check();
+  await mii.waitFor();
+  for (const [label, type] of [
+    ["Positive chemistry", "positive"],
+    ["Negative chemistry", "negative"],
+  ]) {
+    const checkbox = page.getByRole("checkbox", { name: label, exact: true });
+    const paths = page.locator(
+      `[data-force-graph] path[data-graph-edges=${type}]`,
+    );
+    await checkbox.uncheck();
+    assert.ok(
+      await paths.evaluateAll((edges) =>
+        edges.every((edge) => !edge.getAttribute("d")),
+      ),
+    );
+    await checkbox.check();
+    assert.ok(
+      await paths.evaluateAll((edges) =>
+        edges.some((edge) => edge.getAttribute("d")),
+      ),
+    );
+  }
   await page.getByRole("link", { name: "Leaderboard", exact: true }).click();
   await page.waitForURL(`${origin}/players`);
   const player = await page
