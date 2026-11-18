@@ -39,12 +39,26 @@ const styles = css({
     gap: "8px 40px",
     padding: "16px",
   },
-  "& [data-topbar-shell]": { borderBottom: "1px solid var(--hui-border)" },
+  "& [data-topbar-shell]": {
+    position: "relative",
+    borderBottom: "1px solid var(--hui-border)",
+  },
+  "& [data-topbar] form": { marginInlineStart: "auto", order: 1 },
+  "& [data-topbar] select": { width: "156px" },
+  "@media (min-width: 1640px)": {
+    "& [data-topbar] form": {
+      position: "absolute",
+      right: "16px",
+      top: "50%",
+      transform: "translateY(-50%)",
+    },
+  },
   "& [data-topbar] nav": { gap: "0 32px" },
   "& [data-topbar] nav a:not([aria-current])": { textDecoration: "none" },
   "@media (max-width: 767px)": {
     "& [data-topbar]": { gap: "4px 16px" },
-    "& [data-topbar] nav": { flexBasis: "100%", gap: "0 16px" },
+    "& [data-topbar] nav": { order: 2, flexBasis: "100%", gap: "0 16px" },
+    "& [data-topbar] select": { width: "128px", paddingInline: "6px" },
   },
   "& nav": { display: "flex", flexWrap: "wrap", gap: "16px" },
   "& nav a, & button, & select": {
@@ -1763,25 +1777,6 @@ export function document(title: string, body: RemixNode, url: URL) {
         </a>
         <header data-topbar-shell>
           <div data-topbar>
-            <form method="get">
-              <label>
-                <select
-                  aria-label="Style"
-                  data-theme-picker
-                  name="theme"
-                  defaultValue={concept.id}
-                >
-                  {concepts.map((c) => (
-                    <option value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-              </label>
-              {[...url.searchParams]
-                .filter(([key]) => key !== "theme")
-                .map(([key, value]) => (
-                  <input type="hidden" name={key} value={value} />
-                ))}
-            </form>
             <a data-brand href="/">
               @harrhy/sluggers
             </a>
@@ -1807,6 +1802,25 @@ export function document(title: string, body: RemixNode, url: URL) {
                 );
               })}
             </nav>
+            <form method="get">
+              <label>
+                <select
+                  aria-label="Style"
+                  data-theme-picker
+                  name="theme"
+                  defaultValue={concept.id}
+                >
+                  {concepts.map((c) => (
+                    <option value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              {[...url.searchParams]
+                .filter(([key]) => key !== "theme")
+                .map(([key, value]) => (
+                  <input type="hidden" name={key} value={value} />
+                ))}
+            </form>
           </div>
         </header>
         <main id="main">
