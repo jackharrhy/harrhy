@@ -1,4 +1,4 @@
-import { createView } from "./render";
+import { createView, type FloorPoint } from "./render";
 import { createMotion } from "../shared/motion";
 import { TICK_MS, type InputCommand, type Pose, type ServerMessage } from "../shared/protocol";
 
@@ -20,6 +20,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
   const root = canvas.closest<HTMLElement>("#hall")!;
   const status = root.querySelector<HTMLElement>("#status")!;
   const button = root.querySelector<HTMLButtonElement>("#enter")!;
+  const modeButton = root.querySelector<HTMLButtonElement>("#mode")!;
+  const controls = root.querySelector<HTMLElement>("#controls")!;
   let stop = () => {};
   function start() {
     stop();
@@ -54,7 +56,25 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     let me = "",
       seq = 0,
       yaw = 0,
-      pitch = 0;
+      pitch = -0.28;
+    let mode: "walk" | "fps" = "walk";
+    let destination: (FloorPoint & { best: number; progressAt: number }) | undefined;
+    let gesture:
+      | { id: number; startX: number; startY: number; x: number; y: number; dragged: boolean }
+      | undefined;
+    function setMode(next: typeof mode) {
+      mode = next;
+      root.dataset.mode = mode;
+      controls.textContent =
+        mode === "walk"
+          ? "Drag to look · Click or tap the floor to walk"
+          : "WASD to move · Space to jump · Esc releases the mouse";
+      modeButton.setAttribute("aria-pressed", String(mode === "fps"));
+      destination = undefined;
+      gesture = undefined;
+      keys.clear();
+      if (mode === "walk" && document.pointerLockElement === canvas) document.exitPointerLock();
+    }
     let predicted: Awaited<ReturnType<typeof createMotion>> | undefined;
     let starting = false;
     let correction: Pose | undefined;
@@ -79,7 +99,11 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       samples.length = 0;
       keys.clear();
       button.disabled = true;
+      modeButton.disabled = true;
+      destination = undefined;
+      gesture = undefined;
     }
+    setMode("walk");
     let tick: number | undefined;
     signal.addEventListener(
       "abort",
@@ -135,7 +159,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
                   return motion.dispose();
                 predicted = motion;
                 yaw = self.yaw;
-                pitch = self.pitch;
+                pitch = mode === "walk" ? -0.28 : self.pitch;
+                modeButton.disabled = false;
                 button.disabled = false;
                 updateStatus();
               })
@@ -158,12 +183,86 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       });
     }
     const focus = () => {
-      if (!predicted) return;
+      if (!predicted || mode !== "fps") return;
       canvas.focus();
       void Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
     };
     button.addEventListener("click", focus, { signal });
-    canvas.addEventListener("click", focus, { signal });
+    modeButton.addEventListener(
+      "click",
+      () => {
+        setMode(mode === "walk" ? "fps" : "walk");
+        canvas.focus();
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "click",
+      (event) => {
+        if (mode === "fps" && event.pointerType !== "touch") focus();
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (
+          !predicted ||
+          !event.isPrimary ||
+          event.button !== 0 ||
+          document.pointerLockElement === canvas
+        )
+          return;
+        if (mode === "fps" && event.pointerType !== "touch") return;
+        canvas.focus();
+        canvas.setPointerCapture(event.pointerId);
+        gesture = {
+          id: event.pointerId,
+          startX: event.clientX,
+          startY: event.clientY,
+          x: event.clientX,
+          y: event.clientY,
+          dragged: false,
+        };
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "pointermove",
+      (event) => {
+        if (gesture?.id !== event.pointerId) return;
+        if (
+          !gesture.dragged &&
+          Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) < 7
+        )
+          return;
+        gesture.dragged = true;
+        yaw = (yaw - (event.clientX - gesture.x) * 0.005) % turn;
+        pitch = clampPitch(pitch - (event.clientY - gesture.y) * 0.005);
+        gesture.x = event.clientX;
+        gesture.y = event.clientY;
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "pointerup",
+      (event) => {
+        if (gesture?.id !== event.pointerId) return;
+        if (mode === "walk" && !gesture.dragged) {
+          const point = view.pickFloor(event.clientX, event.clientY);
+          destination = point && { ...point, best: Infinity, progressAt: performance.now() };
+        }
+        gesture = undefined;
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "lostpointercapture",
+      (event) => {
+        if (gesture?.id === event.pointerId) gesture = undefined;
+      },
+      { signal },
+    );
     document.addEventListener(
       "pointerlockchange",
       () => {
@@ -178,7 +277,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     document.addEventListener(
       "mousemove",
       (e) => {
-        if (document.pointerLockElement !== canvas) return;
+        if (mode !== "fps" || document.pointerLockElement !== canvas) return;
         yaw = (yaw - e.movementX * 0.0025) % turn;
         pitch = clampPitch(pitch - e.movementY * 0.0025);
       },
@@ -194,6 +293,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         )
           return;
         e.preventDefault();
+        if (!e.code.startsWith("Arrow")) destination = undefined;
         keys.add(e.code);
       },
       { signal },
@@ -213,10 +313,31 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       pitch = clampPitch(
         pitch + (Number(keys.has("ArrowUp")) - Number(keys.has("ArrowDown"))) * 0.026,
       );
+      let forward = Number(keys.has("KeyW")) - Number(keys.has("KeyS"));
+      let strafe = Number(keys.has("KeyD")) - Number(keys.has("KeyA"));
+      if (destination) {
+        const pose = predicted.pose();
+        const dx = destination.x - pose.x,
+          dz = destination.z - pose.z;
+        const distance = Math.hypot(dx, dz);
+        const now = performance.now();
+        if (destination.best - distance > 0.025) {
+          destination.best = distance;
+          destination.progressAt = now;
+        }
+        if (distance < 0.14 || now - destination.progressAt > 500) destination = undefined;
+        else {
+          forward = Math.max(
+            -1,
+            Math.min(1, (-dx * Math.sin(yaw) - dz * Math.cos(yaw)) / distance),
+          );
+          strafe = Math.max(-1, Math.min(1, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / distance));
+        }
+      }
       const input = {
         seq: ++seq,
-        forward: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
-        strafe: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
+        forward,
+        strafe,
         jump: keys.has("Space"),
         yaw,
         pitch,
@@ -250,7 +371,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             };
           });
         try {
-          view.draw({ ...predicted.pose(), yaw, pitch }, remotes);
+          view.draw({ ...predicted.pose(), yaw, pitch }, remotes, destination);
         } catch (error) {
           console.error(error);
           status.textContent = "Rendering stopped. Reload to retry, or use ?renderer=webgl.";

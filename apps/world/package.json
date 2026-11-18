@@ -16,6 +16,7 @@
     "@harrhy/gurgur-engine": "0.1.0",
     "@harrhy/gurgur-game": "0.1.0",
     "@harrhy/pool-simulation": "0.1.0",
+    "@harrhy/ui": "0.1.0",
     "bitecs": "0.4.0",
     "box3d.js": "0.1.1",
     "remix": "3.2.0",

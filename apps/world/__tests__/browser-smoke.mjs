@@ -8,7 +8,21 @@ const browser = await chromium.launch({
 const errors = [];
 try {
   const page = await browser.newPage({ viewport: { width: 800, height: 550 } });
-  const other = await browser.newPage({ viewport: { width: 800, height: 550 } });
+  const other = await browser.newPage({
+    viewport: { width: 390, height: 680 },
+    hasTouch: true,
+    isMobile: true,
+  });
+  let otherPose;
+  other.on("websocket", (socket) => {
+    if (!socket.url().endsWith("/room")) return;
+    let id;
+    socket.on("framereceived", ({ payload }) => {
+      const message = JSON.parse(payload.toString());
+      if (message.type === "welcome") id = message.id;
+      if (message.type === "motion") otherPose = message.players.find((p) => p.id === id);
+    });
+  });
   let socket;
   let self;
   const samples = [];
@@ -36,8 +50,23 @@ try {
   for (const tab of [page, other])
     await expect(tab.getByRole("status")).toHaveText(/2 players$/, { timeout: 30_000 });
   assert(socket && self && samples.at(-1));
-  const before = samples.at(-1).z;
+  const hall = page.locator("#hall");
+  await expect(hall).toHaveAttribute("data-mode", "walk");
+  const beforeClick = samples.at(-1).z;
   await page.bringToFront();
+  await page.mouse.click(400, 390);
+  await expect.poll(() => samples.at(-1)?.z, { timeout: 10_000 }).toBeLessThan(beforeClick - 0.3);
+  await other.bringToFront();
+  const beforeTap = otherPose.z;
+  await other.touchscreen.tap(195, 490);
+  await expect.poll(() => otherPose?.z, { timeout: 10_000 }).toBeLessThan(beforeTap - 0.3);
+  if (process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT)
+    await other.screenshot({ path: process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT });
+  await page.bringToFront();
+  const before = samples.at(-1).z;
+  await page.locator("#mode").click();
+  await expect(hall).toHaveAttribute("data-mode", "fps");
+  await expect(page.locator("#mode")).toHaveAttribute("aria-pressed", "true");
   await page.locator("canvas").focus();
   await page.keyboard.down("w");
   try {
@@ -45,6 +74,8 @@ try {
   } finally {
     await page.keyboard.up("w");
   }
+  await page.locator("#mode").click();
+  await expect(hall).toHaveAttribute("data-mode", "walk");
   if (process.env.HARRHY_WORLD_TEST_SCREENSHOT)
     await page.screenshot({ path: process.env.HARRHY_WORLD_TEST_SCREENSHOT });
   await other.goto("about:blank");
@@ -56,7 +87,7 @@ try {
   await expect(page.getByRole("status")).toHaveText(/1 player$/);
   assert.deepEqual(errors, []);
   console.log(
-    "Two clients joined, keyboard motion reached authority, navigation cleaned up, and rejoin left no duplicate players.",
+    "Desktop click and mobile tap moved authoritative players, FPS toggle and keyboard worked, and rejoin left no duplicate players.",
   );
 } catch (error) {
   console.error(errors);

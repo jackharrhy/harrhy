@@ -3,10 +3,12 @@ import { createHall, hallTexturePaths } from "./hall";
 import { billboardAtlasPath, createBillboards, loadBillboardLayout } from "./player-billboard";
 
 type Pose = { x: number; y: number; z: number; yaw: number; pitch: number };
+export type FloorPoint = { x: number; z: number };
 type RemotePose = Pose & { id: string };
 
 export async function createView(canvas: HTMLCanvasElement): Promise<{
-  draw(local: Pose, remotes: readonly RemotePose[]): void;
+  draw(local: Pose, remotes: readonly RemotePose[], destination?: FloorPoint): void;
+  pickFloor(x: number, y: number): FloorPoint | undefined;
   dispose(): void;
 }> {
   const forceWebGL = new URLSearchParams(window.location.search).get("renderer") === "webgl";
@@ -14,6 +16,9 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
   let deviceError: Error | undefined;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
+  const ray = new THREE.Raycaster();
+  let hall: THREE.Group;
+  let marker: THREE.Mesh;
   const textures: THREE.Texture[] = [];
   let billboards: ReturnType<typeof createBillboards> | undefined;
   let initialized = false;
@@ -86,7 +91,15 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
       glow.position.set(x, 2.4, z);
       scene.add(glow);
     }
-    scene.add(createHall(textures.slice(0, hallTexturePaths.length)));
+    hall = createHall(textures.slice(0, hallTexturePaths.length));
+    scene.add(hall);
+    marker = new THREE.Mesh(
+      new THREE.RingGeometry(0.14, 0.18, 32),
+      new THREE.MeshBasicMaterial({ color: 0xf5d18c }),
+    );
+    marker.rotation.x = -Math.PI / 2;
+    marker.visible = false;
+    scene.add(marker);
     billboards = createBillboards(scene, textures[hallTexturePaths.length], layout);
   } catch (error) {
     dispose();
@@ -98,7 +111,22 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
   let height = 0;
   let pixelRatio = 0;
   return {
-    draw(local, remotes) {
+    pickFloor(x, y) {
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      camera.updateMatrixWorld();
+      ray.setFromCamera(
+        new THREE.Vector2(
+          ((x - rect.left) / rect.width) * 2 - 1,
+          1 - ((y - rect.top) / rect.height) * 2,
+        ),
+        camera,
+      );
+      const hit = ray.intersectObject(hall, true)[0];
+      if (hit?.object.name !== "walk-floor" || hit.point.y < -0.01) return;
+      return { x: hit.point.x, z: hit.point.z };
+    },
+    draw(local, remotes, destination) {
       if (disposed) return;
       if (deviceError) throw deviceError;
       const nextWidth = canvas.clientWidth;
@@ -115,6 +143,8 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
       }
       camera.position.set(local.x, local.y + 1.65, local.z);
       camera.rotation.set(local.pitch, local.yaw, 0, "YXZ");
+      marker.visible = destination !== undefined;
+      if (destination) marker.position.set(destination.x, 0.015, destination.z);
       billboards?.draw(camera, remotes);
       activeRenderer.render(scene, camera);
     },

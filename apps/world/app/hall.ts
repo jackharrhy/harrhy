@@ -63,7 +63,7 @@ export function createHall(textures: readonly THREE.Texture[]) {
       roughness: 0.92,
     }),
     4,
-  );
+  ).name = "walk-floor";
   const brickMat = new THREE.MeshStandardMaterial({
     map: brick,
     normalMap: normal,

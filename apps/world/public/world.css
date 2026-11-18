@@ -1,70 +1,19 @@
-* {
-  box-sizing: border-box;
+/* Client-owned mode and pointer-lock state are reflected on #hall. */
+#hall:not([data-mode="fps"]) #enter,
+#hall[data-looking] #enter,
+#hall:not([data-mode="fps"]) .reticle {
+  display: none;
 }
-body {
-  margin: 0;
-  background: #161b18;
-  color: #f2e9d5;
-  font: 16px system-ui;
-}
-#hall {
-  position: relative;
-  height: 100dvh;
-  overflow: hidden;
-}
-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
-header {
-  position: absolute;
-  inset: 1rem auto auto 1rem;
-  width: min(24rem, calc(100% - 2rem));
-  pointer-events: none;
-  background: #151b17eb;
-  border: 1px solid #587064;
-  padding: 0.8rem 1rem;
-}
-h1 {
-  font:
-    600 2rem Georgia,
-    serif;
-  margin: 0;
-}
-p {
-  margin: 0.4rem 0;
-}
-button {
-  pointer-events: auto;
-  font: inherit;
-  color: #182119;
-  background: #e2c997;
-  border: 0;
-  padding: 0.45rem 0.75rem;
-}
-button:disabled {
-  opacity: 0.55;
-}
-button:focus-visible,
-canvas:focus-visible {
-  outline: 3px solid #ffdc9e;
-  outline-offset: -3px;
-}
-#controls {
-  font-size: 0.875rem;
-}
+
 .reticle {
   position: absolute;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 2rem;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hui-ink);
+  box-shadow: 0 0 0 1px #21160d;
   pointer-events: none;
-}
-#hall[data-looking] header {
-  opacity: 0.82;
-}
-#hall[data-looking] button {
-  display: none;
 }

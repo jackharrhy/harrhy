@@ -1,8 +1,12 @@
+import { Button, Heading, Inline, Panel, Text } from "@harrhy/ui/native";
+import { themeRoot } from "@harrhy/ui/theme";
+import { css } from "remix/component";
 import { csp, getCspNonce } from "remix/middleware/csp";
 import { render } from "remix/middleware/render";
 import { createRouter, type MiddlewareContext } from "remix/router";
 import { Canvas } from "./canvas";
 import { routes } from "./routes";
+import { woodTheme } from "./wood";
 
 type Context = MiddlewareContext<[ReturnType<typeof csp>, ReturnType<typeof render>]>;
 const router = createRouter<Context>({
@@ -33,6 +37,37 @@ const router = createRouter<Context>({
     }),
   ],
 });
+const documentStyles = css({ margin: 0 });
+const hallStyles = css({
+  position: "relative",
+  height: "100dvh",
+  overflow: "hidden",
+  "& canvas": { width: "100%", height: "100%", display: "block", touchAction: "none" },
+  "& canvas:focus-visible": { outline: "2px solid var(--hui-focus)", outlineOffset: "-3px" },
+});
+const hudStyles = css({
+  position: "absolute",
+  pointerEvents: "none",
+  backgroundSize: "auto, 320px",
+  left: "max(0.75rem, env(safe-area-inset-left))",
+  right: "max(0.75rem, env(safe-area-inset-right))",
+  width: "fit-content",
+});
+const identityStyles = css({ top: "max(0.75rem, env(safe-area-inset-top))" });
+const inputStyles = css({
+  bottom: "max(0.75rem, env(safe-area-inset-bottom))",
+  marginInlineStart: "auto",
+  "& button": { pointerEvents: "auto" },
+});
+const titleStyles = css({ fontSize: "1.25rem", fontWeight: 600 });
+const hintStyles = css({ marginTop: "0.375rem", fontSize: "0.8125rem" });
+const modeStyles = css({
+  '&[aria-pressed="true"]': {
+    backgroundColor: "var(--hui-accent)",
+    color: "var(--hui-on-accent)",
+  },
+});
+
 router.map(routes.home, (context) =>
   context.render(
     <html lang="en">
@@ -43,23 +78,31 @@ router.map(routes.home, (context) =>
         <title>World | Empty Hall</title>
         <link rel="stylesheet" href="/world.css" />
       </head>
-      <body>
-        <main id="hall">
+      <body mix={[documentStyles, woodTheme, themeRoot]}>
+        <main id="hall" data-mode="walk" mix={hallStyles}>
           <Canvas />
-          <header>
-            <h1>World</h1>
-            <p>The empty hall</p>
-            <p id="status" role="status">
+          <Panel aria-labelledby="world-title" mix={[hudStyles, identityStyles]}>
+            <Heading level={1} id="world-title" mix={titleStyles}>
+              World
+            </Heading>
+            <Text id="status" role="status" tone="muted">
               Loading the hall…
-            </p>
-            <button type="button" id="enter" disabled>
-              Click to look
-            </button>
-            <p id="controls">WASD walk · Space jump · Arrow keys turn · Esc releases mouse</p>
-          </header>
-          <span class="reticle" aria-hidden="true">
-            ·
-          </span>
+            </Text>
+          </Panel>
+          <Panel aria-label="Movement controls" mix={[hudStyles, inputStyles]}>
+            <Inline>
+              <Button id="mode" aria-pressed={false} disabled mix={modeStyles}>
+                FPS mode
+              </Button>
+              <Button id="enter" disabled>
+                Click to look
+              </Button>
+            </Inline>
+            <Text id="controls" mix={hintStyles}>
+              Drag to look · Tap the floor to walk
+            </Text>
+          </Panel>
+          <span class="reticle" aria-hidden="true" />
         </main>
       </body>
     </html>,
