@@ -146,6 +146,14 @@ try {
   const initial = await (await fetch(api)).json();
   assert.equal(initial.title, "Change demo");
   assert.equal(initial.fileCount, 1);
+  assert.deepEqual(initial.viewedFiles, []);
+  const setViewed = (file, viewed) =>
+    fetch(`${api}/viewed`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json", "X-Harrhy-Review": "1" },
+      body: JSON.stringify({ file, viewed }),
+    });
+  assert.equal((await setViewed(1, true)).status, 400);
   assert.equal(initial.mergeBase, fork);
   const { id: namedId } = await cli(
     "submit",
@@ -249,6 +257,7 @@ try {
   await expect(
     page.locator("diffs-container").getByText(/green/),
   ).toBeVisible();
+  await expect(page.getByTestId("diff-file")).toHaveJSProperty("open", true);
   await expect(page.locator(".masthead")).toHaveCSS("position", "sticky");
   await expect(
     page.locator(".masthead").getByRole("link", { name: "← Inbox" }),
@@ -296,9 +305,14 @@ try {
   ).toBeVisible();
   await expect(page.getByText("Agreed.", { exact: true })).toBeVisible();
 
+  await page.getByTestId("file-viewed").click();
+  await expect(page.getByTestId("file-viewed")).toBeChecked();
+  await expect(page.getByTestId("diff-file")).toHaveJSProperty("open", false);
   await stop();
   await start();
+
   const persisted = await (await fetch(api)).json();
+  assert.deepEqual(persisted.viewedFiles, [0]);
   assert.equal(persisted.title, "<b>Browser title</b>");
   for (const key of [
     "id",
@@ -316,6 +330,10 @@ try {
   await page.goto(origin);
   await expect(entry).toContainText("<b>Browser title</b>");
   await page.goto(url);
+  await expect(page.getByTestId("file-viewed")).toBeChecked();
+  await page.getByTestId("file-viewed").click();
+  await expect(page.getByTestId("diff-file")).toHaveJSProperty("open", true);
+  assert.deepEqual((await (await fetch(api)).json()).viewedFiles, []);
   await page.getByTestId("reopen").click();
   await expect(page.getByTestId("resolve")).toBeVisible();
   assert.equal((await cli("resolve", id, thread.id)).resolved, true);
@@ -333,6 +351,26 @@ try {
     "Old side",
   );
   assert.equal((await cli("comments", id))[1].side, "old");
+  assert.equal((await setViewed(0, true)).status, 200);
+  await writeFile(source, 'export const color = "orange";\n');
+  git("add", ".");
+  git("commit", "-m", "Change demo again");
+  const changed = await cli(
+    "submit",
+    "--repo",
+    repo,
+    "--base",
+    "main",
+    "--head",
+    "example",
+    "--json",
+  );
+  const changedReview = await (
+    await fetch(`${origin}/api/reviews/${changed.id}`)
+  ).json();
+  assert.notEqual(changedReview.patch, initial.patch);
+  assert.deepEqual(changedReview.viewedFiles, []);
+  assert.deepEqual((await (await fetch(api)).json()).viewedFiles, [0]);
   const gitHead = git("rev-parse", "HEAD");
   page.once("dialog", (dialog) => dialog.accept());
   await page.getByTestId("delete-review").click();

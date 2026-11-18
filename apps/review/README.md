@@ -27,6 +27,8 @@ review reopen REVIEW_ID THREAD_ID
 
 Omit `--json` on submit to print just the URL. Omit `--title` to use the subject of the resolved head commit. Titles are single-line, trimmed, and capped at 120 characters; longer default subjects are shortened. Older reviews without a title appear as **Untitled review**. Use **Rename** next to the title on a review page or `review rename` to change it without modifying the snapshot or any comments. The inbox shows the title, file count, and labeled abbreviated commit IDs separately. File indices are zero-based in patch order. Notes target old or new line numbers in displayed hunks. In the browser, select a line number or use the line picker to add a note. Replies and resolve/reopen changes save immediately; resolved threads remain readable. Reload to see changes from another client. Deleting a review removes its snapshot and threads, not any repository data.
 
+Files start expanded. Marking a file **Viewed** saves progress on the server and collapses it. A new snapshot starts with no files viewed; moving a ref never changes an existing snapshot or its progress. The local prototype has a single shared reviewer state.
+
 ## Boundaries
 
 This app has no accounts. The supported launcher binds to IPv4 loopback; do not proxy, forward or deploy the service. Host and browser Origin must match the configured numeric loopback origin. Mutations require a custom header. Local processes can still access the service. Use synthetic data only; do not submit company or other private material.

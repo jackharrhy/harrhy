@@ -41,6 +41,7 @@ type CellRpc = {
       | "exists"
       | "submit"
       | "rename"
+      | "setViewed"
       | "remove"
       | "add"
       | "update"
@@ -97,6 +98,20 @@ function routerFor(env: Env) {
     return title === null
       ? error(400, titleError)
       : cell().rename(params.id, title);
+  });
+  router.put("/api/reviews/:id/viewed", async ({ params, request }) => {
+    if (!idPattern.test(params.id)) return error(404, "Review not found");
+    const data = await json(request, 1024);
+    if (data instanceof Response) return data;
+    const { file, viewed } = data;
+    if (
+      typeof file !== "number" ||
+      !Number.isSafeInteger(file) ||
+      file < 0 ||
+      typeof viewed !== "boolean"
+    )
+      return error(400, "Expected a file index and viewed boolean");
+    return cell().setViewed(params.id, file, viewed);
   });
   router.delete("/api/reviews/:id", ({ params }) =>
     idPattern.test(params.id)

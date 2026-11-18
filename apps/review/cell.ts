@@ -37,6 +37,10 @@ export class ReviewCell extends DurableObject<Env> {
     this.sql.exec(`CREATE TABLE IF NOT EXISTS review_titles (
       review TEXT PRIMARY KEY REFERENCES reviews(id), title TEXT NOT NULL
     )`);
+    this.sql.exec(`CREATE TABLE IF NOT EXISTS viewed_files (
+      review TEXT NOT NULL REFERENCES reviews(id), file INTEGER NOT NULL,
+      PRIMARY KEY (review, file)
+    )`);
     this.sql.exec(`CREATE TABLE IF NOT EXISTS threads (
       seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, review TEXT NOT NULL REFERENCES reviews(id), data TEXT NOT NULL
     )`);
@@ -87,8 +91,35 @@ export class ReviewCell extends DurableObject<Env> {
           title: review.title ?? untitledReview,
           fileCount: files(review.patch).length,
           threads: this.threads(id)!,
+          viewedFiles: this.sql
+            .exec<{ file: number }>(
+              "SELECT file FROM viewed_files WHERE review = ? ORDER BY file",
+              id,
+            )
+            .toArray()
+            .map((row) => row.file),
         }
       : null;
+  }
+
+  setViewed(id: string, file: number, viewed: boolean) {
+    const snapshot = this.snapshot(id);
+    if (!snapshot) return error(404, "Review not found");
+    if (file >= files(snapshot.patch).length)
+      return error(400, "File index is outside the snapshot");
+    if (viewed)
+      this.sql.exec(
+        "INSERT OR IGNORE INTO viewed_files (review, file) VALUES (?, ?)",
+        id,
+        file,
+      );
+    else
+      this.sql.exec(
+        "DELETE FROM viewed_files WHERE review = ? AND file = ?",
+        id,
+        file,
+      );
+    return Response.json({ file, viewed });
   }
 
   private setTitle(id: string, title: string) {
@@ -144,6 +175,7 @@ export class ReviewCell extends DurableObject<Env> {
     this.ctx.storage.transactionSync(() => {
       this.sql.exec("DELETE FROM threads WHERE review = ?", id);
       this.sql.exec("DELETE FROM review_titles WHERE review = ?", id);
+      this.sql.exec("DELETE FROM viewed_files WHERE review = ?", id);
       this.sql.exec("DELETE FROM reviews WHERE id = ?", id);
     });
     return new Response(null, { status: 204 });

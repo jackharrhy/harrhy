@@ -28,6 +28,7 @@ interface Thread extends Anchor {
 interface Review extends Summary {
   patch: string;
   threads: Thread[];
+  viewedFiles: number[];
 }
 
 function node<K extends keyof HTMLElementTagNameMap>(
@@ -174,11 +175,25 @@ function detail(root: HTMLElement, review: Review) {
     remove,
     status,
   );
+  const viewed = new Set(review.viewedFiles);
+  const progressText = node("span", "muted");
+  progressText.setAttribute("role", "status");
+  const progress = node("progress");
+  progress.max = Math.max(1, files.length);
+  progress.setAttribute("aria-label", "Files viewed");
+  const progressRow = node("div", "viewed-progress", progress, progressText);
+  progressRow.dataset.testid = "viewed-progress";
+  function updateProgress() {
+    progress.value = viewed.size;
+    progressText.textContent = `${viewed.size} of ${files.length} viewed`;
+  }
+  updateProgress();
   const fileList = node("ul", "file-list");
   const nav = node(
     "nav",
     "panel file-nav",
     node("h2", "", `Files changed (${files.length})`),
+    progressRow,
     fileList,
   );
   nav.setAttribute("aria-label", "Changed files");
@@ -277,25 +292,79 @@ function detail(root: HTMLElement, review: Review) {
     if (await change(remove, api, "DELETE")) location.assign("/");
   });
 
+  // Open sections without constructing offscreen diffs and line pickers.
+  const deferred = new Map<Element, () => void>();
+  const observer = new IntersectionObserver(
+    (entries) => {
+      for (const { target, isIntersecting } of entries) {
+        if (isIntersecting) deferred.get(target)?.();
+      }
+    },
+    { rootMargin: "240px 0px" },
+  );
+
   const views = files.map((fileDiff, file) => {
     const path = fileDiff.prevName
       ? `${fileDiff.prevName} → ${fileDiff.name}`
       : fileDiff.name;
     const count = node("span", "muted thread-count");
-    const summary = node("summary", "", node("span", "path", path), count);
+    const check = node("input");
+    check.type = "checkbox";
+    check.checked = viewed.has(file);
+    check.dataset.testid = "file-viewed";
+    check.setAttribute("aria-label", `Viewed: ${path}`);
+    const viewedLabel = node("label", "viewed-label", check, "Viewed");
+    const summary = node(
+      "summary",
+      "",
+      node("span", "file-heading", node("span", "path", path), count),
+      viewedLabel,
+    );
     const host = node("div", "diff-host");
     const section = node("details", "panel diff-file", summary, host);
     section.id = `file-${file}`;
     section.dataset.testid = "diff-file";
     section.dataset.fileIndex = String(file);
-    section.open = file === 0;
+    section.open = !check.checked;
     content.appendChild(section);
     const jump = link("", `#${section.id}`);
     jump.appendChild(node("span", "path", path));
     jump.addEventListener("click", () => {
       section.open = true;
+      load();
     });
     fileList.appendChild(node("li", "", jump));
+
+    const viewedError = node("span", "viewed-error");
+    viewedError.setAttribute("role", "alert");
+    section.after(viewedError);
+    check.addEventListener("change", async () => {
+      const next = check.checked;
+      check.checked = viewed.has(file);
+      if (check.getAttribute("aria-disabled") === "true") return;
+      check.setAttribute("aria-disabled", "true");
+      viewedError.textContent = "";
+      try {
+        const response = await request(`${api}/viewed`, "PUT", {
+          file,
+          viewed: next,
+        });
+        const saved: { file: number; viewed: boolean } = await response.json();
+        if (saved.viewed) viewed.add(file);
+        else viewed.delete(file);
+        check.checked = saved.viewed;
+        section.open = !saved.viewed;
+        updateProgress();
+        if (section.open) load();
+      } catch (error) {
+        viewedError.textContent =
+          error instanceof Error
+            ? error.message
+            : "Could not update viewed status.";
+      } finally {
+        check.removeAttribute("aria-disabled");
+      }
+    });
 
     const drafts = new Map<string, string>();
     let composer: Anchor | undefined;
@@ -304,67 +373,69 @@ function detail(root: HTMLElement, review: Review) {
       compose: boolean;
     }
     let composerArea: HTMLTextAreaElement | null = null;
-    const diff = new FileDiff<Annotation>({
-      diffStyle: style,
-      themeType: "light",
-      disableFileHeader: true,
-      overflow: "wrap",
-      lineHoverHighlight: "both",
-      enableGutterUtility: true,
-      onLineNumberClick: ({ annotationSide, lineNumber }) =>
-        startComment({
-          side: annotationSide === "deletions" ? "old" : "new",
-          line: lineNumber,
-        }),
-      onGutterUtilityClick: ({ side, start }) =>
-        startComment({
-          side: side === "deletions" ? "old" : "new",
-          line: start,
-        }),
-      renderAnnotation: ({ metadata }) => {
-        const panel = node(
-          "div",
-          "annotation",
-          ...metadata.threads.map(renderThread),
-        );
-        if (metadata.compose) {
-          const key = anchorKey(metadata);
-          const form = commentForm(
-            `Comment on ${anchorLabel(metadata).toLowerCase()}`,
-            "Post comment",
-            "new-comment",
-            key,
-            async (submit, text) => {
-              if (
-                await update(submit, `${api}/threads`, {
-                  file,
-                  side: metadata.side,
-                  line: metadata.line,
-                  text,
-                })
-              ) {
-                drafts.delete(key);
-                if (composer && anchorKey(composer) === key)
-                  composer = undefined;
-                render();
-                picker?.focus();
-              }
-            },
+    let diff: FileDiff<Annotation> | undefined;
+    const createDiff = () =>
+      new FileDiff<Annotation>({
+        diffStyle: style,
+        themeType: "light",
+        disableFileHeader: true,
+        overflow: "wrap",
+        lineHoverHighlight: "both",
+        enableGutterUtility: true,
+        onLineNumberClick: ({ annotationSide, lineNumber }) =>
+          startComment({
+            side: annotationSide === "deletions" ? "old" : "new",
+            line: lineNumber,
+          }),
+        onGutterUtilityClick: ({ side, start }) =>
+          startComment({
+            side: side === "deletions" ? "old" : "new",
+            line: start,
+          }),
+        renderAnnotation: ({ metadata }) => {
+          const panel = node(
+            "div",
+            "annotation",
+            ...metadata.threads.map(renderThread),
           );
-          const cancel = button("Cancel", "cancel-comment");
-          cancel.addEventListener("click", () => {
-            drafts.delete(key);
-            composer = undefined;
-            render();
-            picker?.focus();
-          });
-          form.appendChild(cancel);
-          panel.appendChild(form);
-          composerArea = form.querySelector("textarea");
-        }
-        return panel;
-      },
-    });
+          if (metadata.compose) {
+            const key = anchorKey(metadata);
+            const form = commentForm(
+              `Comment on ${anchorLabel(metadata).toLowerCase()}`,
+              "Post comment",
+              "new-comment",
+              key,
+              async (submit, text) => {
+                if (
+                  await update(submit, `${api}/threads`, {
+                    file,
+                    side: metadata.side,
+                    line: metadata.line,
+                    text,
+                  })
+                ) {
+                  drafts.delete(key);
+                  if (composer && anchorKey(composer) === key)
+                    composer = undefined;
+                  render();
+                  picker?.focus();
+                }
+              },
+            );
+            const cancel = button("Cancel", "cancel-comment");
+            cancel.addEventListener("click", () => {
+              drafts.delete(key);
+              composer = undefined;
+              render();
+              picker?.focus();
+            });
+            form.appendChild(cancel);
+            panel.appendChild(form);
+            composerArea = form.querySelector("textarea");
+          }
+          return panel;
+        },
+      });
 
     function commentForm(
       label: string,
@@ -440,8 +511,22 @@ function detail(root: HTMLElement, review: Review) {
     }
 
     // The line picker also exposes the gutter action to keyboard and touch users.
-    const picker = fileDiff.hunks.length ? node("select") : undefined;
-    if (picker) {
+    let picker: HTMLSelectElement | undefined;
+    let loaded = false;
+    function load() {
+      if (loaded || !section.open) return;
+      loaded = true;
+      observer.unobserve(host);
+      deferred.delete(host);
+      host.classList.remove("diff-deferred");
+      if (!fileDiff.hunks.length) {
+        host.appendChild(
+          node("p", "inset muted", "No text changes to display for this file."),
+        );
+        return;
+      }
+      const select = node("select");
+      picker = select;
       picker.dataset.testid = "comment-line";
       picker.setAttribute(
         "aria-label",
@@ -466,15 +551,12 @@ function detail(root: HTMLElement, review: Review) {
       }
       const add = button("Add comment", "add-comment");
       add.addEventListener("click", () => {
-        const [side, line] = picker.value.split(":");
+        const [side, line] = select.value.split(":");
         if (side === "old" || side === "new")
           startComment({ side, line: Number(line) });
       });
       section.appendChild(node("div", "row comment-picker", picker, add));
-    } else {
-      host.appendChild(
-        node("p", "inset muted", "No text changes to display for this file."),
-      );
+      render();
     }
 
     function startComment(anchor: Anchor) {
@@ -504,7 +586,7 @@ function detail(root: HTMLElement, review: Review) {
         if (!thread.resolved) open++;
       }
       count.textContent = open ? `${open} open` : "";
-      if (!section.open || !fileDiff.hunks.length) return;
+      if (!loaded || !section.open || !fileDiff.hunks.length) return;
       if (composer) group(composer).compose = true;
       const annotations: DiffLineAnnotation<Annotation>[] = [
         ...groups.values(),
@@ -513,6 +595,7 @@ function detail(root: HTMLElement, review: Review) {
         lineNumber: metadata.line,
         metadata,
       }));
+      diff ??= createDiff();
       diff.setOptions({ ...diff.options, diffStyle: style });
       diff.render({
         fileDiff,
@@ -521,8 +604,11 @@ function detail(root: HTMLElement, review: Review) {
         forceRender: true,
       });
     }
+    host.classList.add("diff-deferred");
+    deferred.set(host, load);
+    observer.observe(host);
     section.addEventListener("toggle", () => {
-      if (section.open) render();
+      if (loaded && section.open) render();
     });
     render();
     return { section, render };
