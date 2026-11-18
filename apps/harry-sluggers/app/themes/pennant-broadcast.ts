@@ -36,7 +36,6 @@ export const pennantBroadcast: LabConcept = {
       background: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
     },
     "& [data-roster-card]": {
-      background: originalBlue[700],
       borderRadius: "6px",
       gap: "3px",
     },

@@ -39,7 +39,6 @@ export const frostRibbon: LabConcept = {
     },
     "& [data-match-meta]": { marginBottom: "6px" },
     "& [data-roster-card]": {
-      background: `${originalBlue[700]}66`,
       borderRadius: "14px",
       padding: "10px 8px",
       gap: "3px",

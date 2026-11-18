@@ -34,7 +34,6 @@ export const broadcastFloat: LabConcept = {
     "& [data-panel-title]": { fontSize: "20px", padding: "14px 20px" },
     "& [data-match]": { padding: "14px", background: `${originalBlue[700]}59` },
     "& [data-roster-card]": {
-      background: `${originalBlue[700]}66`,
       borderRadius: "20px",
       padding: "12px 10px",
     },

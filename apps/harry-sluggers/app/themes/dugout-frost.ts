@@ -40,7 +40,6 @@ export const dugoutFrost: LabConcept = {
     },
     "& [data-match-meta]": { marginBottom: "6px" },
     "& [data-roster-card]": {
-      background: `${originalBlue[700]}66`,
       borderRadius: "5px",
       padding: "9px 8px",
       gap: "3px",

@@ -42,7 +42,6 @@ export const broadcastPrism: LabConcept = {
     },
     "& [data-match-meta]": { marginBottom: "8px" },
     "& [data-roster-card]": {
-      background: `${originalBlue[700]}66`,
       borderRadius: "10px",
       padding: "10px",
       gap: "4px",
