@@ -27,7 +27,7 @@ const styles = css({
     background: "var(--lab-inset-surface)",
     color: "var(--hui-ink)",
   },
-  "& [data-topbar], & main, & footer": {
+  "& [data-topbar], & main": {
     maxWidth: "1280px",
     margin: "auto",
     padding: "20px",
@@ -535,7 +535,7 @@ const styles = css({
   },
   "@media (max-width: 800px)": {
     "& [data-columns]": { gridTemplateColumns: "minmax(0,1fr)" },
-    "& [data-topbar], & main, & footer": { padding: "14px" },
+    "& [data-topbar], & main": { padding: "14px" },
     "& [data-match]": {
       gridTemplateColumns: "minmax(0,1fr) 96px minmax(0,1fr)",
       gap: "6px",
@@ -884,10 +884,6 @@ export function page(
       title: "League clubhouse",
       body: (
         <>
-          <p>
-            Historical Sluggers, live from the original league database. Browse
-            the season, squads and recorded games. This website is read-only.
-          </p>
           <div data-columns>
             <div>
               {panel(
@@ -933,10 +929,7 @@ export function page(
                   ]),
                   "Recorded standings",
                 )}
-                <p data-muted>
-                  Only finished games with both scores recorded count. This is
-                  not a certified final league table.
-                </p>
+                <p data-muted>Only finished games with both scores count.</p>
               </>,
             )}
           </div>
@@ -1494,10 +1487,7 @@ export function page(
             <a href={`/matches/${id}/lineup`}>Recorded lineups</a>
             <a href={`/matches/${id}/stats`}>Box score</a>
           </nav>
-          <p data-muted>
-            Missing scores and statistics are unknown, not zero. No
-            inning-by-inning scores are stored in this archive.
-          </p>
+          <p data-muted>A dash means no score or stat is available.</p>
           {subpage === "stats"
             ? [m.team_a_id, m.team_b_id].map((tid) =>
                 panel(
@@ -1564,10 +1554,6 @@ export function page(
       title: "Draft room",
       body: (
         <>
-          <p>
-            Read-only season state and recorded picks. No drafting actions or
-            private pre-draft choices are available.
-          </p>
           {data.seasons.map((s) =>
             panel(
               `Season ${s.id} · ${s.state}`,
@@ -1624,10 +1610,6 @@ export function page(
       title: "Trade history",
       body: (
         <>
-          <p>
-            Read-only transaction history. Private proposal and response
-            messages are not shown.
-          </p>
           {data.trades
             .filter((t) => bits.length === 1 || t.id === id)
             .map((t) =>
@@ -1835,7 +1817,6 @@ export function document(title: string, body: RemixNode, url: URL) {
           </h1>
           {body}
         </main>
-        <footer>Harry Sluggers · Historical league · Read-only</footer>
       </body>
     </html>
   );
