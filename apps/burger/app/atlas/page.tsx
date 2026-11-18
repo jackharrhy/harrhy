@@ -17,7 +17,7 @@ export function AtlasPage(handle: Handle<{ nonce?: string }>) {
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Burger atlas · Tea</title>
+        <title>Burger atlas</title>
       </head>
       <body>
         <AtlasEditor />

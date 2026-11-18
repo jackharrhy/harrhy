@@ -40,7 +40,7 @@ const nonce = /script-src[^;]*'nonce-([^']+)'/.exec(policy)?.[1];
 assert.ok(nonce);
 assert.match(policy, /connect-src 'self' ws:\/\//);
 const html = await response.text();
-assert.match(html, /Pool · Tea/);
+assert.match(html, /<title>Pool<\/title>/);
 assert(html.includes(`nonce="${nonce}"`));
 assert.doesNotMatch(html, /@vite\/client|\/src\/.*\.ts|react-refresh/);
 for (const [path, mime] of [

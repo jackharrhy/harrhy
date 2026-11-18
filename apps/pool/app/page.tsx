@@ -11,7 +11,7 @@ export function PoolPage(handle: Handle<{ nonce?: string }>) {
           content="width=device-width,initial-scale=1,viewport-fit=cover"
         />
         <meta name="theme-color" content="#151b18" />
-        <title>Pool · Tea</title>
+        <title>Pool</title>
         <link
           rel="icon"
           href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='30' fill='%23121815'/%3E%3Ccircle cx='32' cy='26' r='15' fill='%23f4efdf'/%3E%3Ctext x='32' y='36' text-anchor='middle' font-family='sans-serif' font-size='28' fill='%23121815'%3E8%3C/text%3E%3C/svg%3E"

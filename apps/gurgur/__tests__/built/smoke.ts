@@ -39,12 +39,14 @@ try {
   assert(ready, "the built Gurgur server did not become ready");
   const page = await fetch(`http://127.0.0.1:${port}/`);
   assert.equal(page.status, 200);
+  const html = await page.text();
+  assert.match(html, /<title>Gurgur<\/title>/);
   assert.equal(page.headers.get("Cache-Control"), "private, no-store");
   const policy = page.headers.get("Content-Security-Policy") ?? "";
   const nonce = /script-src[^;]*'nonce-([^']+)'/.exec(policy)?.[1];
   assert.ok(nonce);
   assert.match(policy, /connect-src 'self' ws:\/\//);
-  assert((await page.text()).includes(`nonce="${nonce}"`));
+  assert(html.includes(`nonce="${nonce}"`));
   const reset = await fetch(`http://127.0.0.1:${port}/admin/reset`, {
     method: "POST",
   });
