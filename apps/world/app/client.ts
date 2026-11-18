@@ -1,0 +1,266 @@
+import { createView } from "./render";
+import { createMotion } from "../shared/motion";
+import { TICK_MS, type InputCommand, type Pose, type ServerMessage } from "../shared/protocol";
+
+const movementKeys = new Set([
+  "KeyW",
+  "KeyA",
+  "KeyS",
+  "KeyD",
+  "Space",
+  "ArrowLeft",
+  "ArrowRight",
+  "ArrowUp",
+  "ArrowDown",
+]);
+const turn = Math.PI * 2;
+const clampPitch = (n: number) => Math.max(-1.5, Math.min(1.5, n));
+
+export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
+  const root = canvas.closest<HTMLElement>("#hall")!;
+  const status = root.querySelector<HTMLElement>("#status")!;
+  const button = root.querySelector<HTMLButtonElement>("#enter")!;
+  let stop = () => {};
+  function start() {
+    stop();
+    const scope = new AbortController();
+    stop = () => scope.abort();
+    void run(scope.signal).catch((error: unknown) => {
+      if (scope.signal.aborted) return;
+      console.error(error);
+      status.textContent =
+        "Cannot start the hall. Try a desktop browser with graphics acceleration enabled.";
+      scope.abort();
+    });
+  }
+  lifetime.addEventListener("abort", () => stop(), { once: true });
+  window.addEventListener("pagehide", () => stop(), { signal: lifetime });
+  window.addEventListener(
+    "pageshow",
+    (event) => {
+      if (event.persisted) start();
+    },
+    { signal: lifetime },
+  );
+  start();
+
+  async function run(signal: AbortSignal) {
+    status.textContent = "Preparing the hall…";
+    const view = await createView(canvas);
+    if (signal.aborted) return view.dispose();
+    let frame = 0,
+      reconnect = 0;
+    let ws: WebSocket | undefined;
+    let me = "",
+      seq = 0,
+      yaw = 0,
+      pitch = 0;
+    let predicted: Awaited<ReturnType<typeof createMotion>> | undefined;
+    let starting = false;
+    let correction: Pose | undefined;
+    let pending: InputCommand[] = [];
+    const roster = new Set<string>();
+    const samples: { at: number; players: Pose[] }[] = [];
+    const keys = new Set<string>();
+    const updateStatus = () => {
+      if (!predicted) return;
+      const value = `In the hall · ${roster.size} ${roster.size === 1 ? "player" : "players"}`;
+      if (status.textContent !== value) status.textContent = value;
+    };
+    function reset() {
+      predicted?.dispose();
+      predicted = undefined;
+      starting = false;
+      me = "";
+      seq = 0;
+      correction = undefined;
+      pending = [];
+      roster.clear();
+      samples.length = 0;
+      keys.clear();
+      button.disabled = true;
+    }
+    let tick: number | undefined;
+    signal.addEventListener(
+      "abort",
+      () => {
+        window.clearInterval(tick);
+        window.clearTimeout(reconnect);
+        cancelAnimationFrame(frame);
+        reset();
+        ws?.close();
+        if (document.pointerLockElement === canvas) document.exitPointerLock();
+        delete root.dataset.looking;
+        view.dispose();
+      },
+      { once: true },
+    );
+
+    function connect() {
+      if (signal.aborted) return;
+      status.textContent = "Connecting to the hall…";
+      const socket = new WebSocket(
+        `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/room`,
+      );
+      ws = socket;
+      socket.addEventListener("message", (event) => {
+        if (signal.aborted || ws !== socket || typeof event.data !== "string") return;
+        const message = JSON.parse(event.data) as ServerMessage;
+        switch (message.type) {
+          case "welcome":
+            me = message.id;
+            break;
+          case "roster":
+            message.ids.forEach((id) => roster.add(id));
+            break;
+          case "joined":
+            roster.add(message.id);
+            updateStatus();
+            break;
+          case "left":
+            roster.delete(message.id);
+            updateStatus();
+            break;
+          case "motion": {
+            const self = message.players.find((p) => p.id === me);
+            if (!self) break;
+            samples.push({ at: performance.now(), players: message.players });
+            if (samples.length > 8) samples.shift();
+            correction = self;
+            if (predicted || starting) break;
+            starting = true;
+            void createMotion(self, { locateFile: () => "/assets/box3d.wasm" })
+              .then((motion) => {
+                if (signal.aborted || ws !== socket || socket.readyState !== WebSocket.OPEN)
+                  return motion.dispose();
+                predicted = motion;
+                yaw = self.yaw;
+                pitch = self.pitch;
+                button.disabled = false;
+                updateStatus();
+              })
+              .catch((error: unknown) => {
+                if (signal.aborted || ws !== socket) return;
+                console.error(error);
+                status.textContent = "Could not initialize movement.";
+                stop();
+              });
+            break;
+          }
+        }
+      });
+      socket.addEventListener("close", () => {
+        if (signal.aborted || ws !== socket) return;
+        reset();
+        if (document.pointerLockElement === canvas) document.exitPointerLock();
+        status.textContent = "Disconnected. Rejoining…";
+        reconnect = window.setTimeout(connect, 1500);
+      });
+    }
+    const focus = () => {
+      if (!predicted) return;
+      canvas.focus();
+      void Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
+    };
+    button.addEventListener("click", focus, { signal });
+    canvas.addEventListener("click", focus, { signal });
+    document.addEventListener(
+      "pointerlockchange",
+      () => {
+        if (document.pointerLockElement === canvas) root.dataset.looking = "";
+        else {
+          delete root.dataset.looking;
+          keys.clear();
+        }
+      },
+      { signal },
+    );
+    document.addEventListener(
+      "mousemove",
+      (e) => {
+        if (document.pointerLockElement !== canvas) return;
+        yaw = (yaw - e.movementX * 0.0025) % turn;
+        pitch = clampPitch(pitch - e.movementY * 0.0025);
+      },
+      { signal },
+    );
+    window.addEventListener(
+      "keydown",
+      (e) => {
+        if (
+          !predicted ||
+          !movementKeys.has(e.code) ||
+          (document.activeElement !== canvas && document.pointerLockElement !== canvas)
+        )
+          return;
+        e.preventDefault();
+        keys.add(e.code);
+      },
+      { signal },
+    );
+    window.addEventListener("keyup", (e) => keys.delete(e.code), { signal });
+    canvas.addEventListener("blur", () => keys.clear(), { signal });
+    window.addEventListener("blur", () => keys.clear(), { signal });
+    tick = window.setInterval(() => {
+      if (!predicted || ws?.readyState !== WebSocket.OPEN || ws.bufferedAmount > 4096) return;
+      if (correction) {
+        const authoritative = correction;
+        correction = undefined;
+        pending = pending.filter((input) => input.seq > authoritative.ack);
+        predicted.reconcile(authoritative, pending);
+      }
+      yaw = (yaw + (Number(keys.has("ArrowLeft")) - Number(keys.has("ArrowRight"))) * 0.026) % turn;
+      pitch = clampPitch(
+        pitch + (Number(keys.has("ArrowUp")) - Number(keys.has("ArrowDown"))) * 0.026,
+      );
+      const input = {
+        seq: ++seq,
+        forward: Number(keys.has("KeyW")) - Number(keys.has("KeyS")),
+        strafe: Number(keys.has("KeyD")) - Number(keys.has("KeyA")),
+        jump: keys.has("Space"),
+        yaw,
+        pitch,
+      };
+      ws.send(JSON.stringify(input));
+      pending.push(input);
+      if (pending.length > 120) pending.shift();
+      predicted.step(input);
+    }, TICK_MS);
+    function paint() {
+      if (signal.aborted) return;
+      if (predicted) {
+        const target = performance.now() - 110;
+        const later = samples.findIndex((s) => s.at >= target);
+        const a = samples[Math.max(0, later === -1 ? samples.length - 1 : later - 1)];
+        const b = samples[later] ?? a;
+        const weight =
+          a && b && b.at > a.at ? Math.max(0, Math.min(1, (target - a.at) / (b.at - a.at))) : 0;
+        const remotes = (b?.players ?? [])
+          .filter((p) => p.id !== me && roster.has(p.id))
+          .map((p) => {
+            const older = a?.players.find((o) => o.id === p.id);
+            if (!older) return p;
+            const dy = p.yaw - older.yaw;
+            return {
+              ...p,
+              x: older.x + (p.x - older.x) * weight,
+              y: older.y + (p.y - older.y) * weight,
+              z: older.z + (p.z - older.z) * weight,
+              yaw: older.yaw + Math.atan2(Math.sin(dy), Math.cos(dy)) * weight,
+            };
+          });
+        try {
+          view.draw({ ...predicted.pose(), yaw, pitch }, remotes);
+        } catch (error) {
+          console.error(error);
+          status.textContent = "Rendering stopped. Reload to retry, or use ?renderer=webgl.";
+          stop();
+          return;
+        }
+      }
+      frame = requestAnimationFrame(paint);
+    }
+    frame = requestAnimationFrame(paint);
+    connect();
+  }
+}

@@ -190,6 +190,7 @@
         "__tests__/browser/production.ts",
       ],
     },
+    "apps/world": { "entry": ["server/index.ts"] },
     "apps/radio": {
       "entry": [
         "app/assets/entry.ts",
