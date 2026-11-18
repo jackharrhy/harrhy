@@ -129,6 +129,8 @@ test("match pages retain recorded team and position after a roster change", asyn
   );
   const html = await historical.text();
   assert.match(html, /Former club recorded lineup/);
+  assert.match(html, /data-result="Loss">0/);
+  assert.match(html, /data-result="Win">1/);
   assert.match(html, />P</);
   assert.match(html, />Starred</);
   assert.doesNotMatch(html, /<td>Captain</);
