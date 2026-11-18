@@ -7,7 +7,13 @@ export type FloorPoint = { x: number; z: number };
 type RemotePose = Pose & { id: string };
 
 export async function createView(canvas: HTMLCanvasElement): Promise<{
-  draw(local: Pose, remotes: readonly RemotePose[], destination?: FloorPoint, avatar?: Pose): void;
+  draw(
+    local: Pose,
+    remotes: readonly RemotePose[],
+    destination?: FloorPoint,
+    avatar?: Pose,
+    orbitDistance?: number,
+  ): void;
   pickFloor(x: number, y: number): FloorPoint | undefined;
   dispose(): void;
 }> {
@@ -126,7 +132,7 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
       if (hit?.object.name !== "walk-floor" || hit.point.y < -0.01) return;
       return { x: hit.point.x, z: hit.point.z };
     },
-    draw(local, remotes, destination, avatar) {
+    draw(local, remotes, destination, avatar, orbitDistance = 3.6) {
       if (disposed) return;
       if (deviceError) throw deviceError;
       const nextWidth = canvas.clientWidth;
@@ -149,7 +155,10 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
         const back = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
         ray.set(anchor, back);
         const wall = ray.intersectObject(hall, true)[0];
-        const distance = Math.min(3.6, wall ? Math.max(0.08, wall.distance - 0.22) : Infinity);
+        const distance = Math.min(
+          orbitDistance,
+          wall ? Math.max(0.08, wall.distance - 0.22) : Infinity,
+        );
         camera.position.copy(anchor).addScaledVector(back, distance);
         if (distance > 0.8) remotes = [...remotes, avatar];
       }

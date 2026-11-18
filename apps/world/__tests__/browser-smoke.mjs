@@ -49,6 +49,11 @@ try {
   const canvas = page.locator("canvas");
   await canvas.focus();
   assert.equal(await canvas.evaluate((element) => getComputedStyle(element).outlineStyle), "none");
+  await page.mouse.move(400, 250);
+  await page.waitForTimeout(300);
+  const beforeZoom = await canvas.screenshot();
+  await page.mouse.wheel(0, -800);
+  await expect.poll(async () => (await canvas.screenshot()).equals(beforeZoom)).toBe(false);
   const beforeOrbit = await canvas.screenshot();
   await page.mouse.move(430, 260);
   await page.mouse.down({ button: "right" });

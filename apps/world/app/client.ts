@@ -58,6 +58,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       yaw = 0,
       pitch = -0.28;
     let facing = 0;
+    let orbitDistance = 3.6;
     let mode: "walk" | "fps" = "walk";
     let destination: (FloorPoint & { best: number; progressAt: number }) | undefined;
     let gesture:
@@ -277,6 +278,19 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       { signal },
     );
     canvas.addEventListener(
+      "wheel",
+      (event) => {
+        if (mode !== "walk" || !predicted || event.ctrlKey || !event.deltaY) return;
+        event.preventDefault();
+        const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1;
+        orbitDistance = Math.max(
+          1.4,
+          Math.min(6.5, orbitDistance * Math.exp(event.deltaY * scale * 0.002)),
+        );
+      },
+      { signal, passive: false },
+    );
+    canvas.addEventListener(
       "contextmenu",
       (event) => {
         if (mode === "walk") event.preventDefault();
@@ -403,6 +417,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             remotes,
             destination,
             mode === "walk" ? predicted.pose() : undefined,
+            orbitDistance,
           );
         } catch (error) {
           console.error(error);
