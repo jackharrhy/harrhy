@@ -112,7 +112,7 @@ const styles = css({
   },
   "& [data-roster-grid]": {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))",
+    gridTemplateColumns: "repeat(auto-fill,minmax(132px,1fr))",
     gap: "12px",
   },
   "& [data-roster-card]": {
@@ -125,9 +125,90 @@ const styles = css({
     overflowWrap: "anywhere",
   },
   "& [data-roster-card] img": {
-    width: "48px",
-    height: "48px",
+    width: "56px",
+    height: "56px",
     objectFit: "contain",
+  },
+  "& [data-portrait]": {
+    display: "inline-grid",
+    placeItems: "center",
+    position: "relative",
+    width: "56px",
+    height: "56px",
+    background: "#153a8a",
+    borderRadius: "8px",
+    flexShrink: 0,
+  },
+  "& [data-portrait] img": {
+    width: "100%",
+    height: "100%",
+    objectFit: "contain",
+  },
+  "& [data-roster-card] h3": { margin: "6px 0 3px", fontSize: "15px" },
+  "& [data-card-stats]": {
+    display: "grid",
+    gridTemplateColumns: "repeat(3,1fr)",
+    gap: "2px",
+    textAlign: "center",
+    marginTop: "8px",
+    background: "#153a8a",
+    padding: "5px",
+    fontSize: "11px",
+  },
+  "& [data-card-stats] b": { display: "block", fontSize: "15px" },
+  "& [data-badges]": { color: "#fff1a1", fontSize: "12px" },
+  "& [data-team-side]": {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "end",
+    textAlign: "right",
+    overflowWrap: "anywhere",
+    gap: "4px",
+    fontWeight: 700,
+  },
+  "& [data-team-side]:last-child": { alignItems: "start", textAlign: "left" },
+  "& [data-team-identity]": {
+    display: "inline-flex",
+    gap: "8px",
+    alignItems: "center",
+  },
+  "& [data-team-identity] [data-portrait], & [data-lineup-player] [data-portrait]":
+    { width: "30px", height: "30px" },
+  "& [data-lineup-player]": {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "8px",
+  },
+  "& [data-result-label]": {
+    padding: "2px 6px",
+    borderRadius: "4px",
+    fontSize: "12px",
+  },
+  "& [data-result=Win], & [data-win]": {
+    background: "#07483c",
+    color: "#b6f7d1",
+  },
+  "& [data-result=Loss], & [data-loss]": {
+    background: "#64233d",
+    color: "#ffd7df",
+  },
+  "& [data-result=Draw]": { background: "#554217", color: "#fff1a1" },
+  "& [data-score] a": {
+    display: "grid",
+    gridTemplateColumns: "1fr auto 1fr",
+    alignItems: "center",
+    gap: "3px",
+    background: "#112d70",
+    borderRadius: "6px",
+    textDecoration: "none",
+  },
+  "& [data-score] a span": { borderRadius: "4px" },
+  "& [data-win], & [data-loss]": {
+    display: "inline-block",
+    minWidth: "2ch",
+    textAlign: "center",
+    borderRadius: "3px",
+    padding: "2px 5px",
   },
   "& [data-match]": {
     display: "grid",
@@ -228,43 +309,129 @@ export function page(
   const playerLink = (n: number) => (
     <a href={`/players/${n}`}>{player(n)?.name ?? "Unknown player"}</a>
   );
-  const image = (type: "player" | "team", n: number, name: string) =>
-    assets.has(`${type}-${n}.png`) ? (
-      <img
-        src={`/assets/${type}-${n}.png`}
-        alt=""
-        width="48"
-        height="48"
-        loading="lazy"
-      />
-    ) : (
-      <span aria-hidden="true">{name.slice(0, 2)}</span>
+  const portraitSource = (type: "player" | "team", n: number, side = false) => {
+    const name = `${type}-${n}.png`;
+    const sprite = `player-side-${n}.png`;
+    return side && type === "player" && assets.has(sprite)
+      ? `/assets/${sprite}`
+      : assets.has(name)
+        ? `/assets/${name}`
+        : undefined;
+  };
+  const image = (
+    type: "player" | "team",
+    n: number,
+    name: string,
+    side = false,
+  ) => {
+    const src = portraitSource(type, n, side);
+    return (
+      <span data-portrait aria-hidden="true">
+        {src ? (
+          <img src={src} alt="" width="56" height="56" loading="lazy" />
+        ) : (
+          name.slice(0, 2)
+        )}
+      </span>
     );
+  };
+  const teamIdentity = (n: number) => (
+    <span data-team-identity>
+      {image("team", n, team(n)?.abbreviation ?? "?")}
+      {teamLink(n)}
+    </span>
+  );
   const cards = (players: Archive["players"]) => (
     <div data-roster-grid data-catalogue-grid>
-      {players.map((p) => (
-        <article data-roster-card>
-          {image("player", p.id, p.name)}
-          <h3>{playerLink(p.id)}</h3>
-          <small>{p.team_id ? teamLink(p.team_id) : "Free agent"}</small>
-        </article>
-      ))}
+      {players.map((p) => {
+        const owner = team(p.team_id);
+        const assignment = data.lineups.find((l) => l.player_id === p.id);
+        const stats = data.stats.find((s) => s.character === p.stats_character);
+        return (
+          <article data-roster-card>
+            <div>
+              {image("player", p.id, p.name, true)}
+              <div data-badges>
+                {owner?.captain_id === p.id ? "Captain " : ""}
+                {assignment?.is_starred ? "Starred" : ""}
+              </div>
+            </div>
+            <div>
+              <h3>{playerLink(p.id)}</h3>
+              <small>
+                {owner ? teamLink(owner.id) : "Free agent"}
+                {assignment?.fielding_position
+                  ? ` · ${assignment.fielding_position}`
+                  : ""}
+              </small>
+            </div>
+            <div data-card-stats aria-label="Character ratings">
+              <span>
+                BAT <b>{stats?.batting_css ?? "—"}</b>
+              </span>
+              <span>
+                FLD <b>{stats?.fielding_css ?? "—"}</b>
+              </span>
+              <span>
+                SPD <b>{stats?.speed_css ?? "—"}</b>
+              </span>
+            </div>
+          </article>
+        );
+      })}
     </div>
   );
   const fixtures = (matches: Match[]) =>
     matches.length ? (
-      matches.map((m) => (
-        <article data-match>
-          <div>{teamLink(m.team_a_id)}</div>
-          <div data-score>
-            <a href={`/matches/${m.id}`}>
-              {m.team_a_score ?? "—"} : {m.team_b_score ?? "—"}
-            </a>
-            <div data-muted>{m.state}</div>
-          </div>
-          <div>{teamLink(m.team_b_id)}</div>
-        </article>
-      ))
+      matches.map((m) => {
+        const a = result(m, m.team_a_id);
+        const b = result(m, m.team_b_id);
+        return (
+          <article data-match>
+            <div data-team-side>
+              {image(
+                "team",
+                m.team_a_id,
+                team(m.team_a_id)?.abbreviation ?? "?",
+              )}
+              {teamLink(m.team_a_id)}
+              {a && (
+                <small data-result-label data-result={a}>
+                  {a}
+                </small>
+              )}
+            </div>
+            <div data-score>
+              <a
+                href={`/matches/${m.id}`}
+                aria-label={`Match ${m.id}: ${m.team_a_score ?? "unknown"} to ${m.team_b_score ?? "unknown"}`}
+              >
+                <span data-result={a ?? undefined}>
+                  {m.team_a_score ?? "—"}
+                </span>
+                <span>–</span>
+                <span data-result={b ?? undefined}>
+                  {m.team_b_score ?? "—"}
+                </span>
+              </a>
+              <div data-muted>{m.state}</div>
+            </div>
+            <div data-team-side>
+              {image(
+                "team",
+                m.team_b_id,
+                team(m.team_b_id)?.abbreviation ?? "?",
+              )}
+              {teamLink(m.team_b_id)}
+              {b && (
+                <small data-result-label data-result={b}>
+                  {b}
+                </small>
+              )}
+            </div>
+          </article>
+        );
+      })
     ) : (
       <p>No recorded fixtures.</p>
     );
@@ -284,7 +451,10 @@ export function page(
           .toSorted((a, b) => (a.batting_order ?? 99) - (b.batting_order ?? 99))
           .map((r) => [
             r.batting_order,
-            playerLink(r.player_id),
+            <span data-lineup-player>
+              {image("player", r.player_id, player(r.player_id)?.name ?? "?")}
+              {playerLink(r.player_id)}
+            </span>,
             r.fielding_position,
             r.player_id === captain ? "Captain" : "—",
             r.is_starred ? "Starred" : "—",
@@ -303,6 +473,7 @@ export function page(
               id: String(r.player_id),
               name: player(r.player_id)?.name ?? "Unknown player",
               position: r.fielding_position as BaseballPosition,
+              image: portraitSource("player", r.player_id),
             }))}
         />
       )}
@@ -373,7 +544,7 @@ export function page(
                 {table(
                   ["Team", "W", "L", "D"],
                   standings.map(({ t, wins, losses, draws }) => [
-                    teamLink(t.id),
+                    teamIdentity(t.id),
                     <span data-win>{wins}</span>,
                     <span data-loss>{losses}</span>,
                     draws,
