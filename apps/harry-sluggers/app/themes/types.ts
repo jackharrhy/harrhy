@@ -10,6 +10,8 @@ export interface LabPartTokens {
   headingInk: string;
   panelEdge: string;
   cardRadius: string;
+  cardSurface: string;
+  insetSurface: string;
   matchColumns: string;
   contentColumns: string;
 }
@@ -22,6 +24,8 @@ export function labPartStyles(parts: LabPartTokens) {
     "--lab-heading-ink": parts.headingInk,
     "--lab-panel-edge": parts.panelEdge,
     "--lab-card-radius": parts.cardRadius,
+    "--lab-card-surface": parts.cardSurface,
+    "--lab-inset-surface": parts.insetSurface,
     "--lab-match-columns": parts.matchColumns,
     "--lab-content-columns": parts.contentColumns,
   });

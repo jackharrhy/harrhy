@@ -27,6 +27,8 @@ export const pennantBroadcast: LabConcept = {
     panelImage: `linear-gradient(${originalBlue[600]}, ${originalBlue[800]})`,
     panelEdge: "2px solid #88b3df",
     cardRadius: "6px",
+    cardSurface: "#18437e",
+    insetSurface: "#142950",
     contentColumns: "minmax(0,1.8fr) minmax(340px,1fr)",
   },
   recipe: css({

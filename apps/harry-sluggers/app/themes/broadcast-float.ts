@@ -26,6 +26,8 @@ export const broadcastFloat: LabConcept = {
     panelImage: `linear-gradient(165deg, rgb(255 255 255 / .07), transparent 20%, ${originalBlue[900]}40 100%), linear-gradient(180deg, ${originalBlue[700]}73, ${originalBlue[800]}a6)`,
     headingImage: glassHeadingImage,
     cardRadius: "18px",
+    cardSurface: "#274879",
+    insetSurface: "#193560",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },
