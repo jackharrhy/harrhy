@@ -27,25 +27,35 @@ function snapshot({ repo = ".", base, head, title }) {
   if (!base || !head) throw new Error("submit requires --base and --head");
   const git = (...args) => {
     try {
-      return execFileSync("git", ["--no-replace-objects", "-C", resolve(repo), ...args], {
-        maxBuffer: limit,
-        timeout: 15000,
-        stdio: ["ignore", "pipe", "pipe"],
-        env: {
-          ...process.env,
-          GIT_NO_LAZY_FETCH: "1",
-          GIT_TERMINAL_PROMPT: "0",
+      return execFileSync(
+        "git",
+        ["--no-replace-objects", "-C", resolve(repo), ...args],
+        {
+          maxBuffer: limit,
+          timeout: 15000,
+          stdio: ["ignore", "pipe", "pipe"],
+          env: {
+            ...process.env,
+            GIT_NO_LAZY_FETCH: "1",
+            GIT_TERMINAL_PROMPT: "0",
+          },
         },
-      });
+      );
     } catch (error) {
-      if (error.code === "ENOBUFS") throw new Error("Patch exceeds 512 KiB", { cause: error });
-      throw new Error(`Git ${args[0]} failed; check the repository and committed refs`, {
-        cause: error,
-      });
+      if (error.code === "ENOBUFS")
+        throw new Error("Patch exceeds 512 KiB", { cause: error });
+      throw new Error(
+        `Git ${args[0]} failed; check the repository and committed refs`,
+        {
+          cause: error,
+        },
+      );
     }
   };
   const commit = (ref) =>
-    git("rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`).toString().trim();
+    git("rev-parse", "--verify", "--end-of-options", `${ref}^{commit}`)
+      .toString()
+      .trim();
   const baseId = commit(base);
   const headId = commit(head);
   const mergeBase = git("merge-base", baseId, headId).toString().trim();
@@ -72,7 +82,14 @@ function snapshot({ repo = ".", base, head, title }) {
   );
   if (!patch) throw new Error("No committed changes from merge base to head");
   if (title === undefined) {
-    const subject = git("show", "-s", "--format=%s", "--no-notes", headId, "--").toString();
+    const subject = git(
+      "show",
+      "-s",
+      "--format=%s",
+      "--no-notes",
+      headId,
+      "--",
+    ).toString();
     title = titleFromSubject(subject);
   }
   return { base: baseId, head: headId, mergeBase, patch, title };
@@ -111,7 +128,10 @@ async function main() {
     options,
     allowPositionals: true,
   });
-  if (positionals.length !== count || !positionals.every((id) => idPattern.test(id)))
+  if (
+    positionals.length !== count ||
+    !positionals.every((id) => idPattern.test(id))
+  )
     throw new Error(usage);
   const [id, thread] = positionals;
   const origin = process.env.HARRHY_REVIEW_ORIGIN || "http://127.0.0.1:9867";
@@ -157,7 +177,11 @@ async function main() {
     throw new Error(detail?.error ?? `HTTP ${response.status}`);
   }
   const result = await response.json();
-  console.log(command === "submit" && !values.json ? result.url : JSON.stringify(result, null, 2));
+  console.log(
+    command === "submit" && !values.json
+      ? result.url
+      : JSON.stringify(result, null, 2),
+  );
 }
 
 try {

@@ -1,6 +1,11 @@
 import { FileDiff, parsePatchFiles } from "@pierre/diffs";
 import type { DiffLineAnnotation } from "@pierre/diffs";
-import { maxTitleLength, normalizeTitle, titleError, untitledReview } from "./title.ts";
+import {
+  maxTitleLength,
+  normalizeTitle,
+  titleError,
+  untitledReview,
+} from "./title.ts";
 
 interface Summary {
   id: string;
@@ -33,7 +38,9 @@ function node<K extends keyof HTMLElementTagNameMap>(
   const element = document.createElement(tag);
   if (className) element.className = className;
   for (const child of children) {
-    element.appendChild(typeof child === "string" ? document.createTextNode(child) : child);
+    element.appendChild(
+      typeof child === "string" ? document.createTextNode(child) : child,
+    );
   }
   return element;
 }
@@ -54,7 +61,11 @@ function button(label: string, testId: string, className = "") {
 function date(value: string | number) {
   const parsed = new Date(value);
   const valid = Number.isFinite(parsed.getTime());
-  const element = node("time", "", valid ? parsed.toLocaleString() : String(value));
+  const element = node(
+    "time",
+    "",
+    valid ? parsed.toLocaleString() : String(value),
+  );
   if (valid) element.dateTime = parsed.toISOString();
   return element;
 }
@@ -71,7 +82,8 @@ async function request(path: string, method = "GET", data?: object) {
     redirect: "error",
     mode: "same-origin",
   });
-  if (response.status === 404) throw new Error("This review is no longer available.");
+  if (response.status === 404)
+    throw new Error("This review is no longer available.");
   if (!response.ok) throw new Error(`Request failed (${response.status}).`);
   return response;
 }
@@ -92,7 +104,11 @@ function comparison(review: Summary) {
 }
 
 function fileCount(count: number) {
-  return node("span", "muted", `${count} ${count === 1 ? "file" : "files"} changed`);
+  return node(
+    "span",
+    "muted",
+    `${count} ${count === 1 ? "file" : "files"} changed`,
+  );
 }
 
 async function inbox(root: HTMLElement) {
@@ -106,7 +122,13 @@ async function inbox(root: HTMLElement) {
         "span",
         "review-entry",
         node("strong", "", review.title ?? untitledReview),
-        node("span", "row", fileCount(review.fileCount), "·", comparison(review)),
+        node(
+          "span",
+          "row",
+          fileCount(review.fileCount),
+          "·",
+          comparison(review),
+        ),
       ),
     );
     entry.appendChild(date(review.created));
@@ -130,7 +152,8 @@ async function inbox(root: HTMLElement) {
 }
 
 const anchorKey = ({ side, line }: Anchor) => `${side}:${line}`;
-const anchorLabel = ({ side, line }: Anchor) => `${side === "old" ? "Old" : "New"} line ${line}`;
+const anchorLabel = ({ side, line }: Anchor) =>
+  `${side === "old" ? "Old" : "New"} line ${line}`;
 
 async function detail(root: HTMLElement, id: string) {
   const api = `/api/reviews/${encodeURIComponent(id)}`;
@@ -139,7 +162,9 @@ async function detail(root: HTMLElement, id: string) {
   const files = parsePatchFiles(review.patch, { throwOnError: true }).flatMap(
     (patch) => patch.files,
   );
-  let style: "split" | "unified" = matchMedia("(max-width: 760px)").matches ? "unified" : "split";
+  let style: "split" | "unified" = matchMedia("(max-width: 760px)").matches
+    ? "unified"
+    : "split";
   let pending = false;
 
   const status = node("p", "danger");
@@ -180,7 +205,14 @@ async function detail(root: HTMLElement, id: string) {
     node("div", "row", heading, rename),
     titleEditor,
     node("div", "row", fileCount(files.length), "·", comparison(review)),
-    node("div", "row muted", "Merge base", shortHash(review.mergeBase), "·", date(review.created)),
+    node(
+      "div",
+      "row muted",
+      "Merge base",
+      shortHash(review.mergeBase),
+      "·",
+      date(review.created),
+    ),
     toolbar,
     status,
   );
@@ -269,7 +301,8 @@ async function detail(root: HTMLElement, id: string) {
       }
       return response;
     } catch (error) {
-      status.textContent = error instanceof Error ? error.message : "Could not save the change.";
+      status.textContent =
+        error instanceof Error ? error.message : "Could not save the change.";
       return false;
     } finally {
       control.disabled = false;
@@ -287,7 +320,9 @@ async function detail(root: HTMLElement, id: string) {
   });
 
   const views = files.map((fileDiff, file) => {
-    const path = fileDiff.prevName ? `${fileDiff.prevName} → ${fileDiff.name}` : fileDiff.name;
+    const path = fileDiff.prevName
+      ? `${fileDiff.prevName} → ${fileDiff.name}`
+      : fileDiff.name;
     const count = node("span", "muted thread-count");
     const summary = node("summary", "", node("span", "path", path), count);
     const host = node("div", "diff-host");
@@ -329,7 +364,11 @@ async function detail(root: HTMLElement, id: string) {
           line: start,
         }),
       renderAnnotation: ({ metadata }) => {
-        const panel = node("div", "annotation", ...metadata.threads.map(renderThread));
+        const panel = node(
+          "div",
+          "annotation",
+          ...metadata.threads.map(renderThread),
+        );
         if (metadata.compose) {
           const key = anchorKey(metadata);
           const form = commentForm(
@@ -347,7 +386,8 @@ async function detail(root: HTMLElement, id: string) {
                 })
               ) {
                 drafts.delete(key);
-                if (composer && anchorKey(composer) === key) composer = undefined;
+                if (composer && anchorKey(composer) === key)
+                  composer = undefined;
                 render();
                 picker?.focus();
               }
@@ -410,7 +450,12 @@ async function detail(root: HTMLElement, id: string) {
           node("span", "muted", thread.resolved ? "Resolved" : "Open"),
         ),
         ...thread.messages.map((message) =>
-          node("div", "", node("p", "message", message.text), date(message.created)),
+          node(
+            "div",
+            "",
+            node("p", "message", message.text),
+            date(message.created),
+          ),
         ),
         node("div", "row", toggle),
       );
@@ -419,12 +464,18 @@ async function detail(root: HTMLElement, id: string) {
       if (!thread.resolved) {
         const key = `reply:${thread.id}`;
         panel.appendChild(
-          commentForm("Reply to thread", "Reply", "reply", key, async (submit, text) => {
-            if (await update(submit, endpoint, { action: "reply", text })) {
-              drafts.delete(key);
-              render();
-            }
-          }),
+          commentForm(
+            "Reply to thread",
+            "Reply",
+            "reply",
+            key,
+            async (submit, text) => {
+              if (await update(submit, endpoint, { action: "reply", text })) {
+                drafts.delete(key);
+                render();
+              }
+            },
+          ),
         );
       }
       return panel;
@@ -434,13 +485,18 @@ async function detail(root: HTMLElement, id: string) {
     const picker = fileDiff.hunks.length ? node("select") : undefined;
     if (picker) {
       picker.dataset.testid = "comment-line";
-      picker.setAttribute("aria-label", `Line to comment on in ${fileDiff.name}`);
+      picker.setAttribute(
+        "aria-label",
+        `Line to comment on in ${fileDiff.name}`,
+      );
       for (const side of ["new", "old"] as const) {
         const group = node("optgroup");
         group.label = side === "old" ? "Old file" : "New file";
         for (const hunk of fileDiff.hunks) {
-          const start = side === "old" ? hunk.deletionStart : hunk.additionStart;
-          const length = side === "old" ? hunk.deletionCount : hunk.additionCount;
+          const start =
+            side === "old" ? hunk.deletionStart : hunk.additionStart;
+          const length =
+            side === "old" ? hunk.deletionCount : hunk.additionCount;
           for (let line = start; line < start + length; line++) {
             const anchor = { side, line };
             const option = node("option", "", anchorLabel(anchor));
@@ -453,11 +509,14 @@ async function detail(root: HTMLElement, id: string) {
       const add = button("Add comment", "add-comment");
       add.addEventListener("click", () => {
         const [side, line] = picker.value.split(":");
-        if (side === "old" || side === "new") startComment({ side, line: Number(line) });
+        if (side === "old" || side === "new")
+          startComment({ side, line: Number(line) });
       });
       section.appendChild(node("div", "row comment-picker", picker, add));
     } else {
-      host.appendChild(node("p", "inset muted", "No text changes to display for this file."));
+      host.appendChild(
+        node("p", "inset muted", "No text changes to display for this file."),
+      );
     }
 
     function startComment(anchor: Anchor) {
@@ -489,13 +548,13 @@ async function detail(root: HTMLElement, id: string) {
       count.textContent = open ? `${open} open` : "";
       if (!section.open || !fileDiff.hunks.length) return;
       if (composer) group(composer).compose = true;
-      const annotations: DiffLineAnnotation<Annotation>[] = [...groups.values()].map(
-        (metadata) => ({
-          side: metadata.side === "old" ? "deletions" : "additions",
-          lineNumber: metadata.line,
-          metadata,
-        }),
-      );
+      const annotations: DiffLineAnnotation<Annotation>[] = [
+        ...groups.values(),
+      ].map((metadata) => ({
+        side: metadata.side === "old" ? "deletions" : "additions",
+        lineNumber: metadata.line,
+        metadata,
+      }));
       diff.setOptions({ ...diff.options, diffStyle: style });
       diff.render({
         fileDiff,
@@ -522,7 +581,9 @@ async function detail(root: HTMLElement, id: string) {
   split.addEventListener("click", () => setStyle("split"));
   unified.addEventListener("click", () => setStyle("unified"));
   setStyle(style);
-  const target = views.find(({ section }) => `#${section.id}` === location.hash)?.section;
+  const target = views.find(
+    ({ section }) => `#${section.id}` === location.hash,
+  )?.section;
   if (target) {
     target.open = true;
     target.scrollIntoView();
@@ -545,7 +606,12 @@ async function main(root: HTMLElement) {
     retry.addEventListener("click", () => location.reload());
     root.replaceChildren(
       node("h1", "", "review"),
-      node("div", "panel inset", notice, node("div", "row", retry, link("Review inbox", "/"))),
+      node(
+        "div",
+        "panel inset",
+        notice,
+        node("div", "row", retry, link("Review inbox", "/")),
+      ),
     );
   }
 }

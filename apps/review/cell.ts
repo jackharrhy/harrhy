@@ -54,17 +54,25 @@ export class ReviewCell extends DurableObject<Env> {
   }
 
   exists(id: string) {
-    return this.sql.exec("SELECT 1 FROM reviews WHERE id = ?", id).toArray().length !== 0;
+    return (
+      this.sql.exec("SELECT 1 FROM reviews WHERE id = ?", id).toArray()
+        .length !== 0
+    );
   }
 
   private snapshot(id: string) {
-    return this.sql.exec<SnapshotRow>("SELECT * FROM reviews WHERE id = ?", id).toArray()[0];
+    return this.sql
+      .exec<SnapshotRow>("SELECT * FROM reviews WHERE id = ?", id)
+      .toArray()[0];
   }
 
   threads(id: string) {
     if (!this.exists(id)) return null;
     return this.sql
-      .exec<{ data: string }>("SELECT data FROM threads WHERE review = ? ORDER BY seq", id)
+      .exec<{ data: string }>(
+        "SELECT data FROM threads WHERE review = ? ORDER BY seq",
+        id,
+      )
       .toArray()
       .map(({ data }) => JSON.parse(data) as Thread);
   }
@@ -104,8 +112,13 @@ export class ReviewCell extends DurableObject<Env> {
     } catch {
       return error(400, "Invalid unified patch");
     }
-    if (!count || count > 100) return error(400, "Expected 1–100 changed files");
-    if (this.sql.exec<{ count: number }>("SELECT count(*) AS count FROM reviews").one().count >= 50)
+    if (!count || count > 100)
+      return error(400, "Expected 1–100 changed files");
+    if (
+      this.sql
+        .exec<{ count: number }>("SELECT count(*) AS count FROM reviews")
+        .one().count >= 50
+    )
       return error(409, "Inbox is full; delete a review first");
     const id = crypto.randomUUID();
     this.ctx.storage.transactionSync(() => {
@@ -120,7 +133,10 @@ export class ReviewCell extends DurableObject<Env> {
       );
       if (title !== null) this.setTitle(id, title);
     });
-    return Response.json({ id, url: `${origin}/reviews/${id}` }, { status: 201 });
+    return Response.json(
+      { id, url: `${origin}/reviews/${id}` },
+      { status: 201 },
+    );
   }
 
   remove(id: string) {
@@ -144,10 +160,14 @@ export class ReviewCell extends DurableObject<Env> {
           : [hunk.additionStart, hunk.additionCount];
       return anchor.line >= start && anchor.line < start + count;
     });
-    if (!visible) return error(400, "Anchor must be a line in a displayed hunk");
+    if (!visible)
+      return error(400, "Anchor must be a line in a displayed hunk");
     if (
       this.sql
-        .exec<{ count: number }>("SELECT count(*) AS count FROM threads WHERE review = ?", id)
+        .exec<{ count: number }>(
+          "SELECT count(*) AS count FROM threads WHERE review = ?",
+          id,
+        )
         .one().count >= 100
     )
       return error(409, "Review has reached its thread limit");
@@ -169,20 +189,31 @@ export class ReviewCell extends DurableObject<Env> {
   update(
     id: string,
     tid: string,
-    change: { action: "reply"; text: string } | { action: "resolve" | "reopen" },
+    change:
+      | { action: "reply"; text: string }
+      | { action: "resolve" | "reopen" },
   ) {
     const row = this.sql
-      .exec<{ data: string }>("SELECT data FROM threads WHERE review = ? AND id = ?", id, tid)
+      .exec<{ data: string }>(
+        "SELECT data FROM threads WHERE review = ? AND id = ?",
+        id,
+        tid,
+      )
       .toArray()[0];
     if (!row) return error(404, "Thread not found");
     const thread = JSON.parse(row.data) as Thread;
     if (change.action === "reply") {
-      if (thread.messages.length >= 25) return error(409, "Thread has reached its message limit");
+      if (thread.messages.length >= 25)
+        return error(409, "Thread has reached its message limit");
       thread.messages.push({ text: change.text, created: Date.now() });
     } else {
       thread.resolved = change.action === "resolve";
     }
-    this.sql.exec("UPDATE threads SET data = ? WHERE id = ?", JSON.stringify(thread), tid);
+    this.sql.exec(
+      "UPDATE threads SET data = ? WHERE id = ?",
+      JSON.stringify(thread),
+      tid,
+    );
     return Response.json(thread);
   }
 }

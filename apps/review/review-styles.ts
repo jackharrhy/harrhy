@@ -19,9 +19,16 @@ export const reviewStyles = css({
     overflowWrap: "anywhere",
   },
   "& h2, & h3": { fontSize: "1rem" },
-  "& button, & input, & textarea, & select": { font: "inherit", color: "inherit" },
+  "& button, & input, & textarea, & select": {
+    font: "inherit",
+    color: "inherit",
+  },
   "& .title-editor": { maxWidth: "42rem" },
-  "& .title-editor label": { display: "block", marginBottom: ".3rem", fontWeight: 600 },
+  "& .title-editor label": {
+    display: "block",
+    marginBottom: ".3rem",
+    fontWeight: 600,
+  },
   "& .title-editor input": {
     flex: "1 1 14rem",
     minWidth: 0,
