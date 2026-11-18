@@ -26,11 +26,9 @@ try {
   const node = page.locator("[data-force-graph] g[role=button]").first();
   await node.press("Enter");
   assert.equal(await node.getAttribute("aria-pressed"), "true");
-  assert.ok(
-    await page.locator("[data-force-graph] path[data-graph-edges]").count(),
-  );
+  const canvas = page.locator("[data-force-graph] canvas");
+  await canvas.waitFor();
   const mii = page.locator("[data-force-graph] g[aria-label*=Mii]").first();
-  await mii.waitFor();
   await page.getByRole("checkbox", { name: "Miis", exact: true }).uncheck();
   await mii.waitFor({ state: "hidden" });
   await page.getByRole("checkbox", { name: "Miis", exact: true }).check();
@@ -40,21 +38,19 @@ try {
     ["Negative chemistry", "negative"],
   ]) {
     const checkbox = page.getByRole("checkbox", { name: label, exact: true });
-    const paths = page.locator(
-      `[data-force-graph] path[data-graph-edges=${type}]`,
-    );
+    const before = await node.getAttribute("transform");
     await checkbox.uncheck();
-    assert.ok(
-      await paths.evaluateAll((edges) =>
-        edges.every((edge) => !edge.getAttribute("d")),
-      ),
+    assert.equal(await canvas.getAttribute(`data-${type}`), "0");
+    await page.waitForFunction(
+      (previous) =>
+        document
+          .querySelector("[data-force-graph]")
+          .shadowRoot.querySelector("g[role=button]")
+          .getAttribute("transform") !== previous,
+      before,
     );
     await checkbox.check();
-    assert.ok(
-      await paths.evaluateAll((edges) =>
-        edges.some((edge) => edge.getAttribute("d")),
-      ),
-    );
+    assert.ok(Number(await canvas.getAttribute(`data-${type}`)) > 0);
   }
   await page.getByRole("link", { name: "Leaderboard", exact: true }).click();
   await page.waitForURL(`${origin}/players`);
