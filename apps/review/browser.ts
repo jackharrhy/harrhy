@@ -111,53 +111,12 @@ function fileCount(count: number) {
   );
 }
 
-async function inbox(root: HTMLElement) {
-  const reviews: Summary[] = await (await request("/api/reviews")).json();
-  const panel = node("ul", "panel review-list");
-  for (const review of reviews) {
-    const entry = link("", `/reviews/${encodeURIComponent(review.id)}`);
-    entry.dataset.testid = "review-link";
-    entry.appendChild(
-      node(
-        "span",
-        "review-entry",
-        node("strong", "", review.title ?? untitledReview),
-        node(
-          "span",
-          "row",
-          fileCount(review.fileCount),
-          "·",
-          comparison(review),
-        ),
-      ),
-    );
-    entry.appendChild(date(review.created));
-    panel.appendChild(node("li", "", entry));
-  }
-  root.replaceChildren(
-    node(
-      "div",
-      "review-header",
-      node("h1", "", "Review inbox"),
-      node("p", "muted", "Saved comparisons on this device."),
-    ),
-    reviews.length
-      ? panel
-      : node(
-          "p",
-          "panel inset",
-          "No reviews yet. Create a review from your terminal to see it here.",
-        ),
-  );
-}
-
 const anchorKey = ({ side, line }: Anchor) => `${side}:${line}`;
 const anchorLabel = ({ side, line }: Anchor) =>
   `${side === "old" ? "Old" : "New"} line ${line}`;
 
-async function detail(root: HTMLElement, id: string) {
-  const api = `/api/reviews/${encodeURIComponent(id)}`;
-  const review: Review = await (await request(api)).json();
+function detail(root: HTMLElement, review: Review) {
+  const api = `/api/reviews/${encodeURIComponent(review.id)}`;
   let threads = review.threads;
   const files = parsePatchFiles(review.patch, { throwOnError: true }).flatMap(
     (patch) => patch.files,
@@ -589,11 +548,11 @@ async function detail(root: HTMLElement, id: string) {
   }
 }
 
-async function main(root: HTMLElement) {
+function main(root: HTMLElement, data: HTMLElement) {
   try {
-    const match = /^\/reviews\/([^/]+)\/?$/.exec(location.pathname);
-    if (match) await detail(root, decodeURIComponent(match[1]));
-    else await inbox(root);
+    const review: Review = JSON.parse(data.textContent ?? "");
+    data.remove();
+    detail(root, review);
   } catch (error) {
     const notice = node(
       "p",
@@ -616,4 +575,5 @@ async function main(root: HTMLElement) {
 }
 
 const root = document.getElementById("review-app");
-if (root) void main(root);
+const data = document.getElementById("review-data");
+if (root && data) main(root, data);

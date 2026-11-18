@@ -7,7 +7,10 @@ await Promise.all([
     entryPoints: ["browser.ts"],
     bundle: true,
     format: "esm",
-    outfile: "dist/client/browser.js",
+    // Preserve Pierre's dynamic imports for highlighters and language grammars.
+    splitting: true,
+    outdir: "dist/client",
+    chunkNames: "browser-chunks/[name]-[hash]",
     minify: true,
   }),
   build({

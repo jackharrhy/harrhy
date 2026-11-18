@@ -51,12 +51,11 @@ function routerFor(env: Env) {
   const namespace = env.REVIEWS;
   const cell = () =>
     namespace.get(namespace.idFromName("inbox")) as unknown as CellRpc;
-  router.get("/", ({ request }) => page(request));
-  router.get("/reviews/:id", async ({ request, params }) =>
-    idPattern.test(params.id) && (await cell().exists(params.id))
-      ? page(request)
-      : error(404, "Review not found"),
-  );
+  router.get("/", async () => page({ reviews: await cell().list() }));
+  router.get("/reviews/:id", async ({ params }) => {
+    const review = idPattern.test(params.id) && (await cell().get(params.id));
+    return review ? page({ review }) : error(404, "Review not found");
+  });
   router.get("/api/reviews", async () => Response.json(await cell().list()));
   router.get("/api/reviews/:id", async ({ params }) => {
     const result = idPattern.test(params.id) && (await cell().get(params.id));
@@ -141,6 +140,11 @@ function routerFor(env: Env) {
     return error(400, "Expected reply with a note, resolve, or reopen");
   });
   router.get("/browser.js", ({ request }) => env.ASSETS.fetch(request));
+  router.get("/browser-chunks/:file.js", ({ request, params }) =>
+    /^[\w.-]+-[A-Z0-9]{8}$/.test(params.file)
+      ? env.ASSETS.fetch(request)
+      : error(404, "Asset not found"),
+  );
   return router;
 }
 

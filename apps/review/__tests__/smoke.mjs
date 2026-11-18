@@ -211,6 +211,12 @@ try {
   git("branch", "-f", "main", "example");
 
   browser = await chromium.launch();
+  const inboxHtml = await (await fetch(origin)).text();
+  assert.match(inboxHtml, /Change demo/);
+  assert.doesNotMatch(inboxHtml, /<script[^>]+src=/);
+  const reviewHtml = await (await fetch(url)).text();
+  assert.ok(reviewHtml.includes("<h1>Change demo</h1>"));
+  assert.doesNotMatch(reviewHtml, /Loading…/);
   const page = await browser.newPage();
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
