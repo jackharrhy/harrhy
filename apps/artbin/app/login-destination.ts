@@ -13,12 +13,12 @@ export function bookmarkPath(value: unknown): string | null {
         !decoded ||
         decoded === "." ||
         decoded === ".." ||
-        /[/\\]/.test(decoded) ||
-        [...decoded].some(
-          (character) => character < " " || character === "\u007f",
-        )
+        /[/\\]/.test(decoded)
       )
         return null;
+      for (const character of decoded) {
+        if (character < " " || character === "\u007f") return null;
+      }
     }
     const url = new URL(path, "https://artbin.invalid");
     return url.pathname === path ? path : null;
