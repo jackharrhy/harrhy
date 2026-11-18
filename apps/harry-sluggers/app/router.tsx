@@ -10,6 +10,9 @@ import type { openArchive } from "./database.ts";
 const routes = route({
   home: get("/"),
   players: get("/players"),
+  grid: get("/players/grid"),
+  chemistry: get("/players/chemistry"),
+  chemistryGraph: get("/players/chemistry-graph"),
   player: get("/players/:id"),
   teams: get("/teams"),
   team: get("/teams/:id"),
@@ -42,6 +45,9 @@ export async function createArchiveApp(
     actions: {
       home: show,
       players: show,
+      grid: show,
+      chemistry: show,
+      chemistryGraph: show,
       player: show,
       teams: show,
       team: show,

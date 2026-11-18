@@ -1,3 +1,9 @@
+import {
+  chemistryView,
+  leaderboard,
+  playerViewNav,
+  playerViews,
+} from "./player-views.tsx";
 import { css, type RemixNode } from "remix/component";
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import {
@@ -941,7 +947,27 @@ export function page(
       ),
     };
   }
-  if (bits[0] === "players" && bits.length === 1) {
+  const playerView = playerViews.find(
+    ([href]) => href === `/${bits.join("/")}`,
+  );
+  if (playerView && playerView[0] !== "/players/grid") {
+    return {
+      title: playerView[1],
+      body: (
+        <>
+          {playerViewNav(playerView[0])}
+          {playerView[0] === "/players"
+            ? leaderboard(data, url)
+            : chemistryView(
+                data,
+                url,
+                playerView[0] === "/players/chemistry-graph",
+              )}
+        </>
+      ),
+    };
+  }
+  if (playerView?.[0] === "/players/grid") {
     const q = (url.searchParams.get("q") ?? "").trim().slice(0, 100);
     const selectedTeam = positiveId(url.searchParams.get("team") ?? undefined);
     const players = data.players
@@ -955,6 +981,7 @@ export function page(
       title: "Players",
       body: (
         <>
+          {playerViewNav(playerView[0])}
           <form method="get">
             <label>
               Player name <input name="q" defaultValue={q} />
@@ -1812,7 +1839,7 @@ export function document(title: string, body: RemixNode, url: URL) {
         <main id="main">
           <h1
             data-page-title-hidden={
-              leagueLinks.some(
+              [...leagueLinks, ...playerViews].some(
                 ([href]) => href === (url.pathname.replace(/\/$/, "") || "/"),
               ) || undefined
             }
