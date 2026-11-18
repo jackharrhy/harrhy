@@ -77,6 +77,8 @@ function syncGraph() {
   if (!host) return;
   const shadow = host.shadowRoot ?? host.attachShadow({ mode: "open" });
   const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.style.position = "absolute";
+  svg.style.inset = "0";
   svg.setAttribute("width", "100%");
   svg.setAttribute("height", "100%");
   svg.setAttribute("aria-label", "Chemistry graph");

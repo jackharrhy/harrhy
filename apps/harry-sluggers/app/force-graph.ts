@@ -43,6 +43,18 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     link.target = nodeMap.get(link.target as string)!;
   });
 
+  const neighbors = new Map(nodes.map((node) => [node.id, new Set<string>()]));
+  const charge = new Map(nodes.map((node) => [node.id, -800]));
+  for (const edge of links) {
+    const from = (edge.source as GraphNode).id;
+    const to = (edge.target as GraphNode).id;
+    neighbors.get(from)?.add(to);
+    neighbors.get(to)?.add(from);
+    const delta = edge.type === "positive" ? 100 : -150;
+    charge.set(from, (charge.get(from) ?? -800) + delta);
+    if (from !== to) charge.set(to, (charge.get(to) ?? -800) + delta);
+  }
+
   // Create force simulation
   const simulation = d3
     .forceSimulation<GraphNode>(nodes)
@@ -58,29 +70,13 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     )
     .force(
       "charge",
-      d3.forceManyBody<GraphNode>().strength((d) => {
-        // Attraction for positive chemistry, repulsion for negative
-        const positiveLinks = links
-          .filter(
-            (l) =>
-              (l.source as GraphNode).id === d.id ||
-              (l.target as GraphNode).id === d.id,
-          )
-          .filter((l) => l.type === "positive").length;
-        const negativeLinks = links
-          .filter(
-            (l) =>
-              (l.source as GraphNode).id === d.id ||
-              (l.target as GraphNode).id === d.id,
-          )
-          .filter((l) => l.type === "negative").length;
-        // Increased base repulsion for more spacing
-        return -800 + positiveLinks * 100 - negativeLinks * 150;
-      }),
+      d3.forceManyBody<GraphNode>().strength((d) => charge.get(d.id) ?? -800),
     )
     .force("center", d3.forceCenter(width / 2, height / 2))
     .force("collision", d3.forceCollide().radius(40))
-    .alphaDecay(0.02); // Slower decay for more gradual settling
+    .alphaDecay(0.05)
+    .stop()
+    .tick(85);
 
   // Create zoom behavior
   const zoom = d3
@@ -95,53 +91,56 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
   // Create container group for zoom/pan
   const g = svg.append("g");
 
-  // Draw links
-  const link = g
-    .append("g")
-    .attr("class", "links")
-    .selectAll<SVGLineElement, GraphLink>("line")
-    .data(links)
-    .enter()
-    .append("line")
-    .attr("stroke", (d) => (d.type === "positive" ? "#4ade80" : "#f87171"))
-    .attr("stroke-width", 2)
-    .attr("stroke-opacity", 0.6)
-    .attr(
-      "marker-end",
-      (d) =>
-        `url(#arrowhead-${d.type === "positive" ? "positive" : "negative"})`,
-    );
-
-  // Draw arrow markers for links (one for positive, one for negative)
-  const defs = svg.append("defs");
-
-  // Positive chemistry arrow (green)
-  defs
-    .append("marker")
-    .attr("id", "arrowhead-positive")
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 25)
-    .attr("refY", 0)
-    .attr("markerWidth", 6)
-    .attr("markerHeight", 6)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", "#4ade80");
-
-  // Negative chemistry arrow (red)
-  defs
-    .append("marker")
-    .attr("id", "arrowhead-negative")
-    .attr("viewBox", "0 -5 10 10")
-    .attr("refX", 25)
-    .attr("refY", 0)
-    .attr("markerWidth", 6)
-    .attr("markerHeight", 6)
-    .attr("orient", "auto")
-    .append("path")
-    .attr("d", "M0,-5L10,0L0,5")
-    .attr("fill", "#f87171");
+  // Batch the edges and arrowheads by color and highlight level. Individual
+  // nodes remain SVG targets for D3 drag, hover, and keyboard selection.
+  const batches = ["positive", "negative"].flatMap((type) =>
+    [false, true].map((emphasized) => {
+      const color = type === "positive" ? "#4ade80" : "#f87171";
+      return {
+        type,
+        emphasized,
+        line: g
+          .append("path")
+          .attr("data-graph-edges", type)
+          .attr("stroke", color)
+          .attr("stroke-width", 2)
+          .attr("fill", "none"),
+        arrow: g.append("path").attr("fill", color),
+      };
+    }),
+  );
+  let hovered: string | null = null;
+  let selected: string | null = null;
+  function drawEdges() {
+    const active = hovered ?? selected;
+    const paths = batches.map(() => ({ line: "", arrow: "" }));
+    for (const edge of links) {
+      const from = edge.source as GraphNode;
+      const to = edge.target as GraphNode;
+      const x = from.x ?? 0,
+        y = from.y ?? 0,
+        endX = to.x ?? 0,
+        endY = to.y ?? 0;
+      const length = Math.hypot(endX - x, endY - y);
+      if (length < 26) continue;
+      const ux = (endX - x) / length,
+        uy = (endY - y) / length;
+      const tx = endX - 25 * ux,
+        ty = endY - 25 * uy,
+        bx = tx - 8 * ux,
+        by = ty - 8 * uy;
+      const emphasized = !!active && (from.id === active || to.id === active);
+      const batch =
+        paths[(edge.type === "positive" ? 0 : 2) + Number(emphasized)]!;
+      batch.line += `M${Math.round(x)},${Math.round(y)}L${Math.round(tx)},${Math.round(ty)}`;
+      batch.arrow += `M${Math.round(tx)},${Math.round(ty)}L${Math.round(bx - 4 * uy)},${Math.round(by + 4 * ux)}L${Math.round(bx + 4 * uy)},${Math.round(by - 4 * ux)}Z`;
+    }
+    batches.forEach((batch, index) => {
+      const opacity = !active ? 0.6 : batch.emphasized ? 1 : 0.2;
+      batch.line.attr("d", paths[index]!.line).attr("opacity", opacity);
+      batch.arrow.attr("d", paths[index]!.arrow).attr("opacity", opacity);
+    });
+  }
 
   // Draw nodes
   const node = g
@@ -202,39 +201,47 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     .attr("font-family", "sans-serif")
     .text((d) => d.character);
 
-  // Update positions on simulation tick
-  simulation.on("tick", () => {
-    link
-      .attr("x1", (d) => (d.source as GraphNode).x!)
-      .attr("y1", (d) => (d.source as GraphNode).y!)
-      .attr("x2", (d) => (d.target as GraphNode).x!)
-      .attr("y2", (d) => (d.target as GraphNode).y!);
-
+  function draw() {
+    drawEdges();
     node.attr("transform", (d) => `translate(${d.x},${d.y})`);
-  });
-
-  let hovered: string | null = null;
-  let selected: string | null = null;
+  }
+  let lastDraw = 0;
+  simulation
+    .on("tick", () => {
+      const now = performance.now();
+      if (now - lastDraw < 32) return;
+      lastDraw = now;
+      draw();
+    })
+    .on("end", draw);
+  draw();
+  // Start with the settled layout in view; retain the original D3 pan/zoom.
+  const bounds = g.node()?.getBBox();
+  if (bounds?.width && bounds.height) {
+    const k = Math.min(
+      1,
+      width / (bounds.width + 48),
+      height / (bounds.height + 48),
+    );
+    svg.call(
+      zoom.transform,
+      d3.zoomIdentity
+        .translate(
+          width / 2 - k * (bounds.x + bounds.width / 2),
+          height / 2 - k * (bounds.y + bounds.height / 2),
+        )
+        .scale(k),
+    );
+  }
   function paint() {
     const active = hovered ?? selected;
-    const connected = new Set([active]);
-    for (const edge of links) {
-      const from = (edge.source as GraphNode).id;
-      const to = (edge.target as GraphNode).id;
-      if (from === active) connected.add(to);
-      if (to === active) connected.add(from);
-    }
-    link.attr("stroke-opacity", (edge) =>
-      !active
-        ? 0.6
-        : (edge.source as GraphNode).id === active ||
-            (edge.target as GraphNode).id === active
-          ? 1
-          : 0.2,
-    );
+    const connected = active ? neighbors.get(active) : undefined;
+    drawEdges();
     node
       .attr("aria-pressed", (d) => String(d.id === selected))
-      .attr("opacity", (d) => (!active || connected.has(d.id) ? 1 : 0.3))
+      .attr("opacity", (d) =>
+        !active || active === d.id || connected?.has(d.id) ? 1 : 0.3,
+      )
       .select("circle")
       .attr("fill", (d) =>
         d.id === selected
