@@ -4,8 +4,9 @@ Customized source: `jackharrhy/pi`, exact clean commit `2a74fd2a6c78cce7f72d2765
 
 App runtime, plugins, public assets, original scripts and voice sidecar live directly in this app. Nine shared compatibility packages retain their original package names and internal topology under `compat/packages/`. Their source and native build inputs are local; no external app fork, custom published artifact, source-fetching build or opaque archive is required. Compatibility packages remain app-owned implementation inputs, not new independent Harrhy products.
 
-`provenance.json` pins SHA-256 tree digests of retained source, guides, focused tests and public catalog. Its digest format is explicit and checked by `__tests__/provenance.test.mjs`. It also records the baseline hashes of the only five changed retained implementation/test files:
+`provenance.json` pins SHA-256 tree digests of retained source, guides, focused tests and public catalog. Its digest format is explicit and checked by `__tests__/provenance.test.mjs`. It also records the baseline hashes of the six changed retained implementation/test files:
 
+- `src/runtime/fetch.ts`: opt-in `HARRHY_PI_HTTP_PROXY` with fixed loopback bypass; direct HTTP/1.1 remains the default.
 - `src/source-resolver.ts`: compatibility-root aliases with app-root containment, retaining the host-owned `@p2` singleton.
 - `src/hosts/dev-modules.ts`: local compatibility package path.
 - `plugins/terminals/daemon.ts`: local native daemon package path.

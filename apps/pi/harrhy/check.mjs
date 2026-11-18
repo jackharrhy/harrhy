@@ -30,6 +30,7 @@ sandbox([
   "--test",
   "--test-concurrency=1",
   "__tests__/p2/web-sources.test.ts",
+  "__tests__/p2/fetch.test.ts",
   "__tests__/p2/ingress.test.ts",
   "__tests__/p2/stimuli-lifecycle.test.ts",
   "__tests__/p2/schedules-recovery.test.ts",

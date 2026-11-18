@@ -20,6 +20,8 @@ Keep app files and package-internal relative paths unchanged. Limit topology ada
 
 The imported customized baseline is `jackharrhy/pi` commit `2a74fd2a6c78cce7f72d27655f4d132ecf2bf236`. Its common ancestor with the investigated upstream cohort is `ac78a6068b38774fceb5157c8f9e27fba9da6471`. The upstream repository is `earendil-works/pi`; the customized fork is `jackharrhy/pi`. Preserve both references when reviewing updates: a tip-to-tip diff alone confuses later upstream work with custom changes. These are historical references, not a runtime network dependency or a claim that a particular remote branch still points at them.
 
+The retained `src/runtime/fetch.ts` also has a recorded Harrhy runtime adaptation: `HARRHY_PI_HTTP_PROXY` opts into a proxy with fixed loopback bypass while preserving direct HTTP/1.1 by default. This setting does not enforce destination restrictions; a preview's restricting proxy and sandbox own that boundary. Preserve this adaptation and its focused test when updating the pinned baseline.
+
 The custom cohort principally changes P2 and MCP recovery. Keep those source changes distinguishable from Harrhy's small topology/qualification adapters. Original source copyright and license, plus embedded third-party notices, must remain with the source.
 
 ## Boring update procedure

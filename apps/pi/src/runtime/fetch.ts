@@ -1,6 +1,6 @@
 // Process-wide fetch for the server and session workers: npm undici over HTTP/1.1.
 import { EventEmitter } from "node:events";
-import { Agent, Client, type Dispatcher, install, Pool, setGlobalDispatcher } from "undici";
+import { Agent, Client, type Dispatcher, EnvHttpProxyAgent, install, Pool, setGlobalDispatcher } from "undici";
 
 const ignoreError = (_error: unknown): void => {};
 
@@ -24,16 +24,26 @@ const client = (origin: string | URL, options: object): Dispatcher =>
  * Call once per process, before any provider request.
  */
 export function configureFetch(): void {
+	const proxy = process.env.HARRHY_PI_HTTP_PROXY;
 	setGlobalDispatcher(
-		quiet(
-			new Agent({
-				allowH2: false,
-				factory: (origin, options) =>
-					(options as Pool.Options).connections === 1
-						? client(origin, options)
-						: quiet(new Pool(origin, { ...(options as Pool.Options), factory: client })),
-			}),
-		),
+		proxy
+			? quiet(
+					new EnvHttpProxyAgent({
+						allowH2: false,
+						httpProxy: proxy,
+						httpsProxy: proxy,
+						noProxy: "localhost,127.0.0.1,[::1]",
+					}),
+				)
+			: quiet(
+					new Agent({
+						allowH2: false,
+						factory: (origin, options) =>
+							(options as Pool.Options).connections === 1
+								? client(origin, options)
+								: quiet(new Pool(origin, { ...(options as Pool.Options), factory: client })),
+					}),
+				),
 	);
 	// Keep fetch and the dispatcher on the same undici: Node's bundled fetch over npm undici's
 	// dispatcher can skip response decompression.
