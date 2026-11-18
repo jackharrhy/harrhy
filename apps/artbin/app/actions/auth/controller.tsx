@@ -118,21 +118,19 @@ export default createController(routes.auth, {
         : redirectWithHeaders(routes.auth.login.href(), response.headers, 303);
     },
 
-    async login() {
+    async login(context) {
+      const redirectUri = browserRedirectUri(context.request);
       const transaction = createLoginTransaction();
       const cookieName = loginTransactionCookieName(
         "artbin_oauth",
         transaction.state,
       )!;
       return redirectWithHeaders(
-        await identityClient().authorizationUrl(
-          transaction,
-          browserRedirectUri(),
-        ),
+        await identityClient().authorizationUrl(transaction, redirectUri),
         {
           "Set-Cookie": oauthCookie(
             cookieName,
-            JSON.stringify(transaction),
+            JSON.stringify({ ...transaction, redirectUri }),
             600,
           ),
         },
@@ -147,13 +145,16 @@ export default createController(routes.auth, {
       const cookieName = loginTransactionCookieName("artbin_oauth", state);
       if (!cookieName) return terminalLoginError("missing_oauth_state");
 
-      const oauthData = readOauthCookie<LoginTransaction>(
-        context.request,
-        cookieName,
-      );
+      const redirectUri = browserRedirectUri(context.request);
+      const oauthData = readOauthCookie<
+        LoginTransaction & { redirectUri?: string }
+      >(context.request, cookieName);
       if (!oauthData)
         return terminalLoginError("missing_oauth_state", cookieName);
-      if (!validLoginTransaction(oauthData, state)) {
+      if (
+        !validLoginTransaction(oauthData, state) ||
+        (oauthData.redirectUri ?? browserRedirectUri()) !== redirectUri
+      ) {
         return terminalLoginError("state_mismatch", cookieName);
       }
       if (oauthError) return terminalLoginError(oauthError, cookieName);
@@ -163,7 +164,7 @@ export default createController(routes.auth, {
         const identity = await identityClient().exchange(
           code,
           oauthData,
-          browserRedirectUri(),
+          redirectUri,
         );
         const user = await upsertUser({
           sub: identity.subject,

@@ -14,6 +14,7 @@ import { MyUploadsPage } from "./my-uploads-page.tsx";
 import { Alert, ButtonLink } from "../ui/primitives.tsx";
 import { theme } from "../ui/styles.ts";
 import { serveFolderPreview, serveMediaFile } from "./media.ts";
+import { alternateBrowserOrigin, requestAuthority } from "#lib/oauth.server";
 import { CliPage } from "./cli-page.tsx";
 
 const loginPageStyle = css({
@@ -66,6 +67,9 @@ export default createController(routes, {
       const user = context.user;
       if (user) return redirect(routes.folders.href(), 302);
 
+      const moved =
+        context.url.searchParams.get("moved") === "1" &&
+        alternateBrowserOrigin()?.host === requestAuthority(context.request);
       const errorParam = context.url.searchParams.get("error");
       const errorMessage =
         errorParam === "access_denied"
@@ -78,6 +82,11 @@ export default createController(routes, {
         <Document title="Sign in - artbin">
           <main mix={loginPageStyle}>
             <h1 mix={loginTitleStyle}>artbin</h1>
+            {moved ? (
+              <Alert tone="info">
+                Artbin has a new browser address. Sign in here to continue.
+              </Alert>
+            ) : null}
             {errorMessage ? <Alert tone="danger">{errorMessage}</Alert> : null}
             <ButtonLink
               href={routes.auth.login.href()}

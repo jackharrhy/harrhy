@@ -19,12 +19,14 @@ import adminArchivesController from "./actions/admin/archives/controller.tsx";
 import adminOrphansController from "./actions/admin/orphans/controller.tsx";
 import devController from "./actions/dev/controller.tsx";
 import mcpController from "./actions/mcp/controller.ts";
+import { browserOriginBoundary } from "./middleware/browser-origin.ts";
 import { loadUser } from "./middleware/auth.ts";
 import { render } from "./middleware/render.tsx";
 import { routes } from "./routes.ts";
 
 export const router = createRouter({
   middleware: [
+    browserOriginBoundary(),
     compression(),
     staticFiles(process.env.ARTBIN_PUBLIC_DIR ?? "./public", {
       index: false,
