@@ -111,6 +111,32 @@ try {
     }
   }
   await page.goto(`${origin}/players`);
+  const chemistrySource = page
+    .locator("[data-player-card]")
+    .filter({ hasText: /^.*Mario$/ })
+    .first();
+  await chemistrySource.hover();
+  assert.ok(
+    await page
+      .locator("[data-chemistry] [data-chemistry-note]:visible")
+      .count(),
+  );
+  await page.locator("h1").hover();
+  assert.equal(await page.locator("[data-chemistry-note]:visible").count(), 0);
+  await chemistrySource.focus();
+  assert.ok(await page.locator("[data-chemistry-note]:visible").count());
+  await chemistrySource.click();
+  await page.locator("[data-player-profile]").waitFor();
+  for (const name of [
+    "Basic Info",
+    "Batting",
+    "Pitching & Fielding",
+    "Displayed Stats",
+    "Player History",
+  ]) {
+    await page.getByRole("heading", { name, exact: true }).waitFor();
+  }
+  await page.goto(`${origin}/players`);
   const totalPlayers = await page.locator("[data-roster-card]").count();
   await page.getByLabel("Player name").fill("Mario");
   await page.getByRole("button", { name: "Find players" }).click();

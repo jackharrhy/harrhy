@@ -224,6 +224,78 @@ const styles = css({
     height: "11px",
     fill: "currentColor",
   },
+  "& [data-chemistry-note]": {
+    position: "absolute",
+    right: "-9px",
+    bottom: "-8px",
+    color: "#ffd4ed",
+    fontSize: "20px",
+    fontWeight: 700,
+    pointerEvents: "none",
+  },
+  "& [data-player-card][data-chemistry=negative] [data-chemistry-note]": {
+    color: "#ff9a9a",
+  },
+  "& [data-player-detail]": {
+    display: "grid",
+    justifyItems: "center",
+    gap: "16px",
+  },
+  "& [data-player-profile]": {
+    display: "grid",
+    justifyItems: "center",
+    gap: "24px",
+    padding: "clamp(16px,4vw,32px)",
+    background: "var(--lab-card-surface)",
+    border: "2px solid var(--lab-surface-edge)",
+    borderRadius: "var(--lab-card-radius)",
+    maxWidth: "100%",
+  },
+  "& [data-player-profile] [data-portrait]": { width: "80px", height: "80px" },
+  "& [data-player-profile] [data-player-mark]": {
+    width: "20px",
+    height: "20px",
+    fontSize: "14px",
+  },
+  "& [data-player-profile] p": { margin: 0 },
+  "& [data-player-attributes]": {
+    display: "grid",
+    gridTemplateColumns: "repeat(4,minmax(0,1fr))",
+    gap: "32px",
+  },
+  "& [data-player-attributes] h2": {
+    fontSize: "17px",
+    borderBottom: "1px solid var(--hui-table-border)",
+    margin: "0 0 6px",
+    paddingBottom: "4px",
+  },
+  "& [data-player-attributes] dl": { margin: 0, fontSize: "14px" },
+  "& [data-player-attributes] dl div": {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: "8px",
+    paddingBlock: "2px",
+  },
+  "& [data-player-attributes] dd": {
+    margin: 0,
+    textAlign: "right",
+    fontWeight: 600,
+  },
+  "& [data-player-history]": { width: "min(100%, 42rem)", minWidth: 0 },
+  "& [data-player-history] details": { marginBottom: "12px" },
+  "& main:has(> [data-player-detail]) > h1": {
+    textAlign: "center",
+    fontSize: "24px",
+  },
+  "@media (max-width: 850px)": {
+    "& [data-player-attributes]": {
+      gridTemplateColumns: "repeat(2,minmax(0,1fr))",
+      gap: "16px",
+    },
+  },
+  "@media (max-width: 520px)": {
+    "& [data-player-attributes]": { gridTemplateColumns: "minmax(0,1fr)" },
+  },
   "& [data-team-side]": {
     display: "flex",
     flexDirection: "column",
@@ -364,6 +436,60 @@ const table = (head: string[], rows: RemixNode[][], label: string) => (
   </div>
 );
 
+function playerAttributes(stats: Archive["stats"][number]) {
+  const groups = {
+    "Basic Info": {
+      Character: stats.character,
+      Class: stats.character_class,
+      Captain: stats.captain ? "Yes" : "No",
+      Weight: stats.weight,
+      Ability: stats.ability,
+      Speed: stats.speed,
+    },
+    Batting: {
+      Stance: stats.batting_stance,
+      Trajectory: stats.hitting_trajectory,
+      "Slap Contact": stats.slap_hit_contact_size,
+      "Charge Contact": stats.charge_hit_contact_size,
+      "Slap Power": stats.slap_hit_power,
+      "Charge Power": stats.charge_hit_power,
+      Bunting: stats.bunting,
+    },
+    "Pitching & Fielding": {
+      "Throwing Arm": stats.throwing_arm,
+      "Throwing Speed": stats.throwing_speed,
+      Fielding: stats.fielding,
+      "Fastball Speed": stats.fastball_speed,
+      "Curveball Speed": stats.curveball_speed,
+      Curve: stats.curve,
+      Stamina: stats.stamina,
+    },
+    "Displayed Stats": {
+      Pitching: stats.pitching_css,
+      Batting: stats.batting_css,
+      Fielding: stats.fielding_css,
+      Speed: stats.speed_css,
+    },
+  };
+  return (
+    <div data-player-attributes>
+      {Object.entries(groups).map(([heading, fields]) => (
+        <section>
+          <h2>{heading}</h2>
+          <dl>
+            {Object.entries(fields).map(([label, value]) => (
+              <div>
+                <dt>{label}:</dt>
+                <dd>{value ?? "—"}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export function page(
   data: Archive,
   url: URL,
@@ -410,13 +536,64 @@ export function page(
       {teamLink(n)}
     </span>
   );
+  const playerPortrait = (
+    p: Archive["players"][number],
+    captain: boolean,
+    starred?: boolean,
+  ) => (
+    <div data-portrait-lockup>
+      {image("player", p.id, p.name, true)}
+      {captain && (
+        <span
+          data-player-mark="captain"
+          role="img"
+          aria-label="Captain"
+          title="Captain"
+        >
+          C
+        </span>
+      )}
+      {starred && (
+        <span
+          data-player-mark="star"
+          role="img"
+          aria-label="Starred"
+          title="Starred"
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true">
+            <path d="m10 1 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L1 7.6l6.2-.9Z" />
+          </svg>
+        </span>
+      )}
+      <span data-chemistry-note hidden aria-hidden="true">
+        ♪
+      </span>
+    </div>
+  );
+  const chemistryTargets = (character: string | null, relationship: string) =>
+    data.chemistry
+      .filter(
+        (c) => c.character1 === character && c.relationship === relationship,
+      )
+      .map((c) => c.character2);
   const cards = (players: Archive["players"]) => (
     <div data-roster-grid data-catalogue-grid>
       {players.map((p) => {
         const owner = team(p.team_id);
         const assignment = data.lineups.find((l) => l.player_id === p.id);
         return (
-          <a data-roster-card data-player-card href={`/players/${p.id}`}>
+          <a
+            data-roster-card
+            data-player-card
+            data-character={p.stats_character ?? undefined}
+            data-positive={JSON.stringify(
+              chemistryTargets(p.stats_character, "positive"),
+            )}
+            data-negative={JSON.stringify(
+              chemistryTargets(p.stats_character, "negative"),
+            )}
+            href={`/players/${p.id}`}
+          >
             <span data-player-team title={owner?.name ?? "Free agent"}>
               {owner ? (
                 <>
@@ -427,31 +604,11 @@ export function page(
                 "Free"
               )}
             </span>
-            <div data-portrait-lockup>
-              {image("player", p.id, p.name, true)}
-              {owner?.captain_id === p.id && (
-                <span
-                  data-player-mark="captain"
-                  role="img"
-                  aria-label="Captain"
-                  title="Captain"
-                >
-                  C
-                </span>
-              )}
-              {assignment?.is_starred && (
-                <span
-                  data-player-mark="star"
-                  role="img"
-                  aria-label="Starred"
-                  title="Starred"
-                >
-                  <svg viewBox="0 0 20 20" aria-hidden="true">
-                    <path d="m10 1 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L1 7.6l6.2-.9Z" />
-                  </svg>
-                </span>
-              )}
-            </div>
+            {playerPortrait(
+              p,
+              owner?.captain_id === p.id,
+              assignment?.is_starred,
+            )}
             <span data-player-name>{p.name}</span>
           </a>
         );
@@ -680,87 +837,139 @@ export function page(
   if (bits[0] === "players" && id && bits.length === 2) {
     const p = player(id);
     if (!p) return missing();
-    const stats = data.stats.find((s) => s.character === p.stats_character);
+    const stats = data.stats.find(
+      (entry) => entry.character === p.stats_character,
+    );
+    const owner = team(p.team_id);
+    const assignment = data.lineups.find((l) => l.player_id === p.id);
+    const history = data.events.flatMap((event) => {
+      const pick = data.picks.find(
+        (row) => row.event_id === event.id && row.player_id === id,
+      );
+      if (pick)
+        return [
+          <li>
+            {date(event.created_at)} · Drafted by {teamLink(pick.team_id)} (pick{" "}
+            {pick.pick_number})
+          </li>,
+        ];
+      const trade = data.tradeEvents.find(
+        (row) =>
+          row.event_id === event.id &&
+          data.tradePlayers.some(
+            (move) => move.trade_id === row.trade_id && move.player_id === id,
+          ),
+      );
+      if (trade)
+        return [
+          <li>
+            {date(event.created_at)} ·{" "}
+            <a href={`/trades/${trade.trade_id}`}>Trade {trade.trade_id}</a>:{" "}
+            {trade.action}
+          </li>,
+        ];
+      const match = data.matchChanges.find(
+        (row) =>
+          row.event_id === event.id &&
+          data.appearances.some(
+            (appearance) =>
+              appearance.match_id === row.match_id &&
+              appearance.player_id === id,
+          ),
+      );
+      return match
+        ? [
+            <li>
+              {date(event.created_at)} ·{" "}
+              <a href={`/matches/${match.match_id}`}>Match {match.match_id}</a>:{" "}
+              {match.to_state}
+            </li>,
+          ]
+        : [];
+    });
     return {
       title: p.name,
       body: (
-        <>
-          <p>{p.team_id ? teamLink(p.team_id) : "Free agent"}</p>
-          {image("player", p.id, p.name)}
-          <div data-columns>
-            {panel(
-              "Character attributes",
-              stats ? (
-                table(
-                  ["Attribute", "Value"],
-                  Object.entries(stats).map(([key, value]) => [
-                    human(key),
-                    String(value),
-                  ]),
-                  "Character attributes",
-                )
-              ) : (
-                <p>No character attributes recorded.</p>
-              ),
+        <div data-player-detail>
+          <section data-player-profile aria-label="Player profile">
+            {playerPortrait(
+              p,
+              owner?.captain_id === p.id,
+              assignment?.is_starred,
             )}
-            <div>
-              {panel(
-                "Chemistry",
-                <ul>
-                  {data.chemistry
-                    .filter(
-                      (c) =>
-                        c.character1 === p.stats_character ||
-                        c.character2 === p.stats_character,
-                    )
-                    .map((c) => (
-                      <li>
-                        {c.character1 === p.stats_character
-                          ? c.character2
-                          : c.character1}
-                        : {c.relationship}
-                      </li>
-                    ))}
-                </ul>,
+            <p>
+              Team:{" "}
+              {owner ? teamLink(owner.id) : <span data-win>Free Agent</span>}
+            </p>
+            {stats ? (
+              playerAttributes(stats)
+            ) : (
+              <p>No character attributes recorded.</p>
+            )}
+          </section>
+          <section data-player-history>
+            <h2>Player History</h2>
+            {history.length ? (
+              <ul>{history}</ul>
+            ) : (
+              <p>No recent league events recorded for this player.</p>
+            )}
+            <details>
+              <summary>Recorded appearances</summary>
+              <ul>
+                {data.appearances
+                  .filter((row) => row.player_id === id)
+                  .map((row) => (
+                    <li>
+                      <a href={`/matches/${row.match_id}`}>
+                        Match {row.match_id}
+                      </a>{" "}
+                      · {teamLink(row.team_id)} ·{" "}
+                      {row.fielding_position ?? "Position unknown"}
+                    </li>
+                  ))}
+              </ul>
+            </details>
+            <details>
+              <summary>Recorded batting</summary>
+              {table(
+                ["Match", "Team", "PA", "H", "HR", "RBI"],
+                data.performances
+                  .filter((row) => row.player_id === id)
+                  .map((row) => [
+                    <a href={`/matches/${row.match_id}/stats`}>
+                      Match {row.match_id}
+                    </a>,
+                    teamLink(row.team_id),
+                    row.plate_appearances,
+                    row.hits,
+                    row.home_runs,
+                    row.rbi,
+                  ]),
+                "Player recorded batting",
               )}
-              {panel(
-                "Recorded batting",
-                table(
-                  ["Match", "Team", "PA", "H", "HR", "RBI"],
-                  data.performances
-                    .filter((s) => s.player_id === id)
-                    .map((s) => [
-                      <a href={`/matches/${s.match_id}/stats`}>
-                        Match {s.match_id}
-                      </a>,
-                      teamLink(s.team_id),
-                      s.plate_appearances,
-                      s.hits,
-                      s.home_runs,
-                      s.rbi,
-                    ]),
-                  "Player recorded batting",
-                ),
-              )}
-              {panel(
-                "Recorded appearances",
-                <ul>
-                  {data.appearances
-                    .filter((a) => a.player_id === id)
-                    .map((a) => (
-                      <li>
-                        <a href={`/matches/${a.match_id}`}>
-                          Match {a.match_id}
-                        </a>{" "}
-                        · {teamLink(a.team_id)} ·{" "}
-                        {a.fielding_position ?? "Position unknown"}
-                      </li>
-                    ))}
-                </ul>,
-              )}
-            </div>
-          </div>
-        </>
+            </details>
+            <details>
+              <summary>Chemistry</summary>
+              <ul>
+                {data.chemistry
+                  .filter(
+                    (row) =>
+                      row.character1 === p.stats_character ||
+                      row.character2 === p.stats_character,
+                  )
+                  .map((row) => (
+                    <li>
+                      {row.character1 === p.stats_character
+                        ? row.character2
+                        : row.character1}
+                      : {row.relationship}
+                    </li>
+                  ))}
+              </ul>
+            </details>
+          </section>
+        </div>
       ),
     };
   }
