@@ -27,7 +27,7 @@ const styles = css({
     background: "var(--lab-inset-surface)",
     color: "var(--hui-ink)",
   },
-  "& header, & main, & footer": {
+  "& [data-topbar], & main, & footer": {
     maxWidth: "1280px",
     margin: "auto",
     padding: "20px",
@@ -38,8 +38,8 @@ const styles = css({
     alignItems: "center",
     gap: "8px 40px",
     padding: "16px",
-    borderBottom: "1px solid var(--hui-border)",
   },
+  "& [data-topbar-shell]": { borderBottom: "1px solid var(--hui-border)" },
   "& [data-topbar] nav": { gap: "0 32px" },
   "& [data-topbar] nav a:not([aria-current])": { textDecoration: "none" },
   "@media (max-width: 767px)": {
@@ -511,7 +511,7 @@ const styles = css({
   },
   "@media (max-width: 800px)": {
     "& [data-columns]": { gridTemplateColumns: "minmax(0,1fr)" },
-    "& header, & main, & footer": { padding: "14px" },
+    "& [data-topbar], & main, & footer": { padding: "14px" },
     "& [data-match]": {
       gridTemplateColumns: "minmax(0,1fr) 96px minmax(0,1fr)",
       gap: "6px",
@@ -1741,59 +1741,61 @@ export function document(title: string, body: RemixNode, url: URL) {
         <a href="#main" data-skip>
           Skip to content
         </a>
-        <header data-topbar>
-          <form method="get">
-            <label>
-              <select
-                aria-label="Style"
-                data-theme-picker
-                name="theme"
-                defaultValue={concept.id}
-              >
-                {concepts.map((c) => (
-                  <option value={c.id}>{c.name}</option>
-                ))}
-              </select>
-            </label>
-            {[...url.searchParams]
-              .filter(([key]) => key !== "theme")
-              .map(([key, value]) => (
-                <input type="hidden" name={key} value={value} />
-              ))}
-          </form>
-          <a data-brand href="/">
-            @harrhy/sluggers
-          </a>
-          <nav aria-label="League">
-            {[
-              ["/", "Home"],
-              ["/teams", "Teams"],
-              ["/players", "Players"],
-              ["/events", "Events"],
-              ["/matches", "Matches"],
-              ["/draft", "Drafting"],
-              ["/trades", "Trading"],
-            ].map(([href, label]) => {
-              const active =
-                url.pathname === href ||
-                (href !== "/" && url.pathname.startsWith(`${href}/`)) ||
-                (href === "/matches" && url.pathname.startsWith("/days/"));
-              return (
-                <a
-                  href={href}
-                  aria-current={
-                    active
-                      ? url.pathname === href
-                        ? "page"
-                        : "location"
-                      : undefined
-                  }
+        <header data-topbar-shell>
+          <div data-topbar>
+            <form method="get">
+              <label>
+                <select
+                  aria-label="Style"
+                  data-theme-picker
+                  name="theme"
+                  defaultValue={concept.id}
                 >
-                  {label}
-                </a>
-              );
-            })}
-          </nav>
+                  {concepts.map((c) => (
+                    <option value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </label>
+              {[...url.searchParams]
+                .filter(([key]) => key !== "theme")
+                .map(([key, value]) => (
+                  <input type="hidden" name={key} value={value} />
+                ))}
+            </form>
+            <a data-brand href="/">
+              @harrhy/sluggers
+            </a>
+            <nav aria-label="League">
+              {[
+                ["/", "Home"],
+                ["/teams", "Teams"],
+                ["/players", "Players"],
+                ["/events", "Events"],
+                ["/matches", "Matches"],
+                ["/draft", "Drafting"],
+                ["/trades", "Trading"],
+              ].map(([href, label]) => {
+                const active =
+                  url.pathname === href ||
+                  (href !== "/" && url.pathname.startsWith(`${href}/`)) ||
+                  (href === "/matches" && url.pathname.startsWith("/days/"));
+                return (
+                  <a
+                    href={href}
+                    aria-current={
+                      active
+                        ? url.pathname === href
+                          ? "page"
+                          : "location"
+                        : undefined
+                    }
+                  >
+                    {label}
+                  </a>
+                );
+              })}
+            </nav>
+          </div>
         </header>
         <main id="main">
           <h1>{title}</h1>
