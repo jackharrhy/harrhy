@@ -1,9 +1,10 @@
-import { currentLog } from "@harrhy/logger";
 import { logger, failOperation } from "../logging.ts";
 import { DurableObject } from "cloudflare:workers";
 import { BoardAssets, type AssetInput } from "./board-assets.ts";
 import {
   parseOperation,
+  itemGeometry,
+  isRecord,
   type BoardItem,
   type BoardOperation,
   type BoardServerFrame,
@@ -184,36 +185,17 @@ export class BoardCell extends DurableObject<Env> {
     );
   }
 
-  restoreAsset(
-    boardId: string,
-    asset: {
-      id: string;
-      objectKey: string;
-      filename: string;
-      contentType: string;
-      size: number;
-    },
-  ): boolean {
+  restoreAsset(boardId: string, asset: AssetInput): boolean {
     this.assertBoard(boardId);
     return this.assets.restoreAsset(asset);
   }
 
-  recordLink(
-    boardId: string,
-    preview: LinkPreview,
-  ): { assetId: string; preview: LinkPreview; existingItemId: string | null } {
+  recordLink(boardId: string, preview: LinkPreview) {
     this.assertBoard(boardId);
     return this.assets.recordLink(preview);
   }
 
-  existingLink(
-    boardId: string,
-    url: string,
-  ): {
-    assetId: string;
-    preview: LinkPreview;
-    existingItemId: string | null;
-  } | null {
+  existingLink(boardId: string, url: string) {
     this.assertBoard(boardId);
     return this.assets.existingLink(url);
   }
@@ -248,10 +230,7 @@ export class BoardCell extends DurableObject<Env> {
     return true;
   }
 
-  asset(
-    boardId: string,
-    assetId: string,
-  ): { objectKey: string; contentType: string; size: number } | null {
+  asset(boardId: string, assetId: string) {
     this.assertBoard(boardId);
     return this.assets.asset(assetId);
   }
@@ -392,11 +371,10 @@ export class BoardCell extends DurableObject<Env> {
         "resource.itemId":
           operation.kind === "create" ? operation.item.id : operation.itemId,
       })
-      .run(async () => {
+      .run(async (log) => {
         try {
           if (operation.kind === "remove")
             await this.assets.ensureCleanupAlarm();
-          const log = currentLog()!;
           const result = this.applyOperation(boardId, actorId, operation);
           log.set({ "operation.result": result.type });
           if (result.type === "applied") {
@@ -505,42 +483,36 @@ export class BoardCell extends DurableObject<Env> {
           ? null
           : {
               ...toItem(row),
-              x: operation.x,
-              y: operation.y,
-              width: operation.width,
-              height: operation.height,
-              rotation: operation.rotation,
-              z: operation.z,
+              ...itemGeometry(operation),
               revision: row.revision + 1,
             };
     }
 
-    const acceptedItem = item;
     const sequence = this.ctx.storage.transactionSync(() => {
-      if (acceptedItem && operation.kind === "create") {
+      if (item && operation.kind === "create") {
         this.ctx.storage.sql.exec(
           "INSERT INTO items VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-          acceptedItem.id,
-          acceptedItem.assetId,
-          acceptedItem.filename,
-          acceptedItem.x,
-          acceptedItem.y,
-          acceptedItem.width,
-          acceptedItem.height,
-          acceptedItem.rotation,
-          acceptedItem.z,
-          acceptedItem.revision,
+          item.id,
+          item.assetId,
+          item.filename,
+          item.x,
+          item.y,
+          item.width,
+          item.height,
+          item.rotation,
+          item.z,
+          item.revision,
         );
-      } else if (acceptedItem) {
+      } else if (item) {
         this.ctx.storage.sql.exec(
           `UPDATE items SET x = ?, y = ?, width = ?, height = ?, rotation = ?, z = ?, revision = ? WHERE id = ?`,
-          acceptedItem.x,
-          acceptedItem.y,
-          acceptedItem.width,
-          acceptedItem.height,
-          acceptedItem.rotation,
-          acceptedItem.z,
-          acceptedItem.revision,
+          item.x,
+          item.y,
+          item.width,
+          item.height,
+          item.rotation,
+          item.z,
+          item.revision,
           itemId,
         );
       } else {
@@ -555,7 +527,7 @@ export class BoardCell extends DurableObject<Env> {
           operation.operationId,
           actorId,
           itemId,
-          acceptedItem ? JSON.stringify(acceptedItem) : null,
+          item ? JSON.stringify(item) : null,
           Date.now(),
         )
         .one().sequence;
@@ -572,7 +544,7 @@ export class BoardCell extends DurableObject<Env> {
       operationId: operation.operationId,
       sequence,
       itemId,
-      item: acceptedItem,
+      item,
     };
   }
 
@@ -645,12 +617,7 @@ function toItem(row: ItemRow): BoardItem {
     id: row.id,
     assetId: row.asset_id,
     filename: row.filename,
-    x: row.x,
-    y: row.y,
-    width: row.width,
-    height: row.height,
-    rotation: row.rotation,
-    z: row.z,
+    ...itemGeometry(row),
     revision: row.revision,
     ...(row.link_url
       ? {
@@ -665,8 +632,4 @@ function toItem(row: ItemRow): BoardItem {
         }
       : {}),
   };
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

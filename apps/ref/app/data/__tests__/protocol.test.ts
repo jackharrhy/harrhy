@@ -5,77 +5,37 @@ const id = "b9e1d673-9bc8-405f-81b1-78be26d171d2";
 const assetId = "b6bca822-74b5-4fc9-b24c-180871c64a5a";
 const operationId = "c6750c74-8d6d-4eb0-a455-17e708ed1ba7";
 
-describe("board operation validation", () => {
-  it("accepts a bounded image placement", () => {
-    expect(
-      parseOperation({
-        kind: "create",
-        operationId,
-        item: {
-          id,
-          assetId,
-          x: -100,
-          y: 25,
-          width: 400,
-          height: 200,
-          rotation: 15,
-          z: 1,
-        },
-      }),
-    ).toEqual({
-      kind: "create",
-      operationId,
-      item: {
-        id,
-        assetId,
-        x: -100,
-        y: 25,
-        width: 400,
-        height: 200,
-        rotation: 15,
-        z: 1,
-      },
-    });
-  });
+const geometry = {
+  x: -100,
+  y: 25,
+  width: 400,
+  height: 200,
+  rotation: 15,
+  z: 1,
+};
+const item = { id, assetId, ...geometry };
 
-  it("rejects invalid geometry, revisions, and malformed ids", () => {
+describe("board operation validation", () => {
+  it("accepts a bounded placement without trusting client-supplied metadata", () => {
     expect(
       parseOperation({
         kind: "create",
         operationId,
-        item: {
-          id,
-          assetId,
-          x: 0,
-          y: 0,
-          width: Infinity,
-          height: 200,
-          rotation: 0,
-          z: 1,
-        },
+        item: { ...item, revision: 9, filename: "ignored" },
       }),
-    ).toBeNull();
-    expect(
-      parseOperation({
-        kind: "transform",
-        operationId,
-        itemId: id,
-        baseRevision: 0,
-        x: 0,
-        y: 0,
-        width: 200,
-        height: 200,
-        rotation: 0,
-        z: 1,
-      }),
-    ).toBeNull();
-    expect(
-      parseOperation({
-        kind: "remove",
-        operationId: "malformed",
-        itemId: id,
-        baseRevision: 1,
-      }),
-    ).toBeNull();
+    ).toEqual({ kind: "create", operationId, item });
+  });
+  it.each([
+    { kind: "create", operationId, item: { ...item, width: Infinity } },
+    {
+      kind: "transform",
+      operationId,
+      itemId: id,
+      baseRevision: 0,
+      ...geometry,
+    },
+    { kind: "remove", operationId: "malformed", itemId: id, baseRevision: 1 },
+  ])("rejects invalid $kind operations", (operation) => {
+    expect(parseOperation(operation)).toBeNull();
   });
 });

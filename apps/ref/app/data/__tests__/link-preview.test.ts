@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
 import {
-  cachePreviewImage,
   isGenericSocialPreview,
   normalizeLinkUrl,
   normalizeXVideoUrl,
@@ -30,47 +29,6 @@ it("recognizes social landing-page metadata without discarding post metadata", (
       title: "X on X",
     }),
   ).toBe(true);
-});
-
-it("does not reuse a preview generation that a previous link deletion can still delete", async () => {
-  const objects = new Map<string, unknown>();
-  const pendingDeletes: string[] = [];
-  const media = {
-    head: vi.fn(async (key: string) => objects.get(key) ?? null),
-    put: vi.fn(async (key: string, bytes: unknown) => {
-      objects.set(key, bytes);
-    }),
-  } as unknown as R2Bucket;
-  const fetch = vi.spyOn(globalThis, "fetch").mockImplementation(
-    async () =>
-      new Response(new Uint8Array([137, 80, 78, 71]), {
-        headers: { "Content-Type": "image/png" },
-      }),
-  );
-  const source = {
-    url: "https://example.com/post",
-    title: "Post",
-    description: "",
-    imageUrl: "https://example.com/image.png",
-    siteName: "Example",
-  };
-  try {
-    const first = await cachePreviewImage(source, media, "board");
-    pendingDeletes.push(
-      `boards/board/previews/${first.imageUrl!.split("/").at(-1)}`,
-    );
-    // The first deletion failed; its durable retry is still pending when re-added.
-    const second = await cachePreviewImage(source, media, "board");
-    for (const key of pendingDeletes) objects.delete(key);
-    expect(second.imageUrl).not.toBe(first.imageUrl);
-    expect(
-      objects.has(
-        `boards/board/previews/${second.imageUrl!.split("/").at(-1)}`,
-      ),
-    ).toBe(true);
-  } finally {
-    fetch.mockRestore();
-  }
 });
 
 describe("X video previews", () => {

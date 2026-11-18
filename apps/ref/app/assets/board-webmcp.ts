@@ -1,6 +1,6 @@
 import type { WebMcpTool } from "@harrhy/webmcp";
-import { parseOperation } from "../data/protocol.ts";
-import type { BoardItem, BoardOperation } from "../data/protocol.ts";
+import { isUuid, parseOperation } from "../data/protocol.ts";
+import type { BoardOperation } from "../data/protocol.ts";
 
 export interface BoardWebMcpActions {
   context(offset: number): unknown;
@@ -58,11 +58,7 @@ function tool(
   };
 }
 function itemId(value: unknown): string {
-  if (
-    typeof value !== "string" ||
-    !/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(value)
-  )
-    throw new Error("Expected an item UUID");
+  if (!isUuid(value)) throw new Error("Expected an item UUID");
   return value;
 }
 export function boardWebMcpTools(actions: BoardWebMcpActions): WebMcpTool[] {
@@ -132,8 +128,4 @@ export function boardWebMcpTools(actions: BoardWebMcpActions): WebMcpTool[] {
       true,
     ),
   ];
-}
-
-export function copyBoardItem(item: BoardItem): BoardItem {
-  return { ...item, ...(item.link ? { link: { ...item.link } } : {}) };
 }

@@ -222,6 +222,14 @@ export async function checkWebMcpRemoval(page, second) {
       .get("ref_board_context")
       .execute({ offset: 0 }, { signal });
     const item = state.items.find((entry) => entry.id === id);
+    const originalTitle = item.link.title;
+    item.link.title += " (modified by tool consumer)";
+    const reread = await window.refTestBrowserTools
+      .get("ref_board_context")
+      .execute({ offset: 0 }, { signal });
+    const isolated =
+      reread.items.find((entry) => entry.id === id).link.title ===
+      originalTitle;
     const operation = {
       operationId: crypto.randomUUID(),
       itemId: id,
@@ -230,8 +238,9 @@ export async function checkWebMcpRemoval(page, second) {
     const tool = window.refTestBrowserTools.get("ref_item_remove");
     const applied = await tool.execute(operation, { signal });
     const replay = await tool.execute(operation, { signal });
-    return { applied, replay };
+    return { applied, replay, isolated };
   }, itemId);
+  assert.equal(result.isolated, true);
   assert.equal(result.applied.status, "applied");
   assert.equal(result.applied.item, null);
   assert.equal(result.replay.sequence, result.applied.sequence);

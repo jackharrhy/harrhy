@@ -1,10 +1,11 @@
-import type { LinkPreview } from "./protocol.ts";
-import { tokenHash } from "./crypto.ts";
+import { isRecord, type LinkPreview } from "./protocol.ts";
+import { newToken } from "./crypto.ts";
+import type { BoardCell } from "./board-cell.ts";
+import { MAX_PREVIEW_BYTES } from "./image-upload.ts";
 
 const MAX_URL_LENGTH = 2048;
 const MAX_HTML_BYTES = 256 * 1024;
 const MAX_REDIRECTS = 3;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = new Set([
   "image/png",
   "image/jpeg",
@@ -107,6 +108,35 @@ export function normalizeXVideoUrl(value: string): string | null {
     : null;
 }
 
+async function fetchXMedia(user: string, postId: string): Promise<unknown[]> {
+  const response = await fetch(
+    `https://api.fxtwitter.com/${encodeURIComponent(user)}/status/${postId}`,
+    {
+      signal: AbortSignal.timeout(8_000),
+      redirect: "manual",
+      headers: {
+        Accept: "application/json",
+        "User-Agent": "Ref/1.0 (+link-preview)",
+      },
+    },
+  );
+  if (
+    !response.ok ||
+    !response.headers.get("Content-Type")?.includes("application/json")
+  ) {
+    await response.body?.cancel();
+    return [];
+  }
+  const bytes = await readPrefix(response.body, 64 * 1024 + 1);
+  if (bytes.length > 64 * 1024) return [];
+  const result: unknown = JSON.parse(new TextDecoder().decode(bytes));
+  if (!isRecord(result) || !isRecord(result.tweet)) return [];
+  const { id, media } = result.tweet;
+  return id === postId && isRecord(media) && Array.isArray(media.all)
+    ? media.all
+    : [];
+}
+
 async function xVideo(
   value: string,
 ): Promise<{ imageUrl: string | null; videoUrl: string } | null> {
@@ -120,36 +150,9 @@ async function xVideo(
   const post = /^\/([^/]+)\/status\/(\d+)(?:\/|$)/.exec(parsed.pathname);
   if (!post) return null;
   try {
-    const response = await fetch(
-      `https://api.fxtwitter.com/${encodeURIComponent(post[1])}/status/${post[2]}`,
-      {
-        signal: AbortSignal.timeout(8_000),
-        redirect: "manual",
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Ref/1.0 (+link-preview)",
-        },
-      },
-    );
-    if (
-      !response.ok ||
-      !response.headers.get("Content-Type")?.includes("application/json")
-    ) {
-      await response.body?.cancel();
-      return null;
-    }
-    const bytes = await readPrefix(response.body, 64 * 1024 + 1);
-    if (bytes.length > 64 * 1024) return null;
-    const result: unknown = JSON.parse(new TextDecoder().decode(bytes));
-    if (!result || typeof result !== "object") return null;
-    const tweet = (result as { tweet?: unknown }).tweet;
-    if (!tweet || typeof tweet !== "object") return null;
-    const data = tweet as { id?: unknown; media?: { all?: unknown } };
-    if (data.id !== post[2] || !Array.isArray(data.media?.all)) return null;
-    const media = data.media.all.find((item) => item?.type === "video") as
-      | { thumbnail_url?: unknown; variants?: unknown }
-      | undefined;
-    if (!media || !Array.isArray(media.variants)) return null;
+    const all = await fetchXMedia(post[1], post[2]);
+    const media = all.find((item) => isRecord(item) && item.type === "video");
+    if (!isRecord(media) || !Array.isArray(media.variants)) return null;
     const variants = media.variants
       .filter(
         (
@@ -204,34 +207,12 @@ async function xPhotoImage(photo: {
   index: number;
 }): Promise<string | null> {
   try {
-    const response = await fetch(
-      `https://api.fxtwitter.com/${encodeURIComponent(photo.user)}/status/${photo.id}`,
-      {
-        signal: AbortSignal.timeout(8_000),
-        redirect: "manual",
-        headers: {
-          Accept: "application/json",
-          "User-Agent": "Ref/1.0 (+link-preview)",
-        },
-      },
-    );
+    const media = (await fetchXMedia(photo.user, photo.id))[photo.index];
     if (
-      !response.ok ||
-      !response.headers.get("Content-Type")?.includes("application/json")
-    ) {
-      await response.body?.cancel();
-      return null;
-    }
-    const bytes = await readPrefix(response.body, 64 * 1024 + 1);
-    if (bytes.length > 64 * 1024) return null;
-    const result: unknown = JSON.parse(new TextDecoder().decode(bytes));
-    if (!result || typeof result !== "object") return null;
-    const tweet = (result as { tweet?: unknown }).tweet;
-    if (!tweet || typeof tweet !== "object") return null;
-    const data = tweet as { id?: unknown; media?: { all?: unknown } };
-    if (data.id !== photo.id || !Array.isArray(data.media?.all)) return null;
-    const media = data.media.all[photo.index];
-    if (!media || media.type !== "photo" || typeof media.url !== "string")
+      !isRecord(media) ||
+      media.type !== "photo" ||
+      typeof media.url !== "string"
+    )
       return null;
     const image = normalizeLinkUrl(media.url);
     if (!image) return null;
@@ -324,18 +305,11 @@ async function youtubePreview(url: string): Promise<LinkPreview | null> {
 
 export async function cachePreviewImage(
   preview: LinkPreview,
-  media: {
-    put(
-      key: string,
-      bytes: ArrayBuffer,
-      options: { httpMetadata: { contentType: string } },
-    ): Promise<unknown>;
-  },
   boardId: string,
+  board: Pick<BoardCell, "storePreview">,
 ): Promise<LinkPreview> {
   if (!preview.imageUrl) return preview;
-  const hash = await tokenHash(crypto.randomUUID());
-  const key = `boards/${boardId}/previews/${hash}`;
+  const imageId = newToken();
   const signal = AbortSignal.timeout(10_000);
   try {
     const fetched = await fetchPublic(preview.imageUrl, signal, {
@@ -351,16 +325,18 @@ export async function cachePreviewImage(
       await response.body?.cancel();
       return preview;
     }
-    const bytes = await readPrefix(response.body, MAX_IMAGE_BYTES + 1);
-    if (!bytes.length || bytes.length > MAX_IMAGE_BYTES) return preview;
-    await media.put(key, bytes.buffer as ArrayBuffer, {
-      httpMetadata: { contentType: type },
-    });
-    return { ...preview, imageUrl: `/previews/${boardId}/${hash}` };
+    const bytes = await readPrefix(response.body, MAX_PREVIEW_BYTES + 1);
+    if (!bytes.length || bytes.length > MAX_PREVIEW_BYTES) return preview;
+    await board.storePreview(
+      boardId,
+      imageId,
+      bytes.buffer as ArrayBuffer,
+      type,
+    );
+    return { ...preview, imageUrl: `/previews/${boardId}/${imageId}` };
   } catch {
-    // Keep the original image URL when caching fails.
+    return preview;
   }
-  return preview;
 }
 
 async function fetchPublic(

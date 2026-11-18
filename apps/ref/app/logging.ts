@@ -241,23 +241,25 @@ export function errorContext(
   };
 }
 
-const privateSources = new WeakMap<Log, readonly string[]>();
-const requestIds = new WeakMap<Log, string>();
+const requestContext = new WeakMap<
+  Log,
+  { requestId: string; secrets: readonly string[] }
+>();
 export function openLinkedJob(fields: LogFields) {
   const parent = currentLog();
-  const requestId = parent ? requestIds.get(parent) : undefined;
+  const context = parent && requestContext.get(parent);
   const log = logger.open("job", {
     ...fields,
     job_id: crypto.randomUUID(),
-    request_id: requestId,
+    request_id: context?.requestId,
   });
-  if (parent) privateSources.set(log, privateSources.get(parent) ?? []);
-  if (requestId) requestIds.set(log, requestId);
+  if (context) requestContext.set(log, context);
   return log;
 }
 export function failOperation(error: unknown) {
   const log = currentLog();
-  log?.fail(error, errorContext(error, log ? privateSources.get(log) : []));
+  if (log)
+    log.fail(error, errorContext(error, requestContext.get(log)?.secrets));
 }
 
 export async function logRequest(
@@ -271,8 +273,10 @@ export async function logRequest(
   ];
   const fields = requestFields(request, secrets);
   return (options.logger ?? logger).open("request", fields).run(async (log) => {
-    privateSources.set(log, secrets);
-    requestIds.set(log, fields.request_id as string);
+    requestContext.set(log, {
+      requestId: fields.request_id as string,
+      secrets,
+    });
     let response: Response;
     try {
       response = await handle();

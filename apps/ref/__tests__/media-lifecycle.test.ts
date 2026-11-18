@@ -1,3 +1,10 @@
+import {
+  saveBoardLink,
+  uploadBoardImage,
+} from "../app/data/board-resources.ts";
+import type { AppRuntimeService } from "../app/data/runtime.ts";
+import type { AssetInput } from "../app/data/board-assets.ts";
+import * as previews from "../app/data/link-preview.ts";
 import { DatabaseSync, type SQLInputValue } from "node:sqlite";
 import { afterEach, expect, it, vi } from "vitest";
 
@@ -108,6 +115,7 @@ async function fixture() {
   const cell = await instantiate();
   return {
     cell,
+    runtime: { board: () => cell, media } as unknown as AppRuntimeService,
     instantiate,
     database,
     boardId,
@@ -155,7 +163,6 @@ it("recovers staged bytes after losing the owning instance before put returns", 
   const f = await fixture();
   const entered = deferred();
   // Model instance loss at an I/O boundary: its continuation never resumes.
-  // This does not model a late object-store completion after recovery.
   f.media.put.mockImplementationOnce(async (key, bytes) => {
     f.objects.set(key, bytes.slice(0));
     entered.resolve();
@@ -198,19 +205,29 @@ it("retries failed cleanup after a put stores bytes but reports failure", async 
 
 it("preserves committed metadata and media when only the caller loses the successful RPC response", async () => {
   const f = await fixture();
-  await expect(
-    (async () => {
-      await f.cell.storeAsset(f.boardId, f.asset, f.bytes);
+  const store = f.cell.storeAsset.bind(f.cell);
+  let committed!: AssetInput;
+  vi.spyOn(f.cell, "storeAsset").mockImplementationOnce(
+    async (boardId, asset, bytes) => {
+      await store(boardId, asset, bytes);
+      committed = asset;
       throw new Error("Synthetic RPC response loss after commit");
-    })(),
+    },
+  );
+  await expect(
+    uploadBoardImage(
+      f.runtime,
+      f.boardId,
+      new File([f.bytes], "synthetic.png"),
+    ),
   ).rejects.toThrow("after commit");
   const restarted = await f.instantiate();
-  vi.spyOn(Date, "now").mockReturnValue(Date.now() + 24 * 60 * 60 * 1000);
+  vi.spyOn(Date, "now").mockReturnValue(Date.now() + 24 * 60 * 60_000);
   await restarted.alarm();
-  expect(restarted.asset(f.boardId, f.asset.id)).toMatchObject({
-    objectKey: f.asset.objectKey,
+  expect(restarted.asset(f.boardId, committed.id)).toMatchObject({
+    objectKey: committed.objectKey,
   });
-  expect(f.objects.get(f.asset.objectKey)).toEqual(f.bytes);
+  expect(f.objects.get(committed.objectKey)).toEqual(f.bytes);
   expect(f.media.delete).not.toHaveBeenCalled();
   expect(
     f.database.prepare("SELECT * FROM pending_media_writes").all(),
@@ -303,42 +320,50 @@ function remove(cell: BoardCell, boardId: string, itemId: string) {
 
 it("reclaims a failed old preview generation without deleting a re-added link's new generation", async () => {
   const f = await fixture();
-  const oldHash = "a".repeat(64);
-  const newHash = "b".repeat(64);
-  const oldKey = `boards/${f.boardId}/previews/${oldHash}`;
-  const newKey = `boards/${f.boardId}/previews/${newHash}`;
-  const preview = {
-    url: "https://example.com/post",
+  const url = "https://example.com/post";
+  vi.spyOn(previews, "previewLink").mockResolvedValue({
+    url,
     title: "Synthetic post",
     description: "",
-    imageUrl: `/previews/${f.boardId}/${oldHash}`,
+    imageUrl: "https://example.com/image.png",
     siteName: "Example",
-  };
-  await f.cell.storePreview(f.boardId, oldHash, f.bytes, "image/png");
-  const oldLink = f.cell.recordLink(f.boardId, preview);
+  });
+  vi.spyOn(globalThis, "fetch").mockImplementation(
+    async () =>
+      new Response(f.bytes, { headers: { "Content-Type": "image/png" } }),
+  );
+  async function addLink() {
+    const result = await saveBoardLink(f.runtime, f.boardId, url);
+    if (!result.ok) throw new Error(result.message);
+    const imageUrl = result.value.preview.imageUrl!;
+    expect(imageUrl).toMatch(
+      new RegExp(`^/previews/${f.boardId}/[0-9a-f]{64}$`),
+    );
+    return {
+      ...result.value,
+      key: `boards/${f.boardId}/previews/${imageUrl.split("/").at(-1)}`,
+    };
+  }
+  const oldLink = await addLink();
   const oldItem = await place(f.cell, f.boardId, oldLink.assetId);
   f.media.delete.mockRejectedValueOnce(
     new Error("Synthetic old preview delete failure"),
   );
   expect((await remove(f.cell, f.boardId, oldItem)).type).toBe("applied");
-  expect(f.objects.has(oldKey)).toBe(true);
-  await f.cell.storePreview(f.boardId, newHash, f.bytes, "image/png");
-  const newPreview = {
-    ...preview,
-    imageUrl: `/previews/${f.boardId}/${newHash}`,
-  };
-  const newLink = f.cell.recordLink(f.boardId, newPreview);
+  expect(f.objects.has(oldLink.key)).toBe(true);
+  const newLink = await addLink();
+  expect(newLink.key).not.toBe(oldLink.key);
   await place(f.cell, f.boardId, newLink.assetId);
   const restarted = await f.instantiate();
   await restarted.alarm();
-  expect(f.objects.has(oldKey)).toBe(false);
-  expect(f.objects.get(newKey)).toEqual(f.bytes);
+  expect(f.objects.has(oldLink.key)).toBe(false);
+  expect(f.objects.get(newLink.key)).toEqual(f.bytes);
   expect(f.media.delete.mock.calls.map(([key]) => key)).toEqual([
-    oldKey,
-    oldKey,
+    oldLink.key,
+    oldLink.key,
   ]);
   expect(restarted.snapshot(f.boardId).items[0]?.link?.imageUrl).toBe(
-    newPreview.imageUrl,
+    newLink.preview.imageUrl,
   );
 });
 
@@ -541,7 +566,6 @@ it("retains uncertain restore history after resume, attachment and last-use remo
     await release.promise;
     f.objects.set(objectKey, bytes.slice(0));
   });
-  // Model an old instance's outstanding external write surviving replacement.
   const original = f.cell.restorePreview(f.boardId, hash, f.bytes, "image/png");
   await entered.promise;
   const restarted = await f.instantiate();
