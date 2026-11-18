@@ -20,7 +20,7 @@
   },
   "scripts": {
     "build": "tsrs -p tsconfig.json",
-    "test": "bun test __tests__",
+    "test": "node --test __tests__/movement.test.ts",
     "check": "npm run build && npm test"
   }
 }

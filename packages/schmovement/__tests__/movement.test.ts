@@ -1,10 +1,11 @@
-import { expect, test } from "bun:test";
+import assert from "node:assert/strict";
+import { test } from "node:test";
 import {
   createGoldSrcMovementState,
   DEFAULT_GOLDSRC_MOVEMENT,
   moveGoldSrcPlayerWithSweep,
   type GoldSrcHullSweep,
-} from "../src/index.js";
+} from "../dist/index.js";
 
 const floor: GoldSrcHullSweep = (start, end) => {
   const hit = end[2] < 0 && start[2] >= 0;
@@ -39,7 +40,7 @@ test("default jump requires release; auto-bhop repeats on landing", () => {
       state = step.state;
       if (step.jumped) jumps++;
     }
-    if (autoBhop) expect(jumps).toBeGreaterThan(1);
-    else expect(jumps).toBe(1);
+    if (autoBhop) assert.ok(jumps > 1);
+    else assert.equal(jumps, 1);
   }
 });
