@@ -296,6 +296,122 @@ const styles = css({
   "@media (max-width: 520px)": {
     "& [data-player-attributes]": { gridTemplateColumns: "minmax(0,1fr)" },
   },
+  "& [data-conference]": {
+    border: "4px solid var(--lab-surface-edge)",
+    borderRadius: "8px",
+    padding: "12px",
+    marginBottom: "32px",
+    minWidth: 0,
+  },
+  "& [data-conference] > h2, & [data-team-heading]": { textAlign: "center" },
+  "& [data-conference-teams]": {
+    display: "flex",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: "32px",
+  },
+  "& [data-team-entry]": {
+    width: "min(100%, 356px)",
+    display: "grid",
+    gap: "12px",
+    textDecoration: "none",
+  },
+  "& [data-team-heading] h3, & [data-team-heading] p": { margin: 0 },
+  "& [data-team-sheet]": {
+    minWidth: 0,
+    display: "grid",
+    justifyItems: "center",
+    gap: "16px",
+    padding: "clamp(8px, 3vw, 16px)",
+    border: "2px solid var(--lab-surface-edge)",
+    borderRadius: "var(--lab-card-radius)",
+    background: "var(--lab-card-surface)",
+  },
+  "& [data-team-entry]:is(:hover,:focus-visible) [data-team-sheet]": {
+    background: "var(--lab-solid-surface)",
+  },
+  "& [data-team-order]": {
+    display: "flex",
+    justifyContent: "center",
+    flexWrap: "wrap",
+    gap: "6px",
+    width: "100%",
+    paddingBottom: "10px",
+    borderBottom: "1px solid var(--lab-surface-edge)",
+  },
+  "& [data-team-order] > *, & [data-field-slot]": {
+    display: "grid",
+    justifyItems: "center",
+    textAlign: "center",
+    minWidth: 0,
+    textDecoration: "none",
+    fontSize: "12px",
+  },
+  "& [data-team-order] strong": { color: "var(--hui-accent)" },
+  "& [data-team-sheet] [data-portrait-lockup] [data-portrait]": {
+    width: "clamp(23px, 7vw, 32px)",
+    height: "clamp(23px, 7vw, 32px)",
+  },
+  "& [data-team-field]": {
+    width: "min(100%, 320px)",
+    aspectRatio: "1",
+    position: "relative",
+    isolation: "isolate",
+    display: "grid",
+    gridTemplateColumns: "repeat(7, minmax(0,1fr))",
+    gridTemplateRows: "repeat(5,1fr)",
+    alignItems: "center",
+  },
+  "& [data-field-art]": {
+    position: "absolute",
+    inset: 0,
+    width: "100%",
+    height: "100%",
+    zIndex: -1,
+    fill: "rgb(255 255 255 / .22)",
+    stroke: "var(--lab-surface-edge)",
+    strokeWidth: 4,
+  },
+  "& [data-field-slot] small": { color: "var(--hui-muted)" },
+  "& [data-field-empty]": {
+    width: "22px",
+    height: "22px",
+    background: "rgb(255 255 255 / .15)",
+    borderRadius: "50%",
+  },
+  "& [data-team-detail]": {
+    display: "grid",
+    justifyItems: "center",
+    gap: "16px",
+  },
+  "& main:has(> [data-team-detail]) > h1": {
+    textAlign: "center",
+    marginBottom: "8px",
+  },
+  "& [data-team-detail-roster]": {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "20px",
+    maxWidth: "100%",
+  },
+  "& [data-team-detail-roster] ul": {
+    listStyle: "none",
+    margin: 0,
+    padding: 0,
+  },
+  "& [data-team-detail-roster] li": { marginBlock: "4px" },
+  "& [data-team-bench]": {
+    display: "flex",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: "6px",
+    width: "100%",
+    borderTop: "1px solid var(--lab-surface-edge)",
+    paddingTop: "8px",
+  },
+  "& [data-team-results]": { width: "min(100%, 42rem)", minWidth: 0 },
   "& [data-team-side]": {
     display: "flex",
     flexDirection: "column",
@@ -973,80 +1089,291 @@ export function page(
       ),
     };
   }
-  if (bits[0] === "teams" && bits.length === 1)
-    return {
-      title: "Teams",
-      body: (
-        <div data-roster-grid>
-          {data.teams.map((t) => (
-            <article data-roster-card>
-              {image("team", t.id, t.name)}
-              <h2>{teamLink(t.id)}</h2>
-              <p>
-                {data.managers.find((u) => u.id === t.user_id)?.name ??
-                  "Manager unknown"}
-              </p>
-              <p>
-                {data.players.filter((p) => p.team_id === t.id).length} players
-              </p>
-            </article>
-          ))}
-        </div>
-      ),
+  if (bits[0] === "teams") {
+    const manager = (t: Archive["teams"][number]) =>
+      data.managers.find((u) => u.id === t.user_id)?.name ?? "Manager unknown";
+    const conference = (t: Archive["teams"][number]) =>
+      data.conferences.find((c) => c.id === t.conference_id);
+    const teams = data.teams.toSorted((a, b) => a.name.localeCompare(b.name));
+    const records = teams
+      .map((t) => {
+        const games = data.matches.filter((m) => result(m, t.id) !== null);
+        return {
+          id: t.id,
+          wins: games.filter((m) => result(m, t.id) === "Win").length,
+          losses: games.filter((m) => result(m, t.id) === "Loss").length,
+          games,
+        };
+      })
+      .toSorted((a, b) => b.wins - b.losses - (a.wins - a.losses));
+    const rank = (teamId: number) => {
+      const index = records.findIndex((record) => record.id === teamId);
+      return records[index]?.games.length ? `#${index + 1} ` : "";
     };
-  if (
-    bits[0] === "teams" &&
-    id &&
-    (bits.length === 2 || (bits.length === 3 && bits[2] === "lineup"))
-  ) {
-    const t = team(id);
-    if (!t) return missing();
-    const roster = data.players.filter((p) => p.team_id === id);
-    return {
-      title: bits[2] ? `${t.name} lineup` : t.name,
-      body: (
-        <>
-          <p>
-            {data.managers.find((u) => u.id === t.user_id)?.name ??
-              "Manager unknown"}{" "}
-            ·{" "}
-            {data.conferences.find((c) => c.id === t.conference_id)?.name ??
-              "No conference"}
-          </p>
-          <nav aria-label="Team pages">
-            <a href={`/teams/${id}`}>Roster</a>
-            <a href={`/teams/${id}/lineup`}>Current lineup</a>
-          </nav>
-          {bits[2] ? (
-            panel(
-              "Current team lineup",
-              <>
-                <p data-muted>
-                  Current roster only. Individual matches preserve their own
-                  recorded lineup.
-                </p>
-                {lineup(
-                  data.lineups.filter((l) =>
-                    roster.some((p) => p.id === l.player_id),
-                  ),
-                  t.captain_id,
-                )}
-              </>,
-            )
+    function roster(t: Archive["teams"][number]) {
+      return data.players
+        .filter((p) => p.team_id === t.id)
+        .map((p) => ({
+          p,
+          entry: data.lineups.find((l) => l.player_id === p.id),
+        }))
+        .toSorted(
+          (a, b) =>
+            (a.entry?.batting_order ?? Infinity) -
+              (b.entry?.batting_order ?? Infinity) ||
+            a.p.name.localeCompare(b.p.name),
+        );
+    }
+    function teamSheet(t: Archive["teams"][number], linkPlayers: boolean) {
+      const players = roster(t);
+      const ordered = players.filter((row) => row.entry?.batting_order != null);
+      const bench = players.filter((row) => row.entry?.batting_order == null);
+      const slots = [
+        ["LF", 1, 1],
+        ["CF", 1, 4],
+        ["RF", 1, 7],
+        ["SS", 2, 3],
+        ["2B", 2, 5],
+        ["P", 3, 4],
+        ["3B", 4, 2],
+        ["1B", 4, 6],
+        ["C", 5, 4],
+      ] as const;
+      const icon = (row: (typeof players)[number]) =>
+        playerPortrait(row.p, row.p.id === t.captain_id, row.entry?.is_starred);
+      return (
+        <div data-team-sheet>
+          {image("team", t.id, t.abbreviation)}
+          {ordered.length ? (
+            <div data-team-order aria-label="Batting order">
+              {ordered.map((row) => {
+                const content = (
+                  <>
+                    <strong>{row.entry?.batting_order}</strong>
+                    {icon(row)}
+                  </>
+                );
+                return linkPlayers ? (
+                  <a
+                    href={`/players/${row.p.id}`}
+                    aria-label={`Batting ${row.entry?.batting_order}: ${row.p.name}`}
+                  >
+                    {content}
+                  </a>
+                ) : (
+                  <span title={row.p.name}>{content}</span>
+                );
+              })}
+            </div>
           ) : (
-            <>
-              {panel("Squad", cards(roster))}
-              {panel(
-                "Team fixtures",
-                fixtures(
-                  data.matches.filter((m) =>
-                    [m.team_a_id, m.team_b_id].includes(id),
-                  ),
+            <span data-muted>No batting order recorded.</span>
+          )}
+          <div
+            data-team-field
+            role="group"
+            aria-label={`${t.name} fielding positions`}
+          >
+            <svg data-field-art viewBox="-10 -10 310 310" aria-hidden="true">
+              <path d="M 0 130 Q 150 -100 300 130 L 150 280 Z" />
+            </svg>
+            {slots.map(([position, gridRow, gridColumn]) => {
+              const row = players.find(
+                (candidate) => candidate.entry?.fielding_position === position,
+              );
+              const content = (
+                <>
+                  {row ? (
+                    icon(row)
+                  ) : (
+                    <span data-field-empty aria-hidden="true" />
+                  )}
+                  <small>{position}</small>
+                </>
+              );
+              const style = {
+                gridRow,
+                gridColumn,
+                transform:
+                  position === "LF" || position === "RF"
+                    ? "translateY(45%)"
+                    : undefined,
+              };
+              return row && linkPlayers ? (
+                <a
+                  data-field-slot
+                  style={style}
+                  href={`/players/${row.p.id}`}
+                  aria-label={`${position}: ${row.p.name}`}
+                >
+                  {content}
+                </a>
+              ) : (
+                <span data-field-slot style={style} title={row?.p.name}>
+                  {content}
+                </span>
+              );
+            })}
+          </div>
+          {!!bench.length && (
+            <div data-team-bench>
+              <small>Bench:</small>
+              {bench.map((row) =>
+                linkPlayers ? (
+                  <a href={`/players/${row.p.id}`} aria-label={row.p.name}>
+                    {icon(row)}
+                  </a>
+                ) : (
+                  <span title={row.p.name}>{icon(row)}</span>
                 ),
               )}
-            </>
+            </div>
           )}
-        </>
+        </div>
+      );
+    }
+    if (bits.length === 1) {
+      const groups = Map.groupBy(teams, (t) => conference(t)?.id ?? null);
+      return {
+        title: "Teams",
+        body: [...groups]
+          .toSorted(([a], [b]) =>
+            a === null
+              ? 1
+              : b === null
+                ? -1
+                : (
+                    data.conferences.find((c) => c.id === a)?.name ?? ""
+                  ).localeCompare(
+                    data.conferences.find((c) => c.id === b)?.name ?? "",
+                  ),
+          )
+          .map(([key, group]) => {
+            const conf = data.conferences.find((c) => c.id === key);
+            const color =
+              conf?.color && /^#[0-9a-f]{6}$/i.test(conf.color)
+                ? conf.color
+                : undefined;
+            return (
+              <section
+                data-conference
+                style={color ? { borderColor: `${color}80` } : undefined}
+              >
+                <h2>{conf?.name ?? "No Conference"}</h2>
+                <div data-conference-teams>
+                  {group.map((t) => (
+                    <a
+                      data-team-entry
+                      href={`/teams/${t.id}`}
+                      aria-label={t.name}
+                    >
+                      <div data-team-heading>
+                        <h3>
+                          <small data-muted>{rank(t.id)}</small>
+                          {t.name}
+                        </h3>
+                        <p data-muted>{manager(t)}</p>
+                      </div>
+                      {teamSheet(t, false)}
+                    </a>
+                  ))}
+                </div>
+              </section>
+            );
+          }),
+      };
+    }
+    const t = team(id);
+    if (
+      !t ||
+      !(bits.length === 2 || (bits.length === 3 && bits[2] === "lineup"))
+    )
+      return missing();
+    const players = roster(t);
+    const index = teams.indexOf(t);
+    const games = data.matches.filter((m) =>
+      [m.team_a_id, m.team_b_id].includes(t.id),
+    );
+    const record = records.find((row) => row.id === t.id);
+    return {
+      title: bits[2] ? `${t.name} lineup` : `${rank(t.id)}${t.name}`,
+      body: (
+        <div data-team-detail>
+          <div data-team-heading>
+            <p data-muted>
+              {manager(t)} · {conference(t)?.name ?? "No Conference"}
+            </p>
+          </div>
+          <nav aria-label="Team pages">
+            {teams[index - 1] && (
+              <a
+                aria-label="Previous team"
+                href={`/teams/${teams[index - 1].id}`}
+              >
+                ←
+              </a>
+            )}
+            <a href={`/teams/${t.id}`}>Team overview</a>
+            <a href={`/teams/${t.id}/lineup`}>Current lineup</a>
+            {teams[index + 1] && (
+              <a aria-label="Next team" href={`/teams/${teams[index + 1].id}`}>
+                →
+              </a>
+            )}
+          </nav>
+          {!bits[2] && record && (
+            <div data-team-results>
+              {panel(
+                "Team standings",
+                table(
+                  ["Team", "W", "L", "D"],
+                  [
+                    [
+                      teamIdentity(t.id),
+                      <span data-win>{record.wins}</span>,
+                      <span data-loss>{record.losses}</span>,
+                      record.games.length - record.wins - record.losses,
+                    ],
+                  ],
+                  "Team standings",
+                ),
+              )}
+            </div>
+          )}
+          <div data-team-detail-roster>
+            <div>
+              <h2>Batting order</h2>
+              <ul>
+                {players
+                  .filter((row) => row.entry?.batting_order != null)
+                  .map((row) => (
+                    <li>
+                      {row.entry?.batting_order}. {playerLink(row.p.id)} ·{" "}
+                      {row.entry?.fielding_position ?? "—"}
+                    </li>
+                  ))}
+              </ul>
+              {players.some((row) => row.entry?.batting_order == null) && (
+                <>
+                  <h3>Bench</h3>
+                  <ul>
+                    {players
+                      .filter((row) => row.entry?.batting_order == null)
+                      .map((row) => (
+                        <li>{playerLink(row.p.id)}</li>
+                      ))}
+                  </ul>
+                </>
+              )}
+            </div>
+            {teamSheet(t, true)}
+          </div>
+          {!bits[2] && (
+            <section data-team-results>
+              <h2>Team History</h2>
+              {panel("Team fixtures", fixtures(games))}
+            </section>
+          )}
+        </div>
       ),
     };
   }
