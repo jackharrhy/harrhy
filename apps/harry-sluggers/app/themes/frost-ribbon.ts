@@ -26,7 +26,6 @@ export const frostRibbon: LabConcept = {
     headingImage: glassHeadingImage,
     cardRadius: "14px",
     surfaceTint: "#6782ad",
-    insetSurface: "#2b5087",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },

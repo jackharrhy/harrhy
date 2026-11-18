@@ -96,7 +96,7 @@ const styles = css({
   "& select, & button, & input": {
     background: "var(--lab-inset-surface)",
     color: "var(--hui-ink)",
-    border: "1px solid var(--hui-control-border)",
+    border: "1px solid var(--lab-surface-edge)",
     borderRadius: "6px",
     padding: "10px",
     font: "inherit",
@@ -539,6 +539,7 @@ const styles = css({
     borderCollapse: "collapse",
     width: "100%",
     fontVariantNumeric: "tabular-nums",
+    background: "var(--lab-card-surface)",
   },
   "& th, & td": {
     padding: "10px",

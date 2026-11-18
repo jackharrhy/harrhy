@@ -9,7 +9,6 @@ export interface LabPartTokens {
   headingInk: string;
   cardRadius: string;
   surfaceTint: string;
-  insetSurface: string;
   matchColumns: string;
   contentColumns: string;
 }
@@ -27,7 +26,7 @@ export function labPartStyles(parts: LabPartTokens) {
     "--lab-solid-surface": `color-mix(in srgb, ${parts.surfaceTint} 40%, var(--hui-canvas))`,
     "--lab-card-radius": parts.cardRadius,
     "--lab-card-surface": fill,
-    "--lab-inset-surface": parts.insetSurface,
+    "--lab-inset-surface": `color-mix(in srgb, ${parts.surfaceTint} 50%, var(--hui-canvas))`,
     "--lab-match-columns": parts.matchColumns,
     "--lab-content-columns": parts.contentColumns,
   });

@@ -30,7 +30,6 @@ export const broadcastPrism: LabConcept = {
     headingImage: glassHeadingImage,
     cardRadius: "10px",
     surfaceTint: originalSteel,
-    insetSurface: "#204c90",
     matchColumns: "minmax(0,1fr)",
     contentColumns: "minmax(0,1.4fr) minmax(340px,1fr)",
   },
