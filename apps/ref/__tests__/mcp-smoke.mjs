@@ -236,7 +236,7 @@ try {
     );
     await page.goto(new URL(`/boards/${boardId}`, origin).href);
     await page.locator("#connection.online").waitFor();
-    await page.locator(`[data-item-id="${firstId}"]`).waitFor();
+    await page.locator(`.board-item[data-item-id="${firstId}"]`).waitFor();
     const operation = {
       boardId,
       itemId: firstId,
@@ -249,8 +249,8 @@ try {
     assert.equal(transformed.revision, 2);
     await page.waitForFunction(
       (id) =>
-        document.querySelector(`[data-item-id="${id}"]`)?.style.left ===
-        "321px",
+        document.querySelector(`.board-item[data-item-id="${id}"]`)?.style
+          .left === "321px",
       firstId,
     );
     assert.ok(
@@ -300,7 +300,7 @@ try {
       operationId: randomUUID(),
     });
     await page
-      .locator(`[data-item-id="${firstId}"]`)
+      .locator(`.board-item[data-item-id="${firstId}"]`)
       .waitFor({ state: "detached" });
     await media(boardId, assetId);
     const saved = await call(old, "board_get", { boardId });

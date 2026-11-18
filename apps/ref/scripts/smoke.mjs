@@ -366,10 +366,10 @@ try {
   await checkWebMcpRemoval(page, second);
   await removeImageByKeyboard(page);
   await page
-    .locator(`[data-item-id="${itemId}"]`)
+    .locator(`.board-item[data-item-id="${itemId}"]`)
     .waitFor({ state: "detached" });
   await second
-    .locator(`[data-item-id="${itemId}"]`)
+    .locator(`.board-item[data-item-id="${itemId}"]`)
     .waitFor({ state: "detached" });
   assert.equal((await context.request.get(mediaUrl)).status(), 404);
   await page.evaluate(() => {
