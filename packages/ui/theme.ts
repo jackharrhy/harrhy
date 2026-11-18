@@ -255,7 +255,7 @@ export const sluggersTheme: Readonly<ThemeTokens> = composeTheme(cleanTheme, {
   ink: "#ffffff",
   muted: "#d6e3fa",
   border: "rgb(155 181 225 / 0.55)",
-  controlBorder: "#93add5",
+  controlBorder: "#bacfed",
   hoverSurface: "rgb(142 170 215 / 0.2)",
   selectedSurface: "#486fb0",
   selectedInk: "#ffffff",
