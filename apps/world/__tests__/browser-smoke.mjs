@@ -46,6 +46,18 @@ try {
   }
   await page.goto(url);
   await expect(page.getByRole("status")).toHaveText(/1 player$/, { timeout: 30_000 });
+  const canvas = page.locator("canvas");
+  await canvas.focus();
+  assert.equal(await canvas.evaluate((element) => getComputedStyle(element).outlineStyle), "none");
+  const beforeOrbit = await canvas.screenshot();
+  await page.mouse.move(430, 260);
+  await page.mouse.down({ button: "right" });
+  await page.mouse.move(560, 260, { steps: 8 });
+  await page.mouse.up({ button: "right" });
+  assert.notDeepEqual(await canvas.screenshot(), beforeOrbit);
+  assert.equal(await page.evaluate(() => document.pointerLockElement), null);
+  await page.reload();
+  await expect(page.getByRole("status")).toHaveText(/1 player$/, { timeout: 30_000 });
   await other.goto(url);
   for (const tab of [page, other])
     await expect(tab.getByRole("status")).toHaveText(/2 players$/, { timeout: 30_000 });
@@ -54,11 +66,11 @@ try {
   await expect(hall).toHaveAttribute("data-mode", "walk");
   const beforeClick = samples.at(-1).z;
   await page.bringToFront();
-  await page.mouse.click(400, 390);
+  await page.mouse.click(400, 305);
   await expect.poll(() => samples.at(-1)?.z, { timeout: 10_000 }).toBeLessThan(beforeClick - 0.3);
   await other.bringToFront();
   const beforeTap = otherPose.z;
-  await other.touchscreen.tap(195, 490);
+  await other.touchscreen.tap(195, 370);
   await expect.poll(() => otherPose?.z, { timeout: 10_000 }).toBeLessThan(beforeTap - 0.3);
   if (process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT)
     await other.screenshot({ path: process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT });

@@ -2,12 +2,12 @@ import * as THREE from "three/webgpu";
 import { createHall, hallTexturePaths } from "./hall";
 import { billboardAtlasPath, createBillboards, loadBillboardLayout } from "./player-billboard";
 
-type Pose = { x: number; y: number; z: number; yaw: number; pitch: number };
+type Pose = { id: string; x: number; y: number; z: number; yaw: number; pitch: number };
 export type FloorPoint = { x: number; z: number };
 type RemotePose = Pose & { id: string };
 
 export async function createView(canvas: HTMLCanvasElement): Promise<{
-  draw(local: Pose, remotes: readonly RemotePose[], destination?: FloorPoint): void;
+  draw(local: Pose, remotes: readonly RemotePose[], destination?: FloorPoint, avatar?: Pose): void;
   pickFloor(x: number, y: number): FloorPoint | undefined;
   dispose(): void;
 }> {
@@ -126,7 +126,7 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
       if (hit?.object.name !== "walk-floor" || hit.point.y < -0.01) return;
       return { x: hit.point.x, z: hit.point.z };
     },
-    draw(local, remotes, destination) {
+    draw(local, remotes, destination, avatar) {
       if (disposed) return;
       if (deviceError) throw deviceError;
       const nextWidth = canvas.clientWidth;
@@ -143,6 +143,16 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
       }
       camera.position.set(local.x, local.y + 1.65, local.z);
       camera.rotation.set(local.pitch, local.yaw, 0, "YXZ");
+      if (avatar) {
+        const anchor = camera.position.clone();
+        anchor.y -= 0.5;
+        const back = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+        ray.set(anchor, back);
+        const wall = ray.intersectObject(hall, true)[0];
+        const distance = Math.min(3.6, wall ? Math.max(0.08, wall.distance - 0.22) : Infinity);
+        camera.position.copy(anchor).addScaledVector(back, distance);
+        if (distance > 0.8) remotes = [...remotes, avatar];
+      }
       marker.visible = destination !== undefined;
       if (destination) marker.position.set(destination.x, 0.015, destination.z);
       billboards?.draw(camera, remotes);

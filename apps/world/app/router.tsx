@@ -1,4 +1,4 @@
-import { Button, Heading, Inline, Panel, Text } from "@harrhy/ui/native";
+import { Button, Inline, Panel, Text } from "@harrhy/ui/native";
 import { themeRoot } from "@harrhy/ui/theme";
 import { css } from "remix/component";
 import { csp, getCspNonce } from "remix/middleware/csp";
@@ -43,7 +43,7 @@ const hallStyles = css({
   height: "100dvh",
   overflow: "hidden",
   "& canvas": { width: "100%", height: "100%", display: "block", touchAction: "none" },
-  "& canvas:focus-visible": { outline: "2px solid var(--hui-focus)", outlineOffset: "-3px" },
+  "& canvas:focus": { outline: "none" },
 });
 const hudStyles = css({
   position: "absolute",
@@ -53,13 +53,11 @@ const hudStyles = css({
   right: "max(0.75rem, env(safe-area-inset-right))",
   width: "fit-content",
 });
-const identityStyles = css({ top: "max(0.75rem, env(safe-area-inset-top))" });
 const inputStyles = css({
   bottom: "max(0.75rem, env(safe-area-inset-bottom))",
   marginInlineStart: "auto",
   "& button": { pointerEvents: "auto" },
 });
-const titleStyles = css({ fontSize: "1.25rem", fontWeight: 600 });
 const hintStyles = css({ marginTop: "0.375rem", fontSize: "0.8125rem" });
 const modeStyles = css({
   '&[aria-pressed="true"]': {
@@ -81,14 +79,6 @@ router.map(routes.home, (context) =>
       <body mix={[documentStyles, woodTheme, themeRoot]}>
         <main id="hall" data-mode="walk" mix={hallStyles}>
           <Canvas />
-          <Panel aria-labelledby="world-title" mix={[hudStyles, identityStyles]}>
-            <Heading level={1} id="world-title" mix={titleStyles}>
-              World
-            </Heading>
-            <Text id="status" role="status" tone="muted">
-              Loading the hall…
-            </Text>
-          </Panel>
           <Panel aria-label="Movement controls" mix={[hudStyles, inputStyles]}>
             <Inline>
               <Button id="mode" aria-pressed={false} disabled mix={modeStyles}>
@@ -98,8 +88,11 @@ router.map(routes.home, (context) =>
                 Click to look
               </Button>
             </Inline>
+            <Text id="status" role="status" tone="muted" mix={hintStyles}>
+              Loading the hall…
+            </Text>
             <Text id="controls" mix={hintStyles}>
-              Drag to look · Tap the floor to walk
+              Right-drag to orbit · Click the floor to walk
             </Text>
           </Panel>
           <span class="reticle" aria-hidden="true" />

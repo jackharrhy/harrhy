@@ -57,17 +57,28 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       seq = 0,
       yaw = 0,
       pitch = -0.28;
+    let facing = 0;
     let mode: "walk" | "fps" = "walk";
     let destination: (FloorPoint & { best: number; progressAt: number }) | undefined;
     let gesture:
-      | { id: number; startX: number; startY: number; x: number; y: number; dragged: boolean }
+      | {
+          id: number;
+          startX: number;
+          startY: number;
+          x: number;
+          y: number;
+          dragged: boolean;
+          orbit: boolean;
+        }
       | undefined;
     function setMode(next: typeof mode) {
       mode = next;
       root.dataset.mode = mode;
       controls.textContent =
         mode === "walk"
-          ? "Drag to look · Click or tap the floor to walk"
+          ? matchMedia("(pointer: coarse)").matches
+            ? "Drag to orbit · Tap to walk"
+            : "Right-drag to orbit · Click to walk"
           : "WASD to move · Space to jump · Esc releases the mouse";
       modeButton.setAttribute("aria-pressed", String(mode === "fps"));
       destination = undefined;
@@ -209,7 +220,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         if (
           !predicted ||
           !event.isPrimary ||
-          event.button !== 0 ||
+          (event.button !== 0 && !(mode === "walk" && event.button === 2)) ||
           document.pointerLockElement === canvas
         )
           return;
@@ -223,6 +234,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           x: event.clientX,
           y: event.clientY,
           dragged: false,
+          orbit: event.button === 2 || event.pointerType === "touch",
         };
       },
       { signal },
@@ -237,6 +249,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         )
           return;
         gesture.dragged = true;
+        if (!gesture.orbit) return;
         yaw = (yaw - (event.clientX - gesture.x) * 0.005) % turn;
         pitch = clampPitch(pitch - (event.clientY - gesture.y) * 0.005);
         gesture.x = event.clientX;
@@ -248,7 +261,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "pointerup",
       (event) => {
         if (gesture?.id !== event.pointerId) return;
-        if (mode === "walk" && !gesture.dragged) {
+        if (mode === "walk" && event.button === 0 && !gesture.dragged) {
           const point = view.pickFloor(event.clientX, event.clientY);
           destination = point && { ...point, best: Infinity, progressAt: performance.now() };
         }
@@ -260,6 +273,13 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "lostpointercapture",
       (event) => {
         if (gesture?.id === event.pointerId) gesture = undefined;
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "contextmenu",
+      (event) => {
+        if (mode === "walk") event.preventDefault();
       },
       { signal },
     );
@@ -334,12 +354,19 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           strafe = Math.max(-1, Math.min(1, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / distance));
         }
       }
+      if (mode === "fps") facing = yaw;
+      else if (forward || strafe) {
+        const length = Math.hypot(forward, strafe);
+        facing = (yaw - Math.atan2(strafe, forward)) % turn;
+        forward = Math.min(1, length);
+        strafe = 0;
+      }
       const input = {
         seq: ++seq,
         forward,
         strafe,
         jump: keys.has("Space"),
-        yaw,
+        yaw: facing,
         pitch,
       };
       ws.send(JSON.stringify(input));
@@ -371,7 +398,12 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             };
           });
         try {
-          view.draw({ ...predicted.pose(), yaw, pitch }, remotes, destination);
+          view.draw(
+            { ...predicted.pose(), yaw, pitch },
+            remotes,
+            destination,
+            mode === "walk" ? predicted.pose() : undefined,
+          );
         } catch (error) {
           console.error(error);
           status.textContent = "Rendering stopped. Reload to retry, or use ?renderer=webgl.";
