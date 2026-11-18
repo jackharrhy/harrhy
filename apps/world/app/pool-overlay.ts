@@ -1,205 +1,179 @@
 import * as THREE from "three/webgpu";
 import {
-  BALL_RADIUS,
-  TABLE_HALF_LENGTH as L,
-  TABLE_HALF_WIDTH as W,
-} from "@harrhy/pool";
-import {
-  CABINET_BOUNDS,
-  CUSHION_DEPTH,
-  CUSHIONS,
-  FELT_GEOMETRY,
-  FELT_Y,
-  POCKET_OPENING,
-  RAIL_TOP_Y,
-  SIDE_MOUTH,
-} from "@harrhy/pool/table";
+  createBallMaterials,
+  createCue,
+  createTable,
+  cuePose,
+  walnutUrl,
+} from "@harrhy/pool/presentation";
 import type { PoolState } from "../shared/pool-wire";
 import { UNITS_PER_METRE as scale } from "../shared/bsp-collision";
+import { billboardAtlasPath } from "./player-billboard";
 
-function rgb(hex: number): [number, number, number] {
-  return [(hex >> 16) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255];
-}
-
-function createTableMesh() {
-  const vertices: number[] = [];
-  function box(
-    size: [number, number, number],
-    center: [number, number, number],
-    color: number,
-    rotation?: [number, number, number, number],
-  ) {
-    const geometry = new THREE.BoxGeometry(...size);
-    if (rotation) geometry.applyQuaternion(new THREE.Quaternion(...rotation));
-    geometry.translate(...center);
-    const positions = geometry.getAttribute("position");
-    const normals = geometry.getAttribute("normal");
-    const [r, g, b] = rgb(color);
-    for (const i of geometry.getIndex()!.array) {
-      const shade = 0.78 + 0.18 * normals.getY(i) - 0.08 * normals.getZ(i);
-      vertices.push(
-        positions.getX(i),
-        positions.getY(i),
-        positions.getZ(i),
-        r * shade,
-        g * shade,
-        b * shade,
-      );
-    }
-    geometry.dispose();
-  }
-  const wood = 0x5a3429,
-    rail = 0x98603c,
-    felt = 0x278064;
-  const { x, z } = CABINET_BOUNDS;
-  box([2 * x, 0.23, 2 * z], [0, 0.605, 0], wood);
-  box(
-    [2 * (W + CUSHION_DEPTH), 0.045, 2 * (L + CUSHION_DEPTH)],
-    [0, 0.736, 0],
-    0x231a18,
-  );
-  const rimWidth = x - W - CUSHION_DEPTH;
-  const rimDepth = z - L - CUSHION_DEPTH;
-  const rimHeight = RAIL_TOP_Y - 0.72;
-  const rimY = RAIL_TOP_Y - rimHeight / 2;
-  const sideStart = SIDE_MOUTH / 2;
-  const sideEnd = L - POCKET_OPENING;
-  for (const side of [-1, 1]) {
-    for (const end of [-1, 1]) {
-      box(
-        [0.22, 0.49, 0.25],
-        [side * (x - 0.23), 0.245, end * (z - 0.34)],
-        wood,
-      );
-      box(
-        [rimWidth, rimHeight, sideEnd - sideStart],
-        [side * (x - rimWidth / 2), rimY, (end * (sideStart + sideEnd)) / 2],
-        rail,
-      );
-    }
-    box(
-      [2 * (W - POCKET_OPENING), rimHeight, rimDepth],
-      [0, rimY, side * (z - rimDepth / 2)],
-      rail,
-    );
-  }
-  for (const cushion of CUSHIONS)
-    box(cushion.size, cushion.center, felt, cushion.rotation);
-  const [r, g, b] = rgb(felt);
-  const { positions, indices } = FELT_GEOMETRY;
-  for (const i of indices) {
-    const y = positions[3 * i + 1]!;
-    const shade = 1 - 30 * (FELT_Y - y);
-    vertices.push(
-      positions[3 * i]!,
-      y,
-      positions[3 * i + 2]!,
-      r * shade,
-      g * shade,
-      b * shade,
-    );
-  }
-  return new Float32Array(vertices);
-}
-
-const tableMesh = createTableMesh();
-const ballMesh = new THREE.SphereGeometry(BALL_RADIUS, 12, 8);
-const ballPositions = ballMesh.getAttribute("position");
-const ballIndices = ballMesh.getIndex()!.array;
-const ivory = rgb(0xf6f0df);
-const colors = [
-  ivory,
-  ...[
-    0xe8b72d, 0x315ca8, 0xc94336, 0x8350a2, 0xdc792b, 0x34846c, 0x8a2b32,
-    0x171b1b,
-  ].map(rgb),
-];
-
-export function appendPoolOverlay(
-  out: number[],
-  { table, balls }: PoolState,
-  aim?: number,
+export async function createPoolLayer(
+  canvas: HTMLCanvasElement,
+  hallGeometry: THREE.BufferGeometry,
 ) {
-  const sin = Math.sin(table.yaw);
-  const cos = Math.cos(table.yaw);
-  function vertex(
-    x: number,
-    y: number,
-    z: number,
-    r: number,
-    g: number,
-    b: number,
-  ) {
-    // Rotate and translate from table space, then convert World metres to BSP.
-    out.push(
-      -(table.z - sin * x + cos * z) * scale,
-      -(table.x + cos * x + sin * z) * scale,
-      (table.y + y) * scale,
-      -1,
-      0,
-      r,
-      g,
-      b,
-    );
+  const layer = document.createElement("canvas");
+  layer.className = "world-pool-layer";
+  layer.setAttribute("aria-hidden", "true");
+  layer.hidden = true;
+  const renderer = new THREE.WebGPURenderer({
+    canvas: layer,
+    alpha: true,
+    antialias: true,
+  });
+  renderer.setClearColor(0, 0);
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFShadowMap;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure = 1.2;
+  try {
+    await renderer.init();
+  } catch (error) {
+    renderer.dispose();
+    throw error;
   }
-  for (let i = 0; i < tableMesh.length; i += 6) {
-    vertex(
-      tableMesh[i]!,
-      tableMesh[i + 1]!,
-      tableMesh[i + 2]!,
-      tableMesh[i + 3]!,
-      tableMesh[i + 4]!,
-      tableMesh[i + 5]!,
-    );
+
+  const scene = new THREE.Scene();
+  scene.add(new THREE.AmbientLight(0xffce92, 0.38));
+  scene.add(new THREE.HemisphereLight(0xffc98c, 0x523626, 1.25));
+  const table = createTable(createBallMaterials(), { walnutUrl });
+  const cue = createCue();
+  table.group.add(cue);
+  // Stand in for the standalone hall's warm fill at the cabinet sides.
+  for (const side of [-1, 1]) {
+    const fill = new THREE.PointLight(0xffb269, 11, 6, 2);
+    fill.position.set(side * 2, 1.35, side * 1.75);
+    table.group.add(fill);
   }
-  for (const ball of balls) {
-    const color = colors[ball.id > 8 ? ball.id - 8 : ball.id] ?? ivory;
-    for (const i of ballIndices) {
-      const x = ballPositions.getX(i),
-        y = ballPositions.getY(i),
-        z = ballPositions.getZ(i);
-      const shade = 0.75 + (0.12 * x + 0.22 * y + 0.09 * z) / BALL_RADIUS;
-      const [r, g, b] =
-        ball.id > 8 && Math.abs(x) > 0.5 * BALL_RADIUS ? ivory : color;
-      vertex(
-        ball.x + x,
-        ball.y + y,
-        ball.z + z,
-        r * shade,
-        g * shade,
-        b * shade,
+  scene.add(table.group);
+  // World keeps its BSP color pass. Reuse that geometry as an invisible depth
+  // prepass in the aligned Three layer, so walls still hide the shared meshes.
+  const depthMaterial = new THREE.MeshBasicMaterial({
+    side: THREE.DoubleSide,
+    colorWrite: false,
+  });
+  const depthHall = new THREE.Mesh(hallGeometry, depthMaterial);
+  depthHall.renderOrder = -2;
+  scene.add(depthHall);
+  const atlas = new THREE.TextureLoader().load(billboardAtlasPath);
+  atlas.minFilter = atlas.magFilter = THREE.NearestFilter;
+  const depthSprites = new THREE.Mesh(
+    new THREE.BufferGeometry(),
+    new THREE.MeshBasicMaterial({
+      side: THREE.DoubleSide,
+      colorWrite: false,
+      map: atlas,
+      alphaTest: 0.45,
+    }),
+  );
+  depthSprites.renderOrder = -1;
+  depthSprites.frustumCulled = false;
+  scene.add(depthSprites);
+  canvas.after(layer);
+
+  let spriteCapacity = 0;
+  const cueForward = new THREE.Vector3(1, 0, 0);
+  const cueAxis = new THREE.Vector3();
+  function syncSprites(vertices: readonly number[], length: number) {
+    const count = length / 8;
+    depthSprites.visible = count > 0;
+    if (!count) return;
+    if (count > spriteCapacity) {
+      spriteCapacity = 2 ** Math.ceil(Math.log2(count));
+      depthSprites.geometry.dispose();
+      depthSprites.geometry = new THREE.BufferGeometry();
+      depthSprites.geometry.setAttribute(
+        "position",
+        new THREE.BufferAttribute(
+          new Float32Array(spriteCapacity * 3),
+          3,
+        ).setUsage(THREE.DynamicDrawUsage),
+      );
+      depthSprites.geometry.setAttribute(
+        "uv",
+        new THREE.BufferAttribute(
+          new Float32Array(spriteCapacity * 2),
+          2,
+        ).setUsage(THREE.DynamicDrawUsage),
       );
     }
+    const positions = depthSprites.geometry.getAttribute("position");
+    const uv = depthSprites.geometry.getAttribute("uv");
+    for (let i = 0; i < count; i++) {
+      const at = i * 8;
+      positions.setXYZ(
+        i,
+        -vertices[at + 1]! / scale,
+        vertices[at + 2]! / scale,
+        -vertices[at]! / scale,
+      );
+      uv.setXY(i, vertices[at + 3]!, 1 - vertices[at + 4]!);
+    }
+    positions.needsUpdate = uv.needsUpdate = true;
+    depthSprites.geometry.setDrawRange(0, count);
   }
-  const cue =
-    aim === undefined ? undefined : balls.find((ball) => ball.id === 0);
-  if (cue && aim !== undefined) {
-    const dx = Math.cos(aim),
-      dz = Math.sin(aim);
-    const end = Math.min(
-      1.4,
-      dx === 0 ? Infinity : (Math.sign(dx) * W - cue.x) / dx,
-      dz === 0 ? Infinity : (Math.sign(dz) * L - cue.z) / dz,
-    );
-    for (let start = BALL_RADIUS + 0.02; start < end; start += 0.085) {
-      const stop = Math.min(start + 0.052, end);
-      for (const [along, across] of [
-        [start, -1],
-        [stop, -1],
-        [start, 1],
-        [start, 1],
-        [stop, -1],
-        [stop, 1],
-      ] as const) {
-        vertex(
-          cue.x + dx * along - dz * across * 0.008,
-          FELT_Y + 0.006,
-          cue.z + dz * along + dx * across * 0.008,
-          1,
-          0.91,
-          0.62,
+
+  return {
+    graphics: table.graphics,
+    draw(
+      camera: THREE.Camera,
+      pool: PoolState | undefined,
+      view: { aim?: number; power?: number } | undefined,
+      vertices: readonly number[],
+      spriteLength: number,
+    ) {
+      layer.hidden = !pool;
+      if (!pool) return;
+      const { x, y, z, yaw } = pool.table;
+      table.group.position.set(x, y, z);
+      table.group.rotation.y = yaw;
+      for (const mesh of table.balls) mesh.visible = false;
+      for (const ball of pool.balls) {
+        const mesh = table.balls[ball.id];
+        if (!mesh) continue;
+        mesh.visible = true;
+        mesh.position.set(ball.x, ball.y, ball.z);
+      }
+      const ball = table.balls[0];
+      const aim = view?.aim;
+      cue.visible = aim !== undefined && ball.visible;
+      if (aim !== undefined && cue.visible) {
+        const pose = cuePose(ball.position, aim, view?.power ?? 0);
+        cue.position.fromArray(pose.position);
+        cue.quaternion.setFromUnitVectors(
+          cueForward,
+          cueAxis.fromArray(pose.axis),
         );
       }
-    }
-  }
+      table.light.shadow.needsUpdate = true;
+      if (layer.width !== canvas.width || layer.height !== canvas.height)
+        renderer.setSize(canvas.width, canvas.height, false);
+      syncSprites(vertices, spriteLength);
+      renderer.render(scene, camera);
+    },
+    dispose() {
+      const geometries = new Set<THREE.BufferGeometry>();
+      const materials = new Set<THREE.Material>();
+      const textures = new Set<THREE.Texture>();
+      scene.traverse((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        if (object.geometry !== hallGeometry) geometries.add(object.geometry);
+        for (const material of Array.isArray(object.material)
+          ? object.material
+          : [object.material]) {
+          materials.add(material);
+          for (const value of Object.values(material))
+            if (value instanceof THREE.Texture) textures.add(value);
+        }
+      });
+      for (const geometry of geometries) geometry.dispose();
+      for (const material of materials) material.dispose();
+      for (const texture of textures) texture.dispose();
+      table.light.shadow.dispose();
+      renderer.dispose();
+      layer.remove();
+    },
+  };
 }

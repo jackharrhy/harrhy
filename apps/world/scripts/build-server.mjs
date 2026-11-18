@@ -6,6 +6,7 @@ await build({
   platform: "node",
   target: "node26",
   format: "esm",
+  loader: { ".webp": "dataurl" },
   banner: {
     js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);",
   },

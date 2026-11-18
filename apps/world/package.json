@@ -10,6 +10,7 @@
     "start": "node dist/server/index.js",
     "dev": "npm run build && npm start",
     "test:browser": "node __tests__/browser-smoke.mjs",
+    "test:pool-live": "node __tests__/pool-smoke.mjs",
     "check": "npm run typecheck && npm test && npm run build && node --test __tests__/frontend.test.mjs",
     "prebuild": "npm run build --workspace @harrhy/worldview-renderer",
     "pretypecheck": "npm run build --workspace @harrhy/worldview-renderer",

@@ -1,12 +1,20 @@
 import * as THREE from "three/webgpu";
 import { CollisionDebug } from "./collision-debug";
-import { createTable, BALL_Y } from "./table";
+import {
+  createTable,
+  BALL_Y,
+  createBallMaterials,
+  createCue,
+  cuePose,
+  CUE_CONTACT_MS,
+  pendantRig,
+  walnutUrl,
+} from "@harrhy/pool/presentation";
 import { fixtureOpacity } from "./fixture-visibility";
-import { viewportVignette, pendantRig } from "./lighting";
-import { cuePose, CUE_CONTACT_MS, CUE_LENGTH, CUE_RADIUS } from "./cue-pose";
+import { viewportVignette } from "./lighting";
 import { createHall } from "./hall";
 import { createAvatar, disposeAvatar, poseAvatar } from "./avatar";
-import { createBallMaterials, material, plaque, tableStatus } from "./textures";
+import { plaque, tableStatus } from "./textures";
 import { createSmoke } from "./smoke";
 import type { MotionEntity } from "../prediction/net-state";
 import { ViewCamera } from "./view-camera";
@@ -40,7 +48,7 @@ export class HallView {
   readonly tableLabels = new Map<string, ReturnType<typeof plaque>>();
   readonly guide: THREE.Line;
   readonly ghost: THREE.Mesh;
-  readonly cue = new THREE.Group();
+  readonly cue = createCue();
   private tablePresence: TablePresence;
   readonly cursor: THREE.Mesh;
   private ballMaterials: THREE.MeshStandardMaterial[];
@@ -129,34 +137,6 @@ export class HallView {
       }),
     );
     this.scene.add(this.ghost);
-    const shaft = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0065, 0.012, CUE_LENGTH - 0.43, 10),
-      material(0xd8b77c),
-    );
-    shaft.rotation.z = -Math.PI / 2;
-    shaft.position.x = -0.03 - (CUE_LENGTH - 0.43) / 2;
-    this.cue.add(shaft);
-    const ferrule = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0065, 0.0065, 0.026, 10),
-      material(0xf0e8cf),
-    );
-    ferrule.rotation.z = -Math.PI / 2;
-    ferrule.position.x = -0.017;
-    this.cue.add(ferrule);
-    const tip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.0065, 0.0065, 0.004, 10),
-      material(0x537a80),
-    );
-    tip.rotation.z = -Math.PI / 2;
-    tip.position.x = -0.002;
-    this.cue.add(tip);
-    const grip = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.012, CUE_RADIUS, 0.4, 10),
-      material(0x4d3024),
-    );
-    grip.rotation.z = -Math.PI / 2;
-    grip.position.x = -CUE_LENGTH + 0.2;
-    this.cue.add(grip);
     this.scene.add(this.cue);
     this.tablePresence = new TablePresence(
       this.tables,
@@ -194,6 +174,7 @@ export class HallView {
   private buildTable(id: string, x: number, z: number) {
     const { group, balls, fixtures, light, setCutaway } = createTable(
       this.ballMaterials,
+      { walnutUrl },
     );
     group.position.set(x, 0, z);
     this.scene.add(group);

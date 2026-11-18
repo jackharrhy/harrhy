@@ -60,3 +60,31 @@ test("leaving mid-shot resets the rack without replaying the interrupted turn", 
     table.dispose();
   }
 });
+
+test("the bot places and shoots through the same foul and rolling transitions", async () => {
+  const table = await createPoolSession();
+  try {
+    table.join("alice");
+    table.join("house-bot");
+    expect(table.playBot("house-bot")).toBe(false);
+    expect(table.shot("alice", table.snapshot().turnToken, 0, 0.1)).toBe(true);
+    settle(table);
+    expect(table.snapshot()).toMatchObject({
+      phase: "ball-in-hand",
+      turn: "house-bot",
+    });
+    expect(table.playBot("house-bot")).toBe(true);
+    expect(table.snapshot()).toMatchObject({
+      phase: "aiming",
+      turn: "house-bot",
+    });
+    const placed = table.snapshot();
+    expect(table.playBot("house-bot")).toBe(true);
+    expect(table.playBot("house-bot")).toBe(false);
+    table.step(1 / 60);
+    expect(table.snapshot().balls).not.toEqual(placed.balls);
+    settle(table);
+  } finally {
+    table.dispose();
+  }
+});

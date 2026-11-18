@@ -22,6 +22,7 @@ const router = createRouter<Context>({
           styleSrc: ["'self'", "'nonce-" + nonce + "'"],
           styleSrcAttr: ["'unsafe-inline'"],
           connectSrc: [
+            "data:",
             "'self'",
             (protocol === "https:" ? "wss://" : "ws://") + host,
           ],
@@ -101,6 +102,7 @@ router.map(routes.home, (context) =>
               <Text id="pool-status" aria-live="polite" />
               <Inline>
                 <Button id="pool-join">Join table</Button>
+                <Button id="pool-bot">Play Moss</Button>
                 <Button id="pool-leave" hidden>
                   Leave table
                 </Button>

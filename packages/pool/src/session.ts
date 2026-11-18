@@ -1,3 +1,4 @@
+import { chooseBotPlacement, chooseBotShot } from "./bot";
 import { initializePoolPhysics, PoolPhysics } from "./engine-core";
 import { createShotResult } from "./physics";
 import { createMatch, resolveShot, startMatch } from "./rules";
@@ -24,7 +25,15 @@ export async function createPoolSession() {
     );
   }
 
-  return {
+  const session = {
+    get turn() {
+      return match.phase === "waiting" || match.phase === "finished"
+        ? null
+        : match.players[match.turn];
+    },
+    get waitingPlayer() {
+      return match.phase === "waiting" ? match.players[0] : null;
+    },
     get phase() {
       return match.phase;
     },
@@ -71,6 +80,21 @@ export async function createPoolSession() {
       turnToken++;
       return true;
     },
+    playBot(id: string): boolean {
+      if (canPlay(id, turnToken, "ball-in-hand")) {
+        const { x, z } = chooseBotPlacement(physics.balls, match, match.turn);
+        return session.place(id, turnToken, x, z);
+      }
+      if (canPlay(id, turnToken, "aiming")) {
+        const { angle, power } = chooseBotShot(
+          physics.balls,
+          match,
+          match.turn,
+        );
+        return session.shot(id, turnToken, angle, power);
+      }
+      return false;
+    },
     step(dt: number): boolean {
       if (disposed || match.phase !== "rolling") return false;
       if (physics.step(dt, result)) return false;
@@ -79,14 +103,13 @@ export async function createPoolSession() {
       return true;
     },
     snapshot() {
-      const { phase, players, turn, winner, message } = match;
+      const { phase, players, winner, message } = match;
       return {
         balls: physics.balls
           .filter((ball) => !ball.pocketed)
           .map(({ id, x, y, z }) => ({ id, x, y, z })),
         seats: players.filter((id): id is string => id !== null),
-        turn:
-          phase === "waiting" || phase === "finished" ? null : players[turn],
+        turn: session.turn,
         phase,
         winner,
         message,
@@ -98,4 +121,5 @@ export async function createPoolSession() {
       disposed = true;
     },
   };
+  return session;
 }

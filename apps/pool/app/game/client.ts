@@ -1,7 +1,7 @@
 import { Vector3 } from "three";
 import { listenerPose } from "./audio-listener";
 import { FELT_Y } from "@harrhy/pool/table";
-import { CUE_CONTACT_MS } from "./scene/cue-pose";
+import { CUE_CONTACT_MS } from "@harrhy/pool/presentation";
 import { HallView } from "./scene/world";
 import { LocalPrediction, RemoteMotion } from "./prediction/net-state";
 import type { MotionEntity } from "./prediction/net-state";

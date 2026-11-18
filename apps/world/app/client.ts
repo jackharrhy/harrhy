@@ -1,3 +1,4 @@
+import { CueDrag } from "@harrhy/pool/cue-drag";
 import type { PoolCommand, PoolState } from "../shared/pool-wire";
 import type { FloorPoint } from "./bsp-render";
 import { loadBspCollision } from "../shared/bsp-collision";
@@ -35,6 +36,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
   const poolStatus = root.querySelector<HTMLElement>("#pool-status")!;
   const poolAction = root.querySelector<HTMLElement>("#pool-shot-controls")!;
   const poolJoin = root.querySelector<HTMLButtonElement>("#pool-join")!;
+  const poolBot = root.querySelector<HTMLButtonElement>("#pool-bot")!;
   const poolLeave = root.querySelector<HTMLButtonElement>("#pool-leave")!;
   const poolAim = root.querySelector<HTMLInputElement>("#pool-aim")!;
   const angle = () => (Number(poolAim.value) * Math.PI) / 180;
@@ -164,6 +166,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     );
 
     let pool: PoolState | undefined;
+    let joiningTable = false;
+    let shotCharge: { id: number; drag: CueDrag; power: number } | undefined;
     const seated = () => pool?.seats.includes(me) ?? false;
     function sendPool(command: PoolCommand) {
       if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(command));
@@ -189,9 +193,13 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
               ? "Balls rolling"
               : pool.turn === me
                 ? "Your turn"
-                : "Opponent’s turn";
+                : pool.bot?.id === pool.turn
+                  ? "Moss is aiming"
+                  : "Opponent’s turn";
       if (poolStatus.textContent !== label) poolStatus.textContent = label;
       poolJoin.hidden = isSeated || pool.seats.length === 2;
+      poolBot.hidden =
+        pool.seats.length > (isSeated ? 1 : 0) || pool.phase !== "waiting";
       poolLeave.hidden = !isSeated;
       poolAction.hidden =
         !isSeated ||
@@ -204,6 +212,18 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "click",
       () => {
         if (pool) sendPool({ type: "pool-join", tableId: pool.table.id });
+      },
+      { signal },
+    );
+    poolBot.addEventListener(
+      "click",
+      () => {
+        if (pool)
+          sendPool({
+            type: "pool-join",
+            tableId: pool.table.id,
+            withBot: true,
+          });
       },
       { signal },
     );
@@ -273,6 +293,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             if (seated()) {
               destination = undefined;
               keys.clear();
+              joiningTable = false;
               if (document.pointerLockElement === canvas)
                 document.exitPointerLock();
             }
@@ -345,10 +366,111 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       },
       { signal },
     );
+    function aimAt(x: number, y: number) {
+      const cue = pool?.balls.find((ball) => ball.id === 0);
+      const point = view.pickPool(x, y);
+      if (!cue || !point) return false;
+      poolAim.value = String(
+        (Math.atan2(point.z - cue.z, point.x - cue.x) * 180) / Math.PI,
+      );
+      return true;
+    }
     canvas.addEventListener(
       "pointerdown",
       (event) => {
         if (
+          !pool ||
+          !seated() ||
+          pool.turn !== me ||
+          pool.phase !== "aiming" ||
+          event.button !== 0
+        )
+          return;
+        if (!aimAt(event.clientX, event.clientY)) return;
+        canvas.setPointerCapture(event.pointerId);
+        const cue = pool.balls.find((ball) => ball.id === 0);
+        if (!cue) return;
+        const a = angle();
+        const cueScreen = view.projectPool(cue.x, cue.z);
+        const end = view.projectPool(
+          cue.x + Math.cos(a) * 0.3,
+          cue.z + Math.sin(a) * 0.3,
+        );
+        if (
+          !cueScreen ||
+          !end ||
+          Math.hypot(end.x - cueScreen.x, end.y - cueScreen.y) < 0.01
+        )
+          return;
+        shotCharge = {
+          id: event.pointerId,
+          power: 0,
+          drag: new CueDrag(
+            { x: event.clientX, y: event.clientY },
+            { x: end.x - cueScreen.x, y: end.y - cueScreen.y },
+            { table: pool.table.id, turn: pool.turnToken, angle: a },
+            canvas.clientHeight * 0.2,
+          ),
+        };
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "pointermove",
+      (event) => {
+        if (shotCharge?.id === event.pointerId)
+          shotCharge.power = shotCharge.drag.update({
+            x: event.clientX,
+            y: event.clientY,
+          });
+        if (
+          seated() &&
+          pool?.turn === me &&
+          pool.phase === "aiming" &&
+          !shotCharge
+        )
+          aimAt(event.clientX, event.clientY);
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "pointerup",
+      (event) => {
+        if (shotCharge?.id !== event.pointerId) return;
+        const shot = shotCharge.drag.release({
+          x: event.clientX,
+          y: event.clientY,
+        });
+        shotCharge = undefined;
+        if (
+          pool?.phase !== "aiming" ||
+          pool.turn !== me ||
+          !shot ||
+          pool.turnToken !== shot.turn
+        )
+          return;
+        sendPool({
+          type: "pool-shot",
+          tableId: pool.table.id,
+          yaw: shot.angle,
+          power: shot.power,
+          turnToken: shot.turn,
+        });
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "lostpointercapture",
+      () => {
+        shotCharge = undefined;
+      },
+      { signal },
+    );
+    canvas.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (
+          seated() ||
           !predicted ||
           !event.isPrimary ||
           (event.button !== 0 && !(mode === "walk" && event.button === 2)) ||
@@ -397,6 +519,26 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       (event) => {
         if (gesture?.id !== event.pointerId) return;
         if (mode === "walk" && event.button === 0 && !gesture.dragged) {
+          if (pool && !seated() && view.hitPool(event.clientX, event.clientY)) {
+            const pose = predicted!.pose();
+            const dx = pose.x - pool.table.x,
+              dz = pose.z - pool.table.z;
+            const distance = Math.hypot(dx, dz);
+            if (distance < 2.8)
+              sendPool({ type: "pool-join", tableId: pool.table.id });
+            else {
+              joiningTable = true;
+              destination = {
+                x: pool.table.x + (dx / distance) * 2.45,
+                z: pool.table.z + (dz / distance) * 2.45,
+                best: Infinity,
+                progressAt: performance.now(),
+              };
+            }
+            gesture = undefined;
+            return;
+          }
+          joiningTable = false;
           const point = view.pickFloor(event.clientX, event.clientY);
           destination = point && {
             ...point,
@@ -507,6 +649,17 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       );
       let forward = Number(keys.has("KeyW")) - Number(keys.has("KeyS"));
       let strafe = Number(keys.has("KeyD")) - Number(keys.has("KeyA"));
+      if (joiningTable && pool) {
+        const pose = predicted.pose();
+        if (
+          destination &&
+          Math.hypot(pose.x - pool.table.x, pose.z - pool.table.z) < 2.8
+        ) {
+          destination = undefined;
+          sendPool({ type: "pool-join", tableId: pool.table.id });
+          joiningTable = false;
+        } else if (!destination) joiningTable = false;
+      }
       if (destination) {
         const pose = predicted.pose();
         const dx = destination.x - pose.x,
@@ -593,7 +746,15 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             mode === "walk" ? predicted.pose() : undefined,
             orbitDistance,
             pool,
-            seated() ? { aim: angle() } : undefined,
+            seated()
+              ? {
+                  aim:
+                    pool?.turn === me && pool.phase === "aiming"
+                      ? angle()
+                      : undefined,
+                  power: shotCharge?.power,
+                }
+              : undefined,
           );
         } catch (error) {
           console.error(error);

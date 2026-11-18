@@ -25,3 +25,9 @@
 #hall[data-pool] .reticle {
   display: none;
 }
+
+#hall > .world-pool-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}

@@ -5,7 +5,7 @@ export type PoolTable = {
   z: number;
   yaw: number;
 };
-export type PoolBall = { id: number; x: number; y: number; z: number };
+type PoolBall = { id: number; x: number; y: number; z: number };
 export type PoolState = {
   type: "pool";
   table: PoolTable;
@@ -16,9 +16,11 @@ export type PoolState = {
   phase: "waiting" | "aiming" | "rolling" | "ball-in-hand" | "finished";
   winner: string | null;
   message?: string;
+  bot?: { id: string; x: number; y: number; z: number; yaw: number };
 };
 export type PoolCommand =
-  | { type: "pool-join" | "pool-leave"; tableId: string }
+  | { type: "pool-join"; tableId: string; withBot?: boolean }
+  | { type: "pool-leave"; tableId: string }
   | {
       type: "pool-place";
       tableId: string;
@@ -42,13 +44,16 @@ export function parsePoolCommand(raw: string): PoolCommand | null {
     return null;
   }
   if (!value || typeof value !== "object") return null;
-  const { type, tableId, x, z, yaw, power, turnToken } = value as Record<
-    string,
-    unknown
-  >;
+  const { type, tableId, x, z, yaw, power, turnToken, withBot } =
+    value as Record<string, unknown>;
   if (typeof tableId !== "string" || !/^[a-z0-9-]{1,48}$/.test(tableId))
     return null;
-  if (type === "pool-join" || type === "pool-leave") return { type, tableId };
+  if (type === "pool-leave") return { type, tableId };
+  if (
+    type === "pool-join" &&
+    (withBot === undefined || typeof withBot === "boolean")
+  )
+    return { type, tableId, withBot };
   if (
     typeof turnToken !== "number" ||
     !Number.isSafeInteger(turnToken) ||

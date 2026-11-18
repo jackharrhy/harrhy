@@ -35,6 +35,8 @@ const timingPath = "/__bench/timing";
 const noStore = { "Cache-Control": "no-store" };
 const encoder = new TextEncoder();
 const snapshotEvery = 3;
+const botId = "house-bot";
+const botThinkMs = 650;
 const sampleLimit = 36_000;
 let collision: ReturnType<typeof loadBspCollision> | undefined;
 
@@ -87,7 +89,11 @@ export default {
 export class WorldRoomCell extends DurableObject<Env> {
   private readonly peers = new Map<string, Peer>();
   private readonly room: Promise<Room>;
-  private pool?: { table: PoolTable; session: PoolSession };
+  private pool?: {
+    table: PoolTable;
+    session: PoolSession;
+    bot?: { readyAt?: number };
+  };
   private loadingPool?: Promise<PoolSession>;
   private timing = timingSamples();
   private timer?: ReturnType<typeof setTimeout>;
@@ -215,11 +221,18 @@ export class WorldRoomCell extends DurableObject<Env> {
           Math.abs(pose.y - table.y) > 1.5
         )
           return;
-        changed = session.join(id);
+        if (command.withBot) {
+          if (session.phase !== "waiting") return;
+          const waiting = session.waitingPlayer;
+          if (waiting !== null && waiting !== id) return;
+          if (waiting === null) session.join(id);
+          changed = session.join(botId);
+          if (changed) pool.bot = {};
+        } else changed = session.join(id);
         break;
       }
       case "pool-leave":
-        changed = session.leave(id);
+        changed = this.leavePool(id);
         break;
       case "pool-shot":
         changed = session.shot(
@@ -238,8 +251,20 @@ export class WorldRoomCell extends DurableObject<Env> {
 
   private poolSnapshot(): PoolState | undefined {
     const pool = this.pool;
-    if (pool)
-      return { type: "pool", table: pool.table, ...pool.session.snapshot() };
+    if (!pool) return;
+    const { table, session } = pool;
+    const state: PoolState = { type: "pool", table, ...session.snapshot() };
+    if (pool.bot) {
+      // Stand just beyond the long rail, facing the table.
+      state.bot = {
+        id: botId,
+        x: table.x + 1.25 * Math.cos(table.yaw),
+        y: table.y,
+        z: table.z - 1.25 * Math.sin(table.yaw),
+        yaw: table.yaw + Math.PI / 2,
+      };
+    }
+    return state;
   }
 
   private broadcastPool() {
@@ -260,12 +285,36 @@ export class WorldRoomCell extends DurableObject<Env> {
     this.leave(await this.room, socket.deserializeAttachment() as string);
   }
 
+  private leavePool(id: string): boolean {
+    const pool = this.pool;
+    if (!pool || !pool.session.leave(id)) return false;
+    if (pool.bot) {
+      pool.session.leave(botId);
+      pool.bot = undefined;
+    }
+    return true;
+  }
+
+  private stepBot(now: number): boolean {
+    const pool = this.pool;
+    if (!pool?.bot) return false;
+    const { bot, session } = pool;
+    if (session.turn !== botId || session.phase === "rolling") {
+      bot.readyAt = undefined;
+      return false;
+    }
+    bot.readyAt ??= now + botThinkMs;
+    if (now < bot.readyAt) return false;
+    bot.readyAt = now + botThinkMs;
+    return session.playBot(botId);
+  }
+
   private leave(room: Room, id: string) {
     if (!this.peers.delete(id)) return;
     room.leave(id);
     for (const { socket } of this.peers.values())
       this.send(socket, { type: "left", id });
-    if (this.pool?.session.leave(id) && this.peers.size) this.broadcastPool();
+    if (this.leavePool(id) && this.peers.size) this.broadcastPool();
     if (this.peers.size) return;
     this.pool?.session.dispose();
     this.pool = this.loadingPool = undefined;
@@ -311,9 +360,14 @@ export class WorldRoomCell extends DurableObject<Env> {
     this.lastTick = now;
     room.step();
     const settled = this.pool?.session.step(1 / TICK_HZ);
+    const botActed = this.stepBot(now);
     this.timing.ticks++;
     const snapshotDue = ++this.frame % snapshotEvery === 0;
-    if (settled || (snapshotDue && this.pool?.session.phase === "rolling"))
+    if (
+      settled ||
+      botActed ||
+      (snapshotDue && this.pool?.session.phase === "rolling")
+    )
       this.broadcastPool();
     if (snapshotDue) {
       this.timing.snapshots++;

@@ -15,7 +15,7 @@
   color: #f4efdf;
   background: #15120e;
   color-scheme: dark;
-  --wood: url("/textures/walnut.webp");
+  --wood: url("@harrhy/pool/assets/walnut.webp");
   --brass: url("/textures/aged-brass.webp");
   --accent: #e0bd78;
   scrollbar-color: #977444 #21170f;

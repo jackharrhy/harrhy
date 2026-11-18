@@ -62,7 +62,7 @@ try {
   await expect(page.getByRole("status")).toHaveText(/1 player$/, {
     timeout: 30_000,
   });
-  const canvas = page.locator("canvas");
+  const canvas = page.locator("canvas[aria-label]");
   await canvas.focus();
   assert.equal(
     await canvas.evaluate((element) => getComputedStyle(element).outlineStyle),
@@ -109,7 +109,7 @@ try {
   await page.mouse.move(400, 250);
   await page.mouse.wheel(0, -800);
   await expect(hall).toHaveAttribute("data-mode", "fps");
-  await page.locator("canvas").focus();
+  await page.locator("canvas[aria-label]").focus();
   await page.keyboard.down("w");
   try {
     await expect
