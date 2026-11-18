@@ -160,3 +160,46 @@ it("cleanup reuses an ambient job, owns a standalone scope when absent, and pres
   expect(currentLog()).toBeUndefined();
   expect(JSON.stringify(records)).not.toContain("PRIVATE_OBJECT_KEY");
 });
+
+it("keeps machine resource identity stable with an alternate browser origin", async () => {
+  const env = {
+    AUTH_PUBLIC_ORIGIN: "https://old.example",
+    HARRHY_REF_ALTERNATE_BROWSER_ORIGIN: "https://new.example",
+    AUTH_ISSUER: "https://issuer.example",
+    AUTH_CLIENT_ID: "client",
+    AUTH_PROJECT_ID: "project",
+    AUTH_ORGANIZATION_ID: "organization",
+  } as unknown as Env;
+  const path = "/.well-known/oauth-protected-resource/mcp";
+  for (const host of ["old.example", "new.example"]) {
+    const response = await worker.fetch(
+      new Request(`https://${host}${path}`),
+      env,
+    );
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({
+      resource: "https://old.example/mcp",
+      authorization_servers: ["https://issuer.example"],
+    });
+  }
+  expect(
+    (
+      await worker.fetch(
+        new Request(`https://other.example${path}`, {
+          headers: { "X-Forwarded-Host": "new.example" },
+        }),
+        env,
+      )
+    ).status,
+  ).toBe(421);
+  expect(
+    (
+      await worker.fetch(
+        new Request(`https://new.example${path}`, {
+          headers: { Origin: "https://old.example" },
+        }),
+        env,
+      )
+    ).status,
+  ).toBe(403);
+});

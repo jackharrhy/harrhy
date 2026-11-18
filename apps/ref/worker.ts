@@ -21,15 +21,17 @@ import {
 
 export { BoardCell, DirectoryCell };
 
+type RefEnv = Env & { HARRHY_REF_ALTERNATE_BROWSER_ORIGIN?: string };
+
 export default {
-  fetch(request: Request, env: Env): Promise<Response> {
+  fetch(request: Request, env: RefEnv): Promise<Response> {
     return logRequest(request, () => handleRequest(request, env), {
       privateValues: [env.AUTH_INTROSPECTION_SECRET ?? ""],
     });
   },
 } satisfies ExportedHandler<Env>;
 
-async function handleRequest(request: Request, env: Env): Promise<Response> {
+async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
   const url = new URL(request.url);
   if (url.pathname === "/health") return Response.json({ ok: true });
   const origin = request.headers.get("Origin");
@@ -69,6 +71,20 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
     publicOrigin.origin !== env.AUTH_PUBLIC_ORIGIN
   )
     return new Response("Sign-in is not configured", { status: 503 });
+  const alternate = env.HARRHY_REF_ALTERNATE_BROWSER_ORIGIN;
+  if (alternate) {
+    const parsed = URL.parse(alternate);
+    if (parsed?.protocol !== "https:" || parsed.origin !== alternate)
+      return new Response("Sign-in is not configured", { status: 503 });
+    if (
+      url.origin !== publicOrigin.origin &&
+      url.origin !== alternate &&
+      url.pathname !== "/ready"
+    )
+      return new Response("Unrecognized request origin", { status: 421 });
+  }
+  const onAlternate =
+    alternate === url.origin && alternate !== publicOrigin.origin;
   if (url.pathname === "/.well-known/oauth-protected-resource/mcp") {
     return Response.json(
       {
@@ -207,7 +223,8 @@ async function handleRequest(request: Request, env: Env): Promise<Response> {
       token,
       {
         config,
-        origin: env.AUTH_PUBLIC_ORIGIN,
+        origin: onAlternate ? url.origin : publicOrigin.origin,
+        onAlternate,
       },
       mcpAccess,
     );

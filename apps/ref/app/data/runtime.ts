@@ -17,6 +17,7 @@ export const CurrentSessionToken = createContextKey<string | null>();
 export const AppIdentity = createContextKey<{
   config: IdentityConfig;
   origin: string;
+  onAlternate?: boolean;
 } | null>();
 
 export function createRuntime(env: Env): AppRuntimeService {

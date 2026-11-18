@@ -1,9 +1,11 @@
 import { currentLog } from "@harrhy/logger";
 import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
-import { AppRuntime, Authenticated } from "../../data/runtime.ts";
+import { AppRuntime, AppIdentity, Authenticated } from "../../data/runtime.ts";
 import { routes } from "../../routes.ts";
-import { BoardPage } from "../page.tsx";
+import { AuthPage, BoardPage } from "../page.tsx";
+
+import { movedPath } from "../move.ts";
 
 export default createController(routes.boards, {
   actions: {
@@ -21,7 +23,14 @@ export default createController(routes.boards, {
       return redirect(`/boards/${board.id}`, 303);
     },
     async show(context) {
-      if (!context.get(Authenticated)) return redirect("/", 303);
+      const moved = movedPath(
+        context.request,
+        context.get(AppIdentity)?.onAlternate,
+      );
+      if (!context.get(Authenticated))
+        return moved
+          ? context.render(<AuthPage moved={moved} />)
+          : redirect("/", 303);
       const board = await context
         .get(AppRuntime)!
         .directory.board(context.params.boardId);
@@ -29,6 +38,7 @@ export default createController(routes.boards, {
       return context.render(
         <BoardPage
           board={board}
+          moved={!!moved}
           error={
             new URL(context.request.url).searchParams.get("error") ?? undefined
           }

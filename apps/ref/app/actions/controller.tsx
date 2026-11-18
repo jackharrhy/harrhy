@@ -2,6 +2,7 @@ import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
 import {
   AppRuntime,
+  AppIdentity,
   Authenticated,
   CurrentSessionToken,
 } from "../data/runtime.ts";
@@ -10,15 +11,23 @@ import { clearSessionCookie } from "../middleware/session.ts";
 import { routes } from "../routes.ts";
 import { AuthPage, HomePage } from "./page.tsx";
 
+import { movedPath } from "./move.ts";
+
 export default createController(routes, {
   actions: {
     async home(context) {
       const error =
         new URL(context.request.url).searchParams.get("error") ?? undefined;
+      const moved = movedPath(
+        context.request,
+        context.get(AppIdentity)?.onAlternate,
+      );
       if (!context.get(Authenticated))
-        return context.render(<AuthPage error={error} />);
+        return context.render(<AuthPage error={error} moved={moved} />);
       const boards = await context.get(AppRuntime)!.directory.listBoards();
-      return context.render(<HomePage boards={boards} error={error} />);
+      return context.render(
+        <HomePage boards={boards} error={error} moved={!!moved} />,
+      );
     },
     async logout(context) {
       const token = context.get(CurrentSessionToken);
