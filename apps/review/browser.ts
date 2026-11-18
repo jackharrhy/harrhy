@@ -172,10 +172,10 @@ async function detail(root: HTMLElement, id: string) {
   const remove = button("Delete review", "delete-review", "danger");
   const split = button("Split", "view-split");
   const unified = button("Unified", "view-unified");
-  const modes = node("div", "row", split, unified);
+  const modes = node("div", "diff-modes", unified, split);
   modes.setAttribute("role", "group");
   modes.setAttribute("aria-label", "Diff layout");
-  const toolbar = node("div", "row between", modes, remove);
+  document.getElementById("view-controls")?.replaceChildren(modes);
   const heading = node("h1", "", review.title ?? untitledReview);
   const rename = button("Rename", "rename-review");
   rename.setAttribute("aria-expanded", "false");
@@ -201,7 +201,6 @@ async function detail(root: HTMLElement, id: string) {
   const header = node(
     "div",
     "review-header",
-    link("← Review inbox", "/", "back"),
     node("div", "row", heading, rename),
     titleEditor,
     node("div", "row", fileCount(files.length), "·", comparison(review)),
@@ -213,7 +212,7 @@ async function detail(root: HTMLElement, id: string) {
       "·",
       date(review.created),
     ),
-    toolbar,
+    remove,
     status,
   );
   const fileList = node("ul", "file-list");

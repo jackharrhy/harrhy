@@ -1,5 +1,6 @@
 import type { Handle } from "remix/component";
 import { renderToStream } from "remix/component/server";
+import { ButtonLink } from "@harrhy/ui/native";
 import { cleanTheme, themeStyles } from "@harrhy/ui/theme";
 
 import { reviewStyles } from "./review-styles.ts";
@@ -17,11 +18,18 @@ function Document(handle: Handle<{ detail: boolean }>) {
       </head>
       <body>
         <header class="masthead">
+          {handle.props.detail ? (
+            <ButtonLink href="/" class="back">
+              ← Inbox
+            </ButtonLink>
+          ) : null}
           <a class="brand" href="/">
             <span aria-hidden="true">🔍</span>
             review
           </a>
-          <span class="muted">Local workspace</span>
+          <div id="view-controls">
+            <span class="muted">Local workspace</span>
+          </div>
         </header>
         <main
           id="review-app"

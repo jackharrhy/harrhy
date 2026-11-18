@@ -243,6 +243,13 @@ try {
   await expect(
     page.locator("diffs-container").getByText(/green/),
   ).toBeVisible();
+  await expect(page.locator(".masthead")).toHaveCSS("position", "sticky");
+  await expect(
+    page.locator(".masthead").getByRole("link", { name: "← Inbox" }),
+  ).toHaveAttribute("href", "/");
+  await expect(
+    page.locator(".masthead").getByRole("group", { name: "Diff layout" }),
+  ).toBeVisible();
   await page.getByTestId("view-unified").click();
   await expect(page.getByTestId("view-unified")).toHaveAttribute(
     "aria-pressed",
