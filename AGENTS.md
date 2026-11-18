@@ -11,7 +11,7 @@ Harrhy is a Remix 3 monorepo of independently deployable apps and importable pac
 
 ## Parallel task workflow
 
-Read the shared `worktrees` skill (`~/.agents/skills/worktrees/SKILL.md`) before creating, removing, or relocating task worktrees. Keep the generic recipe there; Harrhy-specific workflow rules follow.
+Read the shared `worktrees` skill (`~/.agents/skills/worktrees/SKILL.md`) before creating, removing, or relocating task worktrees. Keep the generic recipe there; Harrhy-specific workflow rules follow. Follow the [worktree lifecycle](docs/worktree-lifecycle.md): identify an owner and disposal plan, resolve finished work before adding another checkout, and close each task with a PR, a preserved commit, or an explicit disposition.
 
 Use the primary checkout for uncontended single-writer tasks; use a separate worktree when concurrent writers or concrete isolation needs justify it. Start task branches from freshly fetched `origin/main`. Do not share an editing checkout between concurrent writers. Agents may create their own worktrees when needed, push PRs, and review and merge their own owner-authorized work; no coordinator permission, locks, holds, or central ownership registry is required.
 
