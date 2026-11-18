@@ -100,7 +100,6 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
   // Create container group for zoom/pan
   const g = svg.append("g");
 
-  let hovered: string | null = null;
   let selected: string | null = null;
   const hidden = new Set<string>();
   const visibleNode = (id: string) =>
@@ -133,7 +132,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
       (w - width * fit) / 2 + fit * transform.x,
       (h - height * fit) / 2 + fit * transform.y,
     );
-    const active = hovered ?? selected;
+    const active = selected;
     for (const type of ["positive", "negative"] as const) {
       const color = type === "positive" ? "#4ade80" : "#f87171";
       for (const emphasized of active ? [false, true] : [false]) {
@@ -182,16 +181,21 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
   function settle() {
     cancelAnimationFrame(settleFrame);
     simulation.stop().alphaTarget(0).alpha(0.7);
-    function step() {
+    const reducedMotion = matchMedia(
+      "(prefers-reduced-motion: reduce)",
+    ).matches;
+    let lastPaint = -Infinity;
+    function step(now: number) {
       const deadline = performance.now() + 3;
-      do {
+      simulation.tick();
+      if (simulation.alpha() > 0.025 && performance.now() < deadline)
         simulation.tick();
-      } while (simulation.alpha() > 0.025 && performance.now() < deadline);
-      if (simulation.alpha() > 0.025) settleFrame = requestAnimationFrame(step);
-      else {
-        settleFrame = 0;
-        draw();
+      const settled = simulation.alpha() <= 0.025;
+      if (settled || (!reducedMotion && now - lastPaint >= 28)) {
+        lastPaint = now;
+        draw(true);
       }
+      settleFrame = settled ? 0 : requestAnimationFrame(step);
     }
     settleFrame = requestAnimationFrame(step);
   }
@@ -257,9 +261,13 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     .attr("font-family", "sans-serif")
     .text((d) => d.character);
 
-  function draw() {
+  function draw(immediate = false) {
     for (const d of nodes) rendered.set(d.id, { x: d.x ?? 0, y: d.y ?? 0 });
-    scheduleEdges();
+    if (immediate) {
+      cancelAnimationFrame(edgeFrame);
+      edgeFrame = 0;
+      drawEdges();
+    } else scheduleEdges();
     node.attr("transform", (d) => `translate(${d.x},${d.y})`);
   }
   let lastDraw = 0;
@@ -270,7 +278,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
       lastDraw = now;
       draw();
     })
-    .on("end", draw);
+    .on("end", () => draw());
   draw();
   // Start with the settled layout in view; retain the original D3 pan/zoom.
   const bounds = g.node()?.getBBox();
@@ -291,7 +299,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     );
   }
   function paint() {
-    const active = hovered ?? selected;
+    const active = selected;
     const connected = new Set<string>();
     if (active)
       for (const edge of visibleLinks) {
@@ -307,13 +315,7 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
         !active || active === d.id || connected?.has(d.id) ? 1 : 0.3,
       )
       .select("circle")
-      .attr("fill", (d) =>
-        d.id === selected
-          ? "#60a5fa"
-          : d.id === hovered
-            ? "#93c5fd"
-            : "#374151",
-      );
+      .attr("fill", (d) => (d.id === selected ? "#60a5fa" : "#374151"));
   }
   function toggle(id: string) {
     selected = selected === id ? null : id;
@@ -323,14 +325,6 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
     .attr("tabindex", 0)
     .attr("role", "button")
     .attr("aria-label", (d) => d.character)
-    .on("pointerenter focus", (_, d) => {
-      hovered = d.id;
-      paint();
-    })
-    .on("pointerleave blur", () => {
-      hovered = null;
-      paint();
-    })
     .on("click", (event, d) => {
       event.stopPropagation();
       toggle(d.id);
@@ -365,7 +359,6 @@ export function mountGraph(element: SVGSVGElement, data: GraphData) {
       );
       node.attr("display", (d) => (visibleNode(d.id) ? null : "none"));
       if (selected && !visibleNode(selected)) selected = null;
-      if (hovered && !visibleNode(hovered)) hovered = null;
       paint();
     },
     dispose() {
