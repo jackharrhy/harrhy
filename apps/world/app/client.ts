@@ -23,12 +23,14 @@ const movementKeys = new Set([
 const turn = Math.PI * 2;
 const clampPitch = (n: number) => Math.max(-1.5, Math.min(1.5, n));
 
+function noop() {}
+
 export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
   const root = canvas.closest<HTMLElement>("#hall")!;
   const status = root.querySelector<HTMLElement>("#status")!;
   const button = root.querySelector<HTMLButtonElement>("#enter")!;
   const controls = root.querySelector<HTMLElement>("#controls")!;
-  let stop = () => {};
+  let stop = noop;
   function start() {
     stop();
     const scope = new AbortController();
@@ -58,8 +60,11 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     if (!health.ok) throw Error("The room is not ready");
     const { revision } = (await health.json()) as { revision: string };
     const mapResponse =
-      revision === LEGACY_MAP_REVISION ? undefined : await fetch("/maps/hall.bsp", { signal });
-    if (mapResponse && !mapResponse.ok) throw Error("Could not load the authored hall");
+      revision === LEGACY_MAP_REVISION
+        ? undefined
+        : await fetch("/maps/hall.bsp", { signal });
+    if (mapResponse && !mapResponse.ok)
+      throw Error("Could not load the authored hall");
     const bytes = await mapResponse?.arrayBuffer();
     const collision = bytes ? await loadBspCollision(bytes) : undefined;
     if (collision && collision.revision !== revision)
@@ -79,7 +84,9 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     let facing = 0;
     let orbitDistance = 3.6;
     let mode: "walk" | "fps" = "walk";
-    let destination: (FloorPoint & { best: number; progressAt: number }) | undefined;
+    let destination:
+      | (FloorPoint & { best: number; progressAt: number })
+      | undefined;
     let gesture:
       | {
           id: number;
@@ -103,7 +110,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       destination = undefined;
       gesture = undefined;
       keys.clear();
-      if (mode === "walk" && document.pointerLockElement === canvas) document.exitPointerLock();
+      if (mode === "walk" && document.pointerLockElement === canvas)
+        document.exitPointerLock();
     }
     let predicted: Awaited<ReturnType<typeof createMotion>> | undefined;
     let starting = false;
@@ -157,7 +165,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       );
       ws = socket;
       socket.addEventListener("message", (event) => {
-        if (signal.aborted || ws !== socket || typeof event.data !== "string") return;
+        if (signal.aborted || ws !== socket || typeof event.data !== "string")
+          return;
         const message = JSON.parse(event.data) as ServerMessage;
         switch (message.type) {
           case "welcome":
@@ -184,7 +193,11 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             starting = true;
             void createMotion(self, collision)
               .then((motion) => {
-                if (signal.aborted || ws !== socket || socket.readyState !== WebSocket.OPEN)
+                if (
+                  signal.aborted ||
+                  ws !== socket ||
+                  socket.readyState !== WebSocket.OPEN
+                )
                   return motion.dispose();
                 predicted = motion;
                 yaw = self.yaw;
@@ -254,7 +267,10 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         if (gesture?.id !== event.pointerId) return;
         if (
           !gesture.dragged &&
-          Math.hypot(event.clientX - gesture.startX, event.clientY - gesture.startY) < 7
+          Math.hypot(
+            event.clientX - gesture.startX,
+            event.clientY - gesture.startY,
+          ) < 7
         )
           return;
         gesture.dragged = true;
@@ -272,7 +288,11 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         if (gesture?.id !== event.pointerId) return;
         if (mode === "walk" && event.button === 0 && !gesture.dragged) {
           const point = view.pickFloor(event.clientX, event.clientY);
-          destination = point && { ...point, best: Infinity, progressAt: performance.now() };
+          destination = point && {
+            ...point,
+            best: Infinity,
+            progressAt: performance.now(),
+          };
         }
         gesture = undefined;
       },
@@ -290,7 +310,12 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       (event) => {
         if (!predicted || event.ctrlKey || !event.deltaY) return;
         event.preventDefault();
-        const scale = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? canvas.clientHeight : 1;
+        const scale =
+          event.deltaMode === 1
+            ? 16
+            : event.deltaMode === 2
+              ? canvas.clientHeight
+              : 1;
         const next = orbitDistance * Math.exp(event.deltaY * scale * 0.002);
         orbitDistance = Math.max(1.4, Math.min(6.5, next));
         if (mode === "walk" && next <= 1.4) {
@@ -335,7 +360,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         if (
           !predicted ||
           !movementKeys.has(e.code) ||
-          (document.activeElement !== canvas && document.pointerLockElement !== canvas)
+          (document.activeElement !== canvas &&
+            document.pointerLockElement !== canvas)
         )
           return;
         e.preventDefault();
@@ -348,16 +374,26 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     canvas.addEventListener("blur", () => keys.clear(), { signal });
     window.addEventListener("blur", () => keys.clear(), { signal });
     tick = window.setInterval(() => {
-      if (!predicted || ws?.readyState !== WebSocket.OPEN || ws.bufferedAmount > 4096) return;
+      if (
+        !predicted ||
+        ws?.readyState !== WebSocket.OPEN ||
+        ws.bufferedAmount > 4096
+      )
+        return;
       if (correction) {
         const authoritative = correction;
         correction = undefined;
         pending = pending.filter((input) => input.seq > authoritative.ack);
         predicted.reconcile(authoritative, pending);
       }
-      yaw = (yaw + (Number(keys.has("ArrowLeft")) - Number(keys.has("ArrowRight"))) * 0.026) % turn;
+      yaw =
+        (yaw +
+          (Number(keys.has("ArrowLeft")) - Number(keys.has("ArrowRight"))) *
+            0.026) %
+        turn;
       pitch = clampPitch(
-        pitch + (Number(keys.has("ArrowUp")) - Number(keys.has("ArrowDown"))) * 0.026,
+        pitch +
+          (Number(keys.has("ArrowUp")) - Number(keys.has("ArrowDown"))) * 0.026,
       );
       let forward = Number(keys.has("KeyW")) - Number(keys.has("KeyS"));
       let strafe = Number(keys.has("KeyD")) - Number(keys.has("KeyA"));
@@ -371,15 +407,25 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           destination.best = distance;
           destination.progressAt = now;
         }
-        if (distance < 0.14 || now - destination.progressAt > 500) destination = undefined;
+        if (distance < 0.14 || now - destination.progressAt > 500)
+          destination = undefined;
         else {
           const approach = Math.min(0.65, distance * 0.75);
           forward =
             approach *
-            Math.max(-1, Math.min(1, (-dx * Math.sin(yaw) - dz * Math.cos(yaw)) / distance));
+            Math.max(
+              -1,
+              Math.min(
+                1,
+                (-dx * Math.sin(yaw) - dz * Math.cos(yaw)) / distance,
+              ),
+            );
           strafe =
             approach *
-            Math.max(-1, Math.min(1, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / distance));
+            Math.max(
+              -1,
+              Math.min(1, (dx * Math.cos(yaw) - dz * Math.sin(yaw)) / distance),
+            );
         }
       }
       if (mode === "fps") facing = yaw;
@@ -407,10 +453,13 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       if (predicted) {
         const target = performance.now() - 110;
         const later = samples.findIndex((s) => s.at >= target);
-        const a = samples[Math.max(0, later === -1 ? samples.length - 1 : later - 1)];
+        const a =
+          samples[Math.max(0, later === -1 ? samples.length - 1 : later - 1)];
         const b = samples[later] ?? a;
         const weight =
-          a && b && b.at > a.at ? Math.max(0, Math.min(1, (target - a.at) / (b.at - a.at))) : 0;
+          a && b && b.at > a.at
+            ? Math.max(0, Math.min(1, (target - a.at) / (b.at - a.at)))
+            : 0;
         const remotes = (b?.players ?? [])
           .filter((p) => p.id !== me && roster.has(p.id))
           .map((p) => {
@@ -435,7 +484,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           );
         } catch (error) {
           console.error(error);
-          status.textContent = "Rendering stopped. Reload to retry, or use ?renderer=webgl.";
+          status.textContent =
+            "Rendering stopped. Reload to retry, or use ?renderer=webgl.";
           stop();
           return;
         }

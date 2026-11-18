@@ -1,8 +1,19 @@
 import * as THREE from "three/webgpu";
 import { createHall, hallTexturePaths } from "./hall";
-import { billboardAtlasPath, createBillboards, loadBillboardLayout } from "./player-billboard";
+import {
+  billboardAtlasPath,
+  createBillboards,
+  loadBillboardLayout,
+} from "./player-billboard";
 
-type Pose = { id: string; x: number; y: number; z: number; yaw: number; pitch: number };
+type Pose = {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+  pitch: number;
+};
 export type FloorPoint = { x: number; z: number };
 type RemotePose = Pose & { id: string };
 
@@ -17,7 +28,8 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
   pickFloor(x: number, y: number): FloorPoint | undefined;
   dispose(): void;
 }> {
-  const forceWebGL = new URLSearchParams(window.location.search).get("renderer") === "webgl";
+  const forceWebGL =
+    new URLSearchParams(window.location.search).get("renderer") === "webgl";
   let renderer: THREE.WebGPURenderer | undefined;
   let deviceError: Error | undefined;
   const scene = new THREE.Scene();
@@ -44,7 +56,9 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
     for (const texture of textures) texture.dispose();
     scene.clear();
     if (initialized && renderer) {
-      void renderer.dispose().catch((error) => console.error("Disposing the hall renderer", error));
+      void renderer
+        .dispose()
+        .catch((error) => console.error("Disposing the hall renderer", error));
     }
   }
 
@@ -68,7 +82,11 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
 
     // A canvas cannot switch context types once configured. Three handles
     // startup fallback; after device loss the user can reload in WebGL mode.
-    renderer = new THREE.WebGPURenderer({ canvas, antialias: true, forceWebGL });
+    renderer = new THREE.WebGPURenderer({
+      canvas,
+      antialias: true,
+      forceWebGL,
+    });
     const onDeviceLost = renderer.onDeviceLost.bind(renderer);
     renderer.onDeviceLost = (info) => {
       if (disposed || deviceError) return;
@@ -106,7 +124,11 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
     marker.rotation.x = -Math.PI / 2;
     marker.visible = false;
     scene.add(marker);
-    billboards = createBillboards(scene, textures[hallTexturePaths.length], layout);
+    billboards = createBillboards(
+      scene,
+      textures[hallTexturePaths.length],
+      layout,
+    );
   } catch (error) {
     dispose();
     throw error;
@@ -139,7 +161,11 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
       const nextHeight = canvas.clientHeight;
       if (!nextWidth || !nextHeight) return;
       const nextRatio = Math.min(window.devicePixelRatio, 1.75);
-      if (nextWidth !== width || nextHeight !== height || nextRatio !== pixelRatio) {
+      if (
+        nextWidth !== width ||
+        nextHeight !== height ||
+        nextRatio !== pixelRatio
+      ) {
         width = nextWidth;
         height = nextHeight;
         pixelRatio = nextRatio;
@@ -152,7 +178,9 @@ export async function createView(canvas: HTMLCanvasElement): Promise<{
       if (avatar) {
         const anchor = camera.position.clone();
         anchor.y -= 0.5;
-        const back = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+        const back = new THREE.Vector3(0, 0, 1).applyQuaternion(
+          camera.quaternion,
+        );
         ray.set(anchor, back);
         const wall = ray.intersectObject(hall, true)[0];
         const distance = Math.min(

@@ -34,7 +34,11 @@ function box(
     ];
     for (let i = 0; i < uv.count; i++) {
       const [width, height] = faces[Math.floor(i / 4)];
-      uv.setXY(i, (uv.getX(i) * width) / textureMetres, (uv.getY(i) * height) / textureMetres);
+      uv.setXY(
+        i,
+        (uv.getX(i) * width) / textureMetres,
+        (uv.getY(i) * height) / textureMetres,
+      );
     }
   }
   mesh.position.set(x, y, z);
@@ -92,11 +96,36 @@ export function createHall(textures: readonly THREE.Texture[]) {
     for (let along = -width / 2 + 1; along < width / 2; along++)
       box(wall, 0.04, 0.87, 0.05, along, 0.555, 0.365, darkWood, 1);
   }
-  const bar = new THREE.MeshStandardMaterial({ color: 0x3c3225, roughness: 0.92 });
-  box(group, BAR.width, BAR.height, BAR.depth, BAR.x, BAR.height / 2, BAR.z, bar);
-  box(group, BAR.width + 0.2, 0.1, BAR.depth + 0.2, BAR.x, BAR.height, BAR.z, trim, 1);
+  const bar = new THREE.MeshStandardMaterial({
+    color: 0x3c3225,
+    roughness: 0.92,
+  });
+  box(
+    group,
+    BAR.width,
+    BAR.height,
+    BAR.depth,
+    BAR.x,
+    BAR.height / 2,
+    BAR.z,
+    bar,
+  );
+  box(
+    group,
+    BAR.width + 0.2,
+    0.1,
+    BAR.depth + 0.2,
+    BAR.x,
+    BAR.height,
+    BAR.z,
+    trim,
+    1,
+  );
   for (const { x, y, z } of STOOLS) {
-    const stool = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.12, 16), paint);
+    const stool = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.25, 0.25, 0.12, 16),
+      paint,
+    );
     stool.position.set(x, y - 0.06, z);
     group.add(stool);
     box(group, 0.12, y - 0.12, 0.12, x, (y - 0.12) / 2, z, darkWood, 1);
@@ -135,7 +164,11 @@ export function createHall(textures: readonly THREE.Texture[]) {
   rampFaces.computeVertexNormals();
   const ramp = new THREE.Mesh(
     rampFaces,
-    new THREE.MeshStandardMaterial({ color: 0x886547, roughness: 0.82, side: THREE.DoubleSide }),
+    new THREE.MeshStandardMaterial({
+      color: 0x886547,
+      roughness: 0.82,
+      side: THREE.DoubleSide,
+    }),
   );
   group.add(ramp);
   return group;

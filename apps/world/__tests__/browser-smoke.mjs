@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { chromium, expect } from "@playwright/test";
 
-const url = process.env.HARRHY_WORLD_TEST_URL ?? "http://127.0.0.1:3189/?renderer=webgl";
+const url =
+  process.env.HARRHY_WORLD_TEST_URL ?? "http://127.0.0.1:3189/?renderer=webgl";
 const browser = await chromium.launch({
   args: [
     "--enable-unsafe-webgpu",
@@ -32,7 +33,8 @@ try {
     socket.on("framereceived", ({ payload }) => {
       const message = JSON.parse(payload.toString());
       if (message.type === "welcome") id = message.id;
-      if (message.type === "motion") otherPose = message.players.find((p) => p.id === id);
+      if (message.type === "motion")
+        otherPose = message.players.find((p) => p.id === id);
     });
   });
   let socket;
@@ -57,10 +59,15 @@ try {
     tab.on("pageerror", (error) => errors.push(error.message));
   }
   await page.goto(url);
-  await expect(page.getByRole("status")).toHaveText(/1 player$/, { timeout: 30_000 });
+  await expect(page.getByRole("status")).toHaveText(/1 player$/, {
+    timeout: 30_000,
+  });
   const canvas = page.locator("canvas");
   await canvas.focus();
-  assert.equal(await canvas.evaluate((element) => getComputedStyle(element).outlineStyle), "none");
+  assert.equal(
+    await canvas.evaluate((element) => getComputedStyle(element).outlineStyle),
+    "none",
+  );
   const beforeOrbit = await canvas.screenshot();
   await page.mouse.move(430, 260);
   await page.mouse.down({ button: "right" });
@@ -69,23 +76,33 @@ try {
   assert.notDeepEqual(await canvas.screenshot(), beforeOrbit);
   assert.equal(await page.evaluate(() => document.pointerLockElement), null);
   await page.reload();
-  await expect(page.getByRole("status")).toHaveText(/1 player$/, { timeout: 30_000 });
+  await expect(page.getByRole("status")).toHaveText(/1 player$/, {
+    timeout: 30_000,
+  });
   await other.goto(url);
   for (const tab of [page, other])
-    await expect(tab.getByRole("status")).toHaveText(/2 players$/, { timeout: 30_000 });
+    await expect(tab.getByRole("status")).toHaveText(/2 players$/, {
+      timeout: 30_000,
+    });
   assert(socket && self && samples.at(-1));
   const hall = page.locator("#hall");
   await expect(hall).toHaveAttribute("data-mode", "walk");
   const beforeClick = samples.at(-1).z;
   await page.bringToFront();
   await page.mouse.click(400, 275);
-  await expect.poll(() => samples.at(-1)?.z, { timeout: 10_000 }).toBeLessThan(beforeClick - 0.3);
+  await expect
+    .poll(() => samples.at(-1)?.z, { timeout: 10_000 })
+    .toBeLessThan(beforeClick - 0.3);
   await other.bringToFront();
   const beforeTap = otherPose.z;
   await other.touchscreen.tap(195, 335);
-  await expect.poll(() => otherPose?.z, { timeout: 10_000 }).toBeLessThan(beforeTap - 0.3);
+  await expect
+    .poll(() => otherPose?.z, { timeout: 10_000 })
+    .toBeLessThan(beforeTap - 0.3);
   if (process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT)
-    await other.screenshot({ path: process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT });
+    await other.screenshot({
+      path: process.env.HARRHY_WORLD_TEST_MOBILE_SCREENSHOT,
+    });
   await page.bringToFront();
   const before = samples.at(-1).z;
   await expect(page.locator("#mode")).toHaveCount(0);
@@ -95,7 +112,9 @@ try {
   await page.locator("canvas").focus();
   await page.keyboard.down("w");
   try {
-    await expect.poll(() => samples.at(-1)?.z, { timeout: 10_000 }).toBeLessThan(before - 0.5);
+    await expect
+      .poll(() => samples.at(-1)?.z, { timeout: 10_000 })
+      .toBeLessThan(before - 0.5);
   } finally {
     await page.keyboard.up("w");
   }
@@ -135,7 +154,9 @@ try {
   await other.goto("about:blank");
   await expect(page.getByRole("status")).toHaveText(/1 player$/);
   await other.goBack();
-  await expect(other.getByRole("status")).toHaveText(/2 players$/, { timeout: 30_000 });
+  await expect(other.getByRole("status")).toHaveText(/2 players$/, {
+    timeout: 30_000,
+  });
   await expect(page.getByRole("status")).toHaveText(/2 players$/);
   await other.close();
   await expect(page.getByRole("status")).toHaveText(/1 player$/);

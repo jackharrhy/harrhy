@@ -27,7 +27,8 @@ export async function createEmbeddedMapsScene(options: {
   /** Optional atlas; the caller retains ownership of this bitmap. */
   overlayAtlas?: ImageBitmap;
 }): Promise<EmbeddedMapsScene> {
-  if (!globalThis.navigator?.gpu) throw new Error("BSP rendering requires WebGPU");
+  if (!globalThis.navigator?.gpu)
+    throw new Error("BSP rendering requires WebGPU");
   const loaded = await loadWorldAssets(options.source, {
     fetch: globalThis.fetch.bind(globalThis),
     signal: new AbortController().signal,
@@ -40,7 +41,10 @@ export async function createEmbeddedMapsScene(options: {
   let disposed = false;
   let deviceError: Error | undefined;
   void root.device.lost.then((info) => {
-    if (!disposed) deviceError = new Error(`WebGPU device lost: ${info.message || info.reason}`);
+    if (!disposed)
+      deviceError = new Error(
+        `WebGPU device lost: ${info.message || info.reason}`,
+      );
   });
   function dispose() {
     if (disposed) return;
@@ -52,7 +56,11 @@ export async function createEmbeddedMapsScene(options: {
   }
   try {
     const format = navigator.gpu.getPreferredCanvasFormat();
-    context = root.configureContext({ canvas: options.canvas, format, alphaMode: "opaque" });
+    context = root.configureContext({
+      canvas: options.canvas,
+      format,
+      alphaMode: "opaque",
+    });
     renderer = new TypeGpuWorldRenderer(
       root,
       context,
@@ -63,7 +71,11 @@ export async function createEmbeddedMapsScene(options: {
     );
     await renderer.initialize();
     if (options.overlayAtlas)
-      overlay = await createSceneOverlay(root.device, format, options.overlayAtlas);
+      overlay = await createSceneOverlay(
+        root.device,
+        format,
+        options.overlayAtlas,
+      );
     if (deviceError) throw deviceError;
     const activeRenderer = renderer;
     return {
@@ -79,7 +91,12 @@ export async function createEmbeddedMapsScene(options: {
           frame.overlay?.length && overlay
             ? overlay.prepare(frame.projectionView, frame.overlay)
             : undefined;
-        activeRenderer.render(frame.projectionView, frame.camera, frame.timeSeconds, drawOverlay);
+        activeRenderer.render(
+          frame.projectionView,
+          frame.camera,
+          frame.timeSeconds,
+          drawOverlay,
+        );
       },
       dispose,
     };

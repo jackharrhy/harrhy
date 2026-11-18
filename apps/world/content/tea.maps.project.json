@@ -6,7 +6,9 @@
   "resources": {
     "wads": ["hall.wad"],
     "spriteRoots": [],
-    "entityDefinitions": [{ "path": "trenchbroom/World Hall/Hall.fgd", "format": "fgd" }]
+    "entityDefinitions": [
+      { "path": "trenchbroom/World Hall/Hall.fgd", "format": "fgd" }
+    ]
   },
   "buildProfiles": []
 }

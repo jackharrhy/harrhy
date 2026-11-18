@@ -12,7 +12,11 @@ const floor: GoldSrcHullSweep = (start, end) => {
   return {
     fraction,
     endPosition: hit
-      ? [start[0] + (end[0] - start[0]) * fraction, start[1] + (end[1] - start[1]) * fraction, 0]
+      ? [
+          start[0] + (end[0] - start[0]) * fraction,
+          start[1] + (end[1] - start[1]) * fraction,
+          0,
+        ]
       : end,
     planeNormal: hit ? [0, 0, 1] : [0, 0, 0],
     startSolid: false,

@@ -9,8 +9,18 @@ import {
 } from "bitecs";
 import type { BspCollision } from "./bsp-collision";
 import { HALL_SPAWN } from "@harrhy/pool-simulation/geometry";
-import { motionPose, motionState, stepMotion, type MotionState } from "./motion";
-import { validateInput, type InputCommand, type Pose, type Snapshot } from "./protocol";
+import {
+  motionPose,
+  motionState,
+  stepMotion,
+  type MotionState,
+} from "./motion";
+import {
+  validateInput,
+  type InputCommand,
+  type Pose,
+  type Snapshot,
+} from "./protocol";
 
 function spawn(id: string, index: number): Pose {
   const slot = index % 48;
@@ -34,7 +44,9 @@ function spawn(id: string, index: number): Pose {
 export async function createRoom(collision?: BspCollision) {
   const { halfHeight, sweep } = collision ?? {};
   const ecs = createWorld();
-  const Player = aos<MotionState & { pending?: InputCommand[] }>();
+  const Player = aos<
+    (MotionState & { pending?: InputCommand[] }) | undefined
+  >();
   const ids = new Map<string, number>();
   let tick = 0;
   let nextSpawn = 0;
@@ -44,27 +56,32 @@ export async function createRoom(collision?: BspCollision) {
     join(id: string): Pose {
       if (disposed) throw new Error("Room is disposed");
       const existing = ids.get(id);
-      if (existing !== undefined) return motionPose(Player[existing], halfHeight);
+      if (existing !== undefined)
+        return motionPose(Player[existing]!, halfHeight);
       const eid = addEntity(ecs);
       addComponent(ecs, eid, Player);
-      Player[eid] = motionState({ ...spawn(id, nextSpawn++), ...collision?.spawn }, halfHeight);
+      Player[eid] = motionState(
+        { ...spawn(id, nextSpawn++), ...collision?.spawn },
+        halfHeight,
+      );
       ids.set(id, eid);
-      return motionPose(Player[eid], halfHeight);
+      return motionPose(Player[eid]!, halfHeight);
     },
     leave(id: string): boolean {
       const eid = ids.get(id);
       if (eid === undefined) return false;
       ids.delete(id);
       removeEntity(ecs, eid);
-      delete Player[eid];
+      Player[eid] = undefined;
       return true;
     },
     input(id: string, value: unknown): boolean {
       const eid = ids.get(id);
       if (eid === undefined) return false;
       const cmd = validateInput(value);
-      const player = Player[eid];
-      if (!cmd || cmd.seq <= (player.pending?.at(-1)?.seq ?? player.ack)) return false;
+      const player = Player[eid]!;
+      if (!cmd || cmd.seq <= (player.pending?.at(-1)?.seq ?? player.ack))
+        return false;
       const queue = (player.pending ??= []);
       if (queue.length >= 8) queue.shift();
       queue.push(cmd);
@@ -73,7 +90,7 @@ export async function createRoom(collision?: BspCollision) {
     step() {
       if (disposed) throw new Error("Room is disposed");
       for (const eid of query(ecs, [Player])) {
-        const player = Player[eid];
+        const player = Player[eid]!;
         stepMotion(player, player.pending?.shift(), sweep);
       }
       tick++;
@@ -83,7 +100,9 @@ export async function createRoom(collision?: BspCollision) {
         tick,
         players: disposed
           ? []
-          : Array.from(query(ecs, [Player]), (eid) => motionPose(Player[eid], halfHeight)),
+          : Array.from(query(ecs, [Player]), (eid) =>
+              motionPose(Player[eid]!, halfHeight),
+            ),
       };
     },
     dispose() {

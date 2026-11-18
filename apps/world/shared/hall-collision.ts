@@ -24,7 +24,14 @@ function plane(normal: Vec3, distance: number): Plane {
   };
 }
 
-function box(minX: number, maxX: number, minY: number, maxY: number, minZ: number, maxZ: number) {
+function box(
+  minX: number,
+  maxX: number,
+  minY: number,
+  maxY: number,
+  minZ: number,
+  maxZ: number,
+) {
   return [
     plane([1, 0, 0], -minZ),
     plane([-1, 0, 0], maxZ),
@@ -52,16 +59,22 @@ const solids = [
     BAR.z - BAR.depth / 2 - 0.1,
     BAR.z + BAR.depth / 2 + 0.1,
   ),
-  ...STOOLS.map(({ x, y, z }) => box(x - 0.25, x + 0.25, 0, y, z - 0.25, z + 0.25)),
+  ...STOOLS.map(({ x, y, z }) =>
+    box(x - 0.25, x + 0.25, 0, y, z - 0.25, z + 0.25),
+  ),
   [
     ...box(highX, lowX, 0, height, minZ, maxZ),
-    plane([0, -rise / slopeLength, 1 / slopeLength], (rise * lowX) / slopeLength),
+    plane(
+      [0, -rise / slopeLength, 1 / slopeLength],
+      (rise * lowX) / slopeLength,
+    ),
   ],
 ];
 
 function signedDistance(point: Vec3, { normal, distance }: Plane) {
   return (
-    (point[0] * normal[0] + point[1] * normal[1] + point[2] * normal[2]) / UNITS_PER_METRE -
+    (point[0] * normal[0] + point[1] * normal[1] + point[2] * normal[2]) /
+      UNITS_PER_METRE -
     distance
   );
 }

@@ -2,11 +2,27 @@ import { expect, test } from "bun:test";
 import { makeBsp } from "../../../packages/maps-renderer/__tests__/fixtures";
 import { loadBspCollision } from "../shared/bsp-collision";
 import { createMotion } from "../shared/motion";
-import { parseInput, TICK_HZ, validateInput, type InputCommand } from "../shared/protocol";
+import {
+  parseInput,
+  TICK_HZ,
+  validateInput,
+  type InputCommand,
+} from "../shared/protocol";
 import { createRoom } from "../shared/room";
 
-function command(seq: number, fields: Partial<InputCommand> = {}): InputCommand {
-  return { seq, forward: 0, strafe: 0, jump: false, yaw: 0, pitch: 0, ...fields };
+function command(
+  seq: number,
+  fields: Partial<InputCommand> = {},
+): InputCommand {
+  return {
+    seq,
+    forward: 0,
+    strafe: 0,
+    jump: false,
+    yaw: 0,
+    pitch: 0,
+    ...fields,
+  };
 }
 
 test("validates and copies movement input", () => {
@@ -26,9 +42,9 @@ test("validates and copies movement input", () => {
     expect(validateInput(value)).toBeNull();
   }
   expect(parseInput("{")).toBeNull();
-  expect(parseInput(JSON.stringify({ ...command(1, { yaw: 3 * Math.PI }), x: 100 }))).toEqual(
-    command(1, { yaw: Math.PI }),
-  );
+  expect(
+    parseInput(JSON.stringify({ ...command(1, { yaw: 3 * Math.PI }), x: 100 })),
+  ).toEqual(command(1, { yaw: Math.PI }));
 });
 
 test("room accepts only newer inputs, advances once per tick, and isolates players", async () => {
@@ -51,7 +67,10 @@ test("room accepts only newer inputs, advances once per tick, and isolates playe
     room.step();
     const snapshot = room.snapshot();
     expect(snapshot.tick).toBe(2);
-    expect(snapshot.players.find(({ id }) => id === "a")).toMatchObject({ ack: 2, pitch: 0.25 });
+    expect(snapshot.players.find(({ id }) => id === "a")).toMatchObject({
+      ack: 2,
+      pitch: 0.25,
+    });
     expect(snapshot.players.find(({ id }) => id === "b")).toMatchObject({
       x: other.x,
       z: other.z,
@@ -65,7 +84,7 @@ test("room accepts only newer inputs, advances once per tick, and isolates playe
       room
         .snapshot()
         .players.map(({ id }) => id)
-        .sort(),
+        .toSorted(),
     ).toEqual(["b", "c"]);
   } finally {
     room.dispose();
@@ -81,7 +100,11 @@ test("Authority and predictor agree on yaw-relative motion, jump, landing and wa
     let correction = initial;
     const replay: InputCommand[] = [];
     for (let seq = 1; seq <= TICK_HZ * 3; seq++) {
-      const cmd = command(seq, { forward: 1, yaw: Math.PI / 2, jump: seq === 15 });
+      const cmd = command(seq, {
+        forward: 1,
+        yaw: Math.PI / 2,
+        jump: seq === 15,
+      });
       room.input("a", cmd);
       room.step();
       const pose = room.snapshot().players[0];
@@ -130,9 +153,19 @@ test("BSP30 revision identifies loaded bytes and requires a valid standing spawn
   const a = await loadBspCollision(floorBsp());
   expect(a.revision).toMatch(/^bsp30-v1-[0-9a-f]{64}$/);
   expect((await loadBspCollision(floorBsp())).revision).toBe(a.revision);
-  expect((await loadBspCollision(floorBsp(30, "121 -60 48"))).revision).not.toBe(a.revision);
-  await expect(loadBspCollision(floorBsp(29))).rejects.toThrow("BSP30");
-  await expect(loadBspCollision(floorBsp(30, "120 -60 0"))).rejects.toThrow("walkable ground");
+  expect(
+    (await loadBspCollision(floorBsp(30, "121 -60 48"))).revision,
+  ).not.toBe(a.revision);
+  for (const [bytes, message] of [
+    [floorBsp(29), "BSP30"],
+    [floorBsp(30, "120 -60 0"), "walkable ground"],
+  ] as const) {
+    const result = await loadBspCollision(bytes).catch(
+      (error: unknown) => error,
+    );
+    expect(result).toBeInstanceOf(Error);
+    expect((result as Error).message).toContain(message);
+  }
 });
 
 test("BSP authority and prediction agree on hull-1 spawn, jumping and landing", async () => {

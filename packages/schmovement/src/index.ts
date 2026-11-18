@@ -61,7 +61,9 @@ export type GoldSrcHullSweep<T extends GoldSrcHullTrace = GoldSrcHullTrace> = (
   end: Vec3Tuple,
 ) => T;
 
-export interface GoldSrcMovementResult<T extends GoldSrcHullTrace = GoldSrcHullTrace> {
+export interface GoldSrcMovementResult<
+  T extends GoldSrcHullTrace = GoldSrcHullTrace,
+> {
   readonly state: GoldSrcMovementState;
   readonly horizontalDistance: number;
   readonly jumped: boolean;
@@ -121,7 +123,10 @@ function accelerate(
 ): void {
   const additionalSpeed = wishSpeed - dot(state.velocity, wishDirection);
   if (additionalSpeed <= 0) return;
-  const accelerationSpeed = Math.min(additionalSpeed, acceleration * deltaSeconds * wishSpeed);
+  const accelerationSpeed = Math.min(
+    additionalSpeed,
+    acceleration * deltaSeconds * wishSpeed,
+  );
   state.velocity[0] += accelerationSpeed * wishDirection[0];
   state.velocity[1] += accelerationSpeed * wishDirection[1];
   state.velocity[2] += accelerationSpeed * wishDirection[2];
@@ -145,7 +150,11 @@ function wishVelocity(
   return { direction: [x, y, 0], speed: maximumSpeed * commandScale };
 }
 
-function flyMove(sweep: GoldSrcHullSweep, state: MutableState, deltaSeconds: number): void {
+function flyMove(
+  sweep: GoldSrcHullSweep,
+  state: MutableState,
+  deltaSeconds: number,
+): void {
   let timeLeft = deltaSeconds;
   let originalVelocity = mutable(state.velocity);
   const primalVelocity = mutable(state.velocity);
@@ -153,7 +162,12 @@ function flyMove(sweep: GoldSrcHullSweep, state: MutableState, deltaSeconds: num
   let movedFraction = 0;
 
   for (let bump = 0; bump < 4; bump += 1) {
-    if (state.velocity[0] === 0 && state.velocity[1] === 0 && state.velocity[2] === 0) break;
+    if (
+      state.velocity[0] === 0 &&
+      state.velocity[1] === 0 &&
+      state.velocity[2] === 0
+    )
+      break;
     const end: Vec3Tuple = [
       state.origin[0] + state.velocity[0] * timeLeft,
       state.origin[1] + state.velocity[1] * timeLeft,
@@ -182,7 +196,11 @@ function flyMove(sweep: GoldSrcHullSweep, state: MutableState, deltaSeconds: num
     let clipped: MutableVec3 | undefined;
     for (let planeIndex = 0; planeIndex < planes.length; planeIndex += 1) {
       const candidate = clipVelocity(originalVelocity, planes[planeIndex]!);
-      if (planes.every((plane, index) => index === planeIndex || dot(candidate, plane) >= 0)) {
+      if (
+        planes.every(
+          (plane, index) => index === planeIndex || dot(candidate, plane) >= 0,
+        )
+      ) {
         clipped = candidate;
         break;
       }
@@ -194,7 +212,11 @@ function flyMove(sweep: GoldSrcHullSweep, state: MutableState, deltaSeconds: num
       }
       const crease = cross(planes[0]!, planes[1]!);
       const alongCrease = dot(crease, state.velocity);
-      clipped = [crease[0] * alongCrease, crease[1] * alongCrease, crease[2] * alongCrease];
+      clipped = [
+        crease[0] * alongCrease,
+        crease[1] * alongCrease,
+        crease[2] * alongCrease,
+      ];
     }
     state.velocity = clipped;
     if (dot(state.velocity, primalVelocity) <= 0) {
@@ -263,23 +285,35 @@ function walkMove(
 
   state.origin = mutable(originalOrigin);
   state.velocity = mutable(originalVelocity);
-  const upEnd: Vec3Tuple = [state.origin[0], state.origin[1], state.origin[2] + config.stepSize];
+  const upEnd: Vec3Tuple = [
+    state.origin[0],
+    state.origin[1],
+    state.origin[2] + config.stepSize,
+  ];
   const upTrace = sweep(state.origin, upEnd);
-  if (!upTrace.startSolid && !upTrace.allSolid) state.origin = mutable(upTrace.endPosition);
+  if (!upTrace.startSolid && !upTrace.allSolid)
+    state.origin = mutable(upTrace.endPosition);
   flyMove(sweep, state, deltaSeconds);
-  const stepDown: Vec3Tuple = [state.origin[0], state.origin[1], state.origin[2] - config.stepSize];
+  const stepDown: Vec3Tuple = [
+    state.origin[0],
+    state.origin[1],
+    state.origin[2] - config.stepSize,
+  ];
   const stepTrace = sweep(state.origin, stepDown);
   if (stepTrace.planeNormal[2] < 0.7) {
     state.origin = downOrigin;
     state.velocity = downVelocity;
     return;
   }
-  if (!stepTrace.startSolid && !stepTrace.allSolid) state.origin = mutable(stepTrace.endPosition);
+  if (!stepTrace.startSolid && !stepTrace.allSolid)
+    state.origin = mutable(stepTrace.endPosition);
 
   const downDistance =
-    (downOrigin[0] - originalOrigin[0]) ** 2 + (downOrigin[1] - originalOrigin[1]) ** 2;
+    (downOrigin[0] - originalOrigin[0]) ** 2 +
+    (downOrigin[1] - originalOrigin[1]) ** 2;
   const upDistance =
-    (state.origin[0] - originalOrigin[0]) ** 2 + (state.origin[1] - originalOrigin[1]) ** 2;
+    (state.origin[0] - originalOrigin[0]) ** 2 +
+    (state.origin[1] - originalOrigin[1]) ** 2;
   if (downDistance > upDistance) {
     state.origin = downOrigin;
     state.velocity = downVelocity;
@@ -317,15 +351,24 @@ function categorizePosition<T extends GoldSrcHullTrace>(
     state.onGround = false;
     return null;
   }
-  const below: Vec3Tuple = [state.origin[0], state.origin[1], state.origin[2] - 2];
+  const below: Vec3Tuple = [
+    state.origin[0],
+    state.origin[1],
+    state.origin[2] - 2,
+  ];
   const trace = sweep(state.origin, below);
   state.onGround =
-    !trace.allSolid && !trace.startSolid && trace.fraction < 1 && trace.planeNormal[2] >= 0.7;
+    !trace.allSolid &&
+    !trace.startSolid &&
+    trace.fraction < 1 &&
+    trace.planeNormal[2] >= 0.7;
   if (state.onGround) state.origin = mutable(trace.endPosition);
   return state.onGround ? trace : null;
 }
 
-export function createGoldSrcMovementState(origin: Vec3Tuple): GoldSrcMovementState {
+export function createGoldSrcMovementState(
+  origin: Vec3Tuple,
+): GoldSrcMovementState {
   return {
     origin: mutable(origin),
     velocity: [0, 0, 0],
@@ -366,7 +409,8 @@ export function moveGoldSrcPlayerWithSweep<T extends GoldSrcHullTrace>(
     }
     state.onGround = false;
     state.velocity[2] =
-      Math.sqrt(2 * 800 * (config.jumpHeight ?? 45)) - config.gravity * delta * 0.5;
+      Math.sqrt(2 * 800 * (config.jumpHeight ?? 45)) -
+      config.gravity * delta * 0.5;
     jumped = true;
   }
   state.jumpHeld = input.jump;
@@ -385,7 +429,10 @@ export function moveGoldSrcPlayerWithSweep<T extends GoldSrcHullTrace>(
   const landed = !initiallyGrounded && !jumped && state.onGround;
   state.velocity[2] -= config.gravity * delta * 0.5;
   if (state.onGround) state.velocity[2] = 0;
-  const horizontalDistance = Math.hypot(state.origin[0] - start[0], state.origin[1] - start[1]);
+  const horizontalDistance = Math.hypot(
+    state.origin[0] - start[0],
+    state.origin[1] - start[1],
+  );
   return {
     state: {
       origin: mutable(state.origin),

@@ -20,7 +20,8 @@ export const woodTheme = themeStyles(
     controlRadius: "3px",
     panelRadius: "3px",
     panelPadding: "0.625rem 0.75rem",
-    panelImage: 'linear-gradient(#281a1240, #281a1266), url("/textures/hall-trim-wood.webp")',
+    panelImage:
+      'linear-gradient(#281a1240, #281a1266), url("/textures/hall-trim-wood.webp")',
     buttonShadow: "inset 0 1px 0 #e4c58b40",
     space: "0.5rem",
   }),

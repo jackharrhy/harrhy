@@ -48,7 +48,11 @@ export async function createSceneOverlay(
       ],
     },
     fragment: { module, entryPoint: "fragment", targets: [{ format }] },
-    depthStencil: { format: "depth24plus", depthWriteEnabled: true, depthCompare: "less-equal" },
+    depthStencil: {
+      format: "depth24plus",
+      depthWriteEnabled: true,
+      depthCompare: "less-equal",
+    },
     multisample: { count: RENDER_SAMPLE_COUNT },
   });
   const atlas = device.createTexture({
@@ -70,10 +74,11 @@ export async function createSceneOverlay(
     atlas.destroy();
   };
   try {
-    device.queue.copyExternalImageToTexture({ source: image }, { texture: atlas }, [
-      image.width,
-      image.height,
-    ]);
+    device.queue.copyExternalImageToTexture(
+      { source: image },
+      { texture: atlas },
+      [image.width, image.height],
+    );
     const group = device.createBindGroup({
       layout: pipeline.getBindGroupLayout(0),
       entries: [
@@ -83,10 +88,16 @@ export async function createSceneOverlay(
       ],
     });
     return {
-      prepare(projectionView: Float32Array<ArrayBuffer>, triangles: Float32Array<ArrayBuffer>) {
+      prepare(
+        projectionView: Float32Array<ArrayBuffer>,
+        triangles: Float32Array<ArrayBuffer>,
+      ) {
         if (!vertices || vertices.size < triangles.byteLength) {
           const next = device.createBuffer({
-            size: Math.max(4096, 2 ** Math.ceil(Math.log2(triangles.byteLength))),
+            size: Math.max(
+              4096,
+              2 ** Math.ceil(Math.log2(triangles.byteLength)),
+            ),
             usage: GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_DST,
           });
           vertices?.destroy();

@@ -4,7 +4,11 @@ import {
   type GoldSrcMovementState,
 } from "@harrhy/schmovement";
 import type { BspCollision } from "./bsp-collision";
-import { HALF_HEIGHT, sweepHall, UNITS_PER_METRE as SCALE } from "./hall-collision";
+import {
+  HALF_HEIGHT,
+  sweepHall,
+  UNITS_PER_METRE as SCALE,
+} from "./hall-collision";
 import { TICK_SECONDS, type InputCommand, type Pose } from "./protocol";
 
 const WORLD_MOVEMENT = {
@@ -27,7 +31,11 @@ export function motionState(pose: Pose, halfHeight = HALF_HEIGHT): MotionState {
     id: pose.id,
     movement: {
       origin: [-pose.z * SCALE, -pose.x * SCALE, (pose.y + halfHeight) * SCALE],
-      velocity: [-pose.velocityZ * SCALE, -pose.velocityX * SCALE, pose.verticalVelocity * SCALE],
+      velocity: [
+        -pose.velocityZ * SCALE,
+        -pose.velocityX * SCALE,
+        pose.verticalVelocity * SCALE,
+      ],
       onGround: pose.grounded,
       jumpHeld: pose.jumpHeld,
     },
@@ -56,7 +64,11 @@ export function motionPose(state: MotionState, halfHeight = HALF_HEIGHT): Pose {
   };
 }
 
-export function stepMotion(state: MotionState, cmd?: InputCommand, sweep = sweepHall) {
+export function stepMotion(
+  state: MotionState,
+  cmd?: InputCommand,
+  sweep = sweepHall,
+) {
   state.movement = moveGoldSrcPlayerWithSweep(
     sweep,
     state.movement,

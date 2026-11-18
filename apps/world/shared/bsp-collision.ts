@@ -16,7 +16,9 @@ export type BspCollision = {
   spawn: Pick<Pose, "x" | "y" | "z" | "grounded">;
 };
 
-export async function loadBspCollision(bytes: ArrayBuffer): Promise<BspCollision> {
+export async function loadBspCollision(
+  bytes: ArrayBuffer,
+): Promise<BspCollision> {
   if (identifyBsp(bytes)?.format !== "goldsrc-bsp30")
     throw new Error("World requires a GoldSrc BSP30 map");
   const world = parseBsp(bytes);
@@ -30,24 +32,43 @@ export async function loadBspCollision(bytes: ArrayBuffer): Promise<BspCollision
     entities: world.entities,
     models: world.models,
   };
-  const sweep: GoldSrcHullSweep = (start, end) => tracePlayerHull(collisionWorld, start, end);
+  const sweep: GoldSrcHullSweep = (start, end) =>
+    tracePlayerHull(collisionWorld, start, end);
   const playerStart = world.entities.find(
     (entity) => entityValue(entity, "classname") === "info_player_start",
   );
-  const origin = playerStart && entityValue(playerStart, "origin")?.trim().split(/\s+/).map(Number);
+  const origin =
+    playerStart &&
+    entityValue(playerStart, "origin")?.trim().split(/\s+/).map(Number);
   if (!origin || origin.length !== 3 || !origin.every(Number.isFinite))
-    throw new Error("World map requires an info_player_start with a valid hull-centre origin");
+    throw new Error(
+      "World map requires an info_player_start with a valid hull-centre origin",
+    );
   const start: Vec3Tuple = [origin[0], origin[1], origin[2]];
   const floor = sweep(start, [start[0], start[1], start[2] - 72]);
-  if (floor.startSolid || floor.allSolid || floor.fraction === 1 || floor.planeNormal[2] < 0.7)
-    throw new Error("World map spawn must be clear and within 72 units of walkable ground");
+  if (
+    floor.startSolid ||
+    floor.allSolid ||
+    floor.fraction === 1 ||
+    floor.planeNormal[2] < 0.7
+  )
+    throw new Error(
+      "World map spawn must be clear and within 72 units of walkable ground",
+    );
   const [x, y, z] = floor.endPosition;
   const hash = new Uint8Array(await crypto.subtle.digest("SHA-256", bytes));
-  const digest = Array.from(hash, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  const digest = Array.from(hash, (byte) =>
+    byte.toString(16).padStart(2, "0"),
+  ).join("");
   return {
     halfHeight,
     sweep,
     revision: `bsp30-v1-${digest}`,
-    spawn: { x: -y / SCALE, y: z / SCALE - halfHeight, z: -x / SCALE, grounded: true },
+    spawn: {
+      x: -y / SCALE,
+      y: z / SCALE - halfHeight,
+      z: -x / SCALE,
+      grounded: true,
+    },
   };
 }

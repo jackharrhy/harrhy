@@ -12,12 +12,18 @@ import {
 } from "../shared/protocol";
 
 const port = Number(process.env.HARRHY_WORLD_PORT ?? 3189);
-const origin = new URL(process.env.HARRHY_WORLD_ORIGIN ?? `http://127.0.0.1:${port}`).origin;
+const origin = new URL(
+  process.env.HARRHY_WORLD_ORIGIN ?? `http://127.0.0.1:${port}`,
+).origin;
 const assets = resolve(import.meta.dir, "../client");
 const map = process.env.HARRHY_WORLD_MAP ?? "legacy";
-if (map !== "legacy" && map !== "bsp") throw new Error(`Unknown World map mode: ${map}`);
+if (map !== "legacy" && map !== "bsp")
+  throw new Error(`Unknown World map mode: ${map}`);
 // Serve the exact bytes used for collision, even if the file on disk is replaced.
-const bsp = map === "bsp" ? await Bun.file(assets + BSP_MAP_PATH).arrayBuffer() : undefined;
+const bsp =
+  map === "bsp"
+    ? await Bun.file(assets + BSP_MAP_PATH).arrayBuffer()
+    : undefined;
 const collision = bsp && (await loadBspCollision(bsp));
 const revision = collision?.revision ?? LEGACY_MAP_REVISION;
 const ready: MapReady = { status: "ready", map, revision };
@@ -36,15 +42,21 @@ const server = Bun.serve<Peer>({
     const incoming = new URL(request.url);
     const path = incoming.pathname;
     if (request.method === "GET" && path === "/room") {
-      if (request.headers.get("origin") !== origin) return new Response(null, { status: 403 });
+      if (request.headers.get("origin") !== origin)
+        return new Response(null, { status: 403 });
       const requested = incoming.searchParams.getAll("revision");
       if (
         !(map === "legacy" && requested.length === 0) &&
         !(requested.length === 1 && requested[0] === revision)
       )
         return new Response("World map revision mismatch", { status: 409 });
-      if (peers.size + reserved >= 12) return new Response("Room is full", { status: 503 });
-      if (host.upgrade(request, { data: { id: crypto.randomUUID(), rateStart: 0, messages: 0 } })) {
+      if (peers.size + reserved >= 12)
+        return new Response("Room is full", { status: 503 });
+      if (
+        host.upgrade(request, {
+          data: { id: crypto.randomUUID(), rateStart: 0, messages: 0 },
+        })
+      ) {
         reserved++;
         return;
       }
@@ -63,15 +75,23 @@ const server = Bun.serve<Peer>({
           "X-Content-Type-Options": "nosniff",
         },
       });
-    if (path === "/world.css" || /^\/(?:assets|textures|billboard)\/[a-zA-Z0-9._-]+$/.test(path)) {
+    if (
+      path === "/world.css" ||
+      /^\/(?:assets|textures|billboard)\/[a-zA-Z0-9._-]+$/.test(path)
+    ) {
       const file = Bun.file(assets + path);
       if (await file.exists())
         return new Response(request.method === "HEAD" ? null : file, {
-          headers: { "Content-Type": file.type, "X-Content-Type-Options": "nosniff" },
+          headers: {
+            "Content-Type": file.type,
+            "X-Content-Type-Options": "nosniff",
+          },
         });
     }
     if (path !== "/") return new Response(null, { status: 404 });
-    const response = await router.fetch(new Request(new URL(path, origin), request));
+    const response = await router.fetch(
+      new Request(new URL(path, origin), request),
+    );
     response.headers.set("Cache-Control", "private, no-store");
     return response;
   },
@@ -98,7 +118,10 @@ const server = Bun.serve<Peer>({
         ws.data.rateStart = now;
         ws.data.messages = 0;
       }
-      if (++ws.data.messages > 120) return void ws.close(1008, "Input rate limit");
+      if (++ws.data.messages > 120) {
+        ws.close(1008, "Input rate limit");
+        return;
+      }
       const input = typeof payload === "string" ? parseInput(payload) : null;
       if (input) room.input(ws.data.id, input);
     },
@@ -116,8 +139,12 @@ const timer = setInterval(() => {
   if (!peers.size) return;
   room.step();
   if (++frame % 3 !== 0) return;
-  const message = JSON.stringify({ type: "motion", ...room.snapshot() } satisfies ServerMessage);
-  for (const ws of peers.values()) if (ws.getBufferedAmount() < 4096) ws.send(message);
+  const message = JSON.stringify({
+    type: "motion",
+    ...room.snapshot(),
+  } satisfies ServerMessage);
+  for (const ws of peers.values())
+    if (ws.getBufferedAmount() < 4096) ws.send(message);
 }, TICK_MS);
 for (const signal of ["SIGINT", "SIGTERM"] as const)
   process.once(signal, () => {

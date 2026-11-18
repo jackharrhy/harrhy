@@ -1,4 +1,7 @@
-import { createEmbeddedMapsScene, type EmbeddedMapsScene } from "@harrhy/worldview-renderer";
+import {
+  createEmbeddedMapsScene,
+  type EmbeddedMapsScene,
+} from "@harrhy/worldview-renderer";
 import * as THREE from "three/webgpu";
 import { UNITS_PER_METRE as scale } from "../shared/hall-collision";
 import { billboardAtlasPath, loadBillboardLayout } from "./player-billboard";
@@ -8,7 +11,15 @@ type View = Awaited<ReturnType<typeof createView>>;
 type Pose = Parameters<View["draw"]>[0];
 type Layout = Awaited<ReturnType<typeof loadBillboardLayout>>;
 
-function bspPosition({ x, y, z }: { x: number; y: number; z: number }): [number, number, number] {
+function bspPosition({
+  x,
+  y,
+  z,
+}: {
+  x: number;
+  y: number;
+  z: number;
+}): [number, number, number] {
   return [-z * scale, -x * scale, y * scale];
 }
 
@@ -37,13 +48,21 @@ function pickingMesh(world: EmbeddedMapsScene["world"]) {
   const positions = new Float32Array((world.vertices.length / 7) * 3);
   for (let v = 0; v < world.vertices.length; v += 7) {
     positions.set(
-      [-world.vertices[v + 1] / scale, world.vertices[v + 2] / scale, -world.vertices[v] / scale],
+      [
+        -world.vertices[v + 1] / scale,
+        world.vertices[v + 2] / scale,
+        -world.vertices[v] / scale,
+      ],
       (v / 7) * 3,
     );
   }
   const indices: number[] = [];
   for (const face of world.faces) {
-    if (!world.models[face.modelIndex]?.visible || face.kind === "tool" || face.kind === "sky")
+    if (
+      !world.models[face.modelIndex]?.visible ||
+      face.kind === "tool" ||
+      face.kind === "sky"
+    )
       continue;
     for (let i = face.firstIndex; i < face.firstIndex + face.indexCount; i++)
       indices.push(world.indices[i]);
@@ -51,7 +70,10 @@ function pickingMesh(world: EmbeddedMapsScene["world"]) {
   const geometry = new THREE.BufferGeometry();
   geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   geometry.setIndex(indices);
-  return new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }));
+  return new THREE.Mesh(
+    geometry,
+    new THREE.MeshBasicMaterial({ side: THREE.DoubleSide }),
+  );
 }
 
 function appendBillboard(
@@ -65,7 +87,10 @@ function appendBillboard(
     player.y + layout.playerCollider.heightMeters / 2,
     player.z,
   );
-  const direction = camera.position.clone().sub(center).applyAxisAngle(up, -player.yaw);
+  const direction = camera.position
+    .clone()
+    .sub(center)
+    .applyAxisAngle(up, -player.yaw);
   let index = 0;
   let best = -Infinity;
   for (let i = 0; i < layout.views.length; i++) {
@@ -85,8 +110,12 @@ function appendBillboard(
     )
       .applyQuaternion(camera.quaternion)
       .add(center);
-    const u = (col + (0.5 + x * (layout.frameWidth - 1)) / layout.frameWidth) / layout.columns;
-    const v = (row + (0.5 + y * (layout.frameHeight - 1)) / layout.frameHeight) / layout.rows;
+    const u =
+      (col + (0.5 + x * (layout.frameWidth - 1)) / layout.frameWidth) /
+      layout.columns;
+    const v =
+      (row + (0.5 + y * (layout.frameHeight - 1)) / layout.frameHeight) /
+      layout.rows;
     return [...bspPosition(position), u, v, 1, 1, 1];
   };
   const tl = quad(0, 0),
@@ -96,10 +125,18 @@ function appendBillboard(
   out.push(...tl, ...bl, ...tr, ...tr, ...bl, ...br);
 }
 
-function appendMarker(out: number[], center: THREE.Vector3, normal: THREE.Vector3) {
+function appendMarker(
+  out: number[],
+  center: THREE.Vector3,
+  normal: THREE.Vector3,
+) {
   const rotation = new THREE.Quaternion().setFromUnitVectors(up, normal);
   const point = (angle: number, radius: number) => {
-    const position = new THREE.Vector3(Math.cos(angle) * radius, 0.015, Math.sin(angle) * radius)
+    const position = new THREE.Vector3(
+      Math.cos(angle) * radius,
+      0.015,
+      Math.sin(angle) * radius,
+    )
       .applyQuaternion(rotation)
       .add(center);
     return [...bspPosition(position), -1, 0, 0.96, 0.82, 0.55];
@@ -115,18 +152,26 @@ function appendMarker(out: number[], center: THREE.Vector3, normal: THREE.Vector
   }
 }
 
-export async function createBspView(canvas: HTMLCanvasElement, bytes: ArrayBuffer): Promise<View> {
+export async function createBspView(
+  canvas: HTMLCanvasElement,
+  bytes: ArrayBuffer,
+): Promise<View> {
   const [layout, image] = await Promise.all([
     loadBillboardLayout(),
     fetch(billboardAtlasPath).then((response) => {
-      if (!response.ok) throw new Error(`Loading billboard atlas: HTTP ${response.status}`);
+      if (!response.ok)
+        throw new Error(`Loading billboard atlas: HTTP ${response.status}`);
       return response.blob();
     }),
   ]);
   const atlas = await createImageBitmap(image);
   let scene: EmbeddedMapsScene;
   try {
-    scene = await createEmbeddedMapsScene({ canvas, source: { bsp: bytes }, overlayAtlas: atlas });
+    scene = await createEmbeddedMapsScene({
+      canvas,
+      source: { bsp: bytes },
+      overlayAtlas: atlas,
+    });
   } finally {
     atlas.close();
   }
@@ -141,7 +186,12 @@ export async function createBspView(canvas: HTMLCanvasElement, bytes: ArrayBuffe
   }
   const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
   camera.coordinateSystem = THREE.WebGPUCoordinateSystem;
-  const ray = new THREE.Raycaster(undefined, undefined, camera.near, camera.far);
+  const ray = new THREE.Raycaster(
+    undefined,
+    undefined,
+    camera.near,
+    camera.far,
+  );
   const projectionView = new THREE.Matrix4();
   let floor: { point: THREE.Vector3; normal: THREE.Vector3 } | undefined;
   let drewFrame = false;
@@ -182,7 +232,9 @@ export async function createBspView(canvas: HTMLCanvasElement, bytes: ArrayBuffe
       camera.rotation.set(local.pitch, local.yaw, 0, "YXZ");
       if (avatar) {
         camera.position.y -= 0.5;
-        const back = new THREE.Vector3(0, 0, 1).applyQuaternion(camera.quaternion);
+        const back = new THREE.Vector3(0, 0, 1).applyQuaternion(
+          camera.quaternion,
+        );
         ray.set(camera.position, back);
         const wall = ray.intersectObject(hall, false)[0];
         const distance = Math.min(
@@ -194,18 +246,30 @@ export async function createBspView(canvas: HTMLCanvasElement, bytes: ArrayBuffe
       }
       camera.updateMatrixWorld();
       const triangles: number[] = [];
-      for (const player of remotes) appendBillboard(triangles, camera, player, layout);
+      for (const player of remotes)
+        appendBillboard(triangles, camera, player, layout);
       if (destination) {
-        if (floor && floor.point.x === destination.x && floor.point.z === destination.z) {
+        if (
+          floor &&
+          floor.point.x === destination.x &&
+          floor.point.z === destination.z
+        ) {
           appendMarker(triangles, floor.point, floor.normal);
         } else {
-          appendMarker(triangles, new THREE.Vector3(destination.x, local.y, destination.z), up);
+          appendMarker(
+            triangles,
+            new THREE.Vector3(destination.x, local.y, destination.z),
+            up,
+          );
         }
       }
       scene.draw({
         projectionView: new Float32Array(
           projectionView
-            .multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse)
+            .multiplyMatrices(
+              camera.projectionMatrix,
+              camera.matrixWorldInverse,
+            )
             .multiply(bspToWorld).elements,
         ),
         camera: {

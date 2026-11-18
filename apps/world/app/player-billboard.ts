@@ -16,13 +16,19 @@ export const billboardAtlasPath = "/billboard/player-billboard.png";
 
 export async function loadBillboardLayout(): Promise<Layout> {
   const response = await fetch("/billboard/player-billboard.json");
-  if (!response.ok) throw new Error(`Loading billboard layout: HTTP ${response.status}`);
+  if (!response.ok)
+    throw new Error(`Loading billboard layout: HTTP ${response.status}`);
   return response.json();
 }
 
 // The atlas encodes unit directions from the character centre to the camera.
 // Rotate into player-local space; normalizing isn't needed for comparing dots.
-function closestView(yaw: number, center: Point, camera: Point, views: Layout["views"]) {
+function closestView(
+  yaw: number,
+  center: Point,
+  camera: Point,
+  views: Layout["views"],
+) {
   const dx = camera.x - center.x;
   const dy = camera.y - center.y;
   const dz = camera.z - center.z;
@@ -43,18 +49,29 @@ function closestView(yaw: number, center: Point, camera: Point, views: Layout["v
   return index;
 }
 
-export function createBillboards(scene: THREE.Scene, atlas: THREE.Texture, layout: Layout) {
+export function createBillboards(
+  scene: THREE.Scene,
+  atlas: THREE.Texture,
+  layout: Layout,
+) {
   atlas.colorSpace = THREE.SRGBColorSpace;
   atlas.magFilter = atlas.minFilter = THREE.NearestFilter;
   atlas.generateMipmaps = false;
-  const material = new THREE.MeshBasicMaterial({ map: atlas, alphaTest: 0.45, toneMapped: false });
+  const material = new THREE.MeshBasicMaterial({
+    map: atlas,
+    alphaTest: 0.45,
+    toneMapped: false,
+  });
   const frames = new Map<number, THREE.PlaneGeometry>();
   const players = new Map<string, THREE.Mesh<THREE.PlaneGeometry>>();
 
   function frame(index: number) {
     const cached = frames.get(index);
     if (cached) return cached;
-    const geometry = new THREE.PlaneGeometry(layout.quad.widthMeters, layout.quad.heightMeters);
+    const geometry = new THREE.PlaneGeometry(
+      layout.quad.widthMeters,
+      layout.quad.heightMeters,
+    );
     const uv = geometry.attributes.uv;
     const col = index % layout.columns;
     const row = layout.rows - 1 - Math.floor(index / layout.columns);
@@ -82,7 +99,9 @@ export function createBillboards(scene: THREE.Scene, atlas: THREE.Texture, layou
           y: player.y + layout.playerCollider.heightMeters / 2,
           z: player.z,
         };
-        const geometry = frame(closestView(player.yaw, center, camera.position, layout.views));
+        const geometry = frame(
+          closestView(player.yaw, center, camera.position, layout.views),
+        );
         let mesh = players.get(player.id);
         if (!mesh) {
           mesh = new THREE.Mesh(geometry, material);

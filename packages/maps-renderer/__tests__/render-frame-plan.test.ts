@@ -84,7 +84,9 @@ describe("compiled-world frame planning", () => {
       needsSkyPass: true,
       needsWorldPass: true,
     });
-    expect(plan(skyWorld, { hasOverlay: true, includeSky: false })).toMatchObject({
+    expect(
+      plan(skyWorld, { hasOverlay: true, includeSky: false }),
+    ).toMatchObject({
       needsSkyPass: false,
       needsWorldPass: true,
     });
