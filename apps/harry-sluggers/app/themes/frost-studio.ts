@@ -38,7 +38,6 @@ export const frostStudio: LabConcept = {
     },
     "& [data-match-meta]": { marginBottom: "5px" },
     "& [data-roster-card]": {
-      background: `${originalBlue[700]}59`,
       borderRadius: "5px",
       padding: "9px",
       gap: "3px",

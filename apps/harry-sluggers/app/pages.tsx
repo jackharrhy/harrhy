@@ -120,7 +120,8 @@ const styles = css({
     gridTemplateRows: "auto 1fr auto",
     alignContent: "start",
     padding: "12px",
-    background: "#1948a599",
+    background: "#203c61",
+    border: "1px solid #a4ccf455",
     borderRadius: "var(--lab-card-radius)",
     overflowWrap: "anywhere",
   },
@@ -135,8 +136,7 @@ const styles = css({
     position: "relative",
     width: "56px",
     height: "56px",
-    background: "#153a8a",
-    borderRadius: "8px",
+    borderRadius: "4px",
     flexShrink: 0,
   },
   "& [data-portrait] img": {
@@ -145,18 +145,9 @@ const styles = css({
     objectFit: "contain",
   },
   "& [data-roster-card] h3": { margin: "6px 0 3px", fontSize: "15px" },
-  "& [data-card-stats]": {
-    display: "grid",
-    gridTemplateColumns: "repeat(3,1fr)",
-    gap: "2px",
-    textAlign: "center",
-    marginTop: "8px",
-    background: "#153a8a",
-    padding: "5px",
-    fontSize: "11px",
-  },
-  "& [data-card-stats] b": { display: "block", fontSize: "15px" },
-  "& [data-badges]": { color: "#fff1a1", fontSize: "12px" },
+  "& [data-player-card]": { textAlign: "center" },
+  "& [data-player-card] [data-portrait]": { width: "40px", height: "40px" },
+  "& [data-badges]": { color: "#fff1a1", fontSize: "11px", minHeight: "16px" },
   "& [data-team-side]": {
     display: "flex",
     flexDirection: "column",
@@ -185,21 +176,19 @@ const styles = css({
     fontSize: "12px",
   },
   "& [data-result=Win], & [data-win]": {
-    background: "#07483c",
     color: "#b6f7d1",
   },
   "& [data-result=Loss], & [data-loss]": {
-    background: "#64233d",
     color: "#ffd7df",
   },
-  "& [data-result=Draw]": { background: "#554217", color: "#fff1a1" },
+  "& [data-result=Draw]": { color: "#fff1a1" },
   "& [data-score] a": {
     display: "grid",
     gridTemplateColumns: "1fr auto 1fr",
     alignItems: "center",
     gap: "3px",
-    background: "#112d70",
-    borderRadius: "6px",
+    background: "#172e50",
+    borderRadius: "4px",
     textDecoration: "none",
   },
   "& [data-score] a span": { borderRadius: "4px" },
@@ -309,22 +298,12 @@ export function page(
   const playerLink = (n: number) => (
     <a href={`/players/${n}`}>{player(n)?.name ?? "Unknown player"}</a>
   );
-  const portraitSource = (type: "player" | "team", n: number, side = false) => {
+  const portraitSource = (type: "player" | "team", n: number) => {
     const name = `${type}-${n}.png`;
-    const sprite = `player-side-${n}.png`;
-    return side && type === "player" && assets.has(sprite)
-      ? `/assets/${sprite}`
-      : assets.has(name)
-        ? `/assets/${name}`
-        : undefined;
+    return assets.has(name) ? `/assets/${name}` : undefined;
   };
-  const image = (
-    type: "player" | "team",
-    n: number,
-    name: string,
-    side = false,
-  ) => {
-    const src = portraitSource(type, n, side);
+  const image = (type: "player" | "team", n: number, name: string) => {
+    const src = portraitSource(type, n);
     return (
       <span data-portrait aria-hidden="true">
         {src ? (
@@ -346,11 +325,10 @@ export function page(
       {players.map((p) => {
         const owner = team(p.team_id);
         const assignment = data.lineups.find((l) => l.player_id === p.id);
-        const stats = data.stats.find((s) => s.character === p.stats_character);
         return (
-          <article data-roster-card>
+          <article data-roster-card data-player-card>
             <div>
-              {image("player", p.id, p.name, true)}
+              {image("player", p.id, p.name)}
               <div data-badges>
                 {owner?.captain_id === p.id ? "Captain " : ""}
                 {assignment?.is_starred ? "Starred" : ""}
@@ -364,17 +342,6 @@ export function page(
                   ? ` · ${assignment.fielding_position}`
                   : ""}
               </small>
-            </div>
-            <div data-card-stats aria-label="Character ratings">
-              <span>
-                BAT <b>{stats?.batting_css ?? "—"}</b>
-              </span>
-              <span>
-                FLD <b>{stats?.fielding_css ?? "—"}</b>
-              </span>
-              <span>
-                SPD <b>{stats?.speed_css ?? "—"}</b>
-              </span>
             </div>
           </article>
         );
