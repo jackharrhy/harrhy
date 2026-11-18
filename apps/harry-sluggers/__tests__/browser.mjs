@@ -130,7 +130,7 @@ try {
       .locator("[data-chemistry] [data-chemistry-note]:visible")
       .count(),
   );
-  await page.locator("h1").hover();
+  await page.locator("[data-brand]").hover();
   assert.equal(await page.locator("[data-chemistry-note]:visible").count(), 0);
   await chemistrySource.focus();
   assert.ok(await page.locator("[data-chemistry-note]:visible").count());
