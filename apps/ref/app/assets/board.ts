@@ -22,6 +22,10 @@ if (!app) throw new Error("Board root is missing");
 const boardId = app.dataset.boardId!;
 const viewport = required<HTMLElement>("#viewport");
 const world = required<HTMLElement>("#world");
+const pickerElement = document.querySelector("select#card-picker");
+if (!(pickerElement instanceof HTMLSelectElement))
+  throw new Error("Card picker is missing");
+const picker = pickerElement;
 const empty = required<HTMLElement>("#empty-state");
 const fileInput = required<HTMLInputElement>("#file-input");
 const inspector = required<HTMLElement>("#inspector-content");
@@ -97,7 +101,8 @@ let viewFrame = 0;
 let zoomLabelTimer = 0;
 let lastZoomLabelAt = -Infinity;
 let imageDetailTimer = 0;
-let snapshotReady = false;
+type Connection = "connecting" | "online" | "offline" | "ended";
+let connectionState: Connection = "connecting";
 const toolOperations = new Map<
   string,
   {
@@ -114,7 +119,7 @@ function disposeBrowserTools() {
 }
 
 function requireToolBoard() {
-  if (!snapshotReady || socket?.readyState !== WebSocket.OPEN)
+  if (connectionState !== "online" || socket?.readyState !== WebSocket.OPEN)
     throw new Error("Board is not live. Wait for reconnection and try again.");
   if (drag || pending.size)
     throw new Error(
@@ -132,7 +137,7 @@ const browserToolCatalog = boardWebMcpTools({
   context: (offset) => ({
     boardId,
     sequence,
-    live: snapshotReady && socket?.readyState === WebSocket.OPEN,
+    live: connectionState === "online" && socket?.readyState === WebSocket.OPEN,
     pendingEdits: pending.size,
     interaction: drag?.kind ?? null,
     selectedItemId: selectedId,
@@ -237,10 +242,8 @@ function registerBrowserTools() {
 }
 window.addEventListener("pagehide", () => {
   pageHidden = true;
-  snapshotReady = false;
-  disposeBrowserTools();
-  clearTimeout(reconnectTimer);
-  socket?.close();
+  stopConnection();
+  if (connectionState !== "ended") setConnection("offline");
 });
 window.addEventListener("pageshow", (event) => {
   if (!event.persisted) return;
@@ -254,14 +257,15 @@ function required<T extends Element>(selector: string): T {
   return element;
 }
 
-function setConnection(value: "online" | "offline" | "connecting") {
+function setConnection(value: Connection) {
+  connectionState = value;
   connection.className = `connection ${value}`;
-  required<HTMLElement>(".connection-text").textContent =
-    value === "online"
-      ? "Live"
-      : value === "offline"
-        ? "Reconnecting"
-        : "Connecting";
+  required<HTMLElement>(".connection-text").textContent = {
+    online: "Live",
+    offline: "Reconnecting",
+    connecting: "Connecting",
+    ended: "Access ended",
+  }[value];
 }
 
 function toast(message: string) {
@@ -275,11 +279,7 @@ function toast(message: string) {
 }
 
 function connect() {
-  if (pageHidden) return;
-  snapshotReady = false;
-  clearTimeout(reconnectTimer);
-  clearInterval(heartbeatTimer);
-  setConnection("connecting");
+  if (pageHidden || connectionState === "ended") return;
   const protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const ws = new WebSocket(
     `${protocol}//${location.host}/api/boards/${boardId}/ws`,
@@ -287,21 +287,14 @@ function connect() {
   socket = ws;
   ws.addEventListener("open", () => {
     if (socket !== ws) return;
-    reconnectDelay = 500;
     lastHeard = Date.now();
-    setConnection("online");
+    const openedAt = lastHeard;
     heartbeatTimer = window.setInterval(() => {
-      if (Date.now() - lastHeard > 12_000) {
-        if (socket === ws) {
-          socket = null;
-          snapshotReady = false;
-          disposeBrowserTools();
-          clearInterval(heartbeatTimer);
-          setConnection("offline");
-          void scheduleReconnect();
-        }
-        if (ws.readyState === WebSocket.OPEN)
-          ws.close(4000, "Connection timed out");
+      if (
+        Date.now() - (connectionState === "online" ? lastHeard : openedAt) >
+        12_000
+      ) {
+        reconnect(ws);
         return;
       }
       if (ws.readyState !== WebSocket.OPEN) return;
@@ -317,32 +310,64 @@ function connect() {
       console.error("Could not read board update", error);
     }
   });
-  ws.addEventListener("close", () => {
+  ws.addEventListener("close", (event) => {
     if (socket !== ws) return;
-    clearInterval(heartbeatTimer);
-    socket = null;
-    snapshotReady = false;
-    disposeBrowserTools();
-    setConnection("offline");
-    void scheduleReconnect();
+    if (event.reason === "Session ended") endAccess();
+    else reconnect(ws);
   });
   ws.addEventListener("error", () => ws.close());
 }
 
-async function scheduleReconnect() {
-  if (pageHidden) return;
+let probe: AbortController | null = null;
+function stopConnection() {
+  clearTimeout(reconnectTimer);
+  clearInterval(heartbeatTimer);
+  probe?.abort();
+  probe = null;
+  const ws = socket;
+  socket = null;
+  ws?.close();
+  disposeBrowserTools();
+}
+
+function endAccess() {
+  stopConnection();
+  setConnection("ended");
+  pending.clear();
+  drag = null;
+  selectedId = null;
+  items.clear();
+  renderItems();
+  empty.hidden = true;
+  required<HTMLButtonElement>("#tool-add").disabled = true;
+  for (const selector of [".board-layout", ".board-title-menu", "#link-menu"])
+    required<HTMLElement>(selector).inert = true;
+  toast(
+    "Your board access ended. Return to your boards. Unconfirmed edits may not have been saved.",
+  );
+}
+
+async function reconnect(ws: WebSocket) {
+  if (socket !== ws) return;
+  stopConnection();
+  setConnection("offline");
+  const attempt = new AbortController();
+  probe = attempt;
   try {
     const response = await fetch(`/api/boards/${boardId}/snapshot`, {
       cache: "no-store",
+      signal: AbortSignal.any([attempt.signal, AbortSignal.timeout(5000)]),
     });
-    if (response.status === 404 || response.status === 401) {
-      disposeBrowserTools();
-      required<HTMLElement>(".connection-text").textContent = "Access ended";
-      toast("Your board access ended. Return to your boards.");
+    if (attempt.signal.aborted) return;
+    if ([401, 403, 404].includes(response.status)) {
+      endAccess();
       return;
     }
-  } catch {}
-  if (pageHidden) return;
+  } catch {
+    /* A transient probe failure still retries the socket. */
+  }
+  if (attempt.signal.aborted) return;
+  probe = null;
   reconnectTimer = window.setTimeout(connect, reconnectDelay);
   reconnectDelay = Math.min(reconnectDelay * 1.8, 8000);
 }
@@ -350,6 +375,8 @@ async function scheduleReconnect() {
 function receive(frame: BoardServerFrame) {
   if (frame.type === "ready") {
     loadSnapshot(frame.snapshot);
+    setConnection("online");
+    reconnectDelay = 500;
     registerBrowserTools();
     if (!didInitialFit) {
       didInitialFit = true;
@@ -377,8 +404,7 @@ function receive(frame: BoardServerFrame) {
     });
     if (frame.sequence <= sequence) return;
     if (frame.sequence > sequence + 1) {
-      snapshotReady = false;
-      void refreshSnapshot();
+      if (socket) void reconnect(socket);
       return;
     }
     sequence = frame.sequence;
@@ -397,31 +423,29 @@ function receive(frame: BoardServerFrame) {
   if (frame.type === "rejected") {
     pending.delete(frame.operationId);
     toolOperations.get(frame.operationId)?.reject(new Error(frame.reason));
-    loadSnapshot(frame.snapshot);
+    if (frame.snapshot.sequence >= sequence) loadSnapshot(frame.snapshot);
     toast(frame.reason);
     return;
   }
   if (frame.type === "error") {
     toast(frame.message);
     if (frame.message.includes("Session ended")) {
-      disposeBrowserTools();
-      socket?.close(4001, "Session ended");
+      endAccess();
     }
   }
 }
 
 async function refreshSnapshot() {
-  try {
-    const response = await fetch(`/api/boards/${boardId}/snapshot`);
-    if (response.ok) loadSnapshot((await response.json()) as BoardSnapshot);
-  } catch {
-    /* reconnect provides a fresh snapshot */
-  }
+  const ws = socket;
+  const response = await fetch(`/api/boards/${boardId}/snapshot`);
+  if (!response.ok) throw new Error("Could not read the updated board");
+  const snapshot = (await response.json()) as BoardSnapshot;
+  if (!ws || ws !== socket || connectionState !== "online")
+    throw new Error("Board is not live");
+  if (snapshot.sequence >= sequence) loadSnapshot(snapshot);
 }
 
 function loadSnapshot(snapshot: BoardSnapshot) {
-  if (snapshot.sequence < sequence) return;
-  snapshotReady = true;
   sequence = snapshot.sequence;
   items.clear();
   for (const item of snapshot.items) items.set(item.id, item);
@@ -430,7 +454,8 @@ function loadSnapshot(snapshot: BoardSnapshot) {
 }
 
 function send(frame: unknown): boolean {
-  if (socket?.readyState !== WebSocket.OPEN) return false;
+  if (connectionState !== "online" || socket?.readyState !== WebSocket.OPEN)
+    return false;
   socket.send(JSON.stringify(frame));
   return true;
 }
@@ -438,7 +463,7 @@ function send(frame: unknown): boolean {
 function submit(operation: BoardOperation) {
   pending.set(operation.operationId, operation);
   if (!send({ type: "operation", operation }))
-    toast("Working offline. Your change will sync when reconnected.");
+    toast("Change queued in this tab. Waiting for reconnection.");
 }
 
 function positionElement(element: HTMLElement, item: BoardItem) {
@@ -506,6 +531,13 @@ function renderItem(item: BoardItem) {
     rotate.dataset.action = "rotate";
     element.appendChild(resize);
     element.appendChild(rotate);
+    const option = new Option(
+      item.link?.title || displayFilename(item.filename),
+      item.id,
+    );
+    option.id = `card-option-${item.id}`;
+    picker.add(option);
+    picker.hidden = false;
     world.appendChild(element);
     elements.set(item.id, element);
     if (didInitialFit) observeImage(element);
@@ -526,6 +558,7 @@ function removeElement(id: string) {
     if (image) boardImages.forget(image);
     element.remove();
   }
+  document.getElementById(`card-option-${id}`)?.remove();
   elements.delete(id);
 }
 
@@ -600,6 +633,10 @@ function linkFallback(link: LinkPreview): HTMLElement {
 }
 
 function renderInspector() {
+  const returnFocus =
+    !selectedId && inspectorPanel.contains(document.activeElement);
+  picker.hidden = !items.size;
+  picker.value = selectedId ?? "";
   const changed = inspector.dataset.itemId !== (selectedId ?? "");
   renderItemInspector(
     inspectorPanel,
@@ -609,10 +646,13 @@ function renderInspector() {
     removeSelected,
     refreshSelectedLink,
   );
+  if (returnFocus)
+    (picker.hidden ? viewport : picker).focus({ preventScroll: true });
   if (changed && selectedId && !drag) revealSelected();
 }
 
 async function postBoardForm(resource: "assets" | "links", body: FormData) {
+  if (connectionState === "ended") throw new Error("Board access ended");
   const response = await fetch(`/api/boards/${boardId}/${resource}`, {
     method: "POST",
     body,
@@ -833,6 +873,10 @@ function handlePointerDown(event: PointerEvent) {
     };
     viewport.classList.add("panning");
   } else {
+    if (!canEditItem(item)) {
+      select(item.id);
+      return;
+    }
     const action = target.dataset.action;
     drag = {
       kind:
@@ -919,10 +963,16 @@ function handlePointerUp(event: PointerEvent) {
   if (reveal) revealSelected();
 }
 
+function canEditItem(item: BoardItem) {
+  if (item.revision > 0) return true;
+  toast("Waiting for the board to confirm this card.");
+  return false;
+}
+
 function removeSelected() {
   if (!selectedId) return;
   const item = items.get(selectedId);
-  if (!item) return;
+  if (!item || !canEditItem(item)) return;
   submit({
     kind: "remove",
     operationId: crypto.randomUUID(),
@@ -944,6 +994,7 @@ function addBoardItem(
   },
   point?: Point,
 ) {
+  if (connectionState === "ended") throw new Error("Board access ended");
   const position = placeItem(asset.width, asset.height, point);
   const item: BoardItem = {
     id: crypto.randomUUID(),
@@ -1195,6 +1246,7 @@ required("#zoom-out").addEventListener("click", () =>
     y: viewport.clientHeight / 2,
   }),
 );
+picker.addEventListener("change", () => select(picker.value || null));
 required("#inspector-close").addEventListener("click", () => select(null));
 window.addEventListener("resize", revealSelected);
 required("#tool-add").addEventListener("click", () => fileInput.click());

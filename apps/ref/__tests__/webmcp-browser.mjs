@@ -98,7 +98,8 @@ export async function checkWebMcpBrowser(page, second, itemId) {
   assert.equal(transformed.conflict, true);
   await second.waitForFunction(
     ({ id, x }) =>
-      document.querySelector(`[data-item-id="${id}"]`)?.style.left === `${x}px`,
+      document.querySelector(`.board-item[data-item-id="${id}"]`)?.style
+        .left === `${x}px`,
     { id: itemId, x: transformed.x },
   );
   const cancelled = await page.evaluate(async () => {
@@ -245,6 +246,6 @@ export async function checkWebMcpRemoval(page, second) {
   assert.equal(result.applied.item, null);
   assert.equal(result.replay.sequence, result.applied.sequence);
   await second
-    .locator(`[data-item-id="${itemId}"]`)
+    .locator(`.board-item[data-item-id="${itemId}"]`)
     .waitFor({ state: "detached" });
 }
