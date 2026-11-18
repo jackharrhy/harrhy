@@ -6,6 +6,16 @@
 
 In Worldview choose Open project, select this `content/` directory, and open `hall.map`. The manifest mounts `hall.wad` and the entity definitions. Use the script below to build the lightmapped BSP.
 
+### Preview the pool table
+
+The `world_pool_table` point in `hall.map` places the runtime table: `id` is `hall-table`, `origin` is the floor center at `80 0 0` (World X 0, Y 0, Z −1⅓ m), and `angle` is `0` (long axis along map X / World Z).
+
+1. With `hall.map` open in the editor's source view, go to **Map → References → Load .map** and choose [`apps/world/editor/hall-table-proxy.map`](../editor/hall-table-proxy.map).
+2. In the reference row, replace the default offset with **X 80, Y 0, Z 0**. The proxy's floor center is at its local origin, so the offset should match the point entity's `origin`.
+3. Use the row's checkbox to hide the preview or **Remove** to unload it.
+
+The proxy shows the cabinet, bed, rails, and legs with a footprint of about 1.56 × 2.8 m. It's a read-only editor overlay: don't paste it into `hall.map` or compile it. If you move the table, update the reference offset manually; if you change its yaw, rotate the proxy geometry separately because reference offsets only translate.
+
 ## TrenchBroom
 
 Copy the whole `trenchbroom/World Hall/` folder into TrenchBroom's user `games` directory (`~/.TrenchBroom/games/` on Linux) and restart TrenchBroom. Set the **World Hall** game path to this `content/` directory, then open `hall.map`. If needed, add `hall.wad` in the map's material collections panel. Keep the worldspawn `wad` key relative (`hall.wad`) when saving. Alternatively, use a GoldSrc editor configured for Half-Life/Valve 220 and add `Hall.fgd` and `hall.wad` to its project settings. The custom TrenchBroom config was not GUI-tested.

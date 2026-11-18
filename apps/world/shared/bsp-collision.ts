@@ -6,6 +6,8 @@ import {
   type Vec3Tuple,
 } from "@harrhy/worldview-renderer/core";
 import type { GoldSrcHullSweep } from "@harrhy/schmovement";
+import { readPoolTable, withPoolCabinet } from "./pool-placement.ts";
+import type { PoolTable } from "./pool-wire.ts";
 import type { Pose } from "./protocol.ts";
 
 export const UNITS_PER_METRE = 60;
@@ -13,6 +15,7 @@ export const UNITS_PER_METRE = 60;
 export type BspCollision = {
   sweep: GoldSrcHullSweep;
   halfHeight: number;
+  table?: PoolTable;
   revision: string;
   spawn: Pick<Pose, "x" | "y" | "z" | "grounded">;
 };
@@ -33,8 +36,12 @@ export async function loadBspCollision(
     entities: world.entities,
     models: world.models,
   };
-  const sweep: GoldSrcHullSweep = (start, end) =>
+  const table = readPoolTable(world.entities, UNITS_PER_METRE);
+  const bspSweep: GoldSrcHullSweep = (start, end) =>
     tracePlayerHull(collisionWorld, start, end);
+  const sweep = table
+    ? withPoolCabinet(bspSweep, table, UNITS_PER_METRE)
+    : bspSweep;
   const playerStart = world.entities.find(
     (entity) => entityValue(entity, "classname") === "info_player_start",
   );
@@ -63,6 +70,7 @@ export async function loadBspCollision(
   ).join("");
   return {
     halfHeight,
+    table,
     sweep,
     revision: `bsp30-v1-${digest}`,
     spawn: {

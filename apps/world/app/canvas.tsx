@@ -4,7 +4,7 @@ export const Canvas = clientEntry(
   function Canvas() {
     return () => (
       <canvas
-        aria-label="Empty pool hall"
+        aria-label="Pool hall"
         aria-describedby="controls"
         tabIndex={0}
         mix={ref((canvas, signal) => {

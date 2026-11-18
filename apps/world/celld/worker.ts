@@ -1,7 +1,14 @@
 import { DurableObject } from "cloudflare:workers";
+import { createPoolSession } from "@harrhy/pool/session";
 import hall from "../content/hall.bsp";
 import { loadBspCollision } from "../shared/bsp-collision";
 import { createRoom } from "../shared/room";
+import {
+  parsePoolCommand,
+  type PoolCommand,
+  type PoolState,
+  type PoolTable,
+} from "../shared/pool-wire";
 import {
   BSP_MAP_PATH,
   parseInput,
@@ -17,6 +24,7 @@ interface Env {
 }
 
 type Room = Awaited<ReturnType<typeof createRoom>>;
+type PoolSession = Awaited<ReturnType<typeof createPoolSession>>;
 type Peer = {
   socket: WebSocket;
   rateStart: number;
@@ -79,6 +87,8 @@ export default {
 export class WorldRoomCell extends DurableObject<Env> {
   private readonly peers = new Map<string, Peer>();
   private readonly room: Promise<Room>;
+  private pool?: { table: PoolTable; session: PoolSession };
+  private loadingPool?: Promise<PoolSession>;
   private timing = timingSamples();
   private timer?: ReturnType<typeof setTimeout>;
   private deadline = 0;
@@ -119,15 +129,19 @@ export class WorldRoomCell extends DurableObject<Env> {
       return new Response("World origin is not configured", { status: 503 });
     if (request.headers.get("Origin") !== this.env.HARRHY_WORLD_ORIGIN)
       return new Response(null, { status: 403 });
-    const { revision } = await getCollision();
+    const { revision, table } = await getCollision();
     const requested = url.searchParams.getAll("revision");
     if (requested.length !== 1 || requested[0] !== revision)
       return new Response("World map revision mismatch", { status: 409 });
-    const room = await this.room;
-    if (this.peers.size >= 12)
-      return new Response("Room is full", { status: 503 });
     if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
       return new Response(null, { status: 426 });
+    const room = await this.room;
+    if (table && !this.pool) {
+      const session = await (this.loadingPool ??= createPoolSession());
+      this.pool ??= { table, session };
+    }
+    if (this.peers.size >= 12)
+      return new Response("Room is full", { status: 503 });
 
     const { 0: client, 1: socket } = new WebSocketPair();
     const id = crypto.randomUUID();
@@ -142,6 +156,8 @@ export class WorldRoomCell extends DurableObject<Env> {
     }
     this.send(socket, { type: "roster", ids: [...this.peers.keys()] });
     this.send(socket, { type: "motion", ...room.snapshot() });
+    const pool = this.poolSnapshot();
+    if (pool) this.send(socket, pool);
     if (this.peers.size === 1) {
       this.deadline = now + TICK_MS;
       this.schedule(room);
@@ -176,8 +192,63 @@ export class WorldRoomCell extends DurableObject<Env> {
       this.leave(room, id);
       return;
     }
-    const input = typeof payload === "string" ? parseInput(payload) : null;
+    if (typeof payload !== "string") return;
+    const input = parseInput(payload);
     if (input) room.input(id, input);
+    else if (this.pool) {
+      const command = parsePoolCommand(payload);
+      if (command) this.poolCommand(room, id, command);
+    }
+  }
+
+  private poolCommand(room: Room, id: string, command: PoolCommand) {
+    const pool = this.pool;
+    if (!pool || command.tableId !== pool.table.id) return;
+    const { table, session } = pool;
+    let changed: boolean;
+    switch (command.type) {
+      case "pool-join": {
+        const pose = room.snapshot().players.find((player) => player.id === id);
+        if (
+          !pose ||
+          Math.hypot(pose.x - table.x, pose.z - table.z) > 3 ||
+          Math.abs(pose.y - table.y) > 1.5
+        )
+          return;
+        changed = session.join(id);
+        break;
+      }
+      case "pool-leave":
+        changed = session.leave(id);
+        break;
+      case "pool-shot":
+        changed = session.shot(
+          id,
+          command.turnToken,
+          command.yaw,
+          command.power,
+        );
+        break;
+      case "pool-place":
+        changed = session.place(id, command.turnToken, command.x, command.z);
+        break;
+    }
+    if (changed) this.broadcastPool();
+  }
+
+  private poolSnapshot(): PoolState | undefined {
+    const pool = this.pool;
+    if (pool)
+      return { type: "pool", table: pool.table, ...pool.session.snapshot() };
+  }
+
+  private broadcastPool() {
+    const state = this.poolSnapshot();
+    if (!state) return;
+    const message = JSON.stringify(state);
+    for (const { socket } of this.peers.values()) {
+      if (socket.readyState === WebSocket.OPEN) socket.send(message);
+    }
   }
 
   async webSocketClose(socket: WebSocket) {
@@ -194,7 +265,10 @@ export class WorldRoomCell extends DurableObject<Env> {
     room.leave(id);
     for (const { socket } of this.peers.values())
       this.send(socket, { type: "left", id });
+    if (this.pool?.session.leave(id) && this.peers.size) this.broadcastPool();
     if (this.peers.size) return;
+    this.pool?.session.dispose();
+    this.pool = this.loadingPool = undefined;
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
     this.lastTick = this.lastSnapshot = undefined;
@@ -236,8 +310,12 @@ export class WorldRoomCell extends DurableObject<Env> {
       this.sample(this.timing.tickIntervalsMs, now - this.lastTick);
     this.lastTick = now;
     room.step();
+    const settled = this.pool?.session.step(1 / TICK_HZ);
     this.timing.ticks++;
-    if (++this.frame % snapshotEvery === 0) {
+    const snapshotDue = ++this.frame % snapshotEvery === 0;
+    if (settled || (snapshotDue && this.pool?.session.phase === "rolling"))
+      this.broadcastPool();
+    if (snapshotDue) {
       this.timing.snapshots++;
       if (this.lastSnapshot !== undefined)
         this.sample(this.timing.snapshotIntervalsMs, now - this.lastSnapshot);

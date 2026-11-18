@@ -20,3 +20,9 @@
     2 : "Inverse square"
   ]
 ]
+
+@PointClass color(80 180 125) size(-84 -47 0, 84 47 50) = world_pool_table : "Pool table (floor-center origin)"
+[
+  id(string) : "Stable table ID"
+  angle(angle) : "Yaw" : 0
+]

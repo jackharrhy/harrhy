@@ -1,3 +1,5 @@
+import type { PoolState } from "./pool-wire.ts";
+
 export const TICK_HZ = 60;
 export const TICK_SECONDS = 1 / TICK_HZ;
 export const TICK_MS = TICK_SECONDS * 1000;
@@ -39,6 +41,7 @@ export type Pose = {
 export type Snapshot = { tick: number; players: Pose[] };
 
 export type ServerMessage =
+  | PoolState
   | { type: "welcome"; id: string; revision: string }
   | { type: "joined"; id: string }
   | { type: "left"; id: string }

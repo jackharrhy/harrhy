@@ -16,6 +16,7 @@
     "pretest": "npm run build --workspace @harrhy/worldview-renderer"
   },
   "dependencies": {
+    "@harrhy/pool": "0.1.0",
     "@harrhy/schmovement": "0.1.0",
     "@harrhy/ui": "0.1.0",
     "@harrhy/worldview-renderer": "0.2.0",

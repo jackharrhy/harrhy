@@ -825,3 +825,10 @@
 "_light" "240 176 117 75"
 "delay" "2"
 }
+
+{
+"classname" "world_pool_table"
+"id" "hall-table"
+"origin" "80 0 0"
+"angle" "0"
+}

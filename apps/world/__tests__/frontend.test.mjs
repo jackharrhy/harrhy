@@ -76,7 +76,7 @@ test(
       home.headers.get("content-security-policy"),
       /wss:\/\/world\.example\.test/,
     );
-    assert.match(await home.text(), /Empty Hall/);
+    assert.match(await home.text(), /Pool Hall/);
     const css = await fetch(`${base}/world.css`);
     assert.equal(css.status, 200);
     assert.match(css.headers.get("content-type"), /text\/css/);

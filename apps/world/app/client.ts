@@ -1,3 +1,4 @@
+import type { PoolCommand, PoolState } from "../shared/pool-wire";
 import type { FloorPoint } from "./bsp-render";
 import { loadBspCollision } from "../shared/bsp-collision";
 import { createMotion } from "../shared/motion";
@@ -30,6 +31,16 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
   const status = root.querySelector<HTMLElement>("#status")!;
   const button = root.querySelector<HTMLButtonElement>("#enter")!;
   const controls = root.querySelector<HTMLElement>("#controls")!;
+  const poolControls = root.querySelector<HTMLElement>("#pool-controls")!;
+  const poolStatus = root.querySelector<HTMLElement>("#pool-status")!;
+  const poolAction = root.querySelector<HTMLElement>("#pool-shot-controls")!;
+  const poolJoin = root.querySelector<HTMLButtonElement>("#pool-join")!;
+  const poolLeave = root.querySelector<HTMLButtonElement>("#pool-leave")!;
+  const poolAim = root.querySelector<HTMLInputElement>("#pool-aim")!;
+  const angle = () => (Number(poolAim.value) * Math.PI) / 180;
+  const poolPower = root.querySelector<HTMLInputElement>("#pool-power")!;
+  const poolShoot = root.querySelector<HTMLButtonElement>("#pool-shoot")!;
+  const poolPlace = root.querySelector<HTMLButtonElement>("#pool-place")!;
   let stop = noop;
   function start() {
     stop();
@@ -152,6 +163,85 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       { once: true },
     );
 
+    let pool: PoolState | undefined;
+    const seated = () => pool?.seats.includes(me) ?? false;
+    function sendPool(command: PoolCommand) {
+      if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(command));
+    }
+    function showPool() {
+      const pose = predicted?.pose();
+      const isSeated = seated();
+      root.toggleAttribute("data-pool", isSeated);
+      poolControls.hidden =
+        !pool ||
+        !pose ||
+        (!isSeated &&
+          Math.hypot(pose.x - pool.table.x, pose.z - pool.table.z) > 3);
+      if (!pool || poolControls.hidden) return;
+      const label =
+        pool.phase === "waiting"
+          ? "Waiting for another player"
+          : pool.phase === "finished"
+            ? pool.winner === me
+              ? "You won the rack"
+              : "Rack finished"
+            : pool.phase === "rolling"
+              ? "Balls rolling"
+              : pool.turn === me
+                ? "Your turn"
+                : "Opponent’s turn";
+      if (poolStatus.textContent !== label) poolStatus.textContent = label;
+      poolJoin.hidden = isSeated || pool.seats.length === 2;
+      poolLeave.hidden = !isSeated;
+      poolAction.hidden =
+        !isSeated ||
+        pool.turn !== me ||
+        !["aiming", "ball-in-hand"].includes(pool.phase);
+      poolShoot.hidden = pool.phase !== "aiming";
+      poolPlace.hidden = pool.phase !== "ball-in-hand";
+    }
+    poolJoin.addEventListener(
+      "click",
+      () => {
+        if (pool) sendPool({ type: "pool-join", tableId: pool.table.id });
+      },
+      { signal },
+    );
+    poolLeave.addEventListener(
+      "click",
+      () => {
+        if (pool) sendPool({ type: "pool-leave", tableId: pool.table.id });
+      },
+      { signal },
+    );
+    poolShoot.addEventListener(
+      "click",
+      () => {
+        if (pool)
+          sendPool({
+            type: "pool-shot",
+            turnToken: pool.turnToken,
+            tableId: pool.table.id,
+            yaw: angle(),
+            power: Number(poolPower.value),
+          });
+      },
+      { signal },
+    );
+    poolPlace.addEventListener(
+      "click",
+      () => {
+        if (pool)
+          sendPool({
+            type: "pool-place",
+            turnToken: pool.turnToken,
+            tableId: pool.table.id,
+            x: 0,
+            z: 0.5,
+          });
+      },
+      { signal },
+    );
     function connect() {
       if (signal.aborted) return;
       status.textContent = "Connecting to the hall…";
@@ -177,6 +267,16 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           case "left":
             roster.delete(message.id);
             updateStatus();
+            break;
+          case "pool":
+            pool = message;
+            if (seated()) {
+              destination = undefined;
+              keys.clear();
+              if (document.pointerLockElement === canvas)
+                document.exitPointerLock();
+            }
+            showPool();
             break;
           case "motion": {
             const self = message.players.find((p) => p.id === me);
@@ -213,6 +313,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       socket.addEventListener("close", () => {
         if (signal.aborted || ws !== socket) return;
         reset();
+        pool = undefined;
+        poolControls.hidden = true;
         if (document.pointerLockElement === canvas) document.exitPointerLock();
         status.textContent = "Disconnected. Rejoining…";
         reconnect = window.setTimeout(connect, 1500);
@@ -227,7 +329,19 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     canvas.addEventListener(
       "click",
       (event) => {
-        if (mode === "fps" && event.pointerType !== "touch") focus();
+        if (pool?.phase === "ball-in-hand" && pool.turn === me) {
+          const point = view.pickPool(event.clientX, event.clientY);
+          if (point)
+            sendPool({
+              type: "pool-place",
+              tableId: pool.table.id,
+              turnToken: pool.turnToken,
+              ...point,
+            });
+          return;
+        }
+        if (mode === "fps" && !seated() && event.pointerType !== "touch")
+          focus();
       },
       { signal },
     );
@@ -241,7 +355,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           document.pointerLockElement === canvas
         )
           return;
-        if (mode === "fps" && event.pointerType !== "touch") return;
+        if (mode === "fps" && !seated() && event.pointerType !== "touch")
+          return;
         canvas.focus();
         canvas.setPointerCapture(event.pointerId);
         gesture = {
@@ -432,9 +547,9 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       }
       const input = {
         seq: ++seq,
-        forward,
-        strafe,
-        jump: keys.has("Space"),
+        forward: seated() ? 0 : forward,
+        strafe: seated() ? 0 : strafe,
+        jump: !seated() && keys.has("Space"),
         yaw: facing,
         pitch,
       };
@@ -469,6 +584,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
               yaw: older.yaw + Math.atan2(Math.sin(dy), Math.cos(dy)) * weight,
             };
           });
+        showPool();
         try {
           view.draw(
             { ...predicted.pose(), yaw, pitch },
@@ -476,6 +592,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             destination,
             mode === "walk" ? predicted.pose() : undefined,
             orbitDistance,
+            pool,
+            seated() ? { aim: angle() } : undefined,
           );
         } catch (error) {
           console.error(error);

@@ -17,3 +17,11 @@
   box-shadow: 0 0 0 1px #21160d;
   pointer-events: none;
 }
+
+#pool-controls [hidden] {
+  display: none;
+}
+#hall[data-pool] #enter,
+#hall[data-pool] .reticle {
+  display: none;
+}

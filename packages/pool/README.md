@@ -9,6 +9,7 @@ Shared 8-ball rules, rack state, Box3D physics, physical table geometry, and sho
 - `.`: `./src/index.ts`
 - `./engine`: `./src/engine.ts`
 - `./table`: `./src/physical-table.ts`
+- `./session`: `./src/session.ts` (async factory for a host-clocked, ephemeral two-player table)
 - `./recording`: `./src/recording.ts`
 
 ## Setup and checks

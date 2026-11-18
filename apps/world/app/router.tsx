@@ -71,7 +71,7 @@ const hudStyles = css({
 const inputStyles = css({
   bottom: "max(0.75rem, env(safe-area-inset-bottom))",
   marginInlineStart: "auto",
-  "& button": { pointerEvents: "auto" },
+  "& button, & input": { pointerEvents: "auto" },
 });
 const hintStyles = css({ marginTop: "0.375rem", fontSize: "0.8125rem" });
 router.map(routes.home, (context) =>
@@ -85,7 +85,7 @@ router.map(routes.home, (context) =>
           nonce={getCspNonce(context)}
           src="/assets/boot.js"
         />
-        <title>World | Empty Hall</title>
+        <title>World | Pool Hall</title>
         <link rel="stylesheet" href="/world.css" />
       </head>
       <body mix={[documentStyles, woodTheme, themeRoot]}>
@@ -97,6 +97,39 @@ router.map(routes.home, (context) =>
                 Click to look
               </Button>
             </Inline>
+            <div id="pool-controls" hidden>
+              <Text id="pool-status" aria-live="polite" />
+              <Inline>
+                <Button id="pool-join">Join table</Button>
+                <Button id="pool-leave" hidden>
+                  Leave table
+                </Button>
+              </Inline>
+              <div id="pool-shot-controls" hidden>
+                <label for="pool-aim">Aim</label>
+                <input
+                  id="pool-aim"
+                  type="range"
+                  min="-180"
+                  max="180"
+                  step="1"
+                  value="90"
+                />
+                <label for="pool-power">Power</label>
+                <input
+                  id="pool-power"
+                  type="range"
+                  min="0.08"
+                  max="1"
+                  step="0.01"
+                  value="0.55"
+                />
+                <Button id="pool-shoot">Shoot</Button>
+                <Button id="pool-place" hidden>
+                  Place cue ball
+                </Button>
+              </div>
+            </div>
             <Text id="status" role="status" tone="muted" mix={hintStyles}>
               Loading the hall…
             </Text>

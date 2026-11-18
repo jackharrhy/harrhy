@@ -6,6 +6,9 @@ import * as THREE from "three/webgpu";
 import { UNITS_PER_METRE as scale } from "../shared/bsp-collision";
 import { billboardAtlasPath, loadBillboardLayout } from "./player-billboard";
 import type { Pose } from "../shared/protocol";
+import type { PoolState, PoolTable } from "../shared/pool-wire";
+import { CABINET_BOUNDS, FELT_Y } from "@harrhy/pool/table";
+import { appendPoolOverlay } from "./pool-overlay";
 
 export type FloorPoint = { x: number; z: number };
 type View = {
@@ -15,7 +18,11 @@ type View = {
     destination?: FloorPoint,
     avatar?: Pose,
     orbitDistance?: number,
+    pool?: PoolState,
+    poolView?: { aim?: number },
   ): void;
+  /** Convert a canvas client point to table-local X/Z in the overhead view. */
+  pickPool(x: number, y: number): FloorPoint | undefined;
   pickFloor(x: number, y: number): FloorPoint | undefined;
   dispose(): void;
 };
@@ -196,6 +203,9 @@ export async function createBspView(
   }
   const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
   camera.coordinateSystem = THREE.WebGPUCoordinateSystem;
+  const overhead = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.04, 60);
+  overhead.coordinateSystem = THREE.WebGPUCoordinateSystem;
+  let overheadTable: PoolTable | undefined;
   const ray = new THREE.Raycaster(
     undefined,
     undefined,
@@ -208,8 +218,23 @@ export async function createBspView(
   let disposed = false;
 
   return {
+    pickPool(x, y) {
+      if (disposed || !overheadTable) return;
+      const rect = canvas.getBoundingClientRect();
+      if (!rect.width || !rect.height) return;
+      const point = new THREE.Vector3(
+        ((x - rect.left) / rect.width) * 2 - 1,
+        1 - ((y - rect.top) / rect.height) * 2,
+        0,
+      ).unproject(overhead);
+      point.sub(
+        new THREE.Vector3(overheadTable.x, overheadTable.y, overheadTable.z),
+      );
+      point.applyAxisAngle(up, -overheadTable.yaw);
+      return { x: point.x, z: point.z };
+    },
     pickFloor(x, y) {
-      if (disposed || !drewFrame) return;
+      if (disposed || !drewFrame || overheadTable) return;
       const rect = canvas.getBoundingClientRect();
       if (!rect.width || !rect.height) return;
       ray.setFromCamera(
@@ -227,7 +252,15 @@ export async function createBspView(
       floor = { point: hit.point, normal };
       return { x: hit.point.x, z: hit.point.z };
     },
-    draw(local, remotes, destination, avatar, orbitDistance = 3.6) {
+    draw(
+      local,
+      remotes,
+      destination,
+      avatar,
+      orbitDistance = 3.6,
+      pool,
+      poolView,
+    ) {
       if (disposed || !canvas.clientWidth || !canvas.clientHeight) return;
       const ratio = Math.min(window.devicePixelRatio, 1.75);
       const width = Math.max(1, Math.floor(canvas.clientWidth * ratio));
@@ -256,9 +289,34 @@ export async function createBspView(
       }
       camera.updateMatrixWorld();
       const triangles: number[] = [];
-      for (const player of remotes)
-        appendBillboard(triangles, camera, player, layout);
-      if (destination) {
+      if (pool) appendPoolOverlay(triangles, pool, poolView?.aim);
+      overheadTable = poolView ? pool?.table : undefined;
+      let activeCamera: THREE.Camera = camera;
+      let yaw = local.yaw;
+      let pitch = local.pitch;
+      if (overheadTable) {
+        const { x, y, z, yaw: tableYaw } = overheadTable;
+        const landscape = width >= height;
+        const aspect = width / height;
+        const halfWidth = landscape ? CABINET_BOUNDS.z : CABINET_BOUNDS.x;
+        const halfHeight = landscape ? CABINET_BOUNDS.x : CABINET_BOUNDS.z;
+        overhead.top = 1.18 * Math.max(halfHeight, halfWidth / aspect);
+        overhead.bottom = -overhead.top;
+        overhead.right = overhead.top * aspect;
+        overhead.left = -overhead.right;
+        // Put the long axis along the canvas's longer dimension.
+        yaw = tableYaw - (landscape ? Math.PI / 2 : 0);
+        pitch = -Math.PI / 2;
+        overhead.position.set(x, y + FELT_Y + 1.7, z);
+        overhead.rotation.set(pitch, yaw, 0, "YXZ");
+        overhead.updateProjectionMatrix();
+        overhead.updateMatrixWorld();
+        activeCamera = overhead;
+      } else {
+        for (const player of remotes)
+          appendBillboard(triangles, camera, player, layout);
+      }
+      if (destination && !overheadTable) {
         if (
           floor &&
           floor.point.x === destination.x &&
@@ -277,15 +335,15 @@ export async function createBspView(
         projectionView: new Float32Array(
           projectionView
             .multiplyMatrices(
-              camera.projectionMatrix,
-              camera.matrixWorldInverse,
+              activeCamera.projectionMatrix,
+              activeCamera.matrixWorldInverse,
             )
             .multiply(bspToWorld).elements,
         ),
         camera: {
-          position: bspPosition(camera.position),
-          yaw: local.yaw,
-          pitch: local.pitch,
+          position: bspPosition(activeCamera.position),
+          yaw,
+          pitch,
           fieldOfView: camera.fov,
         },
         timeSeconds: performance.now() / 1000,
