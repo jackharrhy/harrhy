@@ -122,7 +122,18 @@ function routerFor(env: Env) {
     if (!idPattern.test(params.id)) return error(404, "Review not found");
     const data = await json(request, 16 * 1024);
     if (data instanceof Response) return data;
-    const { file, side, line, text } = data;
+    const { scope, file, side, line, text } = data;
+    if (!note(text))
+      return error(400, "Expected a note (up to 2000 characters)");
+    if (scope === "review")
+      return cell().add(params.id, { scope }, text.trim());
+    if (
+      scope === "file" &&
+      typeof file === "number" &&
+      Number.isSafeInteger(file) &&
+      file >= 0
+    )
+      return cell().add(params.id, { scope, file }, text.trim());
     if (
       typeof file !== "number" ||
       !Number.isSafeInteger(file) ||
@@ -131,7 +142,7 @@ function routerFor(env: Env) {
       typeof line !== "number" ||
       !Number.isSafeInteger(line) ||
       line < 1 ||
-      !note(text)
+      scope !== undefined
     )
       return error(
         400,

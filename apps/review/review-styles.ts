@@ -148,8 +148,8 @@ export const reviewStyles = css({
   },
   "& .file-nav": {
     position: "sticky",
-    top: "4.5rem",
-    maxHeight: "calc(100dvh - 5.5rem)",
+    top: "calc(var(--review-masthead-height, 3.5rem) + 1rem)",
+    maxHeight: "calc(100dvh - var(--review-masthead-height, 3.5rem) - 2rem)",
     overflow: "auto",
   },
   "& .file-list a": { padding: ".3rem .65rem", fontSize: ".8rem" },
@@ -164,7 +164,9 @@ export const reviewStyles = css({
   },
   "& progress": { width: "100%", height: ".45rem", accentColor: "#375e72" },
   "& .files": { display: "grid", gap: ".75rem", minWidth: 0 },
-  "& .diff-file": { scrollMarginTop: "4.5rem" },
+  "& .diff-file": {
+    scrollMarginTop: "calc(var(--review-masthead-height, 3.5rem) + .5rem)",
+  },
   "& .diff-file > summary": {
     display: "grid",
     gridTemplateColumns: "auto minmax(0, 1fr) auto",
@@ -204,6 +206,10 @@ export const reviewStyles = css({
   "& .viewed-error:empty": { display: "none" },
   "& .diff-deferred": { minHeight: "5rem" },
   "& .diff-file[open] > summary": {
+    position: "sticky",
+    top: "var(--review-masthead-height, 3.5rem)",
+    zIndex: 2,
+    background: "var(--hui-surface)",
     borderBottom: "1px solid var(--hui-border)",
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
@@ -237,11 +243,12 @@ export const reviewStyles = css({
     padding: ".5rem",
     background: "var(--hui-surface)",
   },
-  "& .comment-picker": {
-    padding: ".3rem .6rem",
-    borderTop: "1px solid var(--hui-border)",
-  },
-  "& select": { maxWidth: "100%" },
+  "& .scoped-comments": { display: "grid", gap: ".5rem", padding: ".65rem" },
+  "& .review-comments": { marginBottom: "1rem" },
+  "& .file-comments": { borderTop: "1px solid var(--hui-border)" },
+  "& .scoped-threads:not(:empty)": { display: "grid", gap: ".5rem" },
+  "& .scoped-threads:empty": { display: "none" },
+  "& .scoped-comments > .composer": { border: 0, padding: 0 },
   "@media (max-width: 760px)": {
     "& .review-layout": { gridTemplateColumns: "minmax(0, 1fr)" },
     "& .file-nav": { position: "static", maxHeight: "14rem" },

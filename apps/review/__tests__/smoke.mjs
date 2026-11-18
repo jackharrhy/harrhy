@@ -259,6 +259,10 @@ try {
   ).toBeVisible();
   await expect(page.getByTestId("diff-file")).toHaveJSProperty("open", true);
   await expect(page.locator(".masthead")).toHaveCSS("position", "sticky");
+  await expect(page.getByTestId("file-heading")).toHaveCSS(
+    "position",
+    "sticky",
+  );
   await expect(
     page.locator(".masthead").getByRole("link", { name: "← Inbox" }),
   ).toHaveAttribute("href", "/");
@@ -270,8 +274,9 @@ try {
     "aria-pressed",
     "true",
   );
-  await page.getByTestId("add-comment").click();
+  await page.locator('diffs-container [data-column-number="1"]').last().click();
   await page
+    .getByTestId("new-comment-form")
     .locator("textarea")
     .fill("Keep <b>green</b> for the synthetic demo.");
   await page.getByTestId("new-comment").click();
@@ -351,6 +356,31 @@ try {
     "Old side",
   );
   assert.equal((await cli("comments", id))[1].side, "old");
+  const scopedNote = (body) =>
+    fetch(`${api}/threads`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Harrhy-Review": "1" },
+      body: JSON.stringify(body),
+    });
+  assert.equal(
+    (await scopedNote({ scope: "file", file: 1, text: "Bad file" })).status,
+    400,
+  );
+  await page
+    .getByRole("textbox", { name: "Comment on this review" })
+    .fill("Review note");
+  await page.getByTestId("review-comment").click();
+  await expect(page.getByText("Review note", { exact: true })).toBeVisible();
+  await page
+    .getByRole("textbox", { name: "Comment on this file" })
+    .fill("File note");
+  await page.getByTestId("file-comment").click();
+  await expect(page.getByText("File note", { exact: true })).toBeVisible();
+  const scopes = (await cli("comments", id)).slice(2).map(({ scope }) => scope);
+  assert.deepEqual(scopes, ["review", "file"]);
+  await page.reload();
+  await expect(page.getByText("Review note", { exact: true })).toBeVisible();
+  await expect(page.getByText("File note", { exact: true })).toBeVisible();
   assert.equal((await setViewed(0, true)).status, 200);
   await writeFile(source, 'export const color = "orange";\n');
   git("add", ".");

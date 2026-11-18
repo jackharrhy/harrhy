@@ -19,12 +19,13 @@ interface Summary {
 
 type Side = "old" | "new";
 type Anchor = { side: Side; line: number };
-interface Thread extends Anchor {
+type CommentTarget = { scope: "review" } | { scope: "file"; file: number };
+type InlineTarget = Anchor & { scope?: undefined; file: number };
+type Thread = (CommentTarget | InlineTarget) & {
   id: string;
-  file: number;
   resolved: boolean;
   messages: { text: string; created: string | number }[];
-}
+};
 interface Review extends Summary {
   patch: string;
   threads: Thread[];
@@ -126,6 +127,16 @@ function detail(root: HTMLElement, review: Review) {
     ? "unified"
     : "split";
   let pending = false;
+  const drafts = new Map<string, string>();
+  const masthead = document.querySelector(".masthead");
+  if (masthead) {
+    new ResizeObserver(() => {
+      root.style.setProperty(
+        "--review-masthead-height",
+        `${masthead.getBoundingClientRect().height}px`,
+      );
+    }).observe(masthead);
+  }
 
   const status = node("p", "danger");
   status.setAttribute("role", "alert");
@@ -201,6 +212,7 @@ function detail(root: HTMLElement, review: Review) {
   const content = node("div", "files");
   root.replaceChildren(
     header,
+    scopedComments({ scope: "review" }).panel,
     files.length
       ? node("div", "review-layout", nav, content)
       : node("p", "panel inset", "No file changes in this review."),
@@ -292,7 +304,136 @@ function detail(root: HTMLElement, review: Review) {
     if (await change(remove, api, "DELETE")) location.assign("/");
   });
 
-  // Open sections without constructing offscreen diffs and line pickers.
+  function commentForm(
+    label: string,
+    action: string,
+    testId: string,
+    key: string,
+    save: (submit: HTMLButtonElement, text: string) => Promise<void>,
+  ) {
+    const area = node("textarea");
+    area.setAttribute("aria-label", label);
+    area.placeholder = label;
+    area.required = true;
+    area.value = drafts.get(key) ?? "";
+    area.addEventListener("input", () => drafts.set(key, area.value));
+    const submit = button(action, testId, "primary");
+    submit.type = "submit";
+    const form = node("form", "composer", area, submit);
+    form.dataset.testid = `${testId}-form`;
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = area.value.trim();
+      if (text) await save(submit, text);
+    });
+    return form;
+  }
+
+  function renderThread(thread: Thread, refresh: () => void) {
+    const endpoint = `${api}/threads/${encodeURIComponent(thread.id)}`;
+    const action = thread.resolved ? "reopen" : "resolve";
+    const toggle = button(thread.resolved ? "Reopen" : "Resolve", action);
+    toggle.addEventListener("click", async () => {
+      if (await update(toggle, endpoint, { action })) refresh();
+    });
+    const panel = node(
+      "article",
+      "thread",
+      node(
+        "div",
+        "row between",
+        node(
+          "strong",
+          "",
+          thread.scope === "review"
+            ? "Review comment"
+            : thread.scope === "file"
+              ? "File comment"
+              : anchorLabel(thread),
+        ),
+        node("span", "muted", thread.resolved ? "Resolved" : "Open"),
+      ),
+      ...thread.messages.map((message) =>
+        node(
+          "div",
+          "",
+          node("p", "message", message.text),
+          date(message.created),
+        ),
+      ),
+      node("div", "row", toggle),
+    );
+    panel.dataset.testid = "thread";
+    panel.dataset.threadId = thread.id;
+    if (!thread.resolved) {
+      const key = `reply:${thread.id}`;
+      panel.appendChild(
+        commentForm(
+          "Reply to thread",
+          "Reply",
+          "reply",
+          key,
+          async (submit, text) => {
+            if (await update(submit, endpoint, { action: "reply", text })) {
+              drafts.delete(key);
+              refresh();
+            }
+          },
+        ),
+      );
+    }
+    return panel;
+  }
+
+  function scopedComments(target: CommentTarget, onChange?: () => void) {
+    const isReview = target.scope === "review";
+    const testId = isReview ? "review-comment" : "file-comment";
+    const list = node("div", "scoped-threads");
+    const form = commentForm(
+      isReview ? "Comment on this review" : "Comment on this file",
+      "Post comment",
+      testId,
+      isReview ? "review" : `file:${target.file}`,
+      async (submit, text) => {
+        if (await update(submit, `${api}/threads`, { ...target, text })) {
+          const area = form.querySelector("textarea");
+          if (area) area.value = "";
+          drafts.delete(isReview ? "review" : `file:${target.file}`);
+          refresh();
+        }
+      },
+    );
+    const commentsHeading = node(
+      isReview ? "h2" : "h3",
+      "",
+      isReview ? "Review comments" : "File comments",
+    );
+    const panel = node(
+      "section",
+      isReview
+        ? "panel scoped-comments review-comments"
+        : "scoped-comments file-comments",
+      commentsHeading,
+      list,
+      form,
+    );
+    panel.dataset.testid = `${testId}s`;
+    function refresh() {
+      const scoped = threads.filter((thread) =>
+        target.scope === "review"
+          ? thread.scope === "review"
+          : thread.scope === "file" && thread.file === target.file,
+      );
+      list.replaceChildren(
+        ...scoped.map((thread) => renderThread(thread, refresh)),
+      );
+      onChange?.();
+    }
+    refresh();
+    return { panel };
+  }
+
+  // Open sections without constructing offscreen diffs.
   const deferred = new Map<Element, () => void>();
   const observer = new IntersectionObserver(
     (entries) => {
@@ -321,7 +462,15 @@ function detail(root: HTMLElement, review: Review) {
       viewedLabel,
     );
     const host = node("div", "diff-host");
-    const section = node("details", "panel diff-file", summary, host);
+    summary.dataset.testid = "file-heading";
+    const comments = scopedComments({ scope: "file", file }, updateCount);
+    const section = node(
+      "details",
+      "panel diff-file",
+      summary,
+      host,
+      comments.panel,
+    );
     section.id = `file-${file}`;
     section.dataset.testid = "diff-file";
     section.dataset.fileIndex = String(file);
@@ -366,10 +515,9 @@ function detail(root: HTMLElement, review: Review) {
       }
     });
 
-    const drafts = new Map<string, string>();
     let composer: Anchor | undefined;
     interface Annotation extends Anchor {
-      threads: Thread[];
+      threads: (Thread & InlineTarget)[];
       compose: boolean;
     }
     let composerArea: HTMLTextAreaElement | null = null;
@@ -396,10 +544,10 @@ function detail(root: HTMLElement, review: Review) {
           const panel = node(
             "div",
             "annotation",
-            ...metadata.threads.map(renderThread),
+            ...metadata.threads.map((thread) => renderThread(thread, render)),
           );
           if (metadata.compose) {
-            const key = anchorKey(metadata);
+            const key = `inline:${file}:${anchorKey(metadata)}`;
             const form = commentForm(
               `Comment on ${anchorLabel(metadata).toLowerCase()}`,
               "Post comment",
@@ -415,10 +563,10 @@ function detail(root: HTMLElement, review: Review) {
                   })
                 ) {
                   drafts.delete(key);
-                  if (composer && anchorKey(composer) === key)
+                  if (composer && anchorKey(composer) === anchorKey(metadata))
                     composer = undefined;
                   render();
-                  picker?.focus();
+                  summary.focus({ preventScroll: true });
                 }
               },
             );
@@ -427,7 +575,7 @@ function detail(root: HTMLElement, review: Review) {
               drafts.delete(key);
               composer = undefined;
               render();
-              picker?.focus();
+              summary.focus({ preventScroll: true });
             });
             form.appendChild(cancel);
             panel.appendChild(form);
@@ -437,81 +585,6 @@ function detail(root: HTMLElement, review: Review) {
         },
       });
 
-    function commentForm(
-      label: string,
-      action: string,
-      testId: string,
-      key: string,
-      save: (submit: HTMLButtonElement, text: string) => Promise<void>,
-    ) {
-      const area = node("textarea");
-      area.setAttribute("aria-label", label);
-      area.placeholder = label;
-      area.required = true;
-      area.value = drafts.get(key) ?? "";
-      area.addEventListener("input", () => drafts.set(key, area.value));
-      const submit = button(action, testId, "primary");
-      submit.type = "submit";
-      const form = node("form", "composer", area, submit);
-      form.dataset.testid = `${testId}-form`;
-      form.addEventListener("submit", async (event) => {
-        event.preventDefault();
-        const text = area.value.trim();
-        if (text) await save(submit, text);
-      });
-      return form;
-    }
-
-    function renderThread(thread: Thread) {
-      const endpoint = `${api}/threads/${encodeURIComponent(thread.id)}`;
-      const action = thread.resolved ? "reopen" : "resolve";
-      const toggle = button(thread.resolved ? "Reopen" : "Resolve", action);
-      toggle.addEventListener("click", async () => {
-        if (await update(toggle, endpoint, { action })) render();
-      });
-      const panel = node(
-        "article",
-        "thread",
-        node(
-          "div",
-          "row between",
-          node("strong", "", anchorLabel(thread)),
-          node("span", "muted", thread.resolved ? "Resolved" : "Open"),
-        ),
-        ...thread.messages.map((message) =>
-          node(
-            "div",
-            "",
-            node("p", "message", message.text),
-            date(message.created),
-          ),
-        ),
-        node("div", "row", toggle),
-      );
-      panel.dataset.testid = "thread";
-      panel.dataset.threadId = thread.id;
-      if (!thread.resolved) {
-        const key = `reply:${thread.id}`;
-        panel.appendChild(
-          commentForm(
-            "Reply to thread",
-            "Reply",
-            "reply",
-            key,
-            async (submit, text) => {
-              if (await update(submit, endpoint, { action: "reply", text })) {
-                drafts.delete(key);
-                render();
-              }
-            },
-          ),
-        );
-      }
-      return panel;
-    }
-
-    // The line picker also exposes the gutter action to keyboard and touch users.
-    let picker: HTMLSelectElement | undefined;
     let loaded = false;
     function load() {
       if (loaded || !section.open) return;
@@ -519,44 +592,19 @@ function detail(root: HTMLElement, review: Review) {
       observer.unobserve(host);
       deferred.delete(host);
       host.classList.remove("diff-deferred");
-      if (!fileDiff.hunks.length) {
+      if (fileDiff.hunks.length) render();
+      else
         host.appendChild(
           node("p", "inset muted", "No text changes to display for this file."),
         );
-        return;
-      }
-      const select = node("select");
-      picker = select;
-      picker.dataset.testid = "comment-line";
-      picker.setAttribute(
-        "aria-label",
-        `Line to comment on in ${fileDiff.name}`,
-      );
-      for (const side of ["new", "old"] as const) {
-        const group = node("optgroup");
-        group.label = side === "old" ? "Old file" : "New file";
-        for (const hunk of fileDiff.hunks) {
-          const start =
-            side === "old" ? hunk.deletionStart : hunk.additionStart;
-          const length =
-            side === "old" ? hunk.deletionCount : hunk.additionCount;
-          for (let line = start; line < start + length; line++) {
-            const anchor = { side, line };
-            const option = node("option", "", anchorLabel(anchor));
-            option.value = anchorKey(anchor);
-            group.appendChild(option);
-          }
-        }
-        if (group.childElementCount) picker.appendChild(group);
-      }
-      const add = button("Add comment", "add-comment");
-      add.addEventListener("click", () => {
-        const [side, line] = select.value.split(":");
-        if (side === "old" || side === "new")
-          startComment({ side, line: Number(line) });
-      });
-      section.appendChild(node("div", "row comment-picker", picker, add));
-      render();
+    }
+
+    function updateCount() {
+      const open = threads.filter(
+        (thread) =>
+          thread.scope !== "review" && thread.file === file && !thread.resolved,
+      ).length;
+      count.textContent = open ? `${open} open` : "";
     }
 
     function startComment(anchor: Anchor) {
@@ -579,13 +627,11 @@ function detail(root: HTMLElement, review: Review) {
         groups.set(key, entry);
         return entry;
       }
-      let open = 0;
+      updateCount();
       for (const thread of threads) {
-        if (thread.file !== file) continue;
+        if (thread.scope !== undefined || thread.file !== file) continue;
         group(thread).threads.push(thread);
-        if (!thread.resolved) open++;
       }
-      count.textContent = open ? `${open} open` : "";
       if (!loaded || !section.open || !fileDiff.hunks.length) return;
       if (composer) group(composer).compose = true;
       const annotations: DiffLineAnnotation<Annotation>[] = [

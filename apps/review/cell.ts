@@ -9,7 +9,11 @@ export type Snapshot = {
   patch: string;
 };
 export type Anchor = { file: number; side: "old" | "new"; line: number };
-type Thread = Anchor & {
+type ThreadTarget =
+  | (Anchor & { scope?: undefined })
+  | { scope: "review" }
+  | { scope: "file"; file: number };
+type Thread = ThreadTarget & {
   id: string;
   resolved: boolean;
   messages: { text: string; created: number }[];
@@ -181,19 +185,24 @@ export class ReviewCell extends DurableObject<Env> {
     return new Response(null, { status: 204 });
   }
 
-  add(id: string, anchor: Anchor, text: string) {
+  add(id: string, anchor: ThreadTarget, text: string) {
     const snapshot = this.snapshot(id);
     if (!snapshot) return error(404, "Review not found");
-    const file = files(snapshot.patch)[anchor.file];
-    const visible = file?.hunks.some((hunk) => {
-      const [start, count] =
-        anchor.side === "old"
-          ? [hunk.deletionStart, hunk.deletionCount]
-          : [hunk.additionStart, hunk.additionCount];
-      return anchor.line >= start && anchor.line < start + count;
-    });
-    if (!visible)
-      return error(400, "Anchor must be a line in a displayed hunk");
+    if (anchor.scope !== "review") {
+      const file = files(snapshot.patch)[anchor.file];
+      if (!file) return error(400, "File index is outside the snapshot");
+      if (anchor.scope !== "file") {
+        const visible = file?.hunks.some((hunk) => {
+          const [start, count] =
+            anchor.side === "old"
+              ? [hunk.deletionStart, hunk.deletionCount]
+              : [hunk.additionStart, hunk.additionCount];
+          return anchor.line >= start && anchor.line < start + count;
+        });
+        if (!visible)
+          return error(400, "Anchor must be a line in a displayed hunk");
+      }
+    }
     if (
       this.sql
         .exec<{ count: number }>(
