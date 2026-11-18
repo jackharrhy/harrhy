@@ -13,7 +13,10 @@ export function bookmarkPath(value: unknown): string | null {
         !decoded ||
         decoded === "." ||
         decoded === ".." ||
-        /[/\\\u0000-\u001f\u007f]/.test(decoded)
+        /[/\\]/.test(decoded) ||
+        [...decoded].some(
+          (character) => character < " " || character === "\u007f",
+        )
       )
         return null;
     }
