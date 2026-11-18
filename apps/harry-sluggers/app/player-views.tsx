@@ -9,30 +9,6 @@ const styles = css({
   "& tbody th": { position: "sticky", left: 0 },
   "& [data-chem-positive]": { color: "var(--hui-success)" },
   "& [data-chem-negative]": { color: "var(--hui-danger)" },
-  "& svg": {
-    display: "block",
-    width: "100%",
-    maxWidth: "780px",
-    marginInline: "auto",
-  },
-  "& svg text": {
-    fill: "currentColor",
-    fontFamily: "var(--hui-font-ui)",
-    fontSize: "12px",
-    paintOrder: "stroke",
-    stroke: "var(--lab-inset-surface)",
-    strokeWidth: 3,
-    strokeLinejoin: "round",
-  },
-  "& svg circle": {
-    fill: "var(--lab-inset-surface)",
-    stroke: "currentColor",
-    strokeWidth: 2,
-  },
-  "& svg a:hover circle, & svg a:focus-visible circle": {
-    fill: "var(--hui-canvas)",
-    strokeWidth: 4,
-  },
 });
 export const playerViews = [
   ["/players", "Leaderboard"],
@@ -157,7 +133,7 @@ const mark = (relation: string | undefined) =>
   ) : (
     "·"
   );
-export function chemistryView(data: Archive, url: URL, graph: boolean) {
+export function chemistryView(data: Archive) {
   const entries = new Map<string, number>();
   for (const player of data.players.toSorted(
     (a, b) => a.sort_position - b.sort_position,
@@ -175,151 +151,71 @@ export function chemistryView(data: Archive, url: URL, graph: boolean) {
     relations.get(character2)?.set(character1, relationship);
   }
   if (!names.length) return <p>No chemistry records.</p>;
-  if (!graph)
-    return (
-      <div mix={styles}>
-        <p>
-          <span data-chem-positive>+ Positive</span> ·{" "}
-          <span data-chem-negative>− Negative</span>
-        </p>
-        <div
-          data-chem-scroll
-          tabIndex={0}
-          role="region"
-          aria-label="Chemistry matrix"
-        >
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Character</th>
-                {names.map((name) => (
-                  <th scope="col">{name}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {names.map((name) => (
-                <tr>
-                  <th scope="row">
-                    {entries.get(name) ? (
-                      <a href={`/players/${entries.get(name)}`}>{name}</a>
-                    ) : (
-                      name
-                    )}
-                  </th>
-                  {names.map((other) => (
-                    <td>{mark(relations.get(name)?.get(other))}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    );
-  const requested = url.searchParams.get("character");
-  const selected = requested && entries.has(requested) ? requested : names[0]!;
-  const kind = url.searchParams.get("relationship");
-  const neighbors = [...(relations.get(selected) ?? [])].filter(
-    ([name, relation]) =>
-      name !== selected &&
-      entries.has(name) &&
-      ((kind !== "positive" && kind !== "negative") || relation === kind),
-  );
-  const href = (character: string) =>
-    `/players/chemistry-graph?${new URLSearchParams({ character, ...(kind ? { relationship: kind } : {}) })}`;
-  const points = neighbors.map(([name, relation], index) => {
-    const angle =
-      (index / Math.max(neighbors.length, 1)) * Math.PI * 2 - Math.PI / 2;
-    return {
-      name,
-      relation,
-      x: 360 + 275 * Math.cos(angle),
-      y: 270 + 205 * Math.sin(angle),
-    };
-  });
   return (
     <div mix={styles}>
-      <form method="get">
-        <label>
-          Character{" "}
-          <select name="character" defaultValue={selected}>
-            {names.map((name) => (
-              <option value={name}>{name}</option>
-            ))}
-          </select>
-        </label>
-        <label>
-          Relationships{" "}
-          <select name="relationship" defaultValue={kind ?? ""}>
-            <option value="">All</option>
-            <option value="positive">Positive</option>
-            <option value="negative">Negative</option>
-          </select>
-        </label>
-        <button>Show connections</button>
-      </form>
       <p>
         <span data-chem-positive>+ Positive</span> ·{" "}
         <span data-chem-negative>− Negative</span>
       </p>
-      {points.length ? (
-        <>
-          <svg
-            viewBox="0 0 720 540"
-            aria-label={`Chemistry graph for ${selected}`}
-          >
-            {points.map(({ x, y, relation }) => (
-              <line
-                x1="360"
-                y1="270"
-                x2={x}
-                y2={y}
-                stroke="currentColor"
-                opacity="0.6"
-                data-chem-positive={relation === "positive" || undefined}
-                data-chem-negative={relation === "negative" || undefined}
-                strokeDasharray={relation === "negative" ? "6 4" : undefined}
-              />
-            ))}
-            <circle cx="360" cy="270" r="17" />
-            <text x="360" y="303" textAnchor="middle">
-              {selected}
-            </text>
-            {points.map(({ name, relation, x, y }) => (
-              <a
-                href={href(name)}
-                aria-label={`${name}: ${relation} chemistry`}
-                data-chem-positive={relation === "positive" || undefined}
-                data-chem-negative={relation === "negative" || undefined}
-              >
-                <circle cx={x} cy={y} r="13" />
-                <text x={x} y={y + 4} textAnchor="middle">
-                  {relation === "positive" ? "+" : "−"}
-                </text>
-                <text x={x} y={y + 28} textAnchor="middle">
-                  {name}
-                </text>
-              </a>
-            ))}
-          </svg>
-          <details>
-            <summary>Connections for {selected}</summary>
-            <ul>
-              {neighbors.map(([name, relation]) => (
-                <li>
-                  <a href={href(name)}>{name}</a> · {relation}
-                </li>
+      <div
+        data-chem-scroll
+        tabIndex={0}
+        role="region"
+        aria-label="Chemistry matrix"
+      >
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Character</th>
+              {names.map((name) => (
+                <th scope="col">{name}</th>
               ))}
-            </ul>
-          </details>
-        </>
-      ) : (
-        <p>
-          No {kind === "positive" || kind === "negative" ? `${kind} ` : ""}
-          connections for {selected}.
-        </p>
-      )}
+            </tr>
+          </thead>
+          <tbody>
+            {names.map((name) => (
+              <tr>
+                <th scope="row">
+                  {entries.get(name) ? (
+                    <a href={`/players/${entries.get(name)}`}>{name}</a>
+                  ) : (
+                    name
+                  )}
+                </th>
+                {names.map((other) => (
+                  <td>{mark(relations.get(name)?.get(other))}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+export function forceGraph(data: Archive, assets: ReadonlySet<string>) {
+  const icons = Object.fromEntries(
+    data.players.flatMap((player) => {
+      const asset = [
+        `player-side-${player.id}.png`,
+        `player-${player.id}.png`,
+      ].find((name) => assets.has(name));
+      return player.stats_character && asset
+        ? [[player.stats_character, `/assets/${asset}`]]
+        : [];
+    }),
+  );
+  const edges = data.chemistry.filter(
+    (edge) =>
+      edge.relationship === "positive" || edge.relationship === "negative",
+  );
+  return (
+    <div
+      data-force-graph={JSON.stringify({ edges, icons })}
+      mix={css({ height: "clamp(320px,70dvh,900px)", cursor: "grab" })}
+    >
+      <noscript>Enable JavaScript to use the chemistry graph.</noscript>
     </div>
   );
 }

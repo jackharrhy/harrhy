@@ -23,11 +23,10 @@ try {
   await page
     .getByRole("link", { name: "Chemistry Graph", exact: true })
     .click();
-  const node = page.locator("svg[aria-label^=Chemistry] a").first();
-  const target = await node.getAttribute("href");
-  await node.focus();
+  const node = page.locator("[data-force-graph] g[role=button]").first();
   await node.press("Enter");
-  await page.waitForURL(`${origin}${target}`);
+  assert.equal(await node.getAttribute("aria-pressed"), "true");
+  assert.ok(await page.locator("[data-force-graph] line[marker-end]").count());
   await page.getByRole("link", { name: "Leaderboard", exact: true }).click();
   await page.waitForURL(`${origin}/players`);
   const player = await page

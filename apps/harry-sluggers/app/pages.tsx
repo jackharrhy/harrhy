@@ -1,5 +1,6 @@
 import {
   chemistryView,
+  forceGraph,
   leaderboard,
   playerViewNav,
   playerViews,
@@ -958,11 +959,9 @@ export function page(
           {playerViewNav(playerView[0])}
           {playerView[0] === "/players"
             ? leaderboard(data, url)
-            : chemistryView(
-                data,
-                url,
-                playerView[0] === "/players/chemistry-graph",
-              )}
+            : playerView[0] === "/players/chemistry-graph"
+              ? forceGraph(data, assets)
+              : chemistryView(data)}
         </>
       ),
     };
