@@ -503,6 +503,16 @@ const styles = css({
   },
   "& th": { background: "var(--lab-inset-surface)" },
   "& [data-muted]": { color: "var(--hui-muted)", fontSize: "14px" },
+  "& [data-page-title-hidden]": {
+    position: "absolute",
+    width: "1px",
+    height: "1px",
+    padding: 0,
+    margin: "-1px",
+    overflow: "hidden",
+    clipPath: "inset(50%)",
+    whiteSpace: "nowrap",
+  },
   "& [data-skip]": { position: "absolute", top: "-100px" },
   "& [data-skip]:focus": {
     top: "4px",
@@ -1711,6 +1721,16 @@ function date(value: unknown) {
         timeStyle: "short",
       }) + " UTC";
 }
+const leagueLinks = [
+  ["/", "Home"],
+  ["/teams", "Teams"],
+  ["/players", "Players"],
+  ["/events", "Events"],
+  ["/matches", "Matches"],
+  ["/draft", "Drafting"],
+  ["/trades", "Trading"],
+];
+
 export function document(title: string, body: RemixNode, url: URL) {
   const concept =
     concepts.find((c) => c.id === url.searchParams.get("theme")) ??
@@ -1766,15 +1786,7 @@ export function document(title: string, body: RemixNode, url: URL) {
               @harrhy/sluggers
             </a>
             <nav aria-label="League">
-              {[
-                ["/", "Home"],
-                ["/teams", "Teams"],
-                ["/players", "Players"],
-                ["/events", "Events"],
-                ["/matches", "Matches"],
-                ["/draft", "Drafting"],
-                ["/trades", "Trading"],
-              ].map(([href, label]) => {
+              {leagueLinks.map(([href, label]) => {
                 const active =
                   url.pathname === href ||
                   (href !== "/" && url.pathname.startsWith(`${href}/`)) ||
@@ -1798,7 +1810,15 @@ export function document(title: string, body: RemixNode, url: URL) {
           </div>
         </header>
         <main id="main">
-          <h1>{title}</h1>
+          <h1
+            data-page-title-hidden={
+              leagueLinks.some(
+                ([href]) => href === (url.pathname.replace(/\/$/, "") || "/"),
+              ) || undefined
+            }
+          >
+            {title}
+          </h1>
           {body}
         </main>
         <footer>Harry Sluggers · Historical league · Read-only</footer>
