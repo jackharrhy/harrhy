@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node scripts/start.mjs",
-    "typecheck": "node upstream/apps/p2/node_modules/typescript/bin/tsc --noEmit -p upstream/apps/p2/tsconfig.json",
-    "check": "node scripts/check.mjs"
+    "start": "node harrhy/start.mjs",
+    "typecheck": "node compat/host/node_modules/typescript/bin/tsc --noEmit -p tsconfig.json",
+    "check": "node harrhy/check.mjs"
   },
   "engines": {
     "node": ">=26.13.0"

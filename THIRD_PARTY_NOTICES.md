@@ -208,9 +208,9 @@ SOFTWARE.
 
 ## Pi v0 source import
 
-`apps/pi/upstream/` contains the faithful P2 source closure from
+`apps/pi/` contains the faithful P2 source closure from
 `jackharrhy/pi` commit `2a74fd2a6c78cce7f72d27655f4d132ecf2bf236`.
 Its MIT license (copyright 2025 Mario Zechner) is retained at
-`apps/pi/upstream/LICENSE`; embedded asset notices remain alongside their files.
+`apps/pi/LICENSE`; embedded asset notices remain alongside their files.
 The public generated model catalog is integrity-checked separately from private
 runtime configuration. See `apps/pi/PROVENANCE.md` for scope and exclusions.

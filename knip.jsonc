@@ -2,10 +2,18 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   // Celld is a host/container tool; Wrangler is provided by app workspaces in CI.
   "ignoreBinaries": ["celld", "wrangler"],
-  "ignore": ["apps/pi/upstream/**"],
+  "ignore": [
+    "apps/pi/compat/**",
+    "apps/pi/src/**",
+    "apps/pi/plugins/**",
+    "apps/pi/scripts/**",
+    "apps/pi/docs/**",
+    "apps/pi/public/**",
+    "apps/pi/__tests__/p2/**",
+  ],
   "workspaces": {
     "apps/pi": {
-      "entry": ["scripts/*.mjs", "__tests__/*.mjs"],
+      "entry": ["harrhy/*.mjs", "__tests__/*.mjs"],
       "ignoreBinaries": ["bwrap"],
     },
     "apps/ui": {

@@ -1,0 +1,9 @@
+.dependency-build/
+.dependencies-artifacts/
+node_modules/
+dependencies/node_modules/
+dependencies/host/node_modules/
+compat/node_modules/
+compat/host/node_modules/
+compat/packages/*/node_modules/
+compat/packages/*/dist/
