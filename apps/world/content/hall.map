@@ -5,7 +5,7 @@
 "mapversion" "220"
 "message" "Hall"
 "wad" "hall.wad"
-"_minlight" "35"
+"_minlight" "14"
 // Floor
 {
 ( 451.5 367.5 -15 ) ( -451.5 -367.5 -15 ) ( 451.5 -367.5 -15 ) HALL_FLOOR [ 0 -1 0 0 ] [ -1 0 0 0 ] 0 1.875000 1.875000
@@ -761,66 +761,66 @@
 {
 "classname" "light"
 "origin" "300 180 270"
-"_light" "255 225 195 370"
+"_light" "255 183 119 235"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "0 180 270"
-"_light" "255 225 195 370"
+"_light" "255 203 148 110"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "-300 180 270"
-"_light" "255 225 195 370"
+"_light" "255 191 131 185"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "300 0 270"
-"_light" "255 225 195 370"
+"_light" "255 201 149 190"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "0 0 270"
-"_light" "255 225 195 370"
+"_light" "255 206 157 185"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "-300 0 270"
-"_light" "255 225 195 370"
+"_light" "255 192 127 235"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "300 -180 270"
-"_light" "255 225 195 370"
+"_light" "255 181 115 135"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "0 -180 270"
-"_light" "255 225 195 370"
+"_light" "255 193 131 210"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "-300 -180 270"
-"_light" "255 225 195 370"
+"_light" "255 175 104 255"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "240 0 960"
-"_light" "232 224 211 380"
+"_light" "214 186 160 115"
 "delay" "2"
 }
 {
 "classname" "light"
 "origin" "-240 0 960"
-"_light" "232 224 211 380"
+"_light" "214 186 160 95"
 "delay" "2"
 }
