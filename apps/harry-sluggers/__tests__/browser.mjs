@@ -84,7 +84,9 @@ try {
           const paint = await page
             .locator(`select[name="theme"]`)
             .evaluate((el) => getComputedStyle(el).backgroundColor);
-          const card = page.locator("main [data-roster-card]").first();
+          const card = page
+            .locator("main :is([data-roster-card], [data-team-sheet])")
+            .first();
           const cardPaint = (await card.count())
             ? await card.evaluate((el) => getComputedStyle(el).backgroundColor)
             : null;
@@ -110,6 +112,13 @@ try {
         );
     }
   }
+  await page.goto(`${origin}/teams`);
+  const teamEntry = page.locator("[data-conference] [data-team-entry]").first();
+  assert.equal(await teamEntry.locator("[data-field-slot]").count(), 9);
+  await teamEntry.click();
+  await page.getByRole("heading", { name: "Team standings" }).waitFor();
+  await page.getByRole("heading", { name: "Team History" }).waitFor();
+  assert.equal(await page.locator("[data-field-slot]").count(), 9);
   await page.goto(`${origin}/players`);
   const chemistrySource = page
     .locator("[data-player-card]")
