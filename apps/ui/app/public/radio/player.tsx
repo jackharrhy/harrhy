@@ -2,7 +2,7 @@ import { css, on, ref, type Handle } from "remix/component";
 
 import { Button, Input, Range } from "@harrhy/ui/native";
 import { focusStyles } from "@harrhy/ui/recipes";
-import { radioControlsTheme } from "./theme.ts";
+import { desktopColor, radioControlsTheme } from "./theme.ts";
 
 import type { Track } from "./model.ts";
 import { RadioHeader, RadioStatus } from "./header.tsx";
@@ -23,6 +23,7 @@ export function RadioPlayerView(
     sceneHref?: string;
     client: RadioDemoActions | null;
     preview?: boolean;
+    originalSkin: boolean;
     roomName?: string;
     viewportWidth: number;
     onAddTrack?: () => void;
@@ -80,7 +81,7 @@ export function RadioPlayerView(
         mix={[
           radioStyle.window,
           radioStyle.shell,
-          radioControlsTheme,
+          handle.props.originalSkin && radioControlsTheme,
           preview ? radioStyle.previewShell : radioStyle.pageShell,
         ]}
       >
@@ -558,7 +559,7 @@ function TrackList(
     let { state } = handle.props;
     if (state.tracks.length === 0) {
       return (
-        <p mix={css({ margin: 0, padding: "16px", color: "#51616a" })}>
+        <p mix={css({ margin: 0, padding: "16px", color: desktopColor.muted })}>
           No tracks yet. Add a synthetic track to begin.
         </p>
       );

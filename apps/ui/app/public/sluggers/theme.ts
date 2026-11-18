@@ -1,7 +1,5 @@
-import { sluggersTheme as sluggersTokens, themeStyles } from "@harrhy/ui/theme";
 import { css } from "remix/component";
 
-export const sluggersTheme = themeStyles(sluggersTokens);
 export const sheet = css({
   background: "transparent",
   color: "var(--hui-ink)",

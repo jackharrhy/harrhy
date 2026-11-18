@@ -5,6 +5,7 @@ export const DESKTOP_FONT_FAMILY =
   'system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
 
 export const desktopColor = {
+  muted: "var(--desktop-muted)",
   ink: "var(--desktop-ink)",
   line: "var(--desktop-line)",
   paper: "var(--desktop-paper)",
@@ -15,6 +16,7 @@ export const desktopColor = {
 } as const;
 
 export const desktopThemeStyle = css({
+  "--desktop-muted": "#526168",
   "--desktop-ink": "#1f2a31",
   "--desktop-line": "#7b878c",
   "--desktop-paper": "#f8fbfb",
@@ -29,6 +31,7 @@ export const desktopThemeStyle = css({
 // Radio keeps its own skin; shared controls consume it through the public token contract.
 export const radioControlsTheme = themeStyles(
   composeTheme(tactileTheme, {
+    muted: "var(--desktop-muted)",
     ink: "var(--desktop-ink)",
     surface: "var(--desktop-paper)",
     accent: "#147582",
@@ -49,3 +52,16 @@ export const radioControlsTheme = themeStyles(
     buttonTextSize: "14px",
   }),
 );
+
+// Translate the desktop layout’s local roles without overriding the selected shared preset.
+export const selectedDesktopThemeStyle = css({
+  "--desktop-ink": "var(--hui-ink)",
+  "--desktop-muted": "var(--hui-muted)",
+  "--desktop-line": "var(--hui-control-border)",
+  "--desktop-paper": "var(--hui-surface)",
+  "--desktop-wash": "var(--hui-elevated)",
+  "--desktop-stripe": "var(--hui-hover-surface)",
+  "--desktop-accent": "var(--hui-accent)",
+  "--desktop-accent-soft": "var(--hui-selected-surface)",
+  color: desktopColor.ink,
+});

@@ -3,11 +3,12 @@ import type { Handle } from "remix/component";
 import { Button, Inline } from "@harrhy/ui/native";
 import { Select } from "@harrhy/ui/interactive";
 import { RadioPlayerView } from "./player.tsx";
-import { desktopThemeStyle } from "./theme.ts";
+import type { ThemeName } from "../themes.ts";
+import { desktopThemeStyle, selectedDesktopThemeStyle } from "./theme.ts";
 import { createRadioDemo, scenarios } from "./model.ts";
 import type { Scenario } from "./model.ts";
 
-export function RadioScene(handle: Handle<{ theme: string }>) {
+export function RadioScene(handle: Handle<{ theme: ThemeName }>) {
   let scenario: Scenario = "paused";
   let width = 960;
   const demo = createRadioDemo(() => {
@@ -45,7 +46,9 @@ export function RadioScene(handle: Handle<{ theme: string }>) {
       </Inline>
       <div
         mix={[
-          desktopThemeStyle,
+          handle.props.theme === "tactile"
+            ? desktopThemeStyle
+            : selectedDesktopThemeStyle,
           ref((node, signal) => {
             const observer = new ResizeObserver((entries) => {
               const next = Math.floor(entries[0]?.contentRect.width ?? 960);
@@ -63,6 +66,7 @@ export function RadioScene(handle: Handle<{ theme: string }>) {
       >
         <RadioPlayerView
           sceneHref={`/?view=scenes&scene=radio&theme=${handle.props.theme}`}
+          originalSkin={handle.props.theme === "tactile"}
           state={demo.state}
           client={demo.actions}
           preview
