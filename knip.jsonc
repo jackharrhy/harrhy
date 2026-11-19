@@ -6,6 +6,7 @@
     "apps/pi/compat/**",
     "apps/pi/src/**",
     "apps/pi/plugins/**",
+    "apps/pi/integrations/**",
     "apps/pi/scripts/**",
     "apps/pi/docs/**",
     "apps/pi/public/**",

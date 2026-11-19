@@ -37,6 +37,9 @@ sandbox([
   "__tests__/p2/session-admission-restart.test.ts",
   "__tests__/p2/sharing-db.test.ts",
   "__tests__/p2/ingress.test.ts",
+  "__tests__/p2/atlas-feedback.test.ts",
+  "__tests__/p2/repositories.test.ts",
+  "__tests__/p2/work-context-previews.test.ts",
   "__tests__/p2/stimuli-lifecycle.test.ts",
   "__tests__/p2/schedules-recovery.test.ts",
 ]);
@@ -61,6 +64,7 @@ sandbox(
     "--test-concurrency=1",
     "__tests__/p2/ui-exact-conversation.test.ts",
     "__tests__/p2/ui-web-surface.test.ts",
+    "__tests__/p2/ui-repositories.test.ts",
     "__tests__/p2/activity-model.test.ts",
     "__tests__/p2/session-activity.test.ts",
     "__tests__/p2/files.test.ts",

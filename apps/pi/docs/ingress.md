@@ -1,6 +1,9 @@
 # External peer ingress v1
 
-Optional `ingress` plugin on p2's existing HTTP server. Without `<P2_DATA_DIR>/ingress.json`, requests return 404.
+Install the optional [`ingress` package](../integrations/ingress/) explicitly as a real directory in
+`<P2_DATA_DIR>/plugins/`, using the matching base p2 build and the [operator cutover](../integrations/README.md).
+The package supplies both the HTTP server facet and the worker facet. Without installation or
+`<P2_DATA_DIR>/ingress.json`, the endpoints return 404.
 Initial deployment is local-only: no relay, proxy or browser requests. No new listener or owner principal.
 
 This is **trusted internal coordination**, not an untrusted webhook sandbox. Sending to the Familiar indirectly
@@ -50,7 +53,7 @@ configuration or unknown admission outcome. Secrets and content are not logged b
 
 ## Portable client
 
-`scripts/ingress.py` needs only Python's standard library, no checkout imports. Copy it anywhere. Keep the raw token
+`integrations/ingress/ingress.py` needs only Python's standard library, no checkout imports. Copy it anywhere. Keep the raw token
 in a private file (0600); pass its path, never its value on the command line:
 
 ```sh

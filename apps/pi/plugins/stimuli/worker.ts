@@ -21,18 +21,18 @@ import {
 	ReadOnlyConversations,
 	workerOf,
 } from "@p2/app/v1/worker";
-import type { ReceiptSchema } from "../ingress/contract.ts";
 import {
 	Admission,
 	type DeliveryReceiptSchema,
 	type DeliverySchema,
+	type LegacyReceiptSchema,
 	type SourceDeliverySchema,
 	type SourceProvenanceSchema,
 	StimulusWorker,
 	Wakes,
 } from "./contract.ts";
 
-type LegacyReceipt = Static<typeof ReceiptSchema>;
+type LegacyReceipt = Static<typeof LegacyReceiptSchema>;
 type Receipt = Static<typeof DeliveryReceiptSchema>;
 const LegacyReceipts = defineDoc<{ events: Record<string, LegacyReceipt> }>({
 	kind: "p2.ingress-receipts",

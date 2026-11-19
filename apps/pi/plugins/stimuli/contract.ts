@@ -4,7 +4,7 @@ import { evolve, literal, local, method, param, record, remote, serverHost, sess
 
 // Keep the legacy wire shape structural here: copied plugin contracts cannot import a third plugin.
 const EventIdSchema = str({ minLength: 1, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" });
-const ReceiptSchema = obj({
+export const LegacyReceiptSchema = obj({
 	state: literal("admitted"),
 	eventId: EventIdSchema,
 	contentHash: str(),
@@ -103,8 +103,8 @@ const AdmissionV1 = local("p2.stimulus-admission", {
 	version: 1,
 	params: {},
 	members: {
-		legacyAdmit: method(LegacyArgs, union([ReceiptSchema, Conflict])),
-		legacyReceipt: method(LegacyKey, union([ReceiptSchema, nul()])),
+		legacyAdmit: method(LegacyArgs, union([LegacyReceiptSchema, Conflict])),
+		legacyReceipt: method(LegacyKey, union([LegacyReceiptSchema, nul()])),
 		admit: method(DeliverySchema, DeliveryResult),
 		status: method(DeliveryKey, DeliveryStatus),
 	},

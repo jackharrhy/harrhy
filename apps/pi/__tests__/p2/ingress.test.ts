@@ -22,7 +22,7 @@ describe("external ingress", () => {
 	let fixture: Fixture;
 	let session: string;
 	before(async () => {
-		fixture = await startFixture({ allowedHosts: ["share.test"] });
+		fixture = await startFixture({ allowedHosts: ["share.test"], integrations: ["atlas-feedback", "ingress"] });
 		const owner = fixture.browser();
 		const familiar = await holdIn(owner, Familiar, {}, "owner");
 		session = (await familiar.open(BACKGROUND_CONTEXT)).id;
@@ -140,7 +140,7 @@ describe("external ingress", () => {
 		const tokenFile = join(fixture.dataDir, "client-token");
 		await writeFile(tokenFile, token, { mode: 0o600 });
 		const client = join(fixture.dataDir, "standalone-client.py");
-		await copyFile(join(APP, "scripts/ingress.py"), client);
+		await copyFile(join(APP, "integrations/ingress/ingress.py"), client);
 		const args = [
 			client,
 			"portable-client",

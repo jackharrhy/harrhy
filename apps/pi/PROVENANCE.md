@@ -23,6 +23,8 @@ Private inventory exclusions remain upstream app `README.md`, `DEV.md`, `docs/{h
 
 The original MIT license (copyright 2025 Mario Zechner) is retained at `LICENSE`. Embedded notices remain alongside their assets; registry dependencies retain their distribution licenses. No dependency or generated build directory is committed.
 
+The Harrhy Previews and optional integration changes are source-only ports on top of the pinned fork snapshot. The `integrations` digest covers the matching adapter code, not installed plugins or instance configuration.
+
 ## Evidence boundary
 
 Synthetic tests run in a fresh Bubblewrap filesystem/network namespace, without host HOME, production data or outbound network. They qualify source behavior, not a real-data restore. The separate private preview must preserve those isolation principles and owner authentication.

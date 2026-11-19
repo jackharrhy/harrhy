@@ -1,12 +1,12 @@
 // Optional owner-supplied preview declarations and Infra lease metadata; never probes, mutates or starts services.
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { arr, bool, compile, int, num, obj, opt, type Static, str } from "@earendil-works/pi-schema";
+import { arr, bool, compile, int, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { LocationSchema, literal, record } from "@p2/app/v1";
 import { optionalText } from "@p2/app/v1/node";
 import { isMap, parseDocument } from "yaml";
 import type { ForwardSchema } from "../ports/contract.ts";
-import { type Preview, PreviewEventSchema, type PreviewRead } from "./contract.ts";
+import type { Preview, PreviewRead } from "./contract.ts";
 
 const ConfigSchema = obj({
 	infra: opt(obj({ registry: str(), domain: str(), routes: opt(obj({ file: str(), routers: arr(str()) })) })),
@@ -16,13 +16,14 @@ const ConfigSchema = obj({
 				id: str(),
 				name: str(),
 				url: str(),
+				// Legacy declaration fields remain accepted but are not returned.
 				session: opt(str()),
 				location: opt(LocationSchema),
 				expiresAt: opt(num()),
 				nonExpiring: opt(bool()),
 				access: opt(str()),
 				note: opt(str()),
-				event: opt(PreviewEventSchema),
+				event: opt(obj({ kind: union([literal("created"), literal("updated"), literal("touched")]), at: num() })),
 			}),
 		),
 	),
@@ -61,17 +62,20 @@ export async function readPreviews(
 		throw new Error("Invalid work-context.json syntax");
 	}
 	if (!configValidator.check(input)) throw new Error("Invalid work-context.json metadata");
-	const items: Preview[] = forwards.map((forward) => ({
-		id: `forward:${forward.id}`,
-		name: forward.name ?? `Port ${forward.port}`,
-		url: forward.url ? safeURL(forward.url) : forward.publicUrl ? safeURL(forward.publicUrl) : null,
-		source: "p2 forward",
-		session: forward.session ?? null,
-		location: null,
-		lease: { kind: "unknown" },
-		access: forward.url ? "Owner sign-in" : forward.publicUrl ? "Public (existing forward)" : "Address unavailable",
-		note: "Opening session reported by p2; worktree at registration is not recorded.",
-	}));
+	const items: Preview[] = forwards.flatMap((forward) => {
+		const url = forward.url ?? forward.publicUrl;
+		return url
+			? [
+					{
+						id: `forward:${forward.id}`,
+						name: forward.name ?? `Port ${forward.port}`,
+						url: safeURL(url),
+						lease: { kind: "unknown" },
+						access: forward.url ? "Owner sign-in" : "Public (existing forward)",
+					},
+				]
+			: [];
+	});
 	if (input.infra) {
 		if (!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(input.infra.domain))
 			throw new Error("Invalid Infra preview domain");
@@ -89,12 +93,8 @@ export async function readPreviews(
 				id: `infra:${name}`,
 				name,
 				url,
-				source: "Infra lease",
-				session: null,
-				location: null,
 				lease: { kind: "expires", at: lease.expires_at * 1000 },
 				access: "Private Tailnet",
-				note: `${lease.purpose}. Registry owner label: ${lease.owner}; not a session identity.`,
 			});
 		}
 	}
@@ -129,12 +129,8 @@ export async function readPreviews(
 				id: `infra-static:${id}`,
 				name: match[1]!.slice(0, -(input.infra.domain.length + 1)),
 				url,
-				source: "Infra static route",
-				session: null,
-				location: null,
 				lease: { kind: "none" },
 				access: "Private Tailnet",
-				note: "Canonical private route; session and served worktree are not recorded.",
 			});
 		}
 	}
@@ -149,15 +145,12 @@ export async function readPreviews(
 		if (urls.has(url)) throw new Error("Duplicate preview declaration URL");
 		urls.add(url);
 		// Exact URL identity joins a declaration to its provider; titles, owner labels and port guesses never do.
-		const index = items.findIndex((item) => item.url !== null && safeURL(item.url) === url);
+		const index = items.findIndex((item) => item.url === url);
 		const provider = index < 0 ? undefined : items[index];
 		const item: Preview = {
 			id: `declared:${declared.id}`,
 			name: declared.name,
 			url,
-			source: provider ? `${provider.source} · declared association` : "Declared link",
-			session: declared.session ?? provider?.session ?? null,
-			location: declared.location ?? null,
 			lease:
 				provider?.lease ??
 				(declared.nonExpiring
@@ -166,8 +159,6 @@ export async function readPreviews(
 						? { kind: "expires", at: declared.expiresAt }
 						: { kind: "unknown" }),
 			access: provider?.access ?? declared.access ?? "Access not specified",
-			note: declared.note ?? "Explicit declaration; not inferred from the session's current location.",
-			...(declared.event ? { event: declared.event } : {}),
 		};
 		if (index < 0) items.push(item);
 		else items[index] = item;
