@@ -8,9 +8,10 @@ Shared 8-ball rules, rack state, Box3D physics, physical table geometry, and sho
 
 - `.`: `./src/index.ts`
 - `./engine`: `./src/engine.ts`
+- `./audio`: shared browser mixer. Hosts serve `assets/audio/` at `/audio/` and pass table-local physics events with a separate world-space playback position.
 - `./table`: `./src/physical-table.ts`
 - `./bot`: `./src/bot.ts` (shared shot and cue-placement planner)
-- `./session`: `./src/session.ts` (async factory for a host-clocked, ephemeral two-player table)
+- `./session`: `./src/session.ts` (async factory for a host-clocked, ephemeral two-player table, with `drainSounds()` for one-shot physics events)
 - `./recording`: `./src/recording.ts`
 
 - `./presentation`: browser Three.js table, cabinet, returns, balls, pendant lights and cue. `createTable(materials, { walnutUrl })` takes the walnut URL; import `walnutUrl` from the presentation module to use the bundled texture.

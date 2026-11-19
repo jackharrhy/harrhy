@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsrs -p tsconfig.json --noEmit && tsrs -p celld/tsconfig.json --noEmit",
-    "test": "node --test __tests__/room.test.ts",
+    "test": "node --test __tests__/*.test.ts",
     "build": "vite build && node scripts/build-server.mjs",
     "start": "node dist/server/index.js",
     "dev": "npm run build && npm start",

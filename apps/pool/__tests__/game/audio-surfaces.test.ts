@@ -7,8 +7,8 @@ import {
   RETURN_FLOOR,
   RETURN_FLOOR_POINT,
   isReturnFloorLanding,
-} from "../../app/game/audio-surfaces";
-import { impactMix } from "../../app/game/audio-mix";
+} from "@harrhy/pool/audio";
+import { impactMix } from "@harrhy/pool/audio";
 
 const floorSound: PoolSound = {
   kind: "return",

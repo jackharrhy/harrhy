@@ -253,7 +253,12 @@ export class WorldRoomCell extends DurableObject<Env> {
     const pool = this.pool;
     if (!pool) return;
     const { table, session } = pool;
-    const state: PoolState = { type: "pool", table, ...session.snapshot() };
+    const state: PoolState = {
+      type: "pool",
+      sampledAt: performance.now(),
+      table,
+      ...session.snapshot(),
+    };
     if (pool.bot) {
       // Stand just beyond the long rail, facing the table.
       state.bot = {
@@ -267,9 +272,10 @@ export class WorldRoomCell extends DurableObject<Env> {
     return state;
   }
 
-  private broadcastPool() {
+  private broadcastPool(sounds?: PoolState["sounds"]) {
     const state = this.poolSnapshot();
     if (!state) return;
+    if (sounds?.length) state.sounds = sounds;
     const message = JSON.stringify(state);
     for (const { socket } of this.peers.values()) {
       if (socket.readyState === WebSocket.OPEN) socket.send(message);
@@ -360,15 +366,18 @@ export class WorldRoomCell extends DurableObject<Env> {
     this.lastTick = now;
     room.step();
     const settled = this.pool?.session.step(1 / TICK_HZ);
+    const sounds = this.pool?.session.drainSounds();
     const botActed = this.stepBot(now);
     this.timing.ticks++;
     const snapshotDue = ++this.frame % snapshotEvery === 0;
+    // Fast ball rotations can span more than half a turn between 20 Hz samples.
     if (
       settled ||
       botActed ||
-      (snapshotDue && this.pool?.session.phase === "rolling")
+      sounds?.length ||
+      this.pool?.session.phase === "rolling"
     )
-      this.broadcastPool();
+      this.broadcastPool(sounds);
     if (snapshotDue) {
       this.timing.snapshots++;
       if (this.lastSnapshot !== undefined)

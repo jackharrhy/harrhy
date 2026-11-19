@@ -1,12 +1,12 @@
 import { createMatch, type PoolSound, type PhysicalBall } from "@harrhy/pool";
 import { FELT_Y } from "@harrhy/pool/table";
 import type { Snapshot } from "@harrhy/pool-protocol";
-import { RETURN_FLOOR_POINT } from "./audio-surfaces";
-import { GameAudio } from "./audio";
+import { RETURN_FLOOR_POINT } from "@harrhy/pool/audio";
+import { createGameAudio } from "./audio";
 
 if (!import.meta.env.DEV)
   throw new Error("Audio auditioning is available only in local development.");
-const audio = new GameAudio();
+const audio = createGameAudio();
 const status = document.querySelector<HTMLElement>("#status")!;
 const enable = document.querySelector<HTMLButtonElement>("#enable")!;
 const speed = document.querySelector<HTMLInputElement>("#speed")!;

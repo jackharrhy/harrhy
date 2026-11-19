@@ -1,6 +1,8 @@
 import { chooseBotPlacement, chooseBotShot } from "./bot";
 import { initializePoolPhysics, PoolPhysics } from "./engine-core";
-import { createShotResult } from "./physics";
+import { createShotResult, type PoolSound } from "./physics";
+
+const MAX_PENDING_SOUNDS = 96;
 import { createMatch, resolveShot, startMatch } from "./rules";
 
 /** A single ephemeral table. The host supplies player IDs and drives the clock. */
@@ -10,6 +12,7 @@ export async function createPoolSession() {
   let match = createMatch();
   let turnToken = 0;
   let result = createShotResult();
+  let pendingSounds: PoolSound[] = [];
   let disposed = false;
 
   function canPlay(
@@ -52,6 +55,7 @@ export async function createPoolSession() {
       match = createMatch();
       match.players[0] = remaining ?? null;
       physics.reset();
+      pendingSounds.length = 0;
       result = createShotResult();
       turnToken++;
       return true;
@@ -96,18 +100,37 @@ export async function createPoolSession() {
       return false;
     },
     step(dt: number): boolean {
-      if (disposed || match.phase !== "rolling") return false;
-      if (physics.step(dt, result)) return false;
+      if (disposed) return false;
+      const rolling = match.phase === "rolling";
+      // The cabinet can still produce contacts after play passes to the next turn.
+      if (!rolling && !physics.balls.some((ball) => ball.stage === "return"))
+        return false;
+      const moving = physics.step(dt, result);
+      pendingSounds.push(...physics.sounds);
+      if (pendingSounds.length > MAX_PENDING_SOUNDS)
+        pendingSounds.splice(0, pendingSounds.length - MAX_PENDING_SOUNDS);
+      if (!rolling || moving) return false;
       resolveShot(match, physics.balls, result);
       turnToken++;
       return true;
+    },
+    drainSounds(): PoolSound[] {
+      const sounds = pendingSounds;
+      pendingSounds = [];
+      return sounds;
     },
     snapshot() {
       const { phase, players, winner, message } = match;
       return {
         balls: physics.balls
           .filter((ball) => !ball.pocketed)
-          .map(({ id, x, y, z }) => ({ id, x, y, z })),
+          .map(({ id, x, y, z, q }) => ({
+            id,
+            x,
+            y,
+            z,
+            q: [...q] as typeof q,
+          })),
         seats: players.filter((id): id is string => id !== null),
         turn: session.turn,
         phase,
@@ -118,6 +141,7 @@ export async function createPoolSession() {
     },
     dispose() {
       physics.dispose();
+      pendingSounds.length = 0;
       disposed = true;
     },
   };

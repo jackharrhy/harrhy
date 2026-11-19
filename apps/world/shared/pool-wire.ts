@@ -1,3 +1,5 @@
+import type { PoolSound } from "@harrhy/pool";
+
 export type PoolTable = {
   id: string;
   x: number;
@@ -5,11 +7,22 @@ export type PoolTable = {
   z: number;
   yaw: number;
 };
-type PoolBall = { id: number; x: number; y: number; z: number };
+export type PoolBall = {
+  id: number;
+  x: number;
+  y: number;
+  z: number;
+  /** Table-local orientation in x, y, z, w order. */
+  q: [number, number, number, number];
+};
 export type PoolState = {
   type: "pool";
+  /** Worker monotonic clock, in milliseconds. */
+  sampledAt: number;
   table: PoolTable;
   balls: PoolBall[];
+  /** One-shot physics events since the last broadcast, in table-local metres. */
+  sounds?: PoolSound[];
   seats: string[];
   turn: string | null;
   turnToken: number;

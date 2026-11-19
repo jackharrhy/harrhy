@@ -1,3 +1,5 @@
+import { BALL_RADIUS, TABLE_HALF_WIDTH, TABLE_HALF_LENGTH } from "@harrhy/pool";
+import { FELT_Y } from "@harrhy/pool/table";
 import * as THREE from "three/webgpu";
 import {
   createBallMaterials,
@@ -40,7 +42,19 @@ export async function createPoolLayer(
   scene.add(new THREE.HemisphereLight(0xffc98c, 0x523626, 1.25));
   const table = createTable(createBallMaterials(), { walnutUrl });
   const cue = createCue();
-  table.group.add(cue);
+  const guide = new THREE.Line(
+    new THREE.BufferGeometry().setFromPoints([
+      new THREE.Vector3(),
+      new THREE.Vector3(),
+    ]),
+    new THREE.LineDashedMaterial({
+      color: 0xf6e2b5,
+      dashSize: 0.035,
+      gapSize: 0.027,
+      depthWrite: false,
+    }),
+  );
+  table.group.add(cue, guide);
   // Stand in for the standalone hall's warm fill at the cabinet sides.
   for (const side of [-1, 1]) {
     const fill = new THREE.PointLight(0xffb269, 11, 6, 2);
@@ -126,8 +140,8 @@ export async function createPoolLayer(
     ) {
       layer.hidden = !pool;
       if (!pool) return;
-      const { x, y, z, yaw } = pool.table;
-      table.group.position.set(x, y, z);
+      const { x: tableX, y: tableY, z: tableZ, yaw } = pool.table;
+      table.group.position.set(tableX, tableY, tableZ);
       table.group.rotation.y = yaw;
       for (const mesh of table.balls) mesh.visible = false;
       for (const ball of pool.balls) {
@@ -135,11 +149,51 @@ export async function createPoolLayer(
         if (!mesh) continue;
         mesh.visible = true;
         mesh.position.set(ball.x, ball.y, ball.z);
+        mesh.quaternion.fromArray(ball.q);
       }
       const ball = table.balls[0];
       const aim = view?.aim;
       cue.visible = aim !== undefined && ball.visible;
+      guide.visible = cue.visible;
       if (aim !== undefined && cue.visible) {
+        const dx = Math.cos(aim),
+          dz = Math.sin(aim);
+        let distance = 6;
+        for (const mesh of table.balls.slice(1))
+          if (mesh.visible && mesh.position.y > FELT_Y) {
+            const x = mesh.position.x - ball.position.x,
+              z = mesh.position.z - ball.position.z;
+            const along = x * dx + z * dz,
+              across = x * dz - z * dx;
+            if (along > 0 && Math.abs(across) < BALL_RADIUS * 2)
+              distance = Math.min(
+                distance,
+                along - Math.sqrt((BALL_RADIUS * 2) ** 2 - across ** 2),
+              );
+          }
+        for (const [position, direction, edge] of [
+          [ball.position.x, dx, TABLE_HALF_WIDTH - BALL_RADIUS],
+          [ball.position.z, dz, TABLE_HALF_LENGTH - BALL_RADIUS],
+        ]) {
+          if (Math.abs(direction) > 0.00001)
+            distance = Math.min(
+              distance,
+              (Math.sign(direction) * edge - position) / direction,
+            );
+        }
+        distance = Math.max(0, distance);
+        const positions = guide.geometry.getAttribute("position");
+        positions.setXYZ(0, ball.position.x, FELT_Y + 0.012, ball.position.z);
+        positions.setXYZ(
+          1,
+          ball.position.x + dx * distance,
+          FELT_Y + 0.012,
+          ball.position.z + dz * distance,
+        );
+        positions.needsUpdate = true;
+        guide.computeLineDistances();
+        guide.frustumCulled = false;
+
         const pose = cuePose(ball.position, aim, view?.power ?? 0);
         cue.position.fromArray(pose.position);
         cue.quaternion.setFromUnitVectors(
@@ -171,6 +225,8 @@ export async function createPoolLayer(
       for (const geometry of geometries) geometry.dispose();
       for (const material of materials) material.dispose();
       for (const texture of textures) texture.dispose();
+      guide.geometry.dispose();
+      guide.material.dispose();
       table.light.shadow.dispose();
       renderer.dispose();
       layer.remove();

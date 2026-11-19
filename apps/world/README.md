@@ -23,7 +23,7 @@ In another terminal, start the frontend with `HARRHY_WORLD_ORIGIN=http://127.0.0
 ## Boundaries
 
 - `server/index.ts` serves the page and browser bundle and relays World’s HTTP and WebSocket traffic. It has no game state.
-- `celld/worker.ts` serves the deployed BSP and routes to `WorldRoomCell`. The cell steps bitECS at 60 Hz while occupied and emits snapshots at 20 Hz. Player state is ephemeral; a restart does not restore players.
+- `celld/worker.ts` serves the deployed BSP and routes to `WorldRoomCell`. The cell steps bitECS at 60 Hz while occupied and emits player snapshots at 20 Hz. Pool broadcasts full ball poses at 60 Hz while a shot rolls. Player state is ephemeral; a restart does not restore players.
 - `shared/motion.ts` runs `@harrhy/schmovement` in the cell and in the client. Both trace the same authored BSP; a revision check rejects mismatched joins. `app/bsp-render.ts` renders that same BSP.
 - The editable map and bake instructions are in [Editing the Hall](content/README.md). Rebuild the map and redeploy the Worker together. The frontend build does not publish a separate map copy.
 

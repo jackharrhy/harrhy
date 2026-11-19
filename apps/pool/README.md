@@ -1,6 +1,6 @@
 # @harrhy/pool-app
 
-Tea's Remix 3 pool hall. `app/router.ts` renders the hall and hydrates its canvas through `app/game/pool-game.tsx`; `server/index.ts` is the Bun authority for WebSocket play, guest sessions, optional account sign-in, owner controls, and the SQLite match and recording store. The renderer, physics prediction, and original sound and texture assets come from 8ballworld revision `ad1dc4446e1ab8e7b32111c95f6a3479ab8e532c`. Asset credits are in `public/audio/SOURCES.txt`, `public/textures/SOURCES.txt`, `public/textures/HALL-SOURCES.txt`, and `public/fonts/OFL.txt`.
+Tea's Remix 3 pool hall. `app/router.ts` renders the hall and hydrates its canvas through `app/game/pool-game.tsx`; `server/index.ts` is the Bun authority for WebSocket play, guest sessions, optional account sign-in, owner controls, and the SQLite match and recording store. The renderer, physics prediction, and original sound and texture assets come from 8ballworld revision `ad1dc4446e1ab8e7b32111c95f6a3479ab8e532c`. Asset credits are in `../../packages/pool/assets/audio/SOURCES.txt`, `public/textures/SOURCES.txt`, `public/textures/HALL-SOURCES.txt`, and `public/fonts/OFL.txt`.
 
 ## Develop and check
 

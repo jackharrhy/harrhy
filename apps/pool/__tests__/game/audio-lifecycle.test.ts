@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { GameAudio } from "../../app/game/audio";
+import { createGameAudio } from "../../app/game/audio";
 
 test("disposing audio aborts pending loads without reporting a stale error", async () => {
   const originalContext = Object.getOwnPropertyDescriptor(
@@ -53,10 +53,10 @@ test("disposing audio aborts pending loads without reporting a stale error", asy
       }),
   });
   try {
-    const audio = new GameAudio();
+    const audio = createGameAudio();
     const errors: string[] = [];
     audio.onError = (message) => errors.push(message);
-    audio.enabled = true;
+    audio.toggle();
     const loading = audio.resume();
     expect(fetches).toBe(9);
     audio.dispose();

@@ -75,7 +75,7 @@ const server = createServer(
         });
       if (
         pathname === "/world.css" ||
-        /^\/(?:assets|textures|billboard)\/[a-zA-Z0-9._-]+$/.test(pathname)
+        /^\/(?:assets|textures|billboard|audio)\/[a-zA-Z0-9._-]+$/.test(pathname)
       ) {
         const response = await assets.fetch(request);
         response.headers.set("X-Content-Type-Options", "nosniff");

@@ -1,3 +1,5 @@
+import { createPoolAudio } from "@harrhy/pool/audio";
+import { createPoolInterpolation } from "../shared/pool-interpolation";
 import { CueDrag } from "@harrhy/pool/cue-drag";
 import type { PoolCommand, PoolState } from "../shared/pool-wire";
 import type { FloorPoint } from "./bsp-render";
@@ -166,7 +168,16 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     );
 
     let pool: PoolState | undefined;
+    const poolMotion = createPoolInterpolation();
     let joiningTable = false;
+    let tablePan: { id: number; x: number; y: number } | undefined;
+    const audio = createPoolAudio();
+    signal.addEventListener("abort", () => audio.dispose(), { once: true });
+    const enableAudio = () => {
+      if (!audio.enabled) audio.toggle();
+      else void audio.resume();
+    };
+    root.addEventListener("pointerdown", enableAudio, { signal });
     let shotCharge: { id: number; drag: CueDrag; power: number } | undefined;
     const seated = () => pool?.seats.includes(me) ?? false;
     function sendPool(command: PoolCommand) {
@@ -290,6 +301,21 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             break;
           case "pool":
             pool = message;
+            poolMotion.push(message, performance.now());
+            for (const sound of message.sounds ?? []) {
+              const { x, y, z, yaw: tableYaw } = message.table;
+              audio.playImpact(sound, {
+                x:
+                  x +
+                  sound.x * Math.cos(tableYaw) +
+                  sound.z * Math.sin(tableYaw),
+                y: y + sound.y,
+                z:
+                  z -
+                  sound.x * Math.sin(tableYaw) +
+                  sound.z * Math.cos(tableYaw),
+              });
+            }
             if (seated()) {
               destination = undefined;
               keys.clear();
@@ -335,6 +361,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         if (signal.aborted || ws !== socket) return;
         reset();
         pool = undefined;
+        poolMotion.reset();
+        audio.reset();
         poolControls.hidden = true;
         if (document.pointerLockElement === canvas) document.exitPointerLock();
         status.textContent = "Disconnected. Rejoining…";
@@ -350,6 +378,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     canvas.addEventListener(
       "click",
       (event) => {
+        if (event.shiftKey) return;
         if (pool?.phase === "ball-in-hand" && pool.turn === me) {
           const point = view.pickPool(event.clientX, event.clientY);
           if (point)
@@ -366,6 +395,20 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       },
       { signal },
     );
+    canvas.addEventListener(
+      "pointerdown",
+      (event) => {
+        if (
+          !seated() ||
+          (event.button !== 1 && !(event.shiftKey && event.button === 0))
+        )
+          return;
+        event.preventDefault();
+        canvas.setPointerCapture(event.pointerId);
+        tablePan = { id: event.pointerId, x: event.clientX, y: event.clientY };
+      },
+      { signal },
+    );
     function aimAt(x: number, y: number) {
       const cue = pool?.balls.find((ball) => ball.id === 0);
       const point = view.pickPool(x, y);
@@ -379,6 +422,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "pointerdown",
       (event) => {
         if (
+          event.shiftKey ||
           !pool ||
           !seated() ||
           pool.turn !== me ||
@@ -418,6 +462,12 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     canvas.addEventListener(
       "pointermove",
       (event) => {
+        if (tablePan?.id === event.pointerId) {
+          view.panPool(event.clientX - tablePan.x, event.clientY - tablePan.y);
+          tablePan.x = event.clientX;
+          tablePan.y = event.clientY;
+          return;
+        }
         if (shotCharge?.id === event.pointerId)
           shotCharge.power = shotCharge.drag.update({
             x: event.clientX,
@@ -436,6 +486,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     canvas.addEventListener(
       "pointerup",
       (event) => {
+        if (tablePan?.id === event.pointerId) tablePan = undefined;
         if (shotCharge?.id !== event.pointerId) return;
         const shot = shotCharge.drag.release({
           x: event.clientX,
@@ -463,6 +514,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "lostpointercapture",
       () => {
         shotCharge = undefined;
+        tablePan = undefined;
       },
       { signal },
     );
@@ -738,6 +790,15 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             };
           });
         showPool();
+        const listener =
+          seated() && pool
+            ? { x: pool.table.x, y: pool.table.y + 1.6, z: pool.table.z + 1.4 }
+            : { ...predicted.pose(), y: predicted.pose().y + 1.65 };
+        audio.updateListener(listener, {
+          x: -Math.sin(yaw),
+          y: 0,
+          z: -Math.cos(yaw),
+        });
         try {
           view.draw(
             { ...predicted.pose(), yaw, pitch },
@@ -745,7 +806,12 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             destination,
             mode === "walk" ? predicted.pose() : undefined,
             orbitDistance,
-            pool,
+            pool
+              ? {
+                  ...pool,
+                  balls: poolMotion.sample(performance.now()) ?? pool.balls,
+                }
+              : undefined,
             seated()
               ? {
                   aim:

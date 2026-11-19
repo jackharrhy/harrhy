@@ -11,6 +11,7 @@
     "./cue-drag": "./src/cue-drag.ts",
     "./session": "./src/session.ts",
     "./assets/walnut.webp": "./assets/walnut.webp",
+    "./audio": "./src/audio/index.ts",
     "./presentation": "./src/presentation/index.ts",
     "./recording": "./src/recording.ts"
   },

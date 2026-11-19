@@ -10,7 +10,7 @@ const url = new URL(
 );
 const clients = [0, 1].map(() => {
   const ws = new WebSocket(url, { origin });
-  const client = { ws, seq: 0 };
+  const client = { ws, seq: 0, sounds: [] };
   ws.on("error", (error) => {
     client.error = error;
   });
@@ -19,7 +19,10 @@ const clients = [0, 1].map(() => {
     if (m.type === "welcome") client.id = m.id;
     if (m.type === "motion")
       client.pose = m.players.find(({ id }) => id === client.id);
-    if (m.type === "pool") client.pool = m;
+    if (m.type === "pool") {
+      client.pool = m;
+      if (m.sounds) client.sounds.push(...m.sounds);
+    }
   });
   return client;
 });
@@ -91,6 +94,10 @@ try {
   send(b, shot);
   await wait(150);
   assert.equal(a.pool.phase, "aiming", "wrong turn rejected");
+  assert.ok(
+    clients.every((c) => !c.sounds.length),
+    "rejected shot is silent",
+  );
   send(a, shot);
   await until(
     () => clients.every((c) => c.pool.phase === "rolling"),
@@ -101,6 +108,12 @@ try {
     "shot resolves",
     15000,
   );
+  for (const c of clients) {
+    const cues = c.sounds.filter((sound) => sound.kind === "cue");
+    assert.equal(cues.length, 1, "authoritative cue is broadcast exactly once");
+    assert.equal(cues[0].ballId, 0);
+    assert.ok(cues[0].speed > 0);
+  }
   assert.notEqual(a.pool.turnToken, shot.turnToken);
   send(b, { type: "pool-leave", tableId: table.id });
   await until(
