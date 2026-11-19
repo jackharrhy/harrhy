@@ -8,7 +8,10 @@
     "binding": "ASSETS",
     "run_worker_first": true,
   },
-  "vars": { "HARRHY_REVIEW_ORIGIN": "http://127.0.0.1:9867" },
+  "vars": {
+    "HARRHY_REVIEW_ORIGIN": "http://127.0.0.1:9867",
+    "HARRHY_REVIEW_BROWSER_ORIGIN": "",
+  },
   "durable_objects": {
     "bindings": [{ "name": "REVIEWS", "class_name": "ReviewCell" }],
   },

@@ -86,7 +86,7 @@ function routerFor(env: Env) {
       return error(400, titleError);
     return cell().submit(
       { base, head, mergeBase, patch },
-      env.HARRHY_REVIEW_ORIGIN,
+      env.HARRHY_REVIEW_BROWSER_ORIGIN || env.HARRHY_REVIEW_ORIGIN,
       title,
     );
   });
@@ -178,17 +178,31 @@ export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
     const origin = env.HARRHY_REVIEW_ORIGIN;
+    const browserOrigin = env.HARRHY_REVIEW_BROWSER_ORIGIN;
+    const allowedOrigin = browserOrigin || origin;
     const suppliedOrigin = request.headers.get("origin");
     const fetchSite = request.headers.get("sec-fetch-site");
+    const documentNavigation =
+      request.method === "GET" &&
+      suppliedOrigin === null &&
+      request.headers.get("sec-fetch-mode") === "navigate" &&
+      request.headers.get("sec-fetch-dest") === "document" &&
+      (url.pathname === "/" || /^\/reviews\/[a-f0-9-]{36}$/.test(url.pathname));
     let response;
     if (
       !/^http:\/\/127\.0\.0\.1:\d+$/.test(origin) ||
       url.origin !== origin ||
       request.headers.get("host") !== url.host ||
-      (suppliedOrigin !== null && suppliedOrigin !== origin) ||
+      (browserOrigin !== "" &&
+        !/^https:\/\/[a-z0-9-]+(?:\.[a-z0-9-]+)+$/.test(browserOrigin)) ||
+      (suppliedOrigin !== null && suppliedOrigin !== allowedOrigin) ||
+      (browserOrigin &&
+        request.method !== "GET" &&
+        suppliedOrigin !== browserOrigin) ||
       (fetchSite !== null &&
         fetchSite !== "same-origin" &&
-        fetchSite !== "none")
+        fetchSite !== "none" &&
+        !documentNavigation)
     ) {
       response = error(403, "Only local same-origin requests are accepted");
     } else if (

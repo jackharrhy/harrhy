@@ -31,9 +31,11 @@ Files start expanded. Marking a file **Viewed** saves progress on the server and
 
 ## Boundaries
 
-This app has no accounts. The supported launcher binds to IPv4 loopback; do not proxy, forward or deploy the service. Host and browser Origin must match the configured numeric loopback origin. Mutations require a custom header. Local processes can still access the service. Use synthetic data only; do not submit company or other private material.
+This app has no accounts. The supported launcher binds to IPv4 loopback; do not expose that launcher through a proxy or port forward. Host and browser Origin must match the configured numeric loopback origin. Mutations require a custom header. Local processes can still access the service. Use synthetic data only; do not submit company or other private material.
 
 Review snapshots, titles, and comments live in one SQLite-backed Durable Object. Titles are stored in a separate table; opening an existing store adds that table without rewriting snapshots or threads. Celld keeps state in ignored `apps/review/.celld/dev` across restarts. Deleting a review removes live rows; it does not promise secure erasure from storage. Patches are limited to 512 KiB and 100 files, the inbox to 50 reviews, and each review to 100 threads of up to 25 messages (2,000 characters each). Binary data is not included. There is no Git write path, automated agent execution or live synchronization.
+
+The managed gateway integration can set `HARRHY_REVIEW_BROWSER_ORIGIN` to one exact HTTPS origin. `HARRHY_REVIEW_ORIGIN` must remain the app socket’s numeric IPv4 loopback origin and match the upstream URL and Host. The gateway must authenticate every request before forwarding and isolate the app loopback socket in its private network namespace. Review does not authenticate gateway requests; this option only sets the expected browser Origin and the origin used for review links. Never publish the app socket. Hosted CLI is not supported.
 
 `worker.ts` owns the Remix routes and request checks, `cell.ts` owns durable storage, and `page.tsx` / `browser.ts` use Harrhy UI styling and Pierre Diffs. CLI code lives in `cli.mjs`.
 

@@ -419,6 +419,37 @@ try {
   assert.equal(git("rev-parse", "HEAD"), gitHead);
   assert.equal(git("status", "--porcelain"), "");
   assert.deepEqual(errors, []);
+  await stop();
+  const browserOrigin = "https://review.example.test";
+  await writeFile(
+    join(project, ".dev.vars"),
+    `HARRHY_REVIEW_ORIGIN=${origin}
+HARRHY_REVIEW_BROWSER_ORIGIN=${browserOrigin}
+`,
+  );
+  await start();
+  const hosted = `${origin}/api/reviews/${changed.id}/viewed`;
+  for (const [supplied, expected] of [
+    [undefined, 403],
+    [origin, 403],
+    [browserOrigin, 200],
+  ]) {
+    const headers = {
+      "Content-Type": "application/json",
+      "X-Harrhy-Review": "1",
+    };
+    if (supplied) headers.Origin = supplied;
+    assert.equal(
+      (
+        await fetch(hosted, {
+          method: "PUT",
+          headers,
+          body: JSON.stringify({ file: 0, viewed: true }),
+        })
+      ).status,
+      expected,
+    );
+  }
   console.log(
     "Celld restart, immutable snapshot, Chromium and CLI review workflow passed",
   );
