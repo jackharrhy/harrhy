@@ -208,7 +208,7 @@ export function waterFragment(input: FragmentInput): d.v4f {
     );
   } else if (materialLayout.$.material.options.z > 0.5) {
     // Quake II turbulent surfaces use a fixed 64-unit texture domain. This behavior was checked
-    // against the pinned GPL engine oracle described in docs/maps-renderer/QUAKE2-COMPATIBILITY.md; no code was
+    // against the pinned GPL engine oracle described in docs/maps-renderer/quake2-compatibility.md; no code was
     // copied from it.
     uv = d.vec2f(
       uv.x -

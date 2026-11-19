@@ -29,7 +29,7 @@ creates a one-hour opaque session in the existing SQLite database; sign-out
 deletes it. The public `steve login` links and inbox sign-out form use Remix's
 native `data-rmx-document` attribute: `/steve` can redirect through `/auth/login`
 to another origin, and sign-out must replace the old document. Ordinary public
-links keep client navigation; see the [shared convention](../../docs/REMIX-NAVIGATION.md). Jack Auth mode never accepts the old Basic credential. Production
+links keep client navigation; see the [shared convention](../../docs/remix-navigation.md). Jack Auth mode never accepts the old Basic credential. Production
 uses Jack Auth; keep legacy Basic credentials only in protected rollback
 material until Infra retires them. Letter, issue, and attachment IDs stay the
 same.

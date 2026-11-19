@@ -35,7 +35,7 @@ npx playwright install chromium
 npm run test:browser --workspace @harrhy/cms
 ```
 
-Host tests and fixtures live in `__tests__/`; feature tests live in `__tests__/` beside their code. Operational scripts live in `scripts/`. See [Compose](../../compose.yml) and [operations](../../docs/cms/OPERATIONS.md) for deployment and data, [MCP](../../docs/cms/MCP.md) for the optional read-only endpoint, and [AGENTS.md](AGENTS.md) for CMS editing rules.
+Host tests and fixtures live in `__tests__/`; feature tests live in `__tests__/` beside their code. Operational scripts live in `scripts/`. See [Compose](../../compose.yml) and [operations](../../docs/cms/operations.md) for deployment and data, [MCP](../../docs/cms/mcp.md) for the optional read-only endpoint, and [AGENTS.md](AGENTS.md) for CMS editing rules.
 
 ## App-owned backups
 
@@ -44,7 +44,7 @@ retention and private status receipts. Set `HARRHY_CMS_BACKUP_DIR` to a distinct
 mount (local Compose uses `cms-backups:/app/backups`). The authenticated operator
 dashboard shows status; public health does not expose it. All configured site
 DB/uploads/public trees and the optional operator DB are included. See
-[backup configuration, consistency and offline restore](../../docs/cms/BACKUPS.md).
+[backup configuration, consistency and offline restore](../../docs/cms/backups.md).
 Database snapshots are individually consistent, not a cross-database instant.
 Local snapshots are not off-host disaster recovery. The separate production Andrew
 site and its legacy media are outside this app's backup scope.
@@ -125,5 +125,5 @@ The [CMS publish workflow](../../.github/workflows/publish-cms.yml) runs on `mai
 The Dockerfile installs only this app and its transitive workspace dependencies,
 with manifests and `.npmrc` before source for dependency caching. It preserves
 required inherited root configuration and whole selected workspace assets. See
-[container policy and checks](../../docs/NODE-IMAGES.md) for runtime/compiler
+[container policy and checks](../../docs/node-images.md) for runtime/compiler
 exceptions and the production-image smoke commands.

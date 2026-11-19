@@ -26,7 +26,7 @@ cargo run --locked --release -- samples/hummingbird.gif
 
 ## Use
 
-- Add operations below the stack. Drag their grips to reorder; the eye icon bypasses an effect. See the [operation reference](../../docs/img/OPERATIONS.md).
+- Add operations below the stack. Drag their grips to reorder; the eye icon bypasses an effect. See the [operation reference](../../docs/img/operations.md).
 - The monitor button chooses the preview. Expanding or editing another card keeps that selection. Export always saves the final result.
 - Click a number to type, or drag it to adjust. Field edits apply after a short pause or on blur; Enter applies immediately. Shift-drag gives finer control.
 - Use preview handles to move text, rotate, crop, resize, or adjust the canvas. Escape cancels a drag. Show frames lets you inspect individual frames.
@@ -53,7 +53,7 @@ implemented by this import. The original checkout is preserved.
 
 - Up to 64 operations, 1,000 frames, 4,096 pixels per side, and 64 MiB input files. Each decoded animation is limited to 256 MiB; tracked frame buffers have a 1 GiB budget, separate from total process memory.
 - GIF export allows up to 256 colors per frame and binary transparency. Use Matte background to blend partial transparency into a chosen color.
-- Project files and optimized delta-frame export are still on the [to-do list](../../docs/img/IDEAS.md).
+- Project files and optimized delta-frame export are still on the [to-do list](../../docs/img/ideas.md).
 
 ```sh
 cargo fmt --check

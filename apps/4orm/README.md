@@ -1,7 +1,7 @@
 # 4orm on Celld
 
 Status: faithful-parity rework in progress. Earlier fixture preview and tests are
-POC evidence, not migration acceptance. See [parity notes](../../docs/4orm/PARITY.md).
+POC evidence, not migration acceptance. See [parity notes](../../docs/4orm/parity.md).
 
 Development source is now merged into Harrhy `main` at `apps/4orm` (PR143).
 Development and the preserved private runtime use the dedicated
@@ -84,7 +84,7 @@ combine app stores or redesign authority during this consolidation.
 ## Disposable review
 
 From this app directory, using the qualified Celld binary in the
-[common runtime record](../../docs/CELLD-RUNTIME.md). The runner verifies its
+[common runtime record](../../docs/celld-runtime.md). The runner verifies its
 identity automatically; verification can also be run separately:
 
 ```sh
@@ -113,7 +113,7 @@ Released CLI API smoke is separate from an interactive CLI sign-in test.
 
 The same-content oracle comparison is `npm run test:parity`; it requires the
 private prepared cohort and owned loopback listeners described in
-[the parity work log](../../docs/4orm/PARITY.md). It does not fetch production data.
+[the parity work log](../../docs/4orm/parity.md). It does not fetch production data.
 
-See [coverage and gaps](../../docs/4orm/COVERAGE.md) and [migration/recovery](../../docs/4orm/MIGRATION.md).
+See [coverage and gaps](../../docs/4orm/coverage.md) and [migration/recovery](../../docs/4orm/migration.md).
 This candidate is not an approved production replacement.

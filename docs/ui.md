@@ -4,7 +4,7 @@
 
 Ref is the first proving ground because its signed-out page, board list, and board toolbar use simple native controls. Its freeform canvas, gestures, inspector, and image cards remain Ref code. Before moving another app to the package, compare its rendered controls and keyboard behavior to Ref and choose its own theme variables. Avoid replacing Radio's compact desktop, Pool's hall, or Worldview's editor with Ref's appearance.
 
-Use [Remix's native document-navigation convention](REMIX-NAVIGATION.md) for Auth entry links and session-changing forms. `ButtonLink` already forwards `data-rmx-document`; ordinary internal links keep client navigation.
+Use [Remix's native document-navigation convention](remix-navigation.md) for Auth entry links and session-changing forms. `ButtonLink` already forwards `data-rmx-document`; ordinary internal links keep client navigation.
 
 Use native HTML for links, forms, buttons, and simple disclosure. For complex controls, Remix UI offers headless keyboard, focus, and dismissal behavior through the separate, currently unstable `@remix-run/ui` package. Adopt a primitive where the app needs that behavior and keep its visual treatment local. Do not make `@harrhy/ui` a wrapper around every Remix UI export.
 

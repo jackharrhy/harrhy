@@ -49,7 +49,7 @@ curl http://andrew.localhost/healthz
 
 Do not copy a live WAL-mode `tea.db` alone. The optional app-owned scheduler uses
 SQLite backup plus every site's uploads/public and the operator DB, verifies completion,
-and retains seven daily generations. See [backups](BACKUPS.md) for explicit mount/config,
+and retains seven daily generations. See [backups](backups.md) for explicit mount/config,
 actual per-database consistency, status, offline restore and cron retirement gates.
 Keep off-host copies and test restores. Standalone Andrew remains outside this app.
 

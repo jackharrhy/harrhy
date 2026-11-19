@@ -1,6 +1,6 @@
 # @harrhy/webmcp
 
-Frontend-only registration for the experimental browser WebMCP API. Worldview is the first consumer. This is not an HTTP MCP transport and has no production dependencies. The [browser inventory](../../docs/WEBMCP.md) records the existing tools and ownership boundaries.
+Frontend-only registration for the experimental browser WebMCP API. Worldview is the first consumer. This is not an HTTP MCP transport and has no production dependencies. The [browser inventory](../../docs/webmcp.md) records the existing tools and ownership boundaries.
 
 Import `registerWebMcpTools`, `WebMcpTool`, and `WebMcpAnnotations` from `@harrhy/webmcp`. Call `registerWebMcpTools(document, tools, { signal })`. The synchronous result exposes `supported`, `ready`, and `dispose()`. Capability detection uses `document.modelContext.registerTool`; unsupported browsers register nothing. `supported` does not mean registration succeeded or permission was granted: await `ready` to observe success or rejection.
 
