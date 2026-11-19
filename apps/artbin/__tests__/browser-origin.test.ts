@@ -105,12 +105,12 @@ test("shows only a fixed alternate sign-in notice and keeps origin handling opt-
     await (
       await router.fetch(new Request(alternate + "/login?moved=1"))
     ).text(),
-  ).toContain("Artbin has a new browser address.");
+  ).toContain("<strong>artbin.harrhy.xyz</strong>");
   expect(
     await (
       await router.fetch(new Request(canonical + "/login?moved=1"))
     ).text(),
-  ).not.toContain("Artbin has a new browser address.");
+  ).not.toContain("<strong>artbin.harrhy.xyz</strong>");
   vi.stubEnv("HARRHY_ARTBIN_BROWSER_ORIGIN", "");
   expect((await start(alternate)).params.get("redirect_uri")).toBe(
     canonical + "/auth/callback",
@@ -208,13 +208,49 @@ test("Chromium keeps the alternate session on its own hostname and logs out by d
       const context = await browser.newContext();
       const page = await context.newPage();
       page.setDefaultTimeout(6000);
+      const notice = page.getByText(
+        "Artbin is now on artbin.harrhy.xyz, please update your bookmarks!",
+        { exact: true },
+      );
+      await page.goto(next + "/login");
+      expect(await notice.count()).toBe(0);
       await page.goto(next + "/folder/maps?moved=1&view=map&unreviewed=1");
       await page.getByRole("link", { name: "Sign in" }).click();
       await page.waitForURL(next + "/folder/maps?moved=1");
-      await page.getByText("Artbin has a new browser address.").waitFor();
+      await notice.waitFor();
+      expect(await notice.locator("strong").textContent()).toBe(
+        "artbin.harrhy.xyz",
+      );
+      expect(
+        await notice.evaluate((element) => getComputedStyle(element).textAlign),
+      ).toBe("center");
       await page.goto(next + "/login?moved=1&returnTo=%2Ffolder%2Fmaps");
       await page.waitForURL(next + "/folder/maps?moved=1");
-      await page.getByText("Artbin has a new browser address.").waitFor();
+      await notice.waitFor();
+      await page.goto(
+        next + "/folder/maps?tag=a%20b&moved=1&tag=second&moved=1#keep",
+      );
+      const dismiss = page.getByRole("button", {
+        name: "Dismiss bookmark notice",
+      });
+      await dismiss.waitFor();
+      await page.evaluate(() => {
+        history.replaceState({ noticeTest: true }, "");
+        document.body.dataset.noticeTest = "same-document";
+      });
+      await dismiss.focus();
+      await page.keyboard.press("Enter");
+      await notice.waitFor({ state: "hidden" });
+      expect(page.url()).toBe(next + "/folder/maps?tag=a%20b&tag=second#keep");
+      expect(
+        await page.evaluate(() => ({
+          state: history.state,
+          documentMarker: document.body.dataset.noticeTest,
+        })),
+      ).toEqual({
+        state: { noticeTest: true },
+        documentMarker: "same-document",
+      });
       expect(
         (await context.cookies(old)).some(
           ({ name }) => name === "artbin_session",
