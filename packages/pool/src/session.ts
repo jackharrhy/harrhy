@@ -1,9 +1,9 @@
-import { chooseBotPlacement, chooseBotShot } from "./bot";
-import { initializePoolPhysics, PoolPhysics } from "./engine-core";
-import { createShotResult, type PoolSound } from "./physics";
+import { chooseBotPlacement, chooseBotShot } from "./bot.ts";
+import { initializePoolPhysics, PoolPhysics } from "./engine-core.ts";
+import { createShotResult, type PoolSound } from "./physics.ts";
 
 const MAX_PENDING_SOUNDS = 96;
-import { createMatch, resolveShot, startMatch } from "./rules";
+import { createMatch, resolveShot, startMatch } from "./rules.ts";
 
 /** A single ephemeral table. The host supplies player IDs and drives the clock. */
 export async function createPoolSession() {

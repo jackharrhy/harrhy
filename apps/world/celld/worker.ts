@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { createPoolSession } from "@harrhy/pool/session";
+import { createWorldTable } from "./world-table";
 import hall from "../content/hall.bsp";
 import { loadBspCollision } from "../shared/bsp-collision";
 import { createRoom } from "../shared/room";
@@ -25,8 +25,7 @@ interface Env {
 }
 
 type Room = Awaited<ReturnType<typeof createRoom>>;
-type PoolSession = Awaited<ReturnType<typeof createPoolSession>>;
-type Table = { table: PoolTable; session: PoolSession; readyAt?: number };
+type Table = Awaited<ReturnType<typeof createWorldTable>>;
 type Peer = {
   token: string;
   socket: WebSocket;
@@ -38,8 +37,6 @@ const timingPath = "/__bench/timing";
 const noStore = { "Cache-Control": "no-store" };
 const encoder = new TextEncoder();
 const snapshotEvery = 3;
-const botId = "house-bot";
-const botThinkMs = 650;
 const sampleLimit = 36_000;
 let collision: ReturnType<typeof loadBspCollision> | undefined;
 
@@ -164,13 +161,21 @@ export class WorldRoomCell extends DurableObject<Env> {
   }
 
   private async loadTables(tables: PoolTable[]) {
-    for (const table of tables)
-      this.pools.set(table.id, { table, session: await createPoolSession() });
+    const pools = new Map<string, Table>();
+    try {
+      for (const table of tables)
+        pools.set(table.id, await createWorldTable(table));
+      this.pools = pools;
+    } catch (error) {
+      for (const pool of pools.values()) pool.dispose();
+      this.loading = undefined;
+      throw error;
+    }
   }
 
   private releaseEmptyRoom() {
     if (this.peers.size || this.pending.size || this.retained.size) return;
-    for (const pool of this.pools.values()) pool.session.dispose();
+    for (const pool of this.pools.values()) pool.dispose();
     this.pools.clear();
     this.loading = undefined;
   }
@@ -199,7 +204,7 @@ export class WorldRoomCell extends DurableObject<Env> {
       previous[1].socket.close(4002, "Connection replaced");
       room.leave(id); // Reset motion input sequence for the new socket.
       for (const pool of this.pools.values())
-        if (pool.session.clearAim(id)) this.broadcastPool(pool);
+        this.broadcastPool(pool.clearAim(id));
     }
     if (reservation) {
       clearTimeout(reservation.timer);
@@ -221,8 +226,7 @@ export class WorldRoomCell extends DurableObject<Env> {
     }
     this.send(socket, { type: "roster", ids: [...this.peers.keys()] });
     this.send(socket, { type: "motion", ...room.snapshot() });
-    for (const pool of this.pools.values())
-      this.send(socket, this.poolSnapshot(pool));
+    for (const pool of this.pools.values()) this.send(socket, pool.snapshot());
     if (this.timer === undefined) {
       this.deadline = now + TICK_MS;
       this.schedule(room);
@@ -284,93 +288,34 @@ export class WorldRoomCell extends DurableObject<Env> {
   private poolCommand(room: Room, id: string, command: PoolCommand) {
     const pool = this.pools.get(command.tableId);
     if (!pool) return;
-    const { table, session } = pool;
-    let changed: boolean;
-    switch (command.type) {
-      case "pool-join": {
-        const pose = room.snapshot().players.find((player) => player.id === id);
-        if (
-          !pose ||
-          Math.hypot(pose.x - table.x, pose.z - table.z) > 3 ||
-          Math.abs(pose.y - table.y) > 1.5
+    const { table } = pool;
+    if (command.type === "pool-join") {
+      const pose = room.snapshot().players.find((player) => player.id === id);
+      if (
+        !pose ||
+        Math.hypot(pose.x - table.x, pose.z - table.z) > 3 ||
+        Math.abs(pose.y - table.y) > 1.5
+      )
+        return;
+      if (
+        [...this.pools.values()].some(
+          (other) => other !== pool && other.hasSeat(id),
         )
-          return;
-        if (
-          [...this.pools.values()].some(
-            (other) => other !== pool && other.session.hasSeat(id),
-          )
-        )
-          return;
-        if (command.withBot && !table.houseBot) return;
-        if (table.houseBot) {
-          if (session.phase !== "waiting") return;
-          const waiting = session.waitingPlayer;
-          if (waiting !== null && waiting !== id) return;
-          if (waiting === null) session.join(id);
-          changed = session.join(botId);
-        } else changed = session.join(id);
-        break;
-      }
-      case "pool-leave":
-        changed = this.leavePool(pool, id);
-        break;
-      case "pool-cue":
-        changed = session.aim(
-          id,
-          command.turnToken,
-          command.yaw,
-          command.power,
-        );
-        break;
-      case "pool-rematch":
-        changed = session.rematch(id, command.turnToken);
-        break;
-      case "pool-shot":
-        changed = session.shot(
-          id,
-          command.turnToken,
-          command.yaw,
-          command.power,
-        );
-        this.send(this.peers.get(id)!.socket, {
-          type: "pool-shot-ack",
-          tableId: table.id,
-          turnToken: command.turnToken,
-          accepted: changed,
-        });
-        break;
-      case "pool-place":
-        changed = session.place(id, command.turnToken, command.x, command.z);
-        break;
+      )
+        return;
     }
-    if (changed) this.broadcastPool(pool);
+    const update = pool.command(id, command);
+    if (command.type === "pool-shot")
+      this.send(this.peers.get(id)!.socket, {
+        type: "pool-shot-ack",
+        tableId: table.id,
+        turnToken: command.turnToken,
+        accepted: update !== undefined,
+      });
+    this.broadcastPool(update);
   }
-
-  private poolSnapshot(pool: Table): PoolState {
-    const { table, session } = pool;
-    const state: PoolState = {
-      type: "pool",
-      sampledAt: performance.now(),
-      table,
-      ...session.snapshot(),
-    };
-    if (table.houseBot) {
-      // Stand just beyond the long rail, facing the table.
-      state.bot = {
-        id: botId,
-        x: table.x + 1.25 * Math.cos(table.yaw),
-        y: table.y,
-        z: table.z - 1.25 * Math.sin(table.yaw),
-        yaw: table.yaw + Math.PI / 2,
-      };
-    }
-    return state;
-  }
-
-  private broadcastPool(pool: Table, sounds?: PoolState["sounds"]) {
-    const state = this.poolSnapshot(pool);
-    state.strike = pool.session.drainStrike();
-    if (sounds?.length) state.sounds = sounds;
+  private broadcastPool(state: PoolState | undefined) {
+    if (!state) return;
     const message = JSON.stringify(state);
     for (const { socket } of this.peers.values()) {
       if (socket.readyState === WebSocket.OPEN) socket.send(message);
@@ -395,28 +340,6 @@ export class WorldRoomCell extends DurableObject<Env> {
     this.releaseEmptyRoom();
   }
 
-  private leavePool(pool: Table, id: string) {
-    if (!pool.session.leave(id)) return false;
-    if (pool.table.houseBot) pool.session.leave(botId);
-    pool.readyAt = undefined;
-    return true;
-  }
-  private stepBot(pool: Table, now: number) {
-    if (!pool.table.houseBot) return false;
-    const { session } = pool;
-    if (session.turn !== botId || session.phase === "rolling") {
-      pool.readyAt = undefined;
-      return false;
-    }
-    if (pool.readyAt === undefined) {
-      pool.readyAt = now + botThinkMs;
-      return session.aimBot(botId);
-    }
-    if (now < pool.readyAt) return false;
-    pool.readyAt = undefined;
-    return session.playBot(botId);
-  }
-
   private leave(room: Room, id: string) {
     const peer = this.peers.get(id);
     if (!peer) return;
@@ -424,7 +347,7 @@ export class WorldRoomCell extends DurableObject<Env> {
     room.leave(id);
     for (const { socket } of this.peers.values())
       this.send(socket, { type: "left", id });
-    if ([...this.pools.values()].some((pool) => pool.session.hasSeat(id))) {
+    if ([...this.pools.values()].some((pool) => pool.hasSeat(id))) {
       this.retained.set(peer.token, {
         id,
         until: performance.now() + 30000,
@@ -432,7 +355,7 @@ export class WorldRoomCell extends DurableObject<Env> {
       });
     }
     for (const pool of this.pools.values())
-      if (pool.session.clearAim(id)) this.broadcastPool(pool);
+      this.broadcastPool(pool.clearAim(id));
     if (this.peers.size) return;
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
@@ -446,7 +369,7 @@ export class WorldRoomCell extends DurableObject<Env> {
     clearTimeout(reservation.timer);
     this.retained.delete(token);
     for (const pool of this.pools.values())
-      if (this.leavePool(pool, reservation.id)) this.broadcastPool(pool);
+      this.broadcastPool(pool.leave(reservation.id));
     if (release) this.releaseEmptyRoom();
   }
   private send(socket: WebSocket, message: ServerMessage) {
@@ -486,11 +409,7 @@ export class WorldRoomCell extends DurableObject<Env> {
     this.lastTick = now;
     room.step();
     for (const pool of this.pools.values()) {
-      const settled = pool.session.step(1 / TICK_HZ);
-      const sounds = pool.session.drainSounds();
-      const acted = this.stepBot(pool, now);
-      if (settled || acted || sounds.length || pool.session.phase === "rolling")
-        this.broadcastPool(pool, sounds);
+      this.broadcastPool(pool.tick(now, 1 / TICK_HZ));
     }
     this.timing.ticks++;
     const snapshotDue = ++this.frame % snapshotEvery === 0;
