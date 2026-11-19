@@ -234,6 +234,23 @@ test("Chromium keeps the alternate session on its own hostname and logs out by d
         name: "Dismiss bookmark notice",
       });
       await dismiss.waitFor();
+      expect(await dismiss.textContent()).toBe("×");
+      for (const width of [1024, 320]) {
+        await page.setViewportSize({ width, height: 720 });
+        const toast = page.getByRole("status").filter({ has: notice });
+        const bounds = (await toast.boundingBox())!;
+        expect(bounds.x).toBeGreaterThanOrEqual(12);
+        expect(bounds.x + bounds.width).toBeLessThanOrEqual(width - 12);
+        expect(Math.abs(bounds.x + bounds.width / 2 - width / 2)).toBeLessThan(
+          1,
+        );
+        expect(bounds.y).toBe(12);
+        expect(
+          await toast.evaluate(
+            (element) => getComputedStyle(element.parentElement!).position,
+          ),
+        ).toBe("fixed");
+      }
       await page.evaluate(() => {
         history.replaceState({ noticeTest: true }, "");
         document.body.dataset.noticeTest = "same-document";
