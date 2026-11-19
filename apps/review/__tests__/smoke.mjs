@@ -434,11 +434,11 @@ HARRHY_REVIEW_BROWSER_ORIGIN=${browserOrigin}
     [origin, 403],
     [browserOrigin, 200],
   ]) {
-    const headers = {
+    const gatewayHeaders = {
       "Content-Type": "application/json",
       "X-Harrhy-Review": "1",
     };
-    if (supplied) headers.Origin = supplied;
+    if (supplied) gatewayHeaders.Origin = supplied;
     assert.equal(
       (
         await fetch(hosted, {
