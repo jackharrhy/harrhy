@@ -9,7 +9,9 @@ import type { BoardRecord } from "../data/directory-cell.ts";
 import { browserAssets } from "../assets/build-manifest.ts";
 import { refStyles, refThemeStyles } from "../styles.ts";
 
-function Document(handle: Handle<{ title: string; children?: RemixNode }>) {
+function Document(
+  handle: Handle<{ title: string; moved?: boolean; children?: RemixNode }>,
+) {
   return () => (
     <html lang="en" mix={[refThemeStyles, uiControlStyles, refStyles]}>
       <head>
@@ -19,12 +21,43 @@ function Document(handle: Handle<{ title: string; children?: RemixNode }>) {
         <title>{handle.props.title} · ref</title>
         <link rel="icon" href="/favicon.svg" />
       </head>
-      <body>{handle.props.children}</body>
+      <body>
+        {handle.props.moved && <MoveNotice />}
+        {handle.props.children}
+      </body>
     </html>
   );
 }
 
-const moveNoticeStyle = css({ textAlign: "center", padding: "0.5rem 1rem" });
+const moveNoticeStyle = css({
+  position: "fixed",
+  zIndex: 30,
+  insetBlockStart: "max(0.75rem, env(safe-area-inset-top))",
+  insetInline: "0.75rem",
+  marginInline: "auto",
+  width: "fit-content",
+  maxWidth: "calc(100% - 1.5rem)",
+  padding: "0.25rem 0.375rem 0.25rem 0.875rem",
+  backgroundColor: "var(--ui-control-surface)",
+  border: "1px solid var(--ui-line)",
+  borderRadius: "0.625rem",
+  boxShadow: "0 4px 18px rgb(34 35 33 / 16%)",
+  "&:not([hidden])": { display: "flex", alignItems: "center", gap: "0.5rem" },
+  "& p": { margin: 0, textAlign: "center", fontSize: "0.875rem" },
+  "& button": {
+    flexShrink: 0,
+    width: "2.5rem",
+    height: "2.5rem",
+    border: 0,
+    borderRadius: "0.375rem",
+    background: "transparent",
+    color: "inherit",
+    fontSize: "1.25rem",
+    cursor: "pointer",
+  },
+  "& button:hover": { backgroundColor: "var(--ui-control-hover)" },
+  "& button:focus-visible": { outline: "2px solid var(--ui-focus)" },
+});
 
 function MoveNotice() {
   return () => (
@@ -33,8 +66,13 @@ function MoveNotice() {
         Ref is now on <strong>ref.harrhy.xyz</strong>, please update your
         bookmarks!
       </p>
-      <button type="button" hidden data-dismiss-move-notice="">
-        Dismiss bookmark notice
+      <button
+        type="button"
+        hidden
+        data-dismiss-move-notice=""
+        aria-label="Dismiss bookmark notice"
+      >
+        <span aria-hidden="true">×</span>
       </button>
       <script type="module" src="/assets/move-notice.js"></script>
     </div>
@@ -43,11 +81,10 @@ function MoveNotice() {
 
 export function AuthPage(handle: Handle<{ error?: string; moved?: string }>) {
   return () => (
-    <Document title="Sign in">
+    <Document title="Sign in" moved={!!handle.props.moved}>
       <main class="auth-page">
         <div class="auth-form">
           <h1 class="wordmark">ref</h1>
-          {handle.props.moved && <MoveNotice />}
           <a
             class="auth-link"
             href={
@@ -75,7 +112,7 @@ export function HomePage(
   handle: Handle<{ boards: BoardRecord[]; error?: string; moved?: boolean }>,
 ) {
   return () => (
-    <Document title="Boards">
+    <Document title="Boards" moved={handle.props.moved}>
       <main class="home-page">
         <header class="site-header">
           <a class="wordmark" href="/">
@@ -89,7 +126,6 @@ export function HomePage(
         </header>
         <section class="home-content">
           <h1>Boards</h1>
-          {handle.props.moved && <MoveNotice />}
           {handle.props.error && (
             <p class="error" role="alert">
               {handle.props.error}
@@ -132,7 +168,7 @@ export function BoardPage(
 ) {
   const board = handle.props.board;
   return () => (
-    <Document title={board.title}>
+    <Document title={board.title} moved={handle.props.moved}>
       <main id="board-app" data-board-id={board.id}>
         <header class="board-header">
           <a class="back-link" href="/" aria-label="Back to boards">
@@ -181,7 +217,6 @@ export function BoardPage(
             </form>
           </details>
         </header>
-        {handle.props.moved && <MoveNotice />}
         {handle.props.error && (
           <p class="error board-error" role="alert">
             {handle.props.error}

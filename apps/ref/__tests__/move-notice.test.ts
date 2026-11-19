@@ -37,7 +37,9 @@ it("dismisses the alternate bookmark notice without navigating", async () => {
   } as unknown as Env;
   const browser = await chromium.launch();
   try {
-    const page = await browser.newPage();
+    const page = await browser.newPage({
+      viewport: { width: 390, height: 844 },
+    });
     let documentRequests = 0;
     await page.route(`${origin}/**`, async (route) => {
       const request = route.request();
@@ -70,6 +72,14 @@ it("dismisses the alternate bookmark notice without navigating", async () => {
     expect(
       await notice.evaluate((element) => getComputedStyle(element).textAlign),
     ).toBe("center");
+    const toast = page.getByRole("status").locator("..");
+    expect(
+      await toast.evaluate((element) => getComputedStyle(element).position),
+    ).toBe("fixed");
+    const bounds = (await toast.boundingBox())!;
+    expect(bounds.y).toBeLessThan(24);
+    expect(bounds.x).toBeGreaterThanOrEqual(0);
+    expect(bounds.x + bounds.width).toBeLessThanOrEqual(390);
     const dismiss = page.getByRole("button", {
       name: "Dismiss bookmark notice",
     });
