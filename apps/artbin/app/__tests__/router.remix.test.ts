@@ -270,13 +270,16 @@ describe("native Remix router", () => {
         headers: { Cookie: oauthCookie.split(";", 1)[0]! },
       }),
     );
-    assert.equal(callback.status, 302);
+    assert.equal(callback.status, 200);
     assert.match(
       callback.headers.get("set-cookie") ?? "",
       /artbin_cli_oauth_[A-Za-z0-9_-]{43}=.*Max-Age=0/,
     );
 
-    const loopbackUrl = new URL(callback.headers.get("location")!);
+    const link = (await callback.text()).match(
+      /href="(http:\/\/127\.0\.0\.1:[^"]+)"/,
+    );
+    const loopbackUrl = new URL(link?.[1] ?? "");
     assert.equal(loopbackUrl.origin, "http://127.0.0.1:43210");
     assert.equal(loopbackUrl.pathname, "/callback");
     assert.equal(loopbackUrl.searchParams.has("session"), false);

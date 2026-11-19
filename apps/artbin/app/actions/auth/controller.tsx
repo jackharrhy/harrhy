@@ -305,9 +305,38 @@ export default createController(routes.auth, {
           expiresAt: new Date(Date.now() + CLI_HANDOFF_MAX_AGE_MS),
         });
 
-        const response = redirectWithHeaders(
-          `http://127.0.0.1:${oauthData.cliPort}/callback?code=${encodeURIComponent(handoffCode)}`,
-          { "Set-Cookie": clearOauthCookie(cookieName) },
+        const loopback = `http://127.0.0.1:${oauthData.cliPort}/callback?code=${encodeURIComponent(handoffCode)}`;
+        // Commit a document before starting a new navigation to loopback.
+        // Redirecting here can extend Auth's CSP-constrained form submission.
+        const response = context.render(
+          <html lang="en">
+            <head>
+              <meta charSet="utf-8" />
+              <meta
+                name="viewport"
+                content="width=device-width, initial-scale=1"
+              />
+              <meta name="referrer" content="no-referrer" />
+              <link rel="icon" href="data:," />
+              <title>Continue to Artbin CLI</title>
+            </head>
+            <body>
+              <main>
+                <h1>Continue to Artbin CLI</h1>
+                <p>Return to the CLI to finish signing in.</p>
+                <a href={loopback} rel="noreferrer">
+                  Continue to CLI
+                </a>
+              </main>
+            </body>
+          </html>,
+          {
+            headers: {
+              "Cache-Control": "no-store",
+              "Referrer-Policy": "no-referrer",
+              "Set-Cookie": clearOauthCookie(cookieName),
+            },
+          },
         );
         logCliAuth("handoff", "ok");
         return response;
