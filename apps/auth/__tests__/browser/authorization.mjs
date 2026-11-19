@@ -825,13 +825,13 @@ try {
             return [];
           }
         })
-        .filter((event) => event?.request_id === id);
+        .filter((entry) => entry?.request_id === id);
       if (events.length === 0) {
         await new Promise((resolve) => setTimeout(resolve, 20));
         continue;
       }
       assert.equal(events.length, 1);
-      const { timestamp, duration_ms, notes, ...event } = events[0];
+      const { timestamp, duration_ms, notes: _notes, ...event } = events[0];
       assert.ok(Number.isFinite(Date.parse(timestamp)));
       assert.ok(duration_ms >= 0);
       return event;
@@ -860,15 +860,15 @@ try {
     ["private-provider-code", {}],
   ]) {
     providerRejection = providerCode;
-    const rejected = await diagnosticsPage.goto(
+    const providerResponse = await diagnosticsPage.goto(
       `${origin}/login?returnTo=${encodeURIComponent("/authorize?authRequest=private-request-sentinel")}`,
     );
-    assert.equal(rejected.status(), 404);
-    const requestId = rejected.headers()["x-request-id"];
+    assert.equal(providerResponse.status(), 404);
+    const requestId = providerResponse.headers()["x-request-id"];
     const text = await diagnosticsPage.locator("body").innerText();
     assert.ok(text.includes(`Support reference: ${requestId}`));
     assert.doesNotMatch(text, /private-/);
-    assert.deepEqual(await completion(rejected), {
+    assert.deepEqual(await completion(providerResponse), {
       service: "auth",
       kind: "request",
       operation: "auth.request",
