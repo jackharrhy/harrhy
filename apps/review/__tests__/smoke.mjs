@@ -443,7 +443,7 @@ HARRHY_REVIEW_BROWSER_ORIGIN=${browserOrigin}
       (
         await fetch(hosted, {
           method: "PUT",
-          headers,
+          headers: gatewayHeaders,
           body: JSON.stringify({ file: 0, viewed: true }),
         })
       ).status,
