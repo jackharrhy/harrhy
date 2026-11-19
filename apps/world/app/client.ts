@@ -35,8 +35,8 @@ function noop() {}
 
 export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
   const root = canvas.closest<HTMLElement>("#hall")!;
-  const status = root.querySelector<HTMLElement>("#status")!;
-  const button = root.querySelector<HTMLButtonElement>("#enter")!;
+  const hallStatus = root.querySelector<HTMLElement>("#status")!;
+  const enterButton = root.querySelector<HTMLButtonElement>("#enter")!;
   const controls = root.querySelector<HTMLElement>("#controls")!;
   const poolControls = root.querySelector<HTMLElement>("#pool-controls")!;
   const poolStatus = root.querySelector<HTMLElement>("#pool-status")!;
@@ -58,7 +58,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     void run(scope.signal).catch((error: unknown) => {
       if (scope.signal.aborted) return;
       console.error(error);
-      status.textContent =
+      hallStatus.textContent =
         "Cannot start the hall. Try a desktop browser with graphics acceleration enabled.";
       scope.abort();
     });
@@ -75,7 +75,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
   start();
 
   async function run(signal: AbortSignal) {
-    status.textContent = "Preparing the hall…";
+    hallStatus.textContent = "Preparing the hall…";
     const health = await fetch("/healthz", { signal, cache: "no-store" });
     if (!health.ok) throw Error("The room is not ready");
     const { revision } = (await health.json()) as { revision: string };
@@ -138,7 +138,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     const updateStatus = () => {
       if (!predicted) return;
       const value = `In the hall · ${roster.size} ${roster.size === 1 ? "player" : "players"}`;
-      if (status.textContent !== value) status.textContent = value;
+      if (hallStatus.textContent !== value) hallStatus.textContent = value;
     };
     function reset() {
       predicted?.dispose();
@@ -151,7 +151,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       roster.clear();
       samples.length = 0;
       keys.clear();
-      button.disabled = true;
+      enterButton.disabled = true;
       destination = undefined;
       gesture = undefined;
     }
@@ -445,7 +445,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     );
     function connect() {
       if (signal.aborted) return;
-      status.textContent = "Connecting to the hall…";
+      hallStatus.textContent = "Connecting to the hall…";
       const socket = new WebSocket(
         `${location.protocol === "https:" ? "wss:" : "ws:"}//${location.host}/room?revision=${encodeURIComponent(revision)}`,
       );
@@ -543,13 +543,13 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
                 predicted = motion;
                 yaw = self.yaw;
                 pitch = mode === "walk" ? -0.28 : self.pitch;
-                button.disabled = false;
+                enterButton.disabled = false;
                 updateStatus();
               })
               .catch((error: unknown) => {
                 if (signal.aborted || ws !== socket) return;
                 console.error(error);
-                status.textContent = "Could not initialize movement.";
+                hallStatus.textContent = "Could not initialize movement.";
                 stop();
               });
             break;
@@ -571,9 +571,9 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         audio.reset();
         poolControls.hidden = true;
         if (document.pointerLockElement === canvas) document.exitPointerLock();
-        status.textContent = "Disconnected. Rejoining…";
+        hallStatus.textContent = "Disconnected. Rejoining…";
         if (event.code === 4002) {
-          status.textContent = "This seat moved to another tab.";
+          hallStatus.textContent = "This seat moved to another tab.";
           return;
         }
         reconnect = window.setTimeout(connect, 1500);
@@ -584,7 +584,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       canvas.focus();
       void Promise.resolve(canvas.requestPointerLock?.()).catch(() => {});
     };
-    button.addEventListener("click", focus, { signal });
+    enterButton.addEventListener("click", focus, { signal });
     canvas.addEventListener(
       "click",
       (event) => {
@@ -597,10 +597,10 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             event.clientY,
           );
           const square = point && squareAt(point.x, point.z);
-          const destination =
+          const moveSquares =
             selectedSquare && square && selectedSquare + square;
-          const moves = destination
-            ? chess.legal.filter((m) => m.startsWith(destination))
+          const moves = moveSquares
+            ? chess.legal.filter((m) => m.startsWith(moveSquares))
             : [];
           if (moves[0]?.length === 4) {
             playChessMove(chess, moves[0]);
@@ -1180,7 +1180,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           );
         } catch (error) {
           console.error(error);
-          status.textContent = "Rendering stopped. Reload to retry.";
+          hallStatus.textContent = "Rendering stopped. Reload to retry.";
           stop();
           return;
         }

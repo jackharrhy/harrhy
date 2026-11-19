@@ -31,11 +31,11 @@ export async function createWorldTable(table: PoolTable) {
     if (sounds?.length) state.sounds = sounds;
     return state;
   }
-  function command(id: string, command: PoolCommand) {
+  function command(id: string, action: PoolCommand) {
     let changed: boolean;
-    switch (command.type) {
+    switch (action.type) {
       case "pool-join": {
-        if (command.withBot && !table.houseBot) return;
+        if (action.withBot && !table.houseBot) return;
         if (table.houseBot) {
           if (session.phase !== "waiting") return;
           const waiting = session.waitingPlayer;
@@ -48,26 +48,16 @@ export async function createWorldTable(table: PoolTable) {
       case "pool-leave":
         return leave(id);
       case "pool-cue":
-        changed = session.aim(
-          id,
-          command.turnToken,
-          command.yaw,
-          command.power,
-        );
+        changed = session.aim(id, action.turnToken, action.yaw, action.power);
         break;
       case "pool-rematch":
-        changed = session.rematch(id, command.turnToken);
+        changed = session.rematch(id, action.turnToken);
         break;
       case "pool-shot":
-        changed = session.shot(
-          id,
-          command.turnToken,
-          command.yaw,
-          command.power,
-        );
+        changed = session.shot(id, action.turnToken, action.yaw, action.power);
         break;
       case "pool-place":
-        changed = session.place(id, command.turnToken, command.x, command.z);
+        changed = session.place(id, action.turnToken, action.x, action.z);
         break;
     }
     if (changed) return update();

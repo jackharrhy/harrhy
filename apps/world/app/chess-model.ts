@@ -134,13 +134,13 @@ function pieceGeometry(type: PieceSymbol) {
   for (const part of parts) part.dispose();
   return geo;
 }
-export function createChessModel(state: ChessState) {
+const material = (color: number) =>
+  new THREE.MeshStandardMaterial({ color, roughness: 0.42 });
+export function createChessModel(initialState: ChessState) {
   const group = new THREE.Group();
-  const { x, y, z, yaw } = state.table;
-  group.position.set(x, y, z);
+  const { x: tableX, y: tableY, z: tableZ, yaw } = initialState.table;
+  group.position.set(tableX, tableY, tableZ);
   group.rotation.y = yaw;
-  const material = (color: number) =>
-    new THREE.MeshStandardMaterial({ color, roughness: 0.42 });
   const walnut = material(0x65412d),
     brass = material(0xbb8a43),
     white = material(0xffefd0),
