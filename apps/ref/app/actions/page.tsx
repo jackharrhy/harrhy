@@ -1,4 +1,4 @@
-import type { Handle, RemixNode } from "remix/component";
+import { css, type Handle, type RemixNode } from "remix/component";
 import {
   uiActionStyles,
   uiControlStyles,
@@ -24,11 +24,20 @@ function Document(handle: Handle<{ title: string; children?: RemixNode }>) {
   );
 }
 
+const moveNoticeStyle = css({ textAlign: "center", padding: "0.5rem 1rem" });
+
 function MoveNotice() {
   return () => (
-    <p role="status">
-      Ref has moved. Please update your bookmark to this address.
-    </p>
+    <div data-move-notice="" mix={moveNoticeStyle}>
+      <p role="status">
+        Ref is now on <strong>ref.harrhy.xyz</strong>, please update your
+        bookmarks!
+      </p>
+      <button type="button" hidden data-dismiss-move-notice="">
+        Dismiss bookmark notice
+      </button>
+      <script type="module" src="/assets/move-notice.js"></script>
+    </div>
   );
 }
 
