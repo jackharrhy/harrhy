@@ -32,7 +32,7 @@
   pointer-events: none;
 }
 
-#hall[data-pool] :is(#status, #controls, #pool-status, #pool-shot-controls) {
+#hall[data-pool] :is(#status, #controls, #pool-shot-controls) {
   position: absolute;
   width: 1px;
   height: 1px;

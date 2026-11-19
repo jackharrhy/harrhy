@@ -272,7 +272,7 @@ test("steep ramp redirects falling velocity downhill without grounding", async (
       ...(await spawnPose(collision)),
       x: -4.1,
       y: 1.95,
-      z: -2,
+      z: -5,
       grounded: false,
       velocityZ: 1.5,
       verticalVelocity: -4,

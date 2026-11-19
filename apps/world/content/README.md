@@ -36,5 +36,5 @@ The build uses ericw-tools 2.0.0-alpha11 (`qbsp -hlbsp -leaktest`, `vis`, `light
 
 - Map `(x, y, z) = (-worldZ × 60, -worldX × 60, worldY × 60)`. Inverse World `(x, y, z) = (-mapY, mapZ, -mapX) / 60`.
 - Nominal footprint is 12 × 14.8 m in World X/Z. Inner brick faces are at World X ±5.875 m and World Z ±7.275 m (map X ±436.5, map Y ±352.5). Floor and ceiling surfaces are at World Y 0 and 21.85 m (map Z 0 and 1311).
-- The ramp runs along World Z −4 to 0 m, with a 2.5 m high edge at X −5.15 m and its toe at X −3.65 m. Its map bounds are X 0–240, Y 219–309, Z 0–150. The authored spawn is map `(-366, 0, 54)`.
+- The ramp runs along World Z −7 to −3 m, with a 2.5 m high edge at X −5.15 m and its toe at X −3.65 m. Its map bounds are X 180–420, Y 219–309, Z 0–150. The authored spawn is map `(-366, 0, 54)`.
 - The WAD uses 128×128 paletted miptextures derived from the existing Hall WebPs, no Valve assets. Brick is from [Poly Haven Brick Wall 001](https://polyhaven.com/a/brick_wall_001) (Dimitrios Savva and Rob Tuytel); all wood variants are from [Poly Haven Wood Table 001](https://polyhaven.com/a/wood_table_001) (Dimitrios Savva and Rico Cilliers). Both are [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/); see [source and derivative details](../public/textures/HALL-SOURCES.txt).

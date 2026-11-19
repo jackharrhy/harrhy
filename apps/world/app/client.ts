@@ -244,7 +244,9 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       const group = pool.groups[pool.seats.indexOf(me)];
       const score = group
         ? ` · ${group === "solid" ? "Solids" : "Stripes"}: ${pool.remaining[group]} left`
-        : "";
+        : isSeated && pool.phase !== "finished"
+          ? " · Groups open"
+          : "";
       const description = `${label}${score}${pool.message ? ` · ${pool.message}` : ""}`;
       if (poolStatus.textContent !== description)
         poolStatus.textContent = description;
@@ -965,7 +967,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             { ...predicted.pose(), yaw, pitch },
             remotes,
             destination,
-            mode === "walk" ? predicted.pose() : undefined,
+            mode === "walk" || seated() ? predicted.pose() : undefined,
             orbitDistance,
             [...pools.values()].map((state) => ({
               ...state,

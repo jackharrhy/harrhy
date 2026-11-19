@@ -331,7 +331,7 @@ export async function createBspView(
       }
       camera.position.set(local.x, local.y + 1.65, local.z);
       camera.rotation.set(local.pitch, local.yaw, 0, "YXZ");
-      if (avatar) {
+      if (avatar && !poolView) {
         camera.position.y -= 0.5;
         const back = new THREE.Vector3(0, 0, 1).applyQuaternion(
           camera.quaternion,
@@ -343,7 +343,7 @@ export async function createBspView(
           wall ? Math.max(0.08, wall.distance - 0.22) : Infinity,
         );
         camera.position.addScaledVector(back, distance);
-        if (distance > 0.8) remotes = [...remotes, avatar];
+        if (distance <= 0.8 && !poolView) avatar = undefined;
       }
       camera.updateMatrixWorld();
       const triangles: number[] = [];
@@ -372,9 +372,6 @@ export async function createBspView(
         tableCamera.updateProjectionMatrix();
         tableCamera.updateMatrixWorld();
         activeCamera = tableCamera;
-      } else {
-        for (const player of remotes)
-          appendBillboard(triangles, camera, player, layout);
       }
       const now = performance.now();
       const ease =
@@ -398,6 +395,9 @@ export async function createBspView(
         transitionCamera.updateMatrixWorld();
         activeCamera = transitionCamera;
       }
+      for (const player of remotes)
+        appendBillboard(triangles, activeCamera, player, layout);
+      if (avatar) appendBillboard(triangles, activeCamera, avatar, layout);
       for (const pool of pools)
         if (pool.bot)
           appendBillboard(
