@@ -55,7 +55,7 @@ it("dismisses the alternate bookmark notice without navigating", async () => {
       });
     });
     await page.goto(origin);
-    expect(await page.locator("[data-move-notice]").count()).toBe(0);
+    expect(await page.getByRole("status").count()).toBe(0);
     await page
       .context()
       .addCookies([
