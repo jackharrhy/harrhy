@@ -5,9 +5,7 @@ import type { IncomingMessage } from "node:http";
 import { join } from "node:path";
 import { compile, obj, str } from "@earendil-works/pi-schema";
 import { awaitWithContext, contribute, defineFacet } from "@p2/app/v1";
-import { type RouteHandler, Routes, Server, sendJson, serverOf } from "@p2/app/v1/server";
-import { FamiliarStore } from "../familiar/contract.ts";
-import { Catalog } from "../sessions/contract.ts";
+import { familiarIngressAvailable, type RouteHandler, Routes, Server, sendJson, serverOf } from "@p2/app/v1/server";
 import { EventIdSchema, EventSchema, ExternalIngress } from "./contract.ts";
 
 const configCheck = compile(
@@ -24,8 +22,6 @@ const idCheck = compile(EventIdSchema).check;
 export default defineFacet((host) => {
 	contribute(host, "p2.ingress-routes", (self) => {
 		const server = self.get(Server, {});
-		const familiar = self.get(FamiliarStore, {});
-		const catalog = self.get(Catalog, {});
 		const natives = serverOf(self);
 		self.contribute(
 			Routes,
@@ -70,10 +66,7 @@ export default defineFacet((host) => {
 						)
 							return sendJson(response, 401, { error: "Invalid ingress credential" });
 						try {
-							if (
-								familiar.session.value !== config.session ||
-								(await catalog.get({ id: config.session }, ctx)).archivedAt !== null
-							)
+							if (!(await familiarIngressAvailable(config.session, ctx)))
 								return sendJson(response, 503, { error: "Configured Familiar unavailable" });
 							let event: { eventId: string; text: string } | undefined;
 							const eventId = new URL(request.url ?? "/", "http://p2").pathname.slice(
@@ -97,10 +90,7 @@ export default defineFacet((host) => {
 									root.get(ExternalIngress, { session: config.session }),
 									root,
 								);
-								if (
-									familiar.session.value !== config.session ||
-									(await catalog.get({ id: config.session }, root)).archivedAt !== null
-								)
+								if (!(await familiarIngressAvailable(config.session, root)))
 									throw new Error("Familiar unavailable");
 								return event === undefined
 									? peer.receipt({ sender: config.sender, eventId }, root)

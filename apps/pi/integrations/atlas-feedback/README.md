@@ -1,20 +1,16 @@
 # Atlas feedback adapter
 
 A trusted server-only plugin for the Atlas Node app. It declares `atlas.feedback` version 1 through
-`plugins/stimuli/contract.server.ts`. Stimuli own the immutable outbox; workers own native admission and settlement.
+the trusted stimulus API (`@p2/app/v1/server`). Stimuli own the immutable outbox; workers own native admission and settlement.
 It never sends through conversations tools, opens worker stores, or borrows owner credentials.
 
 ## Installation and operator window
 
-Apply the plugin files, plus the two small `glyphs/contract.server.ts` and `projects/contract.server.ts` exports,
-only during a serialized operator window. Then explicitly reload `atlas-feedback`. This is an installed trusted
-**built-in** server facet;
-there are no worker or browser facets. Absent configuration, routes return 503 and no targets or events exist.
-
-Do not symlink this directory into the user plugin root: p2's selection listing ignores symlink directories. A plain
-copy into that root also does not resolve sibling built-in imports. Standalone user-package installation is not claimed.
-No host/network route changes or dependency installation are required. Exact receipt links rely on p2's explicit
-conversation routing, including `/c/1`; changes to that base web navigation require the documented runtime restart.
+Install `atlas-feedback/` explicitly as a real directory in `<P2_DATA_DIR>/plugins/`, using the matching
+base p2 build. Follow the [operator cutover](../README.md) when replacing the previous built-in. This
+package has only a server facet. Once installed, absent configuration returns 503; the base alone has
+no Atlas routes. No host/network route changes or dependency installation are required. Exact receipt
+links rely on p2's explicit conversation routing, including `/c/1`.
 
 The operator authorizes the recipient role with `recipients: "top-level"`. The adapter derives recipients from the
 native session catalog, including idle/stopped sessions, and provisions native subscriptions on catalog GET. Each

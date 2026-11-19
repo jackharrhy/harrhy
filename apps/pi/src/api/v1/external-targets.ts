@@ -1,0 +1,45 @@
+// Native target information for trusted external adapters; no project paths or share grants are returned.
+import type { Ctx } from "@p2/app/v1";
+import { FamiliarStore } from "../../../plugins/familiar/contract.ts";
+import { glyphOf } from "../../../plugins/glyphs/contract.server.ts";
+import { placeSeed } from "../../../plugins/projects/contract.server.ts";
+import { ProjectService } from "../../../plugins/projects/contract.ts";
+import { Catalog, type Session } from "../../../plugins/sessions/contract.ts";
+import { Shares } from "../../../plugins/sharing/contract.ts";
+
+function targetOf({ id, main, branches, archivedAt, title }: Session) {
+	return { id, main, branches: branches.map(({ conversation }) => ({ conversation })), archivedAt, title };
+}
+
+/** Read current catalog and privacy state without exposing the underlying share grants or paths. */
+export async function externalTargets(ctx: Ctx) {
+	const catalog = await ctx.get(Catalog, {});
+	const shares = await ctx.get(Shares, {});
+	return {
+		list: () => catalog.sessions.value.map(targetOf),
+		get: (id: string) => {
+			const session = catalog.sessions.value.find((row) => row.id === id);
+			return session && targetOf(session);
+		},
+		shared: (id: string) =>
+			shares.links.value.some((row) => row.session === id) || shares.people.value.some((row) => row.session === id),
+	};
+}
+
+/** Read native project-aware glyphs without exposing their path seeds. */
+export async function externalTargetGlyphs(ctx: Ctx) {
+	const projects = await ctx.get(ProjectService, {});
+	const catalog = await ctx.get(Catalog, {});
+	return (id: string) => {
+		const session = catalog.sessions.value.find((row) => row.id === id);
+		if (!session) throw new Error("Target session is unavailable");
+		return glyphOf(placeSeed(projects.projects.value, session.env ?? null, session.cwd, projects.sessions.value[id]));
+	};
+}
+
+/** Legacy ingress can only address the existing unarchived Familiar. */
+export async function familiarIngressAvailable(session: string, ctx: Ctx): Promise<boolean> {
+	const familiar = await ctx.get(FamiliarStore, {});
+	const catalog = await ctx.get(Catalog, {});
+	return familiar.session.value === session && (await catalog.get({ id: session }, ctx)).archivedAt === null;
+}

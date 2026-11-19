@@ -14,14 +14,23 @@ import {
 	withAbortSignal,
 } from "@p2/app/v1";
 import { optionalText, processLogs } from "@p2/app/v1/node";
-import { Hosts, type RouteHandler, Routes, Server, sendJson, serverOf } from "@p2/app/v1/server";
-import { glyphOf } from "../glyphs/contract.server.ts";
-import { placeSeed } from "../projects/contract.server.ts";
-import { ProjectService } from "../projects/contract.ts";
-import { Catalog, type Session } from "../sessions/contract.ts";
-import { Shares } from "../sharing/contract.ts";
-import { bindStimulusPublisher, StimulusSources, sourceKey } from "../stimuli/contract.server.ts";
-import { type EventReadbackSchema, StimulusWorker, type SubscriptionSchema, WakeStore } from "../stimuli/contract.ts";
+import {
+	bindStimulusPublisher,
+	type EventReadbackSchema,
+	externalTargetGlyphs,
+	externalTargets,
+	Hosts,
+	type RouteHandler,
+	Routes,
+	Server,
+	StimulusSources,
+	StimulusWorker,
+	type SubscriptionSchema,
+	sendJson,
+	serverOf,
+	sourceKey,
+	WakeStore,
+} from "@p2/app/v1/server";
 import { AtlasFeedback, BatchSchema, payloadDigest, validateEvidence } from "./contract.server.ts";
 
 const ConfigSchema = obj({
@@ -129,9 +138,8 @@ export default defineFacet((host) => {
 			return row;
 		};
 		const eligible = async (row: Subscription, config: Config, ctx: Ctx) => {
-			const catalog = await ctx.get(Catalog, {});
-			const shares = await ctx.get(Shares, {});
-			const session = catalog.sessions.value.find((item) => item.id === row.target.session);
+			const targets = await externalTargets(ctx);
+			const session = targets.get(row.target.session);
 			if (
 				!row.enabled ||
 				row.source.id !== AtlasFeedback.id ||
@@ -140,8 +148,7 @@ export default defineFacet((host) => {
 				session.archivedAt !== null ||
 				(session.main !== row.target.conversation &&
 					!session.branches.some((branch) => branch.conversation === row.target.conversation)) ||
-				shares.links.value.some((item) => item.session === session.id) ||
-				shares.people.value.some((item) => item.session === session.id) ||
+				targets.shared(session.id) ||
 				!sourceConfigCheck.check(row.config) ||
 				row.config.resource !== config.resource ||
 				row.config.articleOrigin !== config.articleOrigin
@@ -157,14 +164,8 @@ export default defineFacet((host) => {
 				throw error;
 			}
 			// Recheck server-owned policy after the worker read, including concurrent archive/share changes.
-			const current = catalog.sessions.value.find((item) => item.id === session.id);
-			if (
-				!current ||
-				current.archivedAt !== null ||
-				shares.links.value.some((item) => item.session === session.id) ||
-				shares.people.value.some((item) => item.session === session.id)
-			)
-				return undefined;
+			const current = targets.get(session.id);
+			if (!current || current.archivedAt !== null || targets.shared(session.id)) return undefined;
 			return current;
 		};
 		// Concurrent catalog reads share provisioning, not an event or a publication attempt.
@@ -196,30 +197,26 @@ export default defineFacet((host) => {
 		};
 		self.contribute(Routes, {
 			"GET /atlas-feedback/targets": guarded(async (_request, config, ctx) => {
-				const projects = await ctx.get(ProjectService, {});
-				const catalog = await ctx.get(Catalog, {});
-				const shares = await ctx.get(Shares, {});
+				const glyph = await externalTargetGlyphs(ctx);
+				const nativeTargets = await externalTargets(ctx);
 				const hosts = await ctx.get(Hosts, {});
 				const targets = [];
 				const unavailable: { sessionId: string; label: string; reason: string }[] = [];
 				let omittedPrivacyCount = 0;
 				const registered = await bindings(config, ctx);
 				// Catalog rows are sessions only: subagents/one-shots live in ChildStore, never here.
-				for (const candidate of catalog.sessions.value) {
+				for (const candidate of nativeTargets.list()) {
 					if (candidate.archivedAt !== null) continue;
 					if (config.recipients !== "top-level" && !registered.some((row) => row.target.session === candidate.id))
 						continue;
-					if (
-						shares.links.value.some((item) => item.session === candidate.id) ||
-						shares.people.value.some((item) => item.session === candidate.id)
-					) {
+					if (nativeTargets.shared(candidate.id)) {
 						omittedPrivacyCount++;
 						continue;
 					}
 					let row = registered.find(
 						(item) => item.target.session === candidate.id && item.target.conversation === candidate.main,
 					);
-					let session: Session | undefined;
+					let session: Awaited<ReturnType<typeof eligible>>;
 					// A failed native start stays waiting until owner Retry; it must not hold the whole catalog open.
 					const deadline = AbortSignal.timeout(5000);
 					const bounded = withAbortSignal(deadline, ctx);
@@ -244,12 +241,8 @@ export default defineFacet((host) => {
 					}
 					if (!row || !session || session.id !== candidate.id || session.main !== row.target.conversation) {
 						// Privacy changes during worker validation must not disclose a session's identity.
-						if (
-							shares.links.value.some((item) => item.session === candidate.id) ||
-							shares.people.value.some((item) => item.session === candidate.id)
-						)
-							omittedPrivacyCount++;
-						else if (catalog.sessions.value.find((item) => item.id === candidate.id)?.archivedAt === null)
+						if (nativeTargets.shared(candidate.id)) omittedPrivacyCount++;
+						else if (nativeTargets.get(candidate.id)?.archivedAt === null)
 							unavailable.push({
 								sessionId: candidate.id,
 								label: candidate.title,
@@ -262,14 +255,7 @@ export default defineFacet((host) => {
 						key: keyOf(config.resource, row.id),
 						revision: row.revision,
 						label: session.title,
-						glyph: glyphOf(
-							placeSeed(
-								projects.projects.value,
-								session.env ?? null,
-								session.cwd,
-								projects.sessions.value[session.id],
-							),
-						),
+						glyph: glyph(session.id),
 					});
 				}
 				return {

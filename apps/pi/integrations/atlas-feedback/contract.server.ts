@@ -2,7 +2,7 @@
 import { createHash } from "node:crypto";
 import { arr, int, obj, type Static, str } from "@earendil-works/pi-schema";
 import { literal } from "@p2/app/v1";
-import { defineStimulusSource } from "../stimuli/contract.server.ts";
+import { defineStimulusSource } from "@p2/app/v1/server";
 
 const Sha256 = str({ pattern: "^[0-9a-f]{64}$" });
 export const CommentsSchema = arr(

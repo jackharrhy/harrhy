@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { request } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -21,6 +21,7 @@ import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { NativeWatchable, Watchable } from "@earendil-works/chord/watch";
 import type { ImageProcessor } from "@earendil-works/pi-durable/tools";
 import { WebSocket as NodeWebSocket } from "ws";
+import { listPlugins } from "../../src/hosts/plugins.ts";
 import { type P2Server, type ServerOptions, startServer } from "../../src/hosts/server.ts";
 import {
 	type Ctx,
@@ -37,6 +38,7 @@ import {
 	serveNative,
 	type VariantOf,
 } from "../../src/runtime/chord.ts";
+import { userPluginsDirectory } from "../../src/runtime/host-dirs.ts";
 import { localOwnerSignIn } from "../../src/runtime/local-owner.ts";
 import { HOST, type P2Principal, SERVER } from "../../src/runtime/principals.ts";
 import { follow, type HeldIn, type HeldRef, whenLive } from "../../src/runtime/refs.ts";
@@ -137,19 +139,29 @@ export async function startFixture(
 	options: ServerOptions & {
 		/** settings.json written into the data directory before the server starts (keys read at the start: `telemetry`). */
 		readonly settings?: Readonly<Record<string, unknown>>;
+		/** Install the checked-in integration directories into this fixture's actual user plugin root. */
+		readonly integrations?: readonly ("atlas-feedback" | "ingress")[];
 	} = {},
 ): Promise<Fixture> {
 	const root = mkdtempSync(join(tmpdir(), "p2-test-"));
 	const dataDir = join(root, "data");
 	const workspace = join(root, "workspace");
 	mkdirSync(workspace, { recursive: true });
-	const { settings, ...serverOptions } = options;
+	const { settings, integrations, ...serverOptions } = options;
 	if (settings !== undefined) {
 		mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 		writeFileSync(join(dataDir, "settings.json"), JSON.stringify(settings), { mode: 0o600 });
 	}
 	let server: P2Server;
 	try {
+		if (integrations?.length) {
+			const builtin = listPlugins();
+			mkdirSync(userPluginsDirectory(dataDir), { recursive: true, mode: 0o700 });
+			for (const name of integrations) {
+				assert(!builtin.has(name), `${name} must load from the fixture user root, not the built-ins`);
+				cpSync(join(APP, "integrations", name), join(userPluginsDirectory(dataDir), name), { recursive: true });
+			}
+		}
 		server = await startServer({
 			dataDir,
 			port: 0,

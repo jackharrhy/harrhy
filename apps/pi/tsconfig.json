@@ -154,6 +154,7 @@
     "src/**/*.tsx",
     "plugins/**/*.ts",
     "plugins/**/*.tsx",
+    "integrations/**/*.ts",
     "__tests__/p2/**/*.ts",
     "scripts/**/*.ts"
   ]

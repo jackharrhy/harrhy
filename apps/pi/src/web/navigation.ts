@@ -39,8 +39,6 @@ export type Route = {
 	/** An explicit `/c/<id>` link stays on that conversation, even after the session switches main. */
 	exactConversation?: true;
 	layers: Layer[];
-	/** A private pane's current drill-in, kept in this device's history, never in a shared link. */
-	ownerView?: { kind: string; locator: string };
 	workspace?: WorkspaceLocation;
 	/** The transcript block shown in the side panel (SidePanel.tsx); never together with `panel`. */
 	activity?: { row: string; step?: string };
