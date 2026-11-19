@@ -322,10 +322,12 @@ describe("native Remix router", () => {
       {
         start: routes.auth.login.href(),
         callback: routes.auth.callback.href(),
+        status: 302,
       },
       {
         start: `${routes.auth.cliAuthorize.href()}?port=43210`,
         callback: routes.auth.cliCallback.href(),
+        status: 200,
       },
     ]) {
       const start = async () => {
@@ -356,7 +358,7 @@ describe("native Remix router", () => {
       assert.equal(invalid.headers.get("set-cookie"), null);
       globalThis.fetch = identityFetch(first.nonce);
       const firstResult = await callback(first.state);
-      assert.equal(firstResult.status, 302);
+      assert.equal(firstResult.status, channel.status);
       assert.ok(
         firstResult.headers
           .getSetCookie()[0]
@@ -364,7 +366,7 @@ describe("native Remix router", () => {
       );
       globalThis.fetch = identityFetch(second.nonce);
       const secondResult = await callback(second.state);
-      assert.equal(secondResult.status, 302);
+      assert.equal(secondResult.status, channel.status);
       assert.ok(
         secondResult.headers
           .getSetCookie()[0]
