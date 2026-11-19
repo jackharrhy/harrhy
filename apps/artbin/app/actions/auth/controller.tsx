@@ -214,56 +214,75 @@ export default createController(routes.auth, {
 
     async cliAuthorize(context) {
       const cliPort = parseCliPort(context.url.searchParams.get("port"));
-      if (!cliPort)
+      if (!cliPort) {
+        logCliAuth("authorize", "invalid_request");
         return new Response("Invalid or missing port parameter", {
           status: 400,
         });
+      }
 
-      const transaction = createLoginTransaction();
-      const cookieName = loginTransactionCookieName(
-        "artbin_cli_oauth",
-        transaction.state,
-      )!;
-      return redirectWithHeaders(
-        await identityClient().authorizationUrl(
-          transaction,
-          getCliRedirectUri(),
-        ),
-        {
-          "Set-Cookie": oauthCookie(
-            cookieName,
-            JSON.stringify({ ...transaction, cliPort }),
-            600,
+      try {
+        const transaction = createLoginTransaction();
+        const cookieName = loginTransactionCookieName(
+          "artbin_cli_oauth",
+          transaction.state,
+        )!;
+        const response = redirectWithHeaders(
+          await identityClient().authorizationUrl(
+            transaction,
+            getCliRedirectUri(),
           ),
-        },
-      );
+          {
+            "Set-Cookie": oauthCookie(
+              cookieName,
+              JSON.stringify({ ...transaction, cliPort }),
+              600,
+            ),
+          },
+        );
+        logCliAuth("authorize", "ok");
+        return response;
+      } catch (error) {
+        return cliAuthFailure("authorize", error);
+      }
     },
 
     async cliCallback(context) {
-      const log = createRequestLogger();
       const code = context.url.searchParams.get("code");
       const state = context.url.searchParams.get("state");
       const oauthError = context.url.searchParams.get("error");
       const cookieName = loginTransactionCookieName("artbin_cli_oauth", state);
-      if (!cookieName)
+      if (!cookieName) {
+        logCliAuth("callback", "invalid_state");
         return terminalCliError("Missing or invalid OAuth state");
+      }
       const oauthData = readOauthCookie<LoginTransaction & { cliPort: number }>(
         context.request,
         cookieName,
       );
       if (!oauthData || !parseCliPort(String(oauthData.cliPort))) {
+        logCliAuth("callback", "invalid_transaction");
         return terminalCliError(
           "Missing or invalid OAuth state",
           400,
           cookieName,
         );
       }
-      if (!validLoginTransaction(oauthData, state))
+      if (!validLoginTransaction(oauthData, state)) {
+        logCliAuth("callback", "invalid_state");
         return terminalCliError("State mismatch", 400, cookieName);
-      if (oauthError)
+      }
+      if (oauthError) {
+        logCliAuth("callback", "provider_error");
         return terminalCliError(`OAuth error: ${oauthError}`, 400, cookieName);
-      if (!code)
+      }
+      if (!code) {
+        logCliAuth("callback", "invalid_request");
         return terminalCliError("Missing code or state", 400, cookieName);
+      }
+
+      logCliAuth("callback", "ok");
+      let phase: "exchange" | "handoff" = "exchange";
 
       try {
         const identity = await identityClient().exchange(
@@ -271,6 +290,8 @@ export default createController(routes.auth, {
           oauthData,
           getCliRedirectUri(),
         );
+        logCliAuth("exchange", "ok");
+        phase = "handoff";
         const user = await upsertUser({
           sub: identity.subject,
           username: identity.username,
@@ -284,26 +305,14 @@ export default createController(routes.auth, {
           expiresAt: new Date(Date.now() + CLI_HANDOFF_MAX_AGE_MS),
         });
 
-        log.set({
-          auth: {
-            channel: "cli",
-            userId: user.id,
-            username: user.username,
-            authSubject: identity.subject,
-          },
-        });
-        log.emit();
-
-        return redirectWithHeaders(
+        const response = redirectWithHeaders(
           `http://127.0.0.1:${oauthData.cliPort}/callback?code=${encodeURIComponent(handoffCode)}`,
           { "Set-Cookie": clearOauthCookie(cookieName) },
         );
-      } catch (error) {
-        log.error(error instanceof Error ? error : new Error(String(error)), {
-          step: "oauth-callback",
-          channel: "cli",
-        });
-        log.emit();
+        logCliAuth("handoff", "ok");
+        return response;
+      } catch {
+        logCliAuth(phase, "failed");
         return terminalCliError("OAuth callback failed", 500, cookieName);
       }
     },
@@ -313,6 +322,7 @@ export default createController(routes.auth, {
       try {
         body = await context.request.json();
       } catch {
+        logCliAuth("redeem", "invalid_request");
         return jsonError(
           "invalid_request",
           "A JSON body containing a code is required",
@@ -325,39 +335,48 @@ export default createController(routes.auth, {
         typeof (body as { code?: unknown }).code === "string"
           ? (body as { code: string }).code
           : null;
-      if (!code)
+      if (!code) {
+        logCliAuth("redeem", "invalid_request");
         return jsonError("invalid_request", "A handoff code is required", 400);
-
-      const handoff = db
-        .delete(cliLoginHandoffs)
-        .where(
-          and(
-            eq(cliLoginHandoffs.code, code),
-            gt(cliLoginHandoffs.expiresAt, new Date()),
-            gt(cliLoginHandoffs.sessionExpiresAt, new Date()),
-          ),
-        )
-        .returning({
-          userId: cliLoginHandoffs.userId,
-          sessionExpiresAt: cliLoginHandoffs.sessionExpiresAt,
-        })
-        .get();
-      if (!handoff) {
-        return jsonError(
-          "invalid_grant",
-          "Handoff code is invalid, expired, or already used",
-          400,
-        );
       }
 
-      const sessionId = await createSession(
-        handoff.userId,
-        Math.floor(handoff.sessionExpiresAt.getTime() / 1000),
-      );
-      return Response.json(
-        { session: sessionId },
-        { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } },
-      );
+      try {
+        const handoff = db
+          .delete(cliLoginHandoffs)
+          .where(
+            and(
+              eq(cliLoginHandoffs.code, code),
+              gt(cliLoginHandoffs.expiresAt, new Date()),
+              gt(cliLoginHandoffs.sessionExpiresAt, new Date()),
+            ),
+          )
+          .returning({
+            userId: cliLoginHandoffs.userId,
+            sessionExpiresAt: cliLoginHandoffs.sessionExpiresAt,
+          })
+          .get();
+        if (!handoff) {
+          logCliAuth("redeem", "invalid_grant");
+          return jsonError(
+            "invalid_grant",
+            "Handoff code is invalid, expired, or already used",
+            400,
+          );
+        }
+
+        const sessionId = await createSession(
+          handoff.userId,
+          Math.floor(handoff.sessionExpiresAt.getTime() / 1000),
+        );
+        const response = Response.json(
+          { session: sessionId },
+          { headers: { "Cache-Control": "no-store", Pragma: "no-cache" } },
+        );
+        logCliAuth("redeem", "ok");
+        return response;
+      } catch (error) {
+        return cliAuthFailure("redeem", error);
+      }
     },
   },
 });
@@ -480,4 +499,36 @@ function parseCliPort(value: string | null): number | null {
   return Number.isSafeInteger(port) && port >= 1 && port <= 65_535
     ? port
     : null;
+}
+
+type CliAuthPhase =
+  | "authorize"
+  | "callback"
+  | "exchange"
+  | "handoff"
+  | "redeem";
+type CliAuthOutcome =
+  | "ok"
+  | "failed"
+  | "invalid_request"
+  | "invalid_state"
+  | "invalid_transaction"
+  | "provider_error"
+  | "invalid_grant";
+
+function logCliAuth(phase: CliAuthPhase, outcome: CliAuthOutcome): void {
+  const event = JSON.stringify({ event: "artbin_cli_auth", phase, outcome });
+  if (outcome === "ok") console.info(event);
+  else console.warn(event);
+}
+
+function cliAuthFailure(
+  phase: "authorize" | "redeem",
+  error: unknown,
+): Response {
+  logCliAuth(phase, "failed");
+  // Match the server fallback without sending the exception to its generic logger.
+  return error instanceof Response
+    ? error
+    : new Response("Internal Server Error", { status: 500 });
 }
