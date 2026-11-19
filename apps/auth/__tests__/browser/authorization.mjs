@@ -228,6 +228,8 @@ const origin = `http://127.0.0.1:${port}`;
 const serverOptions = {
   env: {
     ...process.env,
+    NODE_ENV: "test",
+    HARRHY_AUTH_VERSION: "synthetic-build",
     PORT: String(port),
     PUBLIC_ORIGIN: origin,
     ZITADEL_API_URL: `http://127.0.0.1:${provider.address().port}`,
@@ -849,6 +851,8 @@ try {
     service: "auth",
     kind: "request",
     operation: "auth.request",
+    environment: "test",
+    version: "synthetic-build",
     request_id: health.headers()["x-request-id"],
     outcome: "ok",
     "http.method": "GET",
@@ -872,6 +876,8 @@ try {
       service: "auth",
       kind: "request",
       operation: "auth.request",
+      environment: "test",
+      version: "synthetic-build",
       request_id: requestId,
       outcome: "degraded",
       "http.method": "GET",

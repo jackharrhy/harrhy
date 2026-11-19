@@ -14,7 +14,7 @@ COPY --from=assets --chown=node:node /app/node_modules ./node_modules
 COPY --from=assets --chown=node:node /app/packages/ui ./packages/ui
 COPY --chown=node:node packages/logger ./packages/logger
 ARG HARRHY_AUTH_VERSION=development
-ENV HARRHY_AUTH_VERSION=${HARRHY_AUTH_VERSION} NODE_ENV=production
+ENV HARRHY_AUTH_VERSION=${HARRHY_AUTH_VERSION}
 WORKDIR /app/apps/auth
 RUN node -e "const assert = require('node:assert/strict'); assert.equal(process.versions.node.split('.')[0], '26'); assert.equal(process.config.variables.v8_enable_pointer_compression, 1)"
 COPY --chown=node:node apps/auth/package.json ./package.json
