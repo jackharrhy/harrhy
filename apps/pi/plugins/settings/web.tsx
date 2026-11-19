@@ -39,6 +39,7 @@ import { Models } from "../models/contract.ts";
 import { SETTINGS_COMMANDS, SETTINGS_PAGES, SETTINGS_SEARCH } from "./commands.tsx";
 import { type MobileSettings, Settings } from "./contract.ts";
 import { OWN_SECTIONS, type OwnSection } from "./sections.ts";
+import { ThemeFields, useBaseTint } from "./theme-web.tsx";
 import "./settings.css";
 
 /** A change of top-level settings: each one's new value, `undefined` back to its default (removed from the file). */
@@ -89,6 +90,7 @@ function listenForMenuSettings(): () => void {
 
 function GearButton() {
 	const owner = useOwner();
+	useBaseTint(owner);
 	const open = useSettingsSection() !== undefined;
 	const settings = useObject(Settings, owner ? {} : undefined);
 	const serverName = useObject(ServerNameSettings, owner ? {} : undefined);
@@ -193,6 +195,7 @@ function SettingsSection({ id }: { id: OwnSection }) {
 	if (defaultModel && !modelOptions.some((option) => option.value === defaultModel))
 		modelOptions.unshift({ value: defaultModel, label: defaultModel });
 	const fields: Record<OwnSection, ReactNode> = {
+		theme: <ThemeFields />,
 		general: (
 			<>
 				<p className="muted small">

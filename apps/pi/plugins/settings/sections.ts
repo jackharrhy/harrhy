@@ -4,6 +4,7 @@
 /** The own sections; their ids are the window layer's locators. */
 export const OWN_SECTIONS = [
 	{ id: "general", label: "General" },
+	{ id: "theme", label: "Theme" },
 	{ id: "models", label: "Models" },
 	{ id: "agent", label: "Agent" },
 	{ id: "requests", label: "Requests" },

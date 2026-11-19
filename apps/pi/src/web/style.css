@@ -3694,3 +3694,17 @@ button.history-edge:disabled {
 :root[data-shell="macos"] [data-shell-corner] {
 	padding-left: var(--shell-inset-start);
 }
+:root[data-pi-tint="custom"] {
+	--bg: oklch(0.985 0.012 var(--pi-base-hue));
+	--hover: oklch(0.95 0.022 var(--pi-base-hue));
+	--user: oklch(0.94 0.025 var(--pi-base-hue));
+	--code: oklch(0.96 0.017 var(--pi-base-hue));
+	--line: oklch(0.91 0.018 var(--pi-base-hue));
+}
+:root[data-theme="dark"][data-pi-tint="custom"] {
+	--bg: oklch(0.19 0.022 var(--pi-base-hue));
+	--hover: oklch(0.24 0.028 var(--pi-base-hue));
+	--user: oklch(0.26 0.03 var(--pi-base-hue));
+	--code: oklch(0.21 0.022 var(--pi-base-hue));
+	--line: oklch(0.29 0.024 var(--pi-base-hue));
+}
