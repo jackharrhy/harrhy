@@ -660,25 +660,34 @@ async function handleBrowser(request, routeAction, routePhase) {
       throw httpError(404, "Page not found.");
     } catch (error) {
       const expected = error.status && error.status < 500;
+      const status = expected ? error.status : 502;
+      const failure = error.providerFailure;
+      const requestId = failure ? crypto.randomUUID() : undefined;
+      if (requestId) headers.set("X-Request-Id", requestId);
       console.error(
         "request_failed",
-        JSON.stringify({
-          path: url.pathname,
-          status: error.status || 500,
-          code: error.code,
-        }),
+        JSON.stringify(
+          failure
+            ? { service: "auth", request_id: requestId, status, ...failure }
+            : {
+                path: url.pathname,
+                status: error.status || 500,
+                code: error.code,
+              },
+        ),
       );
+      const message = expected
+        ? error.message
+        : "The identity service could not complete this request. Please try again.";
       await sendRemix(
         (nonce) =>
           renderProblem(
-            expected
-              ? error.message
-              : "The identity service could not complete this request. Please try again.",
+            requestId ? `${message} Support reference: ${requestId}.` : message,
             session?.enrollmentTicket ? "/enroll" : "/account",
             !!session?.enrollmentTicket,
             nonce,
           ),
-        expected ? error.status : 502,
+        status,
       );
     }
   }

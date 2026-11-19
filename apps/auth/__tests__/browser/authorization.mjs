@@ -28,6 +28,7 @@ let callbackOrigin,
   promptOverride,
   maxAgeOverride,
   scopeOverride;
+let providerRejection;
 let credentialAttempts = 0;
 let completions = 0,
   resetCalls = 0,
@@ -76,6 +77,16 @@ const provider = createServer(async (request, response) => {
     }
     result = {};
   } else if (request.url.startsWith("/v2/oidc/auth_requests/")) {
+    if (providerRejection && request.method === "GET") {
+      response.writeHead(403, { "Content-Type": "application/json" });
+      response.end(
+        JSON.stringify({
+          code: providerRejection,
+          message: "private-provider-body",
+        }),
+      );
+      return;
+    }
     if (request.method === "POST") {
       if (json.error?.error === "ERROR_REASON_LOGIN_REQUIRED") {
         loginRequired++;
@@ -809,6 +820,40 @@ try {
     diagnostic,
     /private-|dynamic|authRequest|scope=|redirect_uri|clientId|cookie|token/i,
   );
+  for (const [providerCode, safeCode] of [
+    [7, { code: 7 }],
+    ["private-provider-code", {}],
+  ]) {
+    providerRejection = providerCode;
+    const start = logs.length;
+    const rejected = await diagnosticsPage.goto(
+      `${origin}/login?returnTo=${encodeURIComponent("/authorize?authRequest=private-request-sentinel")}`,
+    );
+    assert.equal(rejected.status(), 403);
+    const requestId = rejected.headers()["x-request-id"];
+    assert.match(requestId, /^[0-9a-f-]{36}$/);
+    const text = await diagnosticsPage.locator("body").innerText();
+    assert.ok(text.includes(`Support reference: ${requestId}`));
+    assert.doesNotMatch(text, /private-/);
+    const failures = logs
+      .slice(start)
+      .split("\n")
+      .filter((line) => line.startsWith("request_failed "));
+    assert.deepEqual(
+      failures.map((line) => JSON.parse(line.slice("request_failed ".length))),
+      [
+        {
+          service: "auth",
+          request_id: requestId,
+          status: 403,
+          upstream_service: "zitadel",
+          phase: "authorization_lookup",
+          upstream_status: 403,
+          ...safeCode,
+        },
+      ],
+    );
+  }
   await diagnosticsContext.close();
   console.log(
     "PASS authorization diagnostics: static internal reason, generic browser error, no request secrets",

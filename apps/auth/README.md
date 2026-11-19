@@ -26,6 +26,13 @@ adds client/request IDs, raw scopes, callback URLs, OAuth state, tokens, cookies
 or user details. These codes diagnose future failures; they cannot reconstruct
 an earlier request whose metadata is unavailable, and do not change authorization.
 
+When a ZITADEL HTTP rejection reaches the browser error page, the same
+`request_failed` record instead includes a support reference, a fixed upstream
+phase, the upstream HTTP status and a recognized numeric provider code, if
+present. The page and `X-Request-Id` expose only the matching reference, not
+the provider details. This does not log provider URLs, bodies or request
+credentials, or change how sign-in failures are handled.
+
 ### DCR scope vocabulary
 
 ZITADEL validates role scopes against the OAuth client's own project before
