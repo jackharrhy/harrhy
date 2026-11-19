@@ -126,6 +126,8 @@
       "entry": ["src/server.ts"],
     },
     "apps/artbin": {
+      // The CLI completion browser test generates a local ephemeral TLS certificate.
+      "ignoreBinaries": ["openssl"],
       "entry": [
         "app/actions/public/entry.ts",
         "app/actions/public/bsp-overview-renderer.ts",
