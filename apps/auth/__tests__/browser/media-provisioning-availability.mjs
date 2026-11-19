@@ -49,7 +49,6 @@ try {
           await page.locator('form[action*="provisioning"]').count(),
           0,
         );
-        assert.equal(fixture.logs.includes("request_failed"), false);
       }
       for (const width of [1440, 390]) {
         await page.setViewportSize({ width, height: 900 });
@@ -124,7 +123,7 @@ try {
             { exact: true },
           )
           .waitFor();
-        assert(fixture.logs.includes('"status":503'));
+        assert(fixture.logs.includes('"http.status":502'));
       }
       assert.equal(fixture.nativeCreations, 0);
       assert.equal(fixture.nativeWrites, 0);

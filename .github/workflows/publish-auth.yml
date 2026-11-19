@@ -69,6 +69,7 @@ jobs:
           context: .
           file: apps/auth/Dockerfile
           push: true
+          build-args: HARRHY_AUTH_VERSION=${{ github.sha }}
           tags: |
             ghcr.io/jackharrhy/auth:latest
             ghcr.io/jackharrhy/auth:sha-${{ github.sha }}

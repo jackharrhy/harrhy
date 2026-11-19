@@ -18,13 +18,14 @@ against the active user grant both before showing consent and when approving it.
 `__tests__/ref-delegation.test.mjs` covers these policy boundaries independently
 of the generic browser archive-login fixture.
 
-Delegated request policy failures keep the same generic browser error. The existing
-server-only `request_failed` record includes a fixed `authorization_*` reason code
-for request shape, audience, delegation availability/hold, membership, permission,
-permission family, required/unexpected scope, or callback validation. It never
-adds client/request IDs, raw scopes, callback URLs, OAuth state, tokens, cookies,
-or user details. These codes diagnose future failures; they cannot reconstruct
-an earlier request whose metadata is unavailable, and do not change authorization.
+Auth emits one structured `@harrhy/logger` completion per HTTP request, with
+an ingress-generated `X-Request-Id`, HTTP method, stable route, response status,
+outcome, duration, and build version when known. Delegated policy failures keep
+their fixed internal reason codes. When a ZITADEL HTTP rejection reaches the
+browser error page, the event also carries the upstream service, fixed phase,
+HTTP status, and recognized numeric code, if present. The error page displays
+the same request ID as a support reference. This boundary does not log auth URLs,
+query parameters, request credentials, provider identifiers or raw errors.
 
 ### DCR scope vocabulary
 

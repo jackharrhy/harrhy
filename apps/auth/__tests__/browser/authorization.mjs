@@ -28,6 +28,7 @@ let callbackOrigin,
   promptOverride,
   maxAgeOverride,
   scopeOverride;
+let providerRejection;
 let credentialAttempts = 0;
 let completions = 0,
   resetCalls = 0,
@@ -76,6 +77,16 @@ const provider = createServer(async (request, response) => {
     }
     result = {};
   } else if (request.url.startsWith("/v2/oidc/auth_requests/")) {
+    if (providerRejection && request.method === "GET") {
+      response.writeHead(404, { "Content-Type": "application/json" });
+      response.end(
+        JSON.stringify({
+          code: providerRejection,
+          message: "private-provider-body",
+        }),
+      );
+      return;
+    }
     if (request.method === "POST") {
       if (json.error?.error === "ERROR_REASON_LOGIN_REQUIRED") {
         loginRequired++;
@@ -217,6 +228,8 @@ const origin = `http://127.0.0.1:${port}`;
 const serverOptions = {
   env: {
     ...process.env,
+    NODE_ENV: "test",
+    HARRHY_AUTH_VERSION: "synthetic-build",
     PORT: String(port),
     PUBLIC_ORIGIN: origin,
     ZITADEL_API_URL: `http://127.0.0.1:${provider.address().port}`,
@@ -233,6 +246,9 @@ const serverOptions = {
 };
 let server = spawn(process.execPath, ["src/server.mjs"], serverOptions);
 let logs = "";
+server.stdout.on("data", (data) => {
+  logs += data;
+});
 server.stderr.on("data", (data) => {
   logs += data;
 });
@@ -586,6 +602,9 @@ try {
   server.kill();
   await once(server, "exit");
   server = spawn(process.execPath, ["src/server.mjs"], serverOptions);
+  server.stdout.on("data", (data) => {
+    logs += data;
+  });
   server.stderr.on("data", (data) => {
     logs += data;
   });
@@ -795,19 +814,84 @@ try {
   const problem = await diagnosticsPage.locator("body").innerText();
   assert.match(problem, /This authorization request is not enabled\./);
   assert.doesNotMatch(problem, /authorization_unexpected_scope|private-/);
-  const diagnostic = logs.slice(diagnosticsStart);
-  assert.match(diagnostic, /request_failed/);
-  const record = JSON.parse(
-    diagnostic.split("request_failed ")[1].split("\n")[0],
+  async function completion(response) {
+    const id = response.headers()["x-request-id"];
+    assert.match(id, /^[0-9a-f-]{36}$/);
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const events = logs
+        .split("\n")
+        .flatMap((line) => {
+          try {
+            return [JSON.parse(line)];
+          } catch {
+            return [];
+          }
+        })
+        .filter((entry) => entry?.request_id === id);
+      if (events.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        continue;
+      }
+      assert.equal(events.length, 1);
+      const { timestamp, duration_ms, notes: _notes, ...receipt } = events[0];
+      assert.ok(Number.isFinite(Date.parse(timestamp)));
+      assert.ok(duration_ms >= 0);
+      return receipt;
+    }
+    assert.fail("Missing Auth completion");
+  }
+  assert.equal(
+    (await completion(failure))["error.code"],
+    "authorization_unexpected_scope",
   );
-  assert.deepEqual(record, {
-    path: "/login",
-    status: 403,
-    code: "authorization_unexpected_scope",
+  const health = await diagnosticsPage.goto(
+    `${origin}/healthz?code=private-query`,
+  );
+  assert.deepEqual(await completion(health), {
+    service: "auth",
+    kind: "request",
+    operation: "auth.request",
+    environment: "test",
+    version: "synthetic-build",
+    request_id: health.headers()["x-request-id"],
+    outcome: "ok",
+    "http.method": "GET",
+    "http.route": "/healthz",
+    "http.status": 200,
   });
+  for (const [providerCode, safeCode] of [
+    [5, { "upstream.code": 5 }],
+    ["private-provider-code", {}],
+  ]) {
+    providerRejection = providerCode;
+    const providerResponse = await diagnosticsPage.goto(
+      `${origin}/login?returnTo=${encodeURIComponent("/authorize?authRequest=private-request-sentinel")}`,
+    );
+    assert.equal(providerResponse.status(), 404);
+    const requestId = providerResponse.headers()["x-request-id"];
+    const text = await diagnosticsPage.locator("body").innerText();
+    assert.ok(text.includes(`Support reference: ${requestId}`));
+    assert.doesNotMatch(text, /private-/);
+    assert.deepEqual(await completion(providerResponse), {
+      service: "auth",
+      kind: "request",
+      operation: "auth.request",
+      environment: "test",
+      version: "synthetic-build",
+      request_id: requestId,
+      outcome: "degraded",
+      "http.method": "GET",
+      "http.route": "/login",
+      "http.status": 404,
+      "upstream.service": "zitadel",
+      "upstream.phase": "authorization_lookup",
+      "upstream.status": 404,
+      ...safeCode,
+    });
+  }
   assert.doesNotMatch(
-    diagnostic,
-    /private-|dynamic|authRequest|scope=|redirect_uri|clientId|cookie|token/i,
+    logs.slice(diagnosticsStart),
+    /request_failed|private-|authRequest|redirect_uri/i,
   );
   await diagnosticsContext.close();
   console.log(

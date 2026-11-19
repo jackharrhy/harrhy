@@ -1,5 +1,18 @@
 import { createCredential } from "./credentials.mjs";
 
+function rejectionPhase(path, method) {
+  if (/^\/v2\/oidc\/auth_requests\/[^/?#]+$/.test(path)) {
+    if (method === "GET") return "authorization_lookup";
+    if (method === "POST") return "authorization_finalize";
+  }
+  if (path === "/v2/sessions" && method === "POST") return "session_create";
+  if (/^\/v2\/sessions\/[^/?#]+$/.test(path)) {
+    if (method === "GET") return "session_read";
+    if (method === "DELETE") return "session_end";
+  }
+  return "other";
+}
+
 export function createZitadel({
   baseUrl,
   loginTokenFile,
@@ -33,6 +46,16 @@ export function createZitadel({
       const error = new Error("Identity service rejected the request");
       error.status = response.status;
       error.code = result.code;
+      error.providerFailure = {
+        "upstream.service": "zitadel",
+        "upstream.phase": rejectionPhase(path, method),
+        "upstream.status": response.status,
+        ...(Number.isInteger(result.code) &&
+        result.code >= 1 &&
+        result.code <= 16
+          ? { "upstream.code": result.code }
+          : {}),
+      };
       // Installed ZITADEL 4.20 rejects an invalid invite without consuming it.
       error.invitationProofRejected =
         /^\/v2\/users\/[^/]+\/invite_code\/verify$/.test(path) &&
