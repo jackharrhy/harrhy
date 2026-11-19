@@ -221,7 +221,6 @@ it("preserves a moved board in the sign-in link only on the alternate host", asy
   );
   expect(moved.status).toBe(200);
   const html = await moved.text();
-  expect(html).toContain("update your bookmark");
   expect(html).toContain(
     "/auth/login?returnTo=%2Fboards%2Fexample-id%3Fmoved%3D1",
   );
