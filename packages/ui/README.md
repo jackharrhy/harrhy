@@ -23,7 +23,12 @@ import { Button, Field, Input, Stack } from "@harrhy/ui/native";
 
 <form method="post" action="/account/email">
   <Stack>
-    <Field id="email" label="Email" description="Used for recovery." error={errors.email}>
+    <Field
+      id="email"
+      label="Email"
+      description="Used for recovery."
+      error={errors.email}
+    >
       <Input name="email" type="email" autocomplete="email" required />
     </Field>
     <Button type="submit" name="intent" value="save" variant="primary">
@@ -69,7 +74,12 @@ No EmptyState, Item or SectionHeading wrapper is exported. Theme tokens apply to
 ## Theme composition
 
 ```tsx
-import { cleanTheme, composeTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
+import {
+  cleanTheme,
+  composeTheme,
+  themeRoot,
+  themeStyles,
+} from "@harrhy/ui/theme";
 
 const accountTheme = themeStyles(
   composeTheme(cleanTheme, {
