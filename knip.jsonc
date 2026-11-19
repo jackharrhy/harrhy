@@ -16,6 +16,9 @@
     "apps/pi/__tests__/fixtures/**",
   ],
   "workspaces": {
+    "apps/review": {
+      "entry": ["worker.ts", "browser.ts"],
+    },
     "apps/maps-collaboration": {
       // start-celld.sh resolves the compiler at runtime.
       "ignoreDependencies": ["esbuild"],

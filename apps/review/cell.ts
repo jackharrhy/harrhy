@@ -8,7 +8,7 @@ export type Snapshot = {
   mergeBase: string;
   patch: string;
 };
-export type Anchor = { file: number; side: "old" | "new"; line: number };
+type Anchor = { file: number; side: "old" | "new"; line: number };
 type ThreadTarget =
   | (Anchor & { scope?: undefined })
   | { scope: "review" }
