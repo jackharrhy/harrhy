@@ -1,3 +1,5 @@
+import { createChessModel } from "./chess-model";
+import type { ChessState } from "../shared/chess-wire";
 import { BALL_RADIUS, TABLE_HALF_WIDTH, TABLE_HALF_LENGTH } from "@harrhy/pool";
 import { FELT_Y } from "@harrhy/pool/table";
 import * as THREE from "three/webgpu";
@@ -13,7 +15,7 @@ import type { PoolState } from "../shared/pool-wire";
 import { UNITS_PER_METRE as scale } from "../shared/bsp-collision";
 import { billboardAtlasPath } from "./player-billboard";
 
-export async function createPoolLayer(
+export async function createTableLayer(
   canvas: HTMLCanvasElement,
   hallGeometry: THREE.BufferGeometry,
 ) {
@@ -86,6 +88,7 @@ export async function createPoolLayer(
     };
   }
   const models = new Map<string, ReturnType<typeof makeTable>>();
+  const chessModels = new Map<string, ReturnType<typeof createChessModel>>();
   // World keeps its BSP color pass. Reuse that geometry as an invisible depth
   // prepass in the aligned Three layer, so walls still hide the shared meshes.
   const depthMaterial = new THREE.MeshBasicMaterial({
@@ -154,17 +157,34 @@ export async function createPoolLayer(
   }
 
   return {
-    graphics: (id: string) => models.get(id)?.table.graphics,
+    graphics: (id: string) =>
+      models.get(id)?.table.graphics ?? chessModels.get(id)?.group,
     draw(
       camera: THREE.Camera,
       pools: readonly PoolState[],
       view: { tableId: string; aim?: number; power?: number } | undefined,
       vertices: readonly number[],
       spriteLength: number,
+      chessGames: readonly ChessState[],
+      selectedSquare?: string,
     ) {
-      layer.hidden = !pools.length;
+      layer.hidden = !pools.length && !chessGames.length;
+      for (const model of chessModels.values()) model.group.visible = false;
+      for (const chess of chessGames) {
+        let model = chessModels.get(chess.table.id);
+        if (!model) {
+          model = createChessModel(chess);
+          scene.add(model.group);
+          chessModels.set(chess.table.id, model);
+        }
+        model.group.visible = true;
+        model.sync(
+          chess,
+          view?.tableId === chess.table.id ? selectedSquare : undefined,
+        );
+      }
       for (const model of models.values()) model.table.group.visible = false;
-      if (!pools.length) return;
+      if (layer.hidden) return;
       for (const pool of pools) {
         let model = models.get(pool.table.id);
         if (!model) {
@@ -296,6 +316,7 @@ export async function createPoolLayer(
         guide.material.dispose();
         table.light.shadow.dispose();
       }
+      for (const model of chessModels.values()) model.dispose();
       renderer.dispose();
       layer.remove();
     },

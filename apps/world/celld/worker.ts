@@ -1,17 +1,15 @@
+import { createChessTable } from "./chess-table";
+import { validateChessCommand, type ChessState } from "../shared/chess-wire";
+import type { AuthoredTable } from "../shared/table-placement";
 import { DurableObject } from "cloudflare:workers";
 import { createWorldTable } from "./world-table";
 import hall from "../content/hall.bsp";
 import { loadBspCollision } from "../shared/bsp-collision";
 import { createRoom } from "../shared/room";
-import {
-  parsePoolCommand,
-  type PoolCommand,
-  type PoolState,
-  type PoolTable,
-} from "../shared/pool-wire";
+import { validatePoolCommand, type PoolState } from "../shared/pool-wire";
 import {
   BSP_MAP_PATH,
-  parseInput,
+  validateInput,
   parseResumeToken,
   TICK_HZ,
   TICK_MS,
@@ -25,7 +23,9 @@ interface Env {
 }
 
 type Room = Awaited<ReturnType<typeof createRoom>>;
-type Table = Awaited<ReturnType<typeof createWorldTable>>;
+type Table =
+  | Awaited<ReturnType<typeof createWorldTable>>
+  | ReturnType<typeof createChessTable>;
 type Peer = {
   token: string;
   socket: WebSocket;
@@ -89,7 +89,7 @@ export default {
 export class WorldRoomCell extends DurableObject<Env> {
   private readonly peers = new Map<string, Peer>();
   private readonly room: Promise<Room>;
-  private pools = new Map<string, Table>();
+  private tables = new Map<string, Table>();
   private loading?: Promise<void>;
   private pending = new Map<WebSocket, ReturnType<typeof setTimeout>>();
   private retained = new Map<
@@ -160,14 +160,20 @@ export class WorldRoomCell extends DurableObject<Env> {
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private async loadTables(tables: PoolTable[]) {
-    const pools = new Map<string, Table>();
+  private async loadTables(tables: AuthoredTable[]) {
+    const hosts = new Map<string, Table>();
     try {
       for (const table of tables)
-        pools.set(table.id, await createWorldTable(table));
-      this.pools = pools;
+        hosts.set(
+          table.id,
+          table.kind === "pool"
+            ? await createWorldTable(table)
+            : createChessTable(table),
+        );
+      this.tables = hosts;
     } catch (error) {
-      for (const pool of pools.values()) pool.dispose();
+      for (const host of hosts.values())
+        if (host.kind === "pool") host.dispose();
       this.loading = undefined;
       throw error;
     }
@@ -175,8 +181,9 @@ export class WorldRoomCell extends DurableObject<Env> {
 
   private releaseEmptyRoom() {
     if (this.peers.size || this.pending.size || this.retained.size) return;
-    for (const pool of this.pools.values()) pool.dispose();
-    this.pools.clear();
+    for (const host of this.tables.values())
+      if (host.kind === "pool") host.dispose();
+    this.tables.clear();
     this.loading = undefined;
   }
 
@@ -203,8 +210,8 @@ export class WorldRoomCell extends DurableObject<Env> {
     if (previous) {
       previous[1].socket.close(4002, "Connection replaced");
       room.leave(id); // Reset motion input sequence for the new socket.
-      for (const pool of this.pools.values())
-        this.broadcastPool(pool.clearAim(id));
+      for (const pool of this.tables.values())
+        if (pool.kind === "pool") this.broadcastTable(pool.clearAim(id));
     }
     if (reservation) {
       clearTimeout(reservation.timer);
@@ -226,7 +233,7 @@ export class WorldRoomCell extends DurableObject<Env> {
     }
     this.send(socket, { type: "roster", ids: [...this.peers.keys()] });
     this.send(socket, { type: "motion", ...room.snapshot() });
-    for (const pool of this.pools.values()) this.send(socket, pool.snapshot());
+    for (const pool of this.tables.values()) this.send(socket, pool.snapshot());
     if (this.timer === undefined) {
       this.deadline = now + TICK_MS;
       this.schedule(room);
@@ -277,33 +284,39 @@ export class WorldRoomCell extends DurableObject<Env> {
       return;
     }
     if (typeof payload !== "string") return;
-    const input = parseInput(payload);
-    if (input) room.input(id, input);
-    else {
-      const command = parsePoolCommand(payload);
-      if (command) this.poolCommand(room, id, command);
+    let value: unknown;
+    try {
+      value = JSON.parse(payload);
+    } catch {
+      return;
     }
-  }
-
-  private poolCommand(room: Room, id: string, command: PoolCommand) {
-    const pool = this.pools.get(command.tableId);
+    const input = validateInput(value);
+    if (input) {
+      room.input(id, input);
+      return;
+    }
+    if (
+      !value ||
+      typeof value !== "object" ||
+      !("tableId" in value) ||
+      typeof value.tableId !== "string"
+    )
+      return;
+    const pool = this.tables.get(value.tableId);
     if (!pool) return;
-    const { table } = pool;
-    if (command.type === "pool-join") {
-      const pose = room.snapshot().players.find((player) => player.id === id);
+    if (pool.kind === "chess") {
+      const command = validateChessCommand(value);
       if (
-        !pose ||
-        Math.hypot(pose.x - table.x, pose.z - table.z) > 3 ||
-        Math.abs(pose.y - table.y) > 1.5
+        command &&
+        (command.type !== "chess-join" || this.canJoin(room, id, pool))
       )
-        return;
-      if (
-        [...this.pools.values()].some(
-          (other) => other !== pool && other.hasSeat(id),
-        )
-      )
-        return;
+        this.broadcastTable(pool.command(id, command));
+      return;
     }
+    const command = validatePoolCommand(value);
+    if (!command) return;
+    const { table } = pool;
+    if (command.type === "pool-join" && !this.canJoin(room, id, pool)) return;
     const update = pool.command(id, command);
     if (command.type === "pool-shot")
       this.send(this.peers.get(id)!.socket, {
@@ -312,9 +325,21 @@ export class WorldRoomCell extends DurableObject<Env> {
         turnToken: command.turnToken,
         accepted: update !== undefined,
       });
-    this.broadcastPool(update);
+    this.broadcastTable(update);
   }
-  private broadcastPool(state: PoolState | undefined) {
+  private canJoin(room: Room, id: string, host: Table) {
+    const pose = room.snapshot().players.find((p) => p.id === id);
+    const { table } = host;
+    return (
+      pose &&
+      Math.hypot(pose.x - table.x, pose.z - table.z) <= 3 &&
+      Math.abs(pose.y - table.y) <= 1.5 &&
+      ![...this.tables.values()].some(
+        (other) => other !== host && other.hasSeat(id),
+      )
+    );
+  }
+  private broadcastTable(state: ChessState | PoolState | undefined) {
     if (!state) return;
     const message = JSON.stringify(state);
     for (const { socket } of this.peers.values()) {
@@ -347,15 +372,15 @@ export class WorldRoomCell extends DurableObject<Env> {
     room.leave(id);
     for (const { socket } of this.peers.values())
       this.send(socket, { type: "left", id });
-    if ([...this.pools.values()].some((pool) => pool.hasSeat(id))) {
+    if ([...this.tables.values()].some((pool) => pool.hasSeat(id))) {
       this.retained.set(peer.token, {
         id,
         until: performance.now() + 30000,
         timer: setTimeout(() => this.expire(peer.token), 30000),
       });
     }
-    for (const pool of this.pools.values())
-      this.broadcastPool(pool.clearAim(id));
+    for (const pool of this.tables.values())
+      if (pool.kind === "pool") this.broadcastTable(pool.clearAim(id));
     if (this.peers.size) return;
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
@@ -368,8 +393,8 @@ export class WorldRoomCell extends DurableObject<Env> {
     if (!reservation) return;
     clearTimeout(reservation.timer);
     this.retained.delete(token);
-    for (const pool of this.pools.values())
-      this.broadcastPool(pool.leave(reservation.id));
+    for (const pool of this.tables.values())
+      this.broadcastTable(pool.leave(reservation.id));
     if (release) this.releaseEmptyRoom();
   }
   private send(socket: WebSocket, message: ServerMessage) {
@@ -408,8 +433,9 @@ export class WorldRoomCell extends DurableObject<Env> {
       this.sample(this.timing.tickIntervalsMs, now - this.lastTick);
     this.lastTick = now;
     room.step();
-    for (const pool of this.pools.values()) {
-      this.broadcastPool(pool.tick(now, 1 / TICK_HZ));
+    for (const pool of this.tables.values()) {
+      if (pool.kind === "pool")
+        this.broadcastTable(pool.tick(now, 1 / TICK_HZ));
     }
     this.timing.ticks++;
     const snapshotDue = ++this.frame % snapshotEvery === 0;

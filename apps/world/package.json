@@ -22,6 +22,7 @@
     "@harrhy/ui": "0.1.0",
     "@harrhy/worldview-renderer": "0.2.0",
     "bitecs": "0.4.0",
+    "chess.js": "1.4.0",
     "remix": "3.2.0",
     "three": "0.187.0",
     "ws": "8.22.2"

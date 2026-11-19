@@ -1,13 +1,7 @@
 import type { BallStage, PoolSound } from "@harrhy/pool";
 
-export type PoolTable = {
-  id: string;
-  x: number;
-  y: number;
-  z: number;
-  yaw: number;
-  houseBot?: boolean;
-};
+import type { TablePlacement } from "./table-placement.ts";
+export type PoolTable = TablePlacement & { houseBot?: boolean };
 export type PoolBall = {
   id: number;
   x: number;
@@ -69,12 +63,13 @@ export type PoolCommand =
     };
 
 export function parsePoolCommand(raw: string): PoolCommand | null {
-  let value: unknown;
   try {
-    value = JSON.parse(raw);
+    return validatePoolCommand(JSON.parse(raw));
   } catch {
     return null;
   }
+}
+export function validatePoolCommand(value: unknown): PoolCommand | null {
   if (!value || typeof value !== "object") return null;
   const { type, tableId, x, z, yaw, power, turnToken, withBot } =
     value as Record<string, unknown>;

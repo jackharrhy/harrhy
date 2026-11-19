@@ -18,7 +18,7 @@
   pointer-events: none;
 }
 
-#pool-controls [hidden] {
+:is(#pool-controls, #chess-controls) [hidden] {
   display: none;
 }
 #hall[data-pool] #enter,

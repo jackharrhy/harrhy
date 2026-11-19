@@ -1,3 +1,5 @@
+import type { ChessState } from "../shared/chess-wire";
+import { CHESS_BOARD_Y, CHESS_HALF_WIDTH } from "../shared/table-placement";
 import {
   createEmbeddedMapsScene,
   type EmbeddedMapsScene,
@@ -9,7 +11,7 @@ import type { Pose } from "../shared/protocol";
 import type { PoolState, PoolTable } from "../shared/pool-wire";
 import { FELT_Y } from "@harrhy/pool/table";
 import { ViewCamera } from "@harrhy/pool/presentation";
-import { createPoolLayer } from "./pool-overlay";
+import { createTableLayer } from "./pool-overlay";
 
 export type FloorPoint = { x: number; z: number };
 type View = {
@@ -20,14 +22,21 @@ type View = {
     avatar?: Pose,
     orbitDistance?: number,
     pools?: readonly PoolState[],
-    poolView?: { tableId: string; aim?: number; power?: number },
+    tableFocus?: {
+      tableId: string;
+      aim?: number;
+      power?: number;
+      blackSide?: boolean;
+    },
+    chessGames?: readonly ChessState[],
+    selectedSquare?: string,
   ): void;
   /** Convert a canvas point to table-local felt coordinates while aiming. */
-  pickPool(id: string, x: number, y: number): FloorPoint | undefined;
-  panPool(dx: number, dy: number): void;
-  hitPool(x: number, y: number): string | undefined;
-  orbitPool(dx: number, dy: number): void;
-  zoomPool(delta: number): void;
+  pickTable(id: string, x: number, y: number): FloorPoint | undefined;
+  panTable(dx: number, dy: number): void;
+  hitTable(x: number, y: number): string | undefined;
+  orbitTable(dx: number, dy: number): void;
+  zoomTable(delta: number): void;
   projectPool(
     id: string,
     x: number,
@@ -206,9 +215,9 @@ export async function createBspView(
   for (const warning of scene.warnings) console.warn(warning.message);
 
   const hall = pickingMesh(scene.world);
-  let poolLayer: Awaited<ReturnType<typeof createPoolLayer>>;
+  let poolLayer: Awaited<ReturnType<typeof createTableLayer>>;
   try {
-    poolLayer = await createPoolLayer(canvas, hall.geometry);
+    poolLayer = await createTableLayer(canvas, hall.geometry);
   } catch (error) {
     hall.geometry.dispose();
     hall.material.dispose();
@@ -227,7 +236,7 @@ export async function createBspView(
   let transition = 0;
   let lastDraw = 0;
   let tableView: PoolTable | undefined;
-  let tables: readonly PoolState[] = [];
+  let tables: readonly (PoolState | ChessState)[] = [];
   const ray = new THREE.Raycaster(
     undefined,
     undefined,
@@ -253,10 +262,14 @@ export async function createBspView(
     return true;
   }
   return {
-    pickPool(id, x, y) {
+    pickTable(id, x, y) {
       const pickedTable = tables.find((p) => p.table.id === id)?.table;
       if (!pickedTable || !pointerRay(x, y)) return;
-      const felt = new THREE.Plane(up, -(pickedTable.y + FELT_Y));
+      const surface =
+        tables.find((p) => p.table.id === id)?.type === "chess"
+          ? CHESS_BOARD_Y
+          : FELT_Y;
+      const felt = new THREE.Plane(up, -(pickedTable.y + surface));
       const point = ray.ray.intersectPlane(felt, new THREE.Vector3());
       if (!point) return;
       point.sub(new THREE.Vector3(pickedTable.x, pickedTable.y, pickedTable.z));
@@ -276,17 +289,17 @@ export async function createBspView(
         y: rect.top + ((1 - point.y) * rect.height) / 2,
       };
     },
-    panPool(dx, dy) {
+    panTable(dx, dy) {
       if (!tableView) return;
       rig.panBy(dx, dy, canvas.clientHeight);
     },
-    orbitPool(dx, dy) {
+    orbitTable(dx, dy) {
       if (tableView) rig.orbitBy(dx, dy);
     },
-    zoomPool(delta) {
+    zoomTable(delta) {
       if (tableView) rig.zoomBy(delta);
     },
-    hitPool(x, y) {
+    hitTable(x, y) {
       if (!pointerRay(x, y)) return;
       let nearest = ray.intersectObject(hall, false)[0]?.distance ?? Infinity;
       let result: string | undefined;
@@ -317,7 +330,9 @@ export async function createBspView(
       avatar,
       orbitDistance = 3.6,
       pools = [],
-      poolView,
+      tableFocus,
+      chessGames = [],
+      selectedSquare,
     ) {
       if (disposed || !canvas.clientWidth || !canvas.clientHeight) return;
       const ratio = Math.min(window.devicePixelRatio, 1.75);
@@ -331,7 +346,7 @@ export async function createBspView(
       }
       camera.position.set(local.x, local.y + 1.65, local.z);
       camera.rotation.set(local.pitch, local.yaw, 0, "YXZ");
-      if (avatar && !poolView) {
+      if (avatar && !tableFocus) {
         camera.position.y -= 0.5;
         const back = new THREE.Vector3(0, 0, 1).applyQuaternion(
           camera.quaternion,
@@ -343,13 +358,16 @@ export async function createBspView(
           wall ? Math.max(0.08, wall.distance - 0.22) : Infinity,
         );
         camera.position.addScaledVector(back, distance);
-        if (distance <= 0.8 && !poolView) avatar = undefined;
+        if (distance <= 0.8 && !tableFocus) avatar = undefined;
       }
       camera.updateMatrixWorld();
       const triangles: number[] = [];
       const previous = tableView;
-      tables = pools;
-      tableView = pools.find((p) => p.table.id === poolView?.tableId)?.table;
+      tables = [...pools, ...chessGames];
+      const isChess = chessGames.some(
+        (c) => c.table.id === tableFocus?.tableId,
+      );
+      tableView = tables.find((p) => p.table.id === tableFocus?.tableId)?.table;
       activeCamera = camera;
       let yaw = local.yaw;
       let pitch = local.pitch;
@@ -362,12 +380,26 @@ export async function createBspView(
           anchor.set(0, 0, 0),
           "table",
           canvas.clientWidth < 700,
+          isChess
+            ? {
+                halfWidth: CHESS_HALF_WIDTH,
+                halfLength: CHESS_HALF_WIDTH,
+                height: 0.19,
+              }
+            : undefined,
         );
         // The break cue ball starts on negative local Z.
-        const cueEndYaw = tableView.yaw + Math.PI;
+        const cueEndYaw =
+          tableView.yaw + (isChess && !tableFocus?.blackSide ? 0 : Math.PI);
         tableCamera.position
           .applyAxisAngle(up, cueEndYaw)
-          .add(anchor.set(tableView.x, tableView.y + FELT_Y, tableView.z));
+          .add(
+            anchor.set(
+              tableView.x,
+              tableView.y + (isChess ? CHESS_BOARD_Y : FELT_Y),
+              tableView.z,
+            ),
+          );
         tableCamera.rotateOnWorldAxis(up, cueEndYaw);
         tableCamera.updateProjectionMatrix();
         tableCamera.updateMatrixWorld();
@@ -447,7 +479,15 @@ export async function createBspView(
         timeSeconds: performance.now() / 1000,
         overlay: new Float32Array(triangles),
       });
-      poolLayer.draw(activeCamera, pools, poolView, triangles, spriteLength);
+      poolLayer.draw(
+        activeCamera,
+        pools,
+        tableFocus,
+        triangles,
+        spriteLength,
+        chessGames,
+        selectedSquare,
+      );
 
       drewFrame = true;
     },

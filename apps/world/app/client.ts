@@ -1,3 +1,9 @@
+import { squareAt } from "./chess-model";
+import {
+  chessBot,
+  type ChessState,
+  type ChessCommand,
+} from "../shared/chess-wire";
 import { createWorldShotPrediction } from "./pool-prediction";
 import { observePoolRolling } from "./pool-rolling";
 import { createPoolAudio } from "@harrhy/pool/audio";
@@ -171,6 +177,32 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     );
 
     let pool: PoolState | undefined;
+    let chess: ChessState | undefined;
+    const chessGames = new Map<string, ChessState>();
+    let selectedSquare: string | undefined;
+    const chessControls = root.querySelector<HTMLElement>("#chess-controls")!;
+    const chessStatus = root.querySelector<HTMLElement>("#chess-status")!;
+    const promotion =
+      root.querySelector<HTMLSelectElement>("#promotion-piece")!;
+    const promotionLabel = root.querySelector<HTMLElement>("#chess-promotion")!;
+    const chessButtons = (
+      ["chess-join", "chess-bot", "chess-rematch", "chess-leave"] as const
+    ).map((type) => {
+      const button = root.querySelector<HTMLButtonElement>("#" + type)!;
+      button.addEventListener(
+        "click",
+        () => {
+          if (chess)
+            sendCommand({
+              type,
+              tableId: chess.table.id,
+              turnToken: chess.turnToken,
+            });
+        },
+        { signal },
+      );
+      return { type, button };
+    });
     const shotPrediction = createWorldShotPrediction();
     signal.addEventListener("abort", () => shotPrediction.cancel(), {
       once: true,
@@ -183,15 +215,17 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     const resumeToken =
       sessionStorage.getItem("world-room-resume") ?? crypto.randomUUID();
     sessionStorage.setItem("world-room-resume", resumeToken);
-    function choosePool(pose: Pick<Pose, "x" | "z">) {
-      const states = [...pools.values()];
-      pool =
+    function chooseTable(pose: Pick<Pose, "x" | "z">) {
+      const states = [...pools.values(), ...chessGames.values()];
+      const chosen =
         states.find((state) => state.seats.includes(me)) ??
         states.toSorted(
           (a, b) =>
             Math.hypot(pose.x - a.table.x, pose.z - a.table.z) -
             Math.hypot(pose.x - b.table.x, pose.z - b.table.z),
         )[0];
+      pool = chosen?.type === "pool" ? chosen : undefined;
+      chess = chosen?.type === "chess" ? chosen : undefined;
     }
     let joiningTable: string | undefined;
     let keyboardCharge: { at: number; token: number } | undefined;
@@ -207,8 +241,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     };
     root.addEventListener("pointerdown", enableAudio, { signal });
     let shotCharge: { id: number; drag: CueDrag; power: number } | undefined;
-    const seated = () => pool?.seats.includes(me) ?? false;
-    function sendPool(command: PoolCommand) {
+    const seated = () => (pool ?? chess)?.seats.includes(me) ?? false;
+    function sendCommand(command: PoolCommand | ChessCommand) {
       if (
         command.type === "pool-shot" &&
         pool &&
@@ -217,10 +251,53 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         shotPrediction.start(pool, command, performance.now());
       if (ws?.readyState === WebSocket.OPEN) ws.send(JSON.stringify(command));
     }
-    function showPool() {
+    function showTables() {
       const pose = predicted?.pose();
       const isSeated = seated();
       root.toggleAttribute("data-pool", isSeated);
+      chessControls.hidden =
+        !chess ||
+        !pose ||
+        (!isSeated &&
+          Math.hypot(pose.x - chess.table.x, pose.z - chess.table.z) > 3);
+      if (chess && !chessControls.hidden) {
+        const color = chess.seats[0] === me ? "White" : "Black";
+        const label =
+          chess.result ??
+          (chess.seats.length < 2
+            ? "Waiting for a player"
+            : chess.turn === me
+              ? "Your move"
+              : "Opponent’s move");
+        const status =
+          "Chess · " +
+          (isSeated ? color + " · " : "") +
+          label +
+          (chess.check && !chess.result ? " · Check" : "") +
+          (chess.turn === me
+            ? " · " +
+              (selectedSquare
+                ? selectedSquare + " → choose a destination"
+                : "Select a piece")
+            : "") +
+          (chess.seats.includes(chessBot) ? " · Random bot" : "");
+        if (chessStatus.textContent !== status)
+          chessStatus.textContent = status;
+        for (const { type, button } of chessButtons)
+          button.hidden =
+            type === "chess-join"
+              ? isSeated || chess.seats.length === 2
+              : type === "chess-bot"
+                ? !isSeated || chess.seats.length !== 1
+                : type === "chess-rematch"
+                  ? !isSeated || !chess.result
+                  : !isSeated;
+        promotionLabel.hidden =
+          !selectedSquare ||
+          !chess.legal.some(
+            (m) => m.length === 5 && m.startsWith(selectedSquare!),
+          );
+      }
       poolControls.hidden =
         !pool ||
         !pose ||
@@ -264,7 +341,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     poolJoin.addEventListener(
       "click",
       () => {
-        if (pool) sendPool({ type: "pool-join", tableId: pool.table.id });
+        if (pool) sendCommand({ type: "pool-join", tableId: pool.table.id });
       },
       { signal },
     );
@@ -272,7 +349,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "click",
       () => {
         if (pool)
-          sendPool({
+          sendCommand({
             type: "pool-join",
             tableId: pool.table.id,
             withBot: true,
@@ -284,7 +361,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "click",
       () => {
         if (pool)
-          sendPool({
+          sendCommand({
             type: "pool-rematch",
             tableId: pool.table.id,
             turnToken: pool.turnToken,
@@ -295,7 +372,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     poolLeave.addEventListener(
       "click",
       () => {
-        if (pool) sendPool({ type: "pool-leave", tableId: pool.table.id });
+        if (pool) sendCommand({ type: "pool-leave", tableId: pool.table.id });
       },
       { signal },
     );
@@ -303,7 +380,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "click",
       () => {
         if (pool)
-          sendPool({
+          sendCommand({
             type: "pool-shot",
             turnToken: pool.turnToken,
             tableId: pool.table.id,
@@ -317,7 +394,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "click",
       () => {
         if (pool)
-          sendPool({
+          sendCommand({
             type: "pool-place",
             turnToken: pool.turnToken,
             tableId: pool.table.id,
@@ -356,6 +433,20 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             roster.delete(message.id);
             updateStatus();
             break;
+          case "chess":
+            chessGames.set(message.table.id, message);
+            if (chess?.table.id === message.table.id)
+              selectedSquare = undefined;
+            if (predicted) chooseTable(predicted.pose());
+            if (message.seats.includes(me)) {
+              destination = undefined;
+              keys.clear();
+              joiningTable = undefined;
+              if (document.pointerLockElement === canvas)
+                document.exitPointerLock();
+            }
+            showTables();
+            break;
           case "pool":
             pools.set(message.table.id, message);
             shotPrediction.ingest(message, performance.now());
@@ -369,7 +460,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
                 (interpolation = createPoolInterpolation()),
               );
             interpolation.push(message, performance.now());
-            if (predicted) choosePool(predicted.pose());
+            if (predicted) chooseTable(predicted.pose());
             for (const sound of message.sounds ?? []) {
               const { x, y, z, yaw: tableYaw } = message.table;
               audio.playImpact(sound, {
@@ -391,7 +482,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
               if (document.pointerLockElement === canvas)
                 document.exitPointerLock();
             }
-            showPool();
+            showTables();
             break;
           case "pool-shot-ack":
             shotPrediction.acknowledge(message);
@@ -435,6 +526,11 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         poolMotion.clear();
         shotPrediction.cancel();
         pools.clear();
+        chessGames.clear();
+        chess = undefined;
+        selectedSquare = undefined;
+        chessControls.hidden = true;
+        root.removeAttribute("data-pool");
         audio.reset();
         poolControls.hidden = true;
         if (document.pointerLockElement === canvas) document.exitPointerLock();
@@ -456,14 +552,47 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "click",
       (event) => {
         if (event.shiftKey) return;
+        if (chess && chess.turn === me) {
+          const point = view.pickTable(
+            chess.table.id,
+            event.clientX,
+            event.clientY,
+          );
+          const square = point && squareAt(point.x, point.z);
+          const move =
+            selectedSquare &&
+            square &&
+            chess.legal.find(
+              (m) =>
+                m.startsWith(selectedSquare! + square) &&
+                (m.length === 4 || m[4] === promotion.value),
+            );
+          if (move) {
+            sendCommand({
+              type: "chess-move",
+              tableId: chess.table.id,
+              turnToken: chess.turnToken,
+              move,
+            });
+            selectedSquare = undefined;
+          } else
+            selectedSquare =
+              square &&
+              square !== selectedSquare &&
+              chess.legal.some((m) => m.startsWith(square))
+                ? square
+                : undefined;
+          showTables();
+          return;
+        }
         if (pool?.phase === "ball-in-hand" && pool.turn === me) {
-          const point = view.pickPool(
+          const point = view.pickTable(
             pool.table.id,
             event.clientX,
             event.clientY,
           );
           if (point)
-            sendPool({
+            sendCommand({
               type: "pool-place",
               tableId: pool.table.id,
               turnToken: pool.turnToken,
@@ -499,7 +628,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     );
     function aimAt(x: number, y: number) {
       const cue = pool?.balls.find((ball) => ball.id === 0);
-      const point = pool && view.pickPool(pool.table.id, x, y);
+      const point = pool && view.pickTable(pool.table.id, x, y);
       if (!cue || !point) return false;
       poolAim.value = String(
         (Math.atan2(point.z - cue.z, point.x - cue.x) * 180) / Math.PI,
@@ -553,12 +682,12 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       (event) => {
         if (tablePan?.id === event.pointerId) {
           if (tablePan.orbit)
-            view.orbitPool(
+            view.orbitTable(
               event.clientX - tablePan.x,
               event.clientY - tablePan.y,
             );
           else
-            view.panPool(
+            view.panTable(
               event.clientX - tablePan.x,
               event.clientY - tablePan.y,
             );
@@ -598,7 +727,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           pool.turnToken !== shot.turn
         )
           return;
-        sendPool({
+        sendCommand({
           type: "pool-shot",
           tableId: pool.table.id,
           yaw: shot.angle,
@@ -669,15 +798,20 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       (event) => {
         if (gesture?.id !== event.pointerId) return;
         if (mode === "walk" && event.button === 0 && !gesture.dragged) {
-          const hitTable = view.hitPool(event.clientX, event.clientY);
-          const selected = hitTable ? pools.get(hitTable) : undefined;
+          const hitTable = view.hitTable(event.clientX, event.clientY);
+          const selected = hitTable
+            ? (pools.get(hitTable) ?? chessGames.get(hitTable))
+            : undefined;
           if (selected && !seated()) {
             const pose = predicted!.pose();
             const dx = pose.x - selected.table.x,
               dz = pose.z - selected.table.z;
             const distance = Math.hypot(dx, dz);
             if (distance < 2.8)
-              sendPool({ type: "pool-join", tableId: selected.table.id });
+              sendCommand({
+                type: selected.type === "pool" ? "pool-join" : "chess-join",
+                tableId: selected.table.id,
+              });
             else {
               joiningTable = selected.table.id;
               destination = {
@@ -721,7 +855,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
               ? canvas.clientHeight
               : 1;
         if (seated()) {
-          view.zoomPool(event.deltaY * scale);
+          view.zoomTable(event.deltaY * scale);
           return;
         }
         const next = orbitDistance * Math.exp(event.deltaY * scale * 0.002);
@@ -805,7 +939,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           pool.phase === "aiming" &&
           pool.turnToken === charge.token
         )
-          sendPool({
+          sendCommand({
             type: "pool-shot",
             tableId: pool.table.id,
             turnToken: charge.token,
@@ -852,7 +986,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         performance.now() - lastCuePacket > 50
       ) {
         lastCuePacket = performance.now();
-        sendPool({
+        sendCommand({
           type: "pool-cue",
           tableId: pool.table.id,
           turnToken: pool.turnToken,
@@ -861,7 +995,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         });
       }
       const approachTable = joiningTable
-        ? pools.get(joiningTable)?.table
+        ? (pools.get(joiningTable) ?? chessGames.get(joiningTable))?.table
         : undefined;
       if (approachTable) {
         const pose = predicted.pose();
@@ -870,7 +1004,10 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           Math.hypot(pose.x - approachTable.x, pose.z - approachTable.z) < 2.8
         ) {
           destination = undefined;
-          sendPool({ type: "pool-join", tableId: approachTable.id });
+          sendCommand({
+            type: chessGames.has(approachTable.id) ? "chess-join" : "pool-join",
+            tableId: approachTable.id,
+          });
           joiningTable = undefined;
         } else if (!destination) joiningTable = undefined;
       }
@@ -951,8 +1088,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
               yaw: older.yaw + Math.atan2(Math.sin(dy), Math.cos(dy)) * weight,
             };
           });
-        choosePool(predicted.pose());
-        showPool();
+        chooseTable(predicted.pose());
+        showTables();
         const listener =
           seated() && pool
             ? { x: pool.table.x, y: pool.table.y + 1.6, z: pool.table.z + 1.4 }
@@ -994,7 +1131,11 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
                         )
                       : 0),
                 }
-              : undefined,
+              : seated() && chess
+                ? { tableId: chess.table.id, blackSide: chess.seats[1] === me }
+                : undefined,
+            [...chessGames.values()],
+            selectedSquare,
           );
         } catch (error) {
           console.error(error);

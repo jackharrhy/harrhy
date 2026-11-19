@@ -103,6 +103,24 @@ router.map(routes.home, (context) =>
                 Click to look
               </Button>
             </Inline>
+            <div id="chess-controls" hidden>
+              <Text id="chess-status" aria-live="polite" />
+              <Inline>
+                <Button id="chess-join">Join chess</Button>
+                <Button id="chess-bot">Play random bot</Button>
+                <Button id="chess-rematch">Rematch</Button>
+                <Button id="chess-leave">Leave table</Button>
+                <label id="chess-promotion" hidden>
+                  Promote to{" "}
+                  <select id="promotion-piece">
+                    <option value="q">Queen</option>
+                    <option value="r">Rook</option>
+                    <option value="b">Bishop</option>
+                    <option value="n">Knight</option>
+                  </select>
+                </label>
+              </Inline>
+            </div>
             <div id="pool-controls" hidden>
               <Text id="pool-status" aria-live="polite" />
               <Inline>

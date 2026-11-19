@@ -28,3 +28,9 @@
   angle(angle) : "Yaw" : 0
   house_bot(choices) : "House bot" : 0 = [ 0 : "None" 1 : "Moss" ]
 ]
+
+@PointClass color(184 136 78) size(-42 -42 0, 42 42 52) = world_chess_table : "Chess table (floor-center origin)"
+[
+  id(string) : "Stable table ID"
+  angle(angle) : "Yaw" : 0
+]

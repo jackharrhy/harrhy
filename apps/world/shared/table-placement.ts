@@ -4,19 +4,27 @@ import {
   type ParsedWorld,
   type Vec3Tuple,
 } from "@harrhy/worldview-renderer/core";
-import type { PoolTable } from "./pool-wire.ts";
+export type TablePlacement = {
+  id: string;
+  x: number;
+  y: number;
+  z: number;
+  yaw: number;
+};
+export type AuthoredTable = TablePlacement &
+  ({ kind: "pool"; houseBot: boolean } | { kind: "chess" });
+export const CHESS_HALF_WIDTH = 0.7;
+export const CHESS_BOARD_Y = 0.86;
 
-export function readPoolTables(
+export function readTables(
   entities: ParsedWorld["entities"],
   scale: number,
-): PoolTable[] {
-  const authored = entities.filter(
-    (entity) => entityValue(entity, "classname") === "world_pool_table",
-  );
-  if (authored.length > 2)
-    throw Error("World supports up to two authored pool tables");
+): AuthoredTable[] {
   const ids = new Set<string>();
-  return authored.map((entity) => {
+  return entities.flatMap<AuthoredTable>((entity) => {
+    const classname = entityValue(entity, "classname");
+    if (classname !== "world_pool_table" && classname !== "world_chess_table")
+      return [];
     const id = entityValue(entity, "id") ?? "";
     const origin = entityValue(entity, "origin")
       ?.trim()
@@ -31,7 +39,7 @@ export function readPoolTables(
       !origin.every(Number.isFinite) ||
       !Number.isFinite(angle)
     )
-      throw Error("Invalid authored pool table");
+      throw Error("Invalid authored table");
     ids.add(id);
     return {
       id,
@@ -39,14 +47,16 @@ export function readPoolTables(
       y: origin[2] / scale,
       z: -origin[0] / scale,
       yaw: ((angle % 360) * Math.PI) / 180,
-      houseBot,
+      ...(classname === "world_pool_table"
+        ? { kind: "pool" as const, houseBot }
+        : { kind: "chess" as const }),
     };
   });
 }
 
-export function withPoolCabinet(
+export function withTableCabinet(
   sweep: GoldSrcHullSweep,
-  table: PoolTable,
+  table: AuthoredTable,
   scale: number,
 ): GoldSrcHullSweep {
   const c = Math.cos(table.yaw),
@@ -58,8 +68,10 @@ export function withPoolCabinet(
     [-c, -s, 0],
     [0, 0, 1],
   ];
-  const lower = [-0.78 - horizontalPadding, -1.4 - horizontalPadding, -0.6];
-  const upper = [0.78 + horizontalPadding, 1.4 + horizontalPadding, 0.86 + 0.6];
+  const w = table.kind === "pool" ? 0.78 : CHESS_HALF_WIDTH;
+  const l = table.kind === "pool" ? 1.4 : CHESS_HALF_WIDTH;
+  const lower = [-w - horizontalPadding, -l - horizontalPadding, -0.6];
+  const upper = [w + horizontalPadding, l + horizontalPadding, 0.86 + 0.6];
   function local(p: Vec3Tuple) {
     const x = -p[1] / scale - table.x,
       z = -p[0] / scale - table.z;

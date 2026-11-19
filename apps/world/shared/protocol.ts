@@ -1,3 +1,4 @@
+import type { ChessState } from "./chess-wire.ts";
 import type { PoolState } from "./pool-wire.ts";
 
 export const TICK_HZ = 60;
@@ -47,6 +48,7 @@ export type ServerMessage =
       turnToken: number;
       accepted: boolean;
     }
+  | ChessState
   | PoolState
   | { type: "welcome"; id: string; revision: string }
   | { type: "joined"; id: string }

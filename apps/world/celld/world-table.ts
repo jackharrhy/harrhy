@@ -103,6 +103,7 @@ export async function createWorldTable(table: PoolTable) {
   }
 
   return {
+    kind: "pool" as const,
     table,
     command,
     tick,

@@ -5,6 +5,8 @@ World is a private multiplayer walk-through of the authored GoldSrc hall. Node s
 Right-drag to orbit your avatar (drag on touch), click or tap the floor to walk, and scroll all the way in for first person. Click to capture the mouse, use WASD, and hold Space to auto-bhop. Scroll out to return to third person. The west wall has a surf ramp. A WebGPU-capable browser is required.
 Click either table to walk up and sit. Moss joins automatically at the west table; the east table is human-only. Right-drag orbits the shared Pool camera; middle-drag pans and the wheel zooms. Pull back and release to shoot, or use arrow keys and hold Space. A disconnected seat stays reserved for 30 seconds in the same tab. Leave the table to resume walking.
 
+Click the chess table to sit as White or Black. Wait for another person or choose the random bot while you hold the only seat. Click a piece and then a highlighted square. Chess shares the same table camera and seat recovery as pool.
+
 ## Run locally
 
 Install with Node 26 and `npm ci`. Build with `npm run build --workspace @harrhy/world`. Use the qualified [Celld runtime](../../docs/celld-runtime.md), an isolated SQLite bucket, and a loopback listener. For example, from the repository root:
