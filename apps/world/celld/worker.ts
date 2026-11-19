@@ -436,6 +436,7 @@ export class WorldRoomCell extends DurableObject<Env> {
     for (const pool of this.tables.values()) {
       if (pool.kind === "pool")
         this.broadcastTable(pool.tick(now, 1 / TICK_HZ));
+      else this.broadcastTable(pool.tick(now));
     }
     this.timing.ticks++;
     const snapshotDue = ++this.frame % snapshotEvery === 0;

@@ -107,18 +107,20 @@ router.map(routes.home, (context) =>
               <Text id="chess-status" aria-live="polite" />
               <Inline>
                 <Button id="chess-join">Join chess</Button>
-                <Button id="chess-bot">Play random bot</Button>
                 <Button id="chess-rematch">Rematch</Button>
                 <Button id="chess-leave">Leave table</Button>
-                <label id="chess-promotion" hidden>
-                  Promote to{" "}
-                  <select id="promotion-piece">
-                    <option value="q">Queen</option>
-                    <option value="r">Rook</option>
-                    <option value="b">Bishop</option>
-                    <option value="n">Knight</option>
-                  </select>
-                </label>
+              </Inline>
+              <Inline
+                id="chess-promotion"
+                role="group"
+                aria-label="Promote pawn"
+                hidden
+              >
+                <Button data-promotion="q">Queen</Button>
+                <Button data-promotion="r">Rook</Button>
+                <Button data-promotion="b">Bishop</Button>
+                <Button data-promotion="n">Knight</Button>
+                <Button id="chess-promotion-cancel">Cancel</Button>
               </Inline>
             </div>
             <div id="pool-controls" hidden>

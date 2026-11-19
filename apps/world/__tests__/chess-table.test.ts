@@ -4,7 +4,11 @@ import { createChessTable } from "../celld/chess-table.ts";
 import { chessBot } from "../shared/chess-wire.ts";
 
 const tableId = "chess-table";
-const setup = () => createChessTable({ id: tableId, x: 0, y: 0, z: 0, yaw: 0 });
+const setup = (houseBot = false) =>
+  createChessTable(
+    { id: tableId, x: 0, y: 0, z: 0, yaw: 0, houseBot },
+    () => 0.5,
+  );
 
 test("chess requires two seats and enforces turn, legality and checkmate", () => {
   const game = setup();
@@ -33,26 +37,30 @@ test("chess requires two seats and enforces turn, legality and checkmate", () =>
   );
 });
 
-test("bot is opt-in and makes one legal reply", () => {
-  const game = setup();
-  game.command("white", { type: "chess-join", tableId });
-  assert.equal(
-    game.command("stranger", { type: "chess-bot", tableId }),
-    undefined,
-  );
+test("only the bot table auto-seats a bot and delays its legal reply", () => {
+  const game = setup(true);
   assert.deepEqual(
-    game.command("white", { type: "chess-bot", tableId })?.seats,
+    game.command("white", { type: "chess-join", tableId })?.seats,
     ["white", chessBot],
   );
+  assert.equal(
+    game.command("stranger", { type: "chess-join", tableId }),
+    undefined,
+  );
   const token = game.snapshot().turnToken;
-  const reply = game.command("white", {
+  const pending = game.command("white", {
     type: "chess-move",
     tableId,
     turnToken: token,
     move: "e2e4",
   });
+  assert.equal(pending?.turn, chessBot);
+  assert.equal(game.tick(100), undefined);
+  assert.equal(game.tick(1299), undefined);
+  const reply = game.tick(1300);
   assert.equal(reply?.turnToken, token + 2);
   assert.equal(reply?.turn, "white");
   assert.equal(reply?.pieces.find((p) => p.square === "e4")?.type, "p");
   assert.deepEqual(game.leave("white")?.seats, []);
+  assert.equal(game.tick(5000), undefined);
 });

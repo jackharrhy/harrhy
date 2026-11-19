@@ -1,9 +1,5 @@
 import { squareAt } from "./chess-model";
-import {
-  chessBot,
-  type ChessState,
-  type ChessCommand,
-} from "../shared/chess-wire";
+import type { ChessState, ChessCommand } from "../shared/chess-wire";
 import { createWorldShotPrediction } from "./pool-prediction";
 import { observePoolRolling } from "./pool-rolling";
 import { createPoolAudio } from "@harrhy/pool/audio";
@@ -182,22 +178,67 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     let selectedSquare: string | undefined;
     const chessControls = root.querySelector<HTMLElement>("#chess-controls")!;
     const chessStatus = root.querySelector<HTMLElement>("#chess-status")!;
-    const promotion =
-      root.querySelector<HTMLSelectElement>("#promotion-piece")!;
-    const promotionLabel = root.querySelector<HTMLElement>("#chess-promotion")!;
+    let pendingPromotion: string[] | undefined;
+    const promotion = root.querySelector<HTMLElement>("#chess-promotion")!;
+    const promotionButtons =
+      promotion.querySelectorAll<HTMLButtonElement>("[data-promotion]");
+    function clearChessSelection() {
+      selectedSquare = undefined;
+      pendingPromotion = undefined;
+      promotion.hidden = true;
+    }
+    function playChessMove(state: ChessState, move: string) {
+      clearChessSelection();
+      sendCommand({
+        type: "chess-move",
+        tableId: state.table.id,
+        turnToken: state.turnToken,
+        move,
+      });
+    }
+    for (const button of promotionButtons)
+      button.addEventListener(
+        "click",
+        () => {
+          const move = pendingPromotion?.find(
+            (m) => m[4] === button.dataset.promotion,
+          );
+          if (
+            chess?.turn === me &&
+            chess.seats.includes(me) &&
+            move &&
+            chess.legal.includes(move)
+          )
+            playChessMove(chess, move);
+          else clearChessSelection();
+          showTables();
+        },
+        { signal },
+      );
+    promotion.querySelector("#chess-promotion-cancel")!.addEventListener(
+      "click",
+      () => {
+        clearChessSelection();
+        showTables();
+      },
+      { signal },
+    );
     const chessButtons = (
-      ["chess-join", "chess-bot", "chess-rematch", "chess-leave"] as const
+      ["chess-join", "chess-rematch", "chess-leave"] as const
     ).map((type) => {
       const button = root.querySelector<HTMLButtonElement>("#" + type)!;
       button.addEventListener(
         "click",
         () => {
-          if (chess)
+          if (chess) {
+            clearChessSelection();
             sendCommand({
               type,
               tableId: chess.table.id,
               turnToken: chess.turnToken,
             });
+            showTables();
+          }
         },
         { signal },
       );
@@ -225,7 +266,9 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             Math.hypot(pose.x - b.table.x, pose.z - b.table.z),
         )[0];
       pool = chosen?.type === "pool" ? chosen : undefined;
-      chess = chosen?.type === "chess" ? chosen : undefined;
+      const nextChess = chosen?.type === "chess" ? chosen : undefined;
+      if (nextChess !== chess) clearChessSelection();
+      chess = nextChess;
     }
     let joiningTable: string | undefined;
     let keyboardCharge: { at: number; token: number } | undefined;
@@ -260,6 +303,8 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         !pose ||
         (!isSeated &&
           Math.hypot(pose.x - chess.table.x, pose.z - chess.table.z) > 3);
+      if (chessControls.hidden || !isSeated || chess?.turn !== me)
+        clearChessSelection();
       if (chess && !chessControls.hidden) {
         const color = chess.seats[0] === me ? "White" : "Black";
         const label =
@@ -270,33 +315,27 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
               ? "Your move"
               : "Opponent’s move");
         const status =
-          "Chess · " +
+          (chess.table.houseBot ? "Bot chess · " : "Human chess · ") +
           (isSeated ? color + " · " : "") +
           label +
           (chess.check && !chess.result ? " · Check" : "") +
           (chess.turn === me
             ? " · " +
-              (selectedSquare
-                ? selectedSquare + " → choose a destination"
-                : "Select a piece")
-            : "") +
-          (chess.seats.includes(chessBot) ? " · Random bot" : "");
+              (pendingPromotion
+                ? "Choose a promotion piece"
+                : selectedSquare
+                  ? selectedSquare + " → choose a destination"
+                  : "Select a piece")
+            : "");
         if (chessStatus.textContent !== status)
           chessStatus.textContent = status;
         for (const { type, button } of chessButtons)
           button.hidden =
             type === "chess-join"
               ? isSeated || chess.seats.length === 2
-              : type === "chess-bot"
-                ? !isSeated || chess.seats.length !== 1
-                : type === "chess-rematch"
-                  ? !isSeated || !chess.result
-                  : !isSeated;
-        promotionLabel.hidden =
-          !selectedSquare ||
-          !chess.legal.some(
-            (m) => m.length === 5 && m.startsWith(selectedSquare!),
-          );
+              : type === "chess-rematch"
+                ? !isSeated || !chess.result
+                : !isSeated;
       }
       poolControls.hidden =
         !pool ||
@@ -435,8 +474,6 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             break;
           case "chess":
             chessGames.set(message.table.id, message);
-            if (chess?.table.id === message.table.id)
-              selectedSquare = undefined;
             if (predicted) chooseTable(predicted.pose());
             if (message.seats.includes(me)) {
               destination = undefined;
@@ -528,7 +565,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         pools.clear();
         chessGames.clear();
         chess = undefined;
-        selectedSquare = undefined;
+        clearChessSelection();
         chessControls.hidden = true;
         root.removeAttribute("data-pool");
         audio.reset();
@@ -552,29 +589,28 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       "click",
       (event) => {
         if (event.shiftKey) return;
-        if (chess && chess.turn === me) {
+        if (chess && chess.turn === me && chess.seats.includes(me)) {
+          if (pendingPromotion) return;
           const point = view.pickTable(
             chess.table.id,
             event.clientX,
             event.clientY,
           );
           const square = point && squareAt(point.x, point.z);
-          const move =
-            selectedSquare &&
-            square &&
-            chess.legal.find(
-              (m) =>
-                m.startsWith(selectedSquare! + square) &&
-                (m.length === 4 || m[4] === promotion.value),
-            );
-          if (move) {
-            sendCommand({
-              type: "chess-move",
-              tableId: chess.table.id,
-              turnToken: chess.turnToken,
-              move,
-            });
-            selectedSquare = undefined;
+          const destination =
+            selectedSquare && square && selectedSquare + square;
+          const moves = destination
+            ? chess.legal.filter((m) => m.startsWith(destination))
+            : [];
+          if (moves[0]?.length === 4) {
+            playChessMove(chess, moves[0]);
+          } else if (moves.length) {
+            pendingPromotion = moves;
+            for (const button of promotionButtons)
+              button.disabled = !moves.some(
+                (m) => m[4] === button.dataset.promotion,
+              );
+            promotion.hidden = false;
           } else
             selectedSquare =
               square &&
@@ -899,6 +935,11 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     window.addEventListener(
       "keydown",
       (e) => {
+        if (e.key === "Escape" && pendingPromotion) {
+          clearChessSelection();
+          showTables();
+          return;
+        }
         if (
           !predicted ||
           !movementKeys.has(e.code) ||

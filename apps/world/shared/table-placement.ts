@@ -11,8 +11,10 @@ export type TablePlacement = {
   z: number;
   yaw: number;
 };
-export type AuthoredTable = TablePlacement &
-  ({ kind: "pool"; houseBot: boolean } | { kind: "chess" });
+export type AuthoredTable = TablePlacement & {
+  kind: "pool" | "chess";
+  houseBot: boolean;
+};
 export const CHESS_HALF_WIDTH = 0.7;
 export const CHESS_BOARD_Y = 0.86;
 
@@ -47,9 +49,8 @@ export function readTables(
       y: origin[2] / scale,
       z: -origin[0] / scale,
       yaw: ((angle % 360) * Math.PI) / 180,
-      ...(classname === "world_pool_table"
-        ? { kind: "pool" as const, houseBot }
-        : { kind: "chess" as const }),
+      kind: classname === "world_pool_table" ? "pool" : "chess",
+      houseBot,
     };
   });
 }

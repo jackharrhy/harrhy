@@ -4,9 +4,12 @@ import {
   type ChessCommand,
   type ChessState,
 } from "../shared/chess-wire.ts";
-import type { TablePlacement } from "../shared/table-placement.ts";
 
-export function createChessTable(table: TablePlacement) {
+export function createChessTable(
+  table: ChessState["table"],
+  random = Math.random,
+) {
+  let botDue: number | undefined;
   const game = new Chess();
   let seats: string[] = [];
   let turnToken = 0;
@@ -47,6 +50,7 @@ export function createChessTable(table: TablePlacement) {
     return (state = snapshot());
   }
   function reset() {
+    botDue = undefined;
     game.reset();
     lastMove = undefined;
     return update();
@@ -69,10 +73,7 @@ export function createChessTable(table: TablePlacement) {
       case "chess-join":
         if (seats.length >= 2 || seats.includes(id)) return;
         seats.push(id);
-        return update();
-      case "chess-bot":
-        if (seats.length !== 1 || seats[0] !== id) return;
-        seats.push(chessBot);
+        if (table.houseBot) seats.push(chessBot);
         return update();
       case "chess-leave":
         return leave(id);
@@ -87,10 +88,7 @@ export function createChessTable(table: TablePlacement) {
           !state.legal.includes(cmd.move)
         )
           return;
-        move(cmd.move);
-        if (state.turn === chessBot)
-          move(state.legal[Math.floor(Math.random() * state.legal.length)]);
-        return state;
+        return move(cmd.move);
     }
   }
   return {
@@ -100,5 +98,12 @@ export function createChessTable(table: TablePlacement) {
     snapshot: () => state,
     hasSeat: (id: string) => seats.includes(id),
     leave,
+    tick(now: number) {
+      if (state.turn !== chessBot) return;
+      botDue ??= now + 700 + random() * 1000;
+      if (now < botDue) return;
+      botDue = undefined;
+      return move(state.legal[Math.floor(random() * state.legal.length)]);
+    },
   };
 }

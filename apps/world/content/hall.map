@@ -847,3 +847,11 @@
 "origin" "-186 156 0"
 "angle" "0"
 }
+
+{
+"classname" "world_chess_table"
+"id" "chess-bot-table"
+"origin" "-186 -156 0"
+"angle" "0"
+"house_bot" "1"
+}

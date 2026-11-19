@@ -33,4 +33,5 @@
 [
   id(string) : "Stable table ID"
   angle(angle) : "Yaw" : 0
+  house_bot(choices) : "Opponent" : 0 = [ 0 : "Human" 1 : "Random bot" ]
 ]
