@@ -2,7 +2,11 @@ import { readFile } from "node:fs/promises";
 import { chromium } from "@playwright/test";
 import { expect, it, vi } from "vitest";
 
-vi.mock("cloudflare:workers", () => ({ DurableObject: class {} }));
+vi.mock("cloudflare:workers", () => ({
+  DurableObject: class {
+    constructor(public ctx: unknown) {}
+  },
+}));
 import worker from "../worker.ts";
 
 it("dismisses the alternate bookmark notice without navigating", async () => {
