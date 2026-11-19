@@ -2,14 +2,7 @@
 
 A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 
-Browse [project guides and plans](docs/), including the [idea list](docs/ideas.md) and [Sluggers plan](docs/sluggers.md).
-
-The [World plan](docs/world.md) connects Burger, Gurgur, Pool, and Worldview and describes an optional cinema room.
-
-[npm publication](docs/npm-publication.md) describes the two public `@harrhy` packages and their release boundary.
-[Shared UI direction](docs/ui.md) records the original control foundation; the [UI package guide](packages/ui/README.md) covers native components, theme composition and compatibility.
-
-[Common Celld runtime](docs/celld-runtime.md) records the qualified container/native artifact and fleet upgrade checks.
+[Development guide](docs/development.md) · [Project docs](docs/) · [Contributor guidance](AGENTS.md)
 
 ### Apps
 
@@ -69,38 +62,3 @@ The [World plan](docs/world.md) connects Burger, Gurgur, Pool, and Worldview and
 | [`@harrhy/result`](packages/result/) | Success and failure values and helpers | [README](packages/result/README.md) |
 | [`@harrhy/rich-text`](packages/rich-text/) | Inline document format and rich text editor | [README](packages/rich-text/README.md) |
 | [`@harrhy/ui`](packages/ui/) | Native Remix components, semantic themes and compatible Ref/Auth control styles | [README](packages/ui/README.md) |
-
-## Working in the repo
-
-Follow the [parallel task workflow](AGENTS.md#parallel-task-workflow): independent worktrees and PRs, agent-owned check review and authorized self-merges, with no coordinator approval gate. Shared-runtime deployment coordination is separate from source work.
-
-The [logging skill](.agents/skills/logging/SKILL.md) is approved for the Ref pilot; broader adoption follows pilot review.
-
-Use Node.js 26 LTS (`.nvmrc` and `mise.toml`; minimum 26.13.0) for monorepo development and CI. The published Artbin CLI retains its separate Node 20+ consumer support. Install from the root:
-
-```sh
-npm ci
-```
-
-The native Img app additionally needs Rust and platform build prerequisites; see [its guide](apps/img/README.md). `npm run img:dev` starts it and `npm run img:check` checks it.
-
-Run workspace scripts with `npm run <script> --workspace <name>`. For example, `npm run dev --workspace @harrhy/cms` starts CMS. Run `npm run` for root scripts, including `npm run artbin:check`, `npm run cms:check`, `npm run letters-to-steve:check`, `npm run ref:check`, `npm run radio:check`, and `npm run worldview:check`. Each workspace README has its own setup and checks.
-
-Vite+ runs Oxfmt and Oxlint from [`vite.config.ts`](vite.config.ts). `npm run tooling:check` builds the three importable Maps packages, generates missing Worker types, then checks formatting and type-aware lint through tsrslint. `npm run format` formats files. `npm run knip:check` runs the full unused-code audit in CI. The [Knip config](knip.jsonc) lists browser, Worker, public package, and other entry points that are not visible through imports. Review Knip findings before deleting code.
-
-Workspace `typecheck` and declaration/build scripts use tsrs. `npm run typecheck:tsrs` checks every workspace after Worker types have been generated. `npm run lint` runs the same type-aware Oxlint configuration used in CI.
-
-The local [`compose.yml`](compose.yml) runs Traefik and the containerized apps. Run `docker compose up --build -d`, then open [andrew.localhost](http://andrew.localhost), [luke.localhost](http://luke.localhost), [letters.localhost](http://letters.localhost), [ref.localhost](http://ref.localhost), [radio.localhost](http://radio.localhost), [maps.localhost](http://maps.localhost), [maps-sync.localhost/health](http://maps-sync.localhost/health), [pool.localhost](http://pool.localhost), or [artbin.localhost](http://artbin.localhost). Ref uses a disposable local Jack Auth issuer with the same OAuth flow as production; its test subject and grants are separate from production. Radio renders its lobby with a deliberately unregistered local Jack Auth client; interactive sign-in needs a registered HTTPS callback and the `RADIO_AUTH_*` Compose variables. Maps runs its UI and collaboration Workers on local Celld, and collaboration and the hosted service share `MAPS_REALTIME_TICKET_SECRET` for local signed tickets. Hosted Maps sign-in also needs a registered Jack Auth client: set `MAPS_AUTH_CLIENT_ID`, `AUTH_MAPS_PROJECT_ID`, and `AUTH_ORGANIZATION_ID` before starting the Maps service. To exercise Artbin from the Maps service, provide `HARRHY_MAPS_ARTBIN_URL`, `AUTH_ARTBIN_PROJECT_ID`, `AUTH_ARTBIN_CLIENT_ID`, and `AUTH_ARTBIN_CLIENT_SECRET` in the local environment; the service leaves Artbin disabled if any is missing. The service binds loopback port 8792, collaboration binds loopback port 8787, and Traefik binds loopback port 80. The Maps UI, hosted service, and collaboration ports are 8790, 8792, and 8787; stop a separate Ref dev server on port 8787 before starting Maps collaboration. Production DNS, TLS, and host setup live in the infrastructure repo.
-
-The imported Jack Auth UI has an opt-in `auth` Compose profile at [auth.localhost](http://auth.localhost). It renders locally without provider credentials; real sign-in requires a separately configured issuer and reviewed private client credentials. The standalone Auth service remains the live owner until a coordinated cutover.
-
-Burger is opt-in because it needs a registered local OAuth callback. Set `BURGER_AUTH_CLIENT_ID` and `AUTH_BURGER_PROJECT_ID`, then run `docker compose --profile burger up --build -d` to open [burger.localhost](http://burger.localhost). Its [workspace guide](apps/burger/README.md) covers the isolated browser fixture when no local provider client is registered.
-
-Lists uses a separate local profile with Moto and Mailpit: run `docker compose --profile lists up --build --wait lists`, then open [localhost:18080](http://localhost:18080). See the [Lists local stack guide](docs/lists/local-development.md).
-
-CI installs once and runs the `check` scripts for affected workspaces. Package changes also check their consumers; shared config or unknown paths check every workspace with a `check` script. README, `docs/`, Dockerfiles, `.dockerignore`, and the CI selector skip app checks; image builds run in the publish workflows, and the selector has its own tests. Image publishers select affected apps for app and shared-package changes and for root manifest or lockfile changes that alter their resolved build inputs. Workflow-only publication changes use deliberate `workflow_dispatch`. A separate [Node image check](docs/node-images.md) selects affected images from nine Node apps on every PR and exercises their production containers without publishing. It preserves all nine named checks, conservatively includes whole-repository Docker contexts, and checks all images for unknown/root inputs or comparison errors. Draft PR updates compare only commits in that push; ready PRs and `main` check the full change set. Browser setup remains available for workspace checks that include browser tests. Separate integration browser and Celld smokes run for affected apps when a PR is ready for review or on `main`. See [`scripts/ci/affected.mjs`](scripts/ci/affected.mjs).
-
-The [project import guide](docs/project-imports.md) records the Ref, Radio, Maps, Marky, Letters to Steve, and Artbin transfers.
-The [Maps third-party notices](THIRD_PARTY_NOTICES.md) preserve attribution for the imported Maps code and test fixture.
-
-[Agent skills setup and scope](docs/agent-skills.md) covers locked Cloudflare guidance and native P2 discovery.
