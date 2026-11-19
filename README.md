@@ -2,8 +2,9 @@
 
 A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 
-[WORLD_IDEA.md](WORLD_IDEA.md) records the direction for a future shared world built from Burger, Gurgur, Pool, and Worldview.
-[WORLD_CINEMA_IDEA.md](WORLD_CINEMA_IDEA.md) explores an access-controlled cinema room within that world.
+Browse [project guides and plans](docs/), including the [idea list](docs/ideas.md) and [Sluggers plan](docs/sluggers.md).
+
+The [World plan](docs/world.md) connects Burger, Gurgur, Pool, and Worldview and describes an optional cinema room.
 
 [npm publication](docs/npm-publication.md) describes the two public `@harrhy` packages and their release boundary.
 [Shared UI direction](docs/ui.md) records the original control foundation; the [UI package guide](packages/ui/README.md) covers native components, theme composition and compatibility.
@@ -95,7 +96,7 @@ The imported Jack Auth UI has an opt-in `auth` Compose profile at [auth.localhos
 
 Burger is opt-in because it needs a registered local OAuth callback. Set `BURGER_AUTH_CLIENT_ID` and `AUTH_BURGER_PROJECT_ID`, then run `docker compose --profile burger up --build -d` to open [burger.localhost](http://burger.localhost). Its [workspace guide](apps/burger/README.md) covers the isolated browser fixture when no local provider client is registered.
 
-Lists uses a separate local profile with Moto and Mailpit: run `docker compose --profile lists up --build --wait lists`, then open [localhost:18080](http://localhost:18080). See the [Lists local stack guide](apps/lists/LOCAL_DEVELOPMENT.md).
+Lists uses a separate local profile with Moto and Mailpit: run `docker compose --profile lists up --build --wait lists`, then open [localhost:18080](http://localhost:18080). See the [Lists local stack guide](docs/lists/local-development.md).
 
 CI installs once and runs the `check` scripts for affected workspaces. Package changes also check their consumers; shared config or unknown paths check every workspace with a `check` script. README, `docs/`, Dockerfiles, `.dockerignore`, and the CI selector skip app checks; image builds run in the publish workflows, and the selector has its own tests. Image publishers select affected apps for app and shared-package changes and for root manifest or lockfile changes that alter their resolved build inputs. Workflow-only publication changes use deliberate `workflow_dispatch`. A separate [Node image check](docs/node-images.md) selects affected images from nine Node apps on every PR and exercises their production containers without publishing. It preserves all nine named checks, conservatively includes whole-repository Docker contexts, and checks all images for unknown/root inputs or comparison errors. Draft PR updates compare only commits in that push; ready PRs and `main` check the full change set. Browser setup remains available for workspace checks that include browser tests. Separate integration browser and Celld smokes run for affected apps when a PR is ready for review or on `main`. See [`scripts/ci/affected.mjs`](scripts/ci/affected.mjs).
 

@@ -52,7 +52,7 @@ A strict `script-src 'self'` browser CSP rejects the default entry's WASM compil
 
 ## Licensing and verification
 
-Highlights is Apache-2.0 with distributed `LICENSE.md` and `NOTICE.md`; the GitHub themes derive from the pinned Zed GitHub Classic theme listed in that notice. Keep dependency notices in distributions. No upstream implementation or assets are copied into the native renderer. See [third-party notices](THIRD_PARTY_NOTICES.md).
+Highlights is Apache-2.0 with distributed `LICENSE.md` and `NOTICE.md`; the GitHub themes derive from the pinned Zed GitHub Classic theme listed in that notice. Keep dependency notices in distributions. No upstream implementation or assets are copied into the native renderer. See [third-party notices](../../packages/ui/THIRD_PARTY_NOTICES.md).
 
 Package tests exercise exact UTF-16 reconstruction, both themes, unknown languages, complete large-input fallback, HTML escaping and fence-only HAST transformation alongside native SSR contracts. Actual browser/Worker integration and app checks must still verify each host's asset graph and CSP. Automated checks do not establish assistive-technology or WCAG conformance.
 

@@ -229,4 +229,4 @@ The renderer includes the standard Quake color lookup table as a documented comp
 exception. Provide your maps, texture packs, custom or Quake II palettes, skyboxes, sprites, and
 sounds separately, with permission to use them.
 
-See the [Quake II compatibility notes](./quake2-compatibility.md) for the current format boundary.
+See the [Quake II compatibility notes](../../docs/maps-renderer/quake2-compatibility.md) for the current format boundary.

@@ -19,3 +19,5 @@ Current team lineups are not substituted for frozen match appearances. Unknown s
 The Dockerfile builds a source-only image without credentials or historical assets. The opt-in Compose profile requires an externally supplied reader URL; no database is provisioned. The image workflow publishes immutable commit tags to GHCR without deploying anything.
 
 Production deployment is separate from building and publishing an image. The original historical runtime and database remain untouched. Future schema restructuring and editing/drafting workflows are outside this app.
+
+See the [Sluggers direction](../../docs/sluggers.md) for future league and import work.

@@ -18,7 +18,7 @@ embedded guestbook, settings save/reopen, widgets/playlists, pages, media,
 forum/chat and selected admin workflows. The guestbook remains in the original
 profile/widget context. Source CSS, browser helpers, HTMX and CodeMirror are
 served locally. These are bounded workflow checks, not every customization or
-error path. `coverage.md` records current limitations.
+error path. [Coverage](coverage.md) records current limitations.
 
 The corrected pair passed field-for-field accounting of all 18 transfer tables
 and all 146 media assets, including MIME, validators and modification times.
