@@ -26,6 +26,9 @@ browser error page, the event also carries the upstream service, fixed phase,
 HTTP status, and recognized numeric code, if present. The error page displays
 the same request ID as a support reference. This boundary does not log auth URLs,
 query parameters, request credentials, provider identifiers or raw errors.
+Browser form rejections also record a fixed validator reason. Authorization
+redirects distinguish login required, provider session rejected, and client
+callback without logging redirect targets or claiming callback delivery.
 
 ### DCR scope vocabulary
 

@@ -521,7 +521,15 @@ async function handleBrowser(request, routeAction, routePhase) {
         .find((item) => item.startsWith(`${cookieName}=`))
         ?.slice(cookieName.length + 1);
       session = sessions.get(cookieValue);
-      if (!session || session.expires < Date.now()) {
+      const expired = session && session.expires < Date.now();
+      const sessionIssue = !session
+        ? cookieValue
+          ? "session_unknown"
+          : "session_cookie_missing"
+        : expired
+          ? "session_expired"
+          : undefined;
+      if (!session || expired) {
         session = newSession();
         headers.set("Set-Cookie", cookie(session));
       }
@@ -534,19 +542,19 @@ async function handleBrowser(request, routeAction, routePhase) {
         )
           throw httpError(415, "Unsupported form type.");
         form = await formData(request);
-        if (
-          !validPost(
-            request.headers.get("origin"),
-            origin,
-            form.get("csrf"),
-            session.csrf,
-          )
-        ) {
-          currentLog()?.set({ "auth.form_rejected": true });
-          if (
-            request.headers.get("origin") === origin &&
-            url.pathname === "/login"
-          ) {
+        const requestOrigin = request.headers.get("origin");
+        const csrf = form.get("csrf");
+        if (!validPost(requestOrigin, origin, csrf, session.csrf)) {
+          const reason =
+            requestOrigin !== origin
+              ? "origin_mismatch"
+              : (sessionIssue ??
+                (csrf === null ? "csrf_missing" : "csrf_mismatch"));
+          currentLog()?.set({
+            "auth.form_rejected": true,
+            "auth.form_rejection_reason": reason,
+          });
+          if (requestOrigin === origin && url.pathname === "/login") {
             await login(
               localReturnTo(form.get("returnTo")),
               session.csrf,
@@ -604,6 +612,7 @@ async function handleBrowser(request, routeAction, routePhase) {
       )
         return;
       if (!session.userId) {
+        currentLog()?.set({ "auth.redirect_class": "login_required" });
         redirect(
           `/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`,
         );
@@ -617,6 +626,7 @@ async function handleBrowser(request, routeAction, routePhase) {
       } catch (error) {
         if (![401, 403, 404].includes(error.status)) throw error;
         sessions.delete(session.id);
+        currentLog()?.set({ "auth.redirect_class": "session_rejected" });
         redirect(
           `/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`,
         );

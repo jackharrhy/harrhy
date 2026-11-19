@@ -1,3 +1,5 @@
+import { currentLog } from "@harrhy/logger";
+
 const fail = (status, message) => Object.assign(new Error(message), { status });
 
 export function createOAuthBrowserRoutes({
@@ -35,6 +37,7 @@ export function createOAuthBrowserRoutes({
         session,
       );
       if (silentCallback) {
+        currentLog()?.set({ "auth.redirect_class": "client_callback" });
         redirect(silentCallback);
         return;
       }
@@ -58,6 +61,7 @@ export function createOAuthBrowserRoutes({
         request.method === "POST" ? form.get("decision") : "approve",
         request.method === "GET",
       );
+      currentLog()?.set({ "auth.redirect_class": "client_callback" });
       redirect(callback);
     },
     async device({ request, url, form, session, context, sendRemix }) {
