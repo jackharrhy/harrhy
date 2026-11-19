@@ -32,6 +32,10 @@ import {
 import { processLogs } from "./logs.ts";
 import { isGuest, isOwner, type P2Principal } from "./principals.ts";
 import { record } from "./schema.ts";
+import { serveSessionAdmission } from "./session-admission.ts";
+
+export { sessionAdmissionOf } from "./session-admission.ts";
+
 import { ServerNameSettings } from "./server-name.ts";
 import { deviceName, normalizeServerName, readChosenServerName, writeChosenServerName } from "./server-name-file.ts";
 
@@ -346,6 +350,7 @@ export const Hosts = local("p2.hosts", {
 
 /** Serves the base keyed registries of the server (the core facet; test hosts without one). */
 export function serveServerRegistries(facet: FacetHost): void {
+	serveSessionAdmission(facet);
 	for (const registry of [
 		RequestResolvers,
 		Routes,
@@ -363,7 +368,12 @@ export function serveServerRegistries(facet: FacetHost): void {
  * The server's core facet: its start data and revocation (`Server`), its name (`ServerName`, `ServerNameSettings`), its
  * natives, the base registries, the workers' states (`Hosts`) and who the caller is (`Access`).
  */
-export function serverCore(host: Host, info: ServerInfo, parts: ServerParts): Facet {
+export function serverCore(
+	host: Host,
+	info: ServerInfo,
+	parts: ServerParts,
+	invalidateGuestUpgrades: (id: string) => void,
+): Facet {
 	return defineFacet((facet, self) => {
 		serveServerRegistries(facet);
 		facet.serve(ServerNatives, { compose: (table) => table[0]?.value });
@@ -379,6 +389,7 @@ export function serverCore(host: Host, info: ServerInfo, parts: ServerParts): Fa
 				return null;
 			},
 			revokeGuests: async ({ id }, ctx) => {
+				invalidateGuestUpgrades(id);
 				host.revoke({ guest: id }, ctx);
 				return null;
 			},

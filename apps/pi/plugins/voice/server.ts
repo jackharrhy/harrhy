@@ -380,7 +380,9 @@ export default defineFacet((host) => {
 						: undefined;
 				if (!participant || !/^[A-Za-z0-9_-]{1,64}$/.test(participant.id)) return refuse(socket, "403 Forbidden");
 				const owner = participant.role === "owner";
+				if (socket.destroyed) return;
 				sockets.value.handleUpgrade(request, socket, head, (browser) => {
+					if (socket.destroyed) return browser.terminate();
 					if (!admit("room", principal, browser, session)) return;
 					const upstream = new WebSocket(`${current.url.replace(/^http/, "ws")}/room`, {
 						headers: {
@@ -402,10 +404,11 @@ export default defineFacet((host) => {
 						upstream.close();
 					};
 					upstream.on("open", () => {
+						if (socket.destroyed) return upstream.terminate();
 						for (const command of early.splice(0)) upstream.send(command);
 					});
 					upstream.on("message", (data: RawData, binary: boolean) => {
-						if (browser.readyState !== WebSocket.OPEN) return;
+						if (socket.destroyed || browser.readyState !== WebSocket.OPEN) return;
 						if (binary) browser.send(data as Buffer, { binary: true });
 						else browser.send(data.toString());
 					});
@@ -429,6 +432,7 @@ export default defineFacet((host) => {
 						closeBoth();
 					});
 					browser.on("message", (data: RawData, binary: boolean) => {
+						if (socket.destroyed) return;
 						if (binary) {
 							// Microphone audio passes as it is (the service checks its size and rate).
 							if (upstream.readyState === WebSocket.OPEN) upstream.send(data as Buffer);

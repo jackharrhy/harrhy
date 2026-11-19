@@ -34,7 +34,7 @@ import {
 	WorkerBoundary,
 	withAbortSignal,
 } from "@p2/app/v1";
-import { Server, serverOf, WorkerInitValues } from "@p2/app/v1/server";
+import { Server, serverOf, sessionAdmissionOf, WorkerInitValues } from "@p2/app/v1/server";
 import { EnvManagers, EnvService } from "../envs/contract.ts";
 import { ModelConfig, ModelResources } from "../models/contract.ts";
 import { ChildStore } from "../subagents/contract.ts";
@@ -301,6 +301,7 @@ export default defineFacet((host) => {
 			// The catalog's rows: a table of the server's store keyed by each session's address, its `sessions` a live
 			// query over it (re-run by every write, published before the write's answer).
 			const table = self.table(SessionRows);
+			const admission = sessionAdmissionOf(self);
 			const rows = self.query(table, BY_ACTIVITY, CATALOG_WINDOW);
 			const toSession = mapShared(sessionOf);
 			const read = async (id: string, ctx: Ctx): Promise<Session> => {
@@ -349,8 +350,10 @@ export default defineFacet((host) => {
 					}, ctx);
 					return null;
 				},
-				update: async ({ id, ...change }, ctx) =>
-					sessionOf(await self.tx((tx) => updateRow(tx, table, id, change, Date.now()), ctx)),
+				update: async ({ id, ...change }, ctx) => {
+					const commit = () => self.tx((tx) => updateRow(tx, table, id, change, Date.now()), ctx);
+					return sessionOf(await (change.archived === true ? admission().mutate(id, commit, ctx) : commit()));
+				},
 			};
 		},
 		{ accepts: CATALOG_ACCEPTS },

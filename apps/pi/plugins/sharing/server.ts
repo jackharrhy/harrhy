@@ -4,17 +4,21 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { domainToASCII } from "node:url";
 import { arr, nul, obj, str, union } from "@earendil-works/pi-schema";
 import {
+	type Context,
 	type Ctx,
 	contribute,
 	defineFacet,
 	defineTypedState,
 	deriveTyped,
+	eq,
 	forbidden,
 	type GuestPrincipal,
 	isGuest,
 	isOwner,
 	type P2Principal,
 	query,
+	Session,
+	withoutAbortSignal,
 } from "@p2/app/v1";
 import {
 	Authenticators,
@@ -28,6 +32,7 @@ import {
 	SessionAccess,
 	ShareUrls,
 	sendJson,
+	sessionAdmissionOf,
 } from "@p2/app/v1/server";
 import { Catalog } from "../sessions/contract.ts";
 import { ChildStore, remoteEnvironments } from "../subagents/contract.ts";
@@ -120,6 +125,7 @@ export default defineFacet((host) => {
 		const children = self.get(ChildStore, {});
 		const server = self.get(Server, {});
 		const archived = self.state(Archived);
+		const admission = sessionAdmissionOf(self);
 		// Links, guests and grants: tables of the server's store, their live queries the source of the lists below.
 		const linkTable = self.table(LinkRows);
 		const guestTable = self.table(GuestRows);
@@ -161,8 +167,13 @@ export default defineFacet((host) => {
 			};
 		};
 		/** Ends the objects of guests whose grants changed, so that they continue with their new principal. */
-		const revoke = async (guests: readonly string[], ctx: Ctx): Promise<void> => {
+		const revoke = async (guests: readonly string[], ctx: Context): Promise<void> => {
 			for (const id of guests) await server.revokeGuests({ id }, ctx);
+		};
+		const changeSharing = <T>(session: string, commit: (ctx: Context) => Promise<T>, ctx: Ctx): Promise<T> => {
+			// A caller disconnecting after the write must not skip revocation while admission sees the new grants.
+			const scope = withoutAbortSignal(ctx);
+			return admission().mutate(session, () => commit(scope), scope);
 		};
 		/** Refuses read/write access to a session on a remote environment the owner did not confirm. */
 		const confirmRemote = async (session: string, mode: ShareMode, confirmed: boolean | undefined, ctx: Ctx) => {
@@ -207,25 +218,58 @@ export default defineFacet((host) => {
 				const link = await db.linkByToken(token, ctx);
 				return link && (await open(link.session, ctx)) ? link : null;
 			},
+			isShared: async ({ session }, ctx) => {
+				const key = Session({ id: session });
+				const linked = await linkTable.page(
+					query(LinkRows).where((row) => eq(row.session, key)),
+					1,
+					ctx,
+				);
+				if (linked.items.length > 0) return true;
+				const granted = await grantTable.page(
+					query(GrantRows)
+						.where((row) => eq(row.session, key))
+						.where((row) => eq(row.removed, false)),
+					1,
+					ctx,
+				);
+				return granted.items.length > 0;
+			},
 			link: async ({ session, mode, reset, remoteConfirmed }, ctx) => {
 				await confirmRemote(session, mode, remoteConfirmed, ctx);
-				await revoke(await db.link(session, mode, reset, ctx), ctx);
+				await changeSharing(
+					session,
+					async (scope) => revoke(await db.link(session, mode, reset, scope), scope),
+					ctx,
+				);
 				return null;
 			},
 			share: async ({ session, email, mode, remoteConfirmed }, ctx) => {
 				const normalized = normalizeEmail(email);
 				if (!normalized) throw new Error("Enter an email address");
 				await confirmRemote(session, mode, remoteConfirmed, ctx);
-				const shared = await db.share(session, normalized, email.trim(), mode, ctx);
-				if (shared.changed) await revoke([shared.guest], ctx);
+				await changeSharing(
+					session,
+					async (scope) => {
+						const shared = await db.share(session, normalized, email.trim(), mode, scope);
+						if (shared.changed) await revoke([shared.guest], scope);
+					},
+					ctx,
+				);
 				return null;
 			},
 			disableSession: async ({ session }, ctx) => {
-				await revoke(await db.disableSession(session, ctx), ctx);
+				await changeSharing(session, async (scope) => revoke(await db.disableSession(session, scope), scope), ctx);
 				return null;
 			},
 			remove: async ({ session, guestId }, ctx) => {
-				if (await db.remove(session, guestId, ctx)) await revoke([guestId], ctx);
+				await changeSharing(
+					session,
+					async (scope) => {
+						if (await db.remove(session, guestId, scope)) await revoke([guestId], scope);
+					},
+					ctx,
+				);
 				return null;
 			},
 			join: async ({ token, name, cookie }, ctx) => {
@@ -233,8 +277,15 @@ export default defineFacet((host) => {
 				if (!link || !(await open(link.session, ctx))) throw new JoinError("This share has ended");
 				// The same browser keeps its identity and gains the session; a removed one cannot join it again.
 				const existing = cookie === undefined ? undefined : await db.guestOfCookie(cookie, ctx);
-				const joined = await db.join(link, name, existing, ctx);
-				if (joined.changed) await revoke([joined.guest], ctx);
+				const joined = await changeSharing(
+					link.session,
+					async (scope) => {
+						const joined = await db.join(link, name, existing, scope);
+						if (joined.changed) await revoke([joined.guest], scope);
+						return joined;
+					},
+					ctx,
+				);
 				return { session: link.session, ...(joined.cookie ? { cookie: joined.cookie } : {}) };
 			},
 		};
