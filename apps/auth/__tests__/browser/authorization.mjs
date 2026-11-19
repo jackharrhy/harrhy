@@ -831,10 +831,10 @@ try {
         continue;
       }
       assert.equal(events.length, 1);
-      const { timestamp, duration_ms, notes: _notes, ...event } = events[0];
+      const { timestamp, duration_ms, notes: _notes, ...receipt } = events[0];
       assert.ok(Number.isFinite(Date.parse(timestamp)));
       assert.ok(duration_ms >= 0);
-      return event;
+      return receipt;
     }
     assert.fail("Missing Auth completion");
   }
