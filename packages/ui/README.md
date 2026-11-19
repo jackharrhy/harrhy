@@ -23,12 +23,7 @@ import { Button, Field, Input, Stack } from "@harrhy/ui/native";
 
 <form method="post" action="/account/email">
   <Stack>
-    <Field
-      id="email"
-      label="Email"
-      description="Used for recovery."
-      error={errors.email}
-    >
+    <Field id="email" label="Email" description="Used for recovery." error={errors.email}>
       <Input name="email" type="email" autocomplete="email" required />
     </Field>
     <Button type="submit" name="intent" value="save" variant="primary">
@@ -74,12 +69,7 @@ No EmptyState, Item or SectionHeading wrapper is exported. Theme tokens apply to
 ## Theme composition
 
 ```tsx
-import {
-  cleanTheme,
-  composeTheme,
-  themeRoot,
-  themeStyles,
-} from "@harrhy/ui/theme";
+import { cleanTheme, composeTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
 
 const accountTheme = themeStyles(
   composeTheme(cleanTheme, {
@@ -133,7 +123,7 @@ Pinned 0.13.1 publishes `accordion`, `anchor`, `animation`, `combobox`, `listbox
 
 `CodeBlock({label, source, language?, tokens?})` renders escaped, selectable text with a visible caption and a named keyboard-scrollable region. The caller may supply readonly `{text, color?, italic?, bold?}` tokens; only exact source reconstruction is accepted, otherwise plain source renders. Text is escaped and colors accept only six-digit hex, never HTML/arbitrary CSS. Language labels alone do not run a highlighter. `CodeDiff({label, lines})` renders caller-prepared context/remove/add rows with optional exact-source tokens and old/new line numbers, textual change markers and accessible row descriptions. Both consume the nearest semantic theme and preserve long lines without silently truncating input. They have no client lifecycle or runtime dependencies beyond Remix. Apps own source limits, diff computation, syntax preparation and clipboard actions.
 
-The [code API and runtime guide](CODE.md) documents the owner-approved direct Shiki migration, standalone Pierre Highlights 0.5.1 preparation API, licensing, exact-source guarantees, bounded work and measured runtime costs. Optional engine entries are separate from native rendering and the legacy root. Node/browser/Worker engine prototypes passed; browser WASM requires a compatible host CSP, and Worker builds must resolve the precompiled-WASM conditional export. Consumer integration checks remain necessary. The Explorer uses CodeBlock for every story's current source and includes dedicated CodeBlock/CodeDiff controls.
+The [code API and runtime guide](../../docs/ui/CODE.md) documents the owner-approved direct Shiki migration, standalone Pierre Highlights 0.5.1 preparation API, licensing, exact-source guarantees, bounded work and measured runtime costs. Optional engine entries are separate from native rendering and the legacy root. Node/browser/Worker engine prototypes passed; browser WASM requires a compatible host CSP, and Worker builds must resolve the precompiled-WASM conditional export. Consumer integration checks remain necessary. The Explorer uses CodeBlock for every story's current source and includes dedicated CodeBlock/CodeDiff controls.
 
 ## Upstream and maintenance
 

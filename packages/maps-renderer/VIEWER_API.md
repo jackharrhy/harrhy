@@ -171,10 +171,7 @@ For application-owned assets, assign one `WorldSource` before or after connectin
 keeps authenticated resolvers and the rest of the map load in one operation:
 
 ```ts
-import {
-  MapsViewElement,
-  defineMapsViewElement,
-} from "@harrhy/worldview-renderer/element";
+import { MapsViewElement, defineMapsViewElement } from "@harrhy/worldview-renderer/element";
 
 defineMapsViewElement();
 
@@ -217,10 +214,7 @@ Scheduling and external-store helpers have a GPU-independent entrypoint. Importi
 the BSP renderer:
 
 ```ts
-import {
-  AnimationFrameScheduler,
-  SnapshotStore,
-} from "@harrhy/worldview-renderer/runtime";
+import { AnimationFrameScheduler, SnapshotStore } from "@harrhy/worldview-renderer/runtime";
 ```
 
 ## Game data
@@ -229,4 +223,4 @@ The renderer includes the standard Quake color lookup table as a documented comp
 exception. Provide your maps, texture packs, custom or Quake II palettes, skyboxes, sprites, and
 sounds separately, with permission to use them.
 
-See the [Quake II compatibility notes](./quake2-compatibility.md) for the current format boundary.
+See the [Quake II compatibility notes](../../docs/maps-renderer/QUAKE2-COMPATIBILITY.md) for the current format boundary.

@@ -50,7 +50,7 @@ New cards can be selected immediately; moving or deleting one waits for its firs
 - `app/assets/board.ts` is the browser editor. It uses DOM APIs, pan and zoom, uploads, optimistic edits, reconnect, and revision checks. No React, Express, or Socket.IO.
 - Remix 3.2 supplies a fresh CSP nonce for each HTML response. Ref allows its same-origin scripts, thumbnail worker, board WebSocket, stored and external link images, validated X video media, and the three explicitly supported social embeds. Private HTML remains `no-store`.
 
-Images may be PNG, JPEG, GIF, or WebP, up to 20 MB each. Link previews are best effort: blocked sites still save as URL cards, and Twitter, YouTube, or Instagram embeds depend on those services remaining available. Numbered X photo links use FxTwitter's post metadata to select the linked image; if that lookup fails, Ref leaves the card image empty rather than showing a different photo. X video links use a validated remote MP4 with a cached poster and native playback controls; Ref does not copy the video. Ref stores the title, description, and cached preview image, but not a full page archive. Select a link and use **Refresh preview** to update an older thumbnail-only card or retry a stale preview; the existing card stays in place if Ref cannot obtain usable replacement media. See [the Karakeep workflow notes](docs/karakeep-notes.md) for what this first version covers. The local issuer grants access only to the isolated development store; production uses reviewed Jack Auth grants.
+Images may be PNG, JPEG, GIF, or WebP, up to 20 MB each. Link previews are best effort: blocked sites still save as URL cards, and Twitter, YouTube, or Instagram embeds depend on those services remaining available. Numbered X photo links use FxTwitter's post metadata to select the linked image; if that lookup fails, Ref leaves the card image empty rather than showing a different photo. X video links use a validated remote MP4 with a cached poster and native playback controls; Ref does not copy the video. Ref stores the title, description, and cached preview image, but not a full page archive. Select a link and use **Refresh preview** to update an older thumbnail-only card or retry a stale preview; the existing card stays in place if Ref cannot obtain usable replacement media. See [the Karakeep workflow notes](../../docs/ref/KARAKEEP-NOTES.md) for what this first version covers. The local issuer grants access only to the isolated development store; production uses reviewed Jack Auth grants.
 
 ## Checks
 
@@ -225,12 +225,12 @@ For a self-hosted runtime, [Celld](https://celld.dev/docs/) accepts this Wrangle
 
 The root `compose.yml` builds `apps/ref/Dockerfile`, serves `ref.localhost` with a separate `ref-data` volume, and starts the disposable local issuer at `ref-auth.localhost:8786`. Both use the same OAuth flow as `npm run ref:dev`; the issuer registration is exact to this local callback. Celld stores its authoritative SQLite object store under `/app/.celld/object-store/` and replicas under `/app/.celld/state/`; preserve the entire mount for backups. The `publish-ref` workflow builds and checks the app when Ref or its build inputs change on `main`, then publishes `ghcr.io/jackharrhy/ref:latest` and a commit tag. Newport uses `:latest` and Watchtower to deploy new main builds. See the infrastructure repository's `hosts/newport/ref/README.md` for its store and deployment path.
 
-The Dockerfile pins the qualified Celld 0.6.3 fork by digest, matching the repository's [common runtime record](../../docs/celld-runtime.md). The earlier 0.6.2 release passed Ref's browser and cold-restore smoke; the 0.6.3 qualification does not claim that full acceptance was repeated. Pass `--build-arg CELLD_IMAGE=<image>` to rehearse another runtime on an isolated store.
+The Dockerfile pins the qualified Celld 0.6.3 fork by digest, matching the repository's [common runtime record](../../docs/CELLD-RUNTIME.md). The earlier 0.6.2 release passed Ref's browser and cold-restore smoke; the 0.6.3 qualification does not claim that full acceptance was repeated. Pass `--build-arg CELLD_IMAGE=<image>` to rehearse another runtime on an isolated store.
 
 ### Selected Docker inputs
 
 The Dockerfile installs only this app and its transitive workspace dependencies,
 with manifests and `.npmrc` before source for dependency caching. It preserves
 required inherited root configuration and whole selected workspace assets. See
-[container policy and checks](../../docs/node-images.md) for runtime/compiler
+[container policy and checks](../../docs/NODE-IMAGES.md) for runtime/compiler
 exceptions and the production-image smoke commands.

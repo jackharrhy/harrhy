@@ -29,9 +29,11 @@ Shared-runtime operations may need serialization by their operator; that does no
 
 Keep the Celld fork on the latest qualified upstream release with a linear series of owned patches; do not add merge commits to the maintained fork branch. Preserve required standalone-storage and security fixes when updating upstream.
 
-All Harrhy Celld apps and native previews must converge on one qualified immutable artifact. Do not leave per-app runtime version exceptions. Qualify the fork and publish its artifact before changing app pins; coordinate the fleet transition with the runtime operator, including native CLI binaries and preview supervisors. Disposable compatibility tests may exercise older or candidate binaries without changing the shared runtime selection. A source pin change is not proof that an image was published or a running service upgraded. See [the runtime inventory](docs/celld-runtime.md).
+All Harrhy Celld apps and native previews must converge on one qualified immutable artifact. Do not leave per-app runtime version exceptions. Qualify the fork and publish its artifact before changing app pins; coordinate the fleet transition with the runtime operator, including native CLI binaries and preview supervisors. Disposable compatibility tests may exercise older or candidate binaries without changing the shared runtime selection. A source pin change is not proof that an image was published or a running service upgraded. See [the runtime inventory](docs/CELLD-RUNTIME.md).
 
 ## Code and workspace conventions
+
+Put standalone first-party guides and plans in `docs/`, grouped by workspace where useful. Use uppercase Markdown filenames there. Keep workspace `README.md` and `AGENTS.md` at their entry points, and leave vendored, licensing, and published-package files in place.
 
 Keep Markdown tables unpadded and put `<!-- prettier-ignore -->` immediately before each table so OxFmt leaves the source easy to edit.
 
@@ -39,7 +41,7 @@ Apps import packages; packages must not import apps. Use Remix 3 for app routing
 
 Prefix first-party environment settings with `HARRHY_`; use `HARRHY_AUTH_*` for Auth integration and an app-specific prefix where settings differ. Preserve platform and third-party environment contracts. Coordinate existing setting renames with their deployed consumers; never rename secret values or silently change runtime behavior.
 
-Keep Auth entry links and session-changing forms native with Remix's `data-rmx-document` attribute. Same-origin routes can redirect to another origin; they must not be fetched as frame navigation. Shared `ButtonLink` forwards this attribute. Keep ordinary internal navigation client-side; follow [the document navigation guide](docs/remix-navigation.md) and test actual hydrated clicks, not just rendered markup.
+Keep Auth entry links and session-changing forms native with Remix's `data-rmx-document` attribute. Same-origin routes can redirect to another origin; they must not be fetched as frame navigation. Shared `ButtonLink` forwards this attribute. Keep ordinary internal navigation client-side; follow [the document navigation guide](docs/REMIX-NAVIGATION.md) and test actual hydrated clicks, not just rendered markup.
 
 Use Remix `css(...)` mixins for static UI styles. Keep inline `style` for values computed at runtime. A small stylesheet is fine for CSS features the mixin cannot express, such as `@font-face`.
 
@@ -55,4 +57,4 @@ Give each new app or independently checked package a `check` script in its works
 
 ## Managed agent skills
 
-Run `mise run skills` to restore locked project guidance; see [setup and scope](docs/agent-skills.md). Official Cloudflare skills supplement, never replace, first-party logging and Remix guidance.
+Run `mise run skills` to restore locked project guidance; see [setup and scope](docs/AGENT-SKILLS.md). Official Cloudflare skills supplement, never replace, first-party logging and Remix guidance.

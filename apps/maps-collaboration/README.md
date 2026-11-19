@@ -6,7 +6,7 @@ From the repo root, run `npm ci`, build `@harrhy/worldview-renderer`, `@harrhy/m
 
 The Tea Worker is named `tea-maps-collaboration`. Its `MAP_CELLS` binding has an independent SQLite migration and storage namespace. Celld reads `wrangler.jsonc`, so this workspace retains Wrangler configuration. `docker compose up --build maps-collaboration` runs it at `maps-sync.localhost` with a separate local volume and development ticket secret. The Maps app forwards same-origin `/sync/maps/:mapId/*` requests here; its editor now joins the room for semantic brush edits with a bounded, durable browser outbox. Both this Worker and `@harrhy/maps-service` need the same ticket secret.
 
-The Dockerfile pins the fork's Celld 0.6.3 image by digest, matching the [common runtime record](../../docs/celld-runtime.md), and accepts `--build-arg CELLD_IMAGE=<image>` for another candidate runtime. Its `dev.jackharrhy.maps-collaboration.celld-image` image label records that selection. Historically, the previous published image contained the same binary as the local 0.6.2 release-profile image from `ed162bf` used in a disposable container check: startup through `start-celld.sh`, ticketed map and checkpoint creation, SIGKILL, empty replica cache, and exact map source hash and checkpoint ID after restarting on the same SQLite volume. The tested local Tea image ID was `sha256:822d152224ffb90366072fbbe0c0d8e2d12814fe30e82715e68b6d211971c2f1`. No running deployment was changed.
+The Dockerfile pins the fork's Celld 0.6.3 image by digest, matching the [common runtime record](../../docs/CELLD-RUNTIME.md), and accepts `--build-arg CELLD_IMAGE=<image>` for another candidate runtime. Its `dev.jackharrhy.maps-collaboration.celld-image` image label records that selection. Historically, the previous published image contained the same binary as the local 0.6.2 release-profile image from `ed162bf` used in a disposable container check: startup through `start-celld.sh`, ticketed map and checkpoint creation, SIGKILL, empty replica cache, and exact map source hash and checkpoint ID after restarting on the same SQLite volume. The tested local Tea image ID was `sha256:822d152224ffb90366072fbbe0c0d8e2d12814fe30e82715e68b6d211971c2f1`. No running deployment was changed.
 
 Checkpoint metadata is listed at `GET /sync/maps/:mapId/checkpoints`. A ticketed `GET /sync/maps/:mapId/checkpoints/:checkpointId` returns its stored source for detached recovery; the endpoint does not change the live map.
 
@@ -15,5 +15,5 @@ Checkpoint metadata is listed at `GET /sync/maps/:mapId/checkpoints`. A ticketed
 The Dockerfile installs only this app and its transitive workspace dependencies,
 with manifests and `.npmrc` before source for dependency caching. It preserves
 required inherited root configuration and whole selected workspace assets. See
-[container policy and checks](../../docs/node-images.md) for runtime/compiler
+[container policy and checks](../../docs/NODE-IMAGES.md) for runtime/compiler
 exceptions and the production-image smoke commands.

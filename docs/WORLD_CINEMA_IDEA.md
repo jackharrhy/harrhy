@@ -2,7 +2,7 @@
 
 This is a proposed room inside World, not a separate video-store application. A player who has explicit media access in Jack Auth can enter a small shop or cinema space, browse cases from a real media library, inspect a title, and choose to play it in Jellyfin. Other World players cannot enter or fetch its catalogue by default. Returning from playback should bring the player back to the same place.
 
-This idea does not change the overview, room, and pool-table first slice in [WORLD_IDEA.md](WORLD_IDEA.md). Whether the cinema comes before or after that slice remains a product choice. Burger, Gurgur, Pool, and Worldview remain working products while World develops.
+This idea does not change the overview, room, and pool-table first slice in [docs/WORLD_IDEA.md](WORLD_IDEA.md). Whether the cinema comes before or after that slice remains a product choice. Burger, Gurgur, Pool, and Worldview remain working products while World develops.
 
 ## Small experience to prove
 

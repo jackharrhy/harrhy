@@ -25,7 +25,7 @@ Each OAuth start keeps its state and PKCE verifier in a separate short-lived
 signed cookie. Another tab can start sign-in without invalidating the first.
 Sign-in links and sign-out forms use Remix's `data-rmx-document` so Auth redirects
 and session changes load a new document. Ordinary room selection stays client-side;
-see the [shared navigation convention](../../docs/remix-navigation.md).
+see the [shared navigation convention](../../docs/REMIX-NAVIGATION.md).
 
 Use `npm run dev:celld` for a compatibility run on Celld, serving
 <http://127.0.0.1:9876> with disposable local state under `apps/radio/.celld/dev/`. Use the Celld fork
@@ -62,7 +62,7 @@ build.
 
 The default Tea configuration uses Worker name `tea-radio` and bucket name `tea-radio-tracks` for new isolated stores. The repository's root `compose.yml` serves it at `radio.localhost` with an independent `radio-data` volume. Mug's production service uses the cutover configuration with the original `radio` Worker and `radio-tracks` bucket, and a separate copied Celld volume.
 
-The application image includes Radio and copies `/usr/local/bin/celld` from a digest-pinned Celld 0.6.3 image in the [Celld fork](https://github.com/jackharrhy/celld) with native SQLite object storage. The [common runtime record](../../docs/celld-runtime.md) identifies its exact binary. The earlier 0.6.2 release passed Radio's 0.5.1-to-0.6.2 upgrade, 1 GiB media, and cold-restore smokes; those full application checks are historical, not repeated 0.6.3 acceptance. Pass `--build-arg CELLD_IMAGE=<image>` to rehearse another runtime on an isolated store. The `publish-radio` workflow checks and publishes `ghcr.io/jackharrhy/radio:latest` and a commit tag on relevant `main` changes. Mug uses `:latest` and Watchtower to deploy new main builds.
+The application image includes Radio and copies `/usr/local/bin/celld` from a digest-pinned Celld 0.6.3 image in the [Celld fork](https://github.com/jackharrhy/celld) with native SQLite object storage. The [common runtime record](../../docs/CELLD-RUNTIME.md) identifies its exact binary. The earlier 0.6.2 release passed Radio's 0.5.1-to-0.6.2 upgrade, 1 GiB media, and cold-restore smokes; those full application checks are historical, not repeated 0.6.3 acceptance. Pass `--build-arg CELLD_IMAGE=<image>` to rehearse another runtime on an isolated store. The `publish-radio` workflow checks and publishes `ghcr.io/jackharrhy/radio:latest` and a commit tag on relevant `main` changes. Mug uses `:latest` and Watchtower to deploy new main builds.
 The `dev.jackharrhy.radio.celld-image` image label records the bundled Celld binary.
 
 One container prepares the configured backend, runs `celld diagnose`, deploys the Worker and
@@ -218,5 +218,5 @@ The synchronization approach, and overall vibes, are derived from [freeman-jiang
 The Dockerfile installs only this app and its transitive workspace dependencies,
 with manifests and `.npmrc` before source for dependency caching. It preserves
 required inherited root configuration and whole selected workspace assets. See
-[container policy and checks](../../docs/node-images.md) for runtime/compiler
+[container policy and checks](../../docs/NODE-IMAGES.md) for runtime/compiler
 exceptions and the production-image smoke commands.

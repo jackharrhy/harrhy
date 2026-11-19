@@ -312,7 +312,7 @@ mapping, validation, backups, rehearsal, and a cutover/rollback plan.
 
 Likely future home: `apps/sluggers/`, with product code owned by that app and
 shared packages used deliberately. This is a proposal, not an already created
-workspace. Consult `docs/project-imports.md` before any approved source migration;
+workspace. Consult `docs/PROJECT-IMPORTS.md` before any approved source migration;
 do not drag the archive, emulator research, or unrelated histories into the app.
 
 Proposed sequence after the first UI milestone:

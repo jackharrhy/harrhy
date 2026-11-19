@@ -15,5 +15,5 @@ The page uses Remix CSP middleware with a per-response script nonce. Its worker 
 The Dockerfile installs only this app and its transitive workspace dependencies,
 with manifests and `.npmrc` before source for dependency caching. It preserves
 required inherited root configuration and whole selected workspace assets. See
-[container policy and checks](../../docs/node-images.md) for runtime/compiler
+[container policy and checks](../../docs/NODE-IMAGES.md) for runtime/compiler
 exceptions and the production-image smoke commands.

@@ -62,7 +62,7 @@ Select editing requires hydration. It does not provide native required validatio
 
 Import review is prepared fixture interpretation, not a parser or uploader. Home/away and character mappings must resolve, replacement must be acknowledged, then an explicit Dialog confirmation names the tenant/match and consequence. Escape/cancel changes nothing; publication/failure are simulated and never mutate real standings. Raw logs/uploads are not exposed. UI tenant IDs and read-only presentation are not server authorization proofs.
 
-HarrhyUI owns shared scene registration/navigation and private font-link opt-in in `app/router.tsx` and `app/public/scenes.tsx`; Sluggers owns this directory and agreed Sluggers tests. Production tenant constraints, OIDC, permissions, schema, migrations, tracker ingestion and deployment remain later work under root `SLUGGERS.md`.
+HarrhyUI owns shared scene registration/navigation and private font-link opt-in in `app/router.tsx` and `app/public/scenes.tsx`; Sluggers owns this directory and agreed Sluggers tests. Production tenant constraints, OIDC, permissions, schema, migrations, tracker ingestion and deployment remain later work under root `docs/SLUGGERS.md`.
 
 ## Evidence and delivery
 
