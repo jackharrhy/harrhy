@@ -29,6 +29,7 @@ let callbackOrigin,
   maxAgeOverride,
   scopeOverride;
 let providerRejection;
+let rejectProviderSession = false;
 let credentialAttempts = 0;
 let completions = 0,
   resetCalls = 0,
@@ -138,6 +139,10 @@ const provider = createServer(async (request, response) => {
       return;
     }
     result = { sessionId: "session", sessionToken: "fixture-proof" };
+  } else if (request.url === "/v2/sessions/session" && rejectProviderSession) {
+    response.writeHead(404);
+    response.end("{}");
+    return;
   } else if (request.url === "/v2/sessions/session")
     result = {
       session: {
@@ -611,6 +616,21 @@ try {
   }
   const staleContext = await browser.newContext();
   const stalePage = await staleContext.newPage();
+  const redirectProbe = `${origin}/authorize?authRequest=private-redirect-probe`;
+  async function expectRedirectClass(response, expected) {
+    const receipt = await completion(response);
+    assert.equal(receipt["http.route"], "/authorize");
+    assert.equal(receipt["http.status"], 303);
+    assert.equal(receipt["auth.redirect_class"], expected);
+    assert.doesNotMatch(
+      JSON.stringify(receipt),
+      /private-redirect-probe|fixture-code|fixture-state|location/i,
+    );
+  }
+  await expectRedirectClass(
+    await staleContext.request.get(redirectProbe, { maxRedirects: 0 }),
+    "login_required",
+  );
   const staleReturn = "/authorize?authRequest=restart-form";
   await stalePage.goto(
     `${origin}/login?returnTo=${encodeURIComponent(staleReturn)}`,
@@ -677,10 +697,16 @@ try {
       response.request().method() === "POST" &&
       new URL(response.url()).pathname === "/login",
   );
+  const callbackResponse = stalePage.waitForResponse(
+    (response) =>
+      response.request().method() === "GET" &&
+      new URL(response.url()).pathname === "/authorize",
+  );
   await stalePage.getByRole("button", { name: "Sign in", exact: true }).click();
   await stalePage.waitForURL(`${callbackOrigin}/callback?**`, {
     timeout: 5000,
   });
+  await expectRedirectClass(await callbackResponse, "client_callback");
   const validReceipt = await completion(await validResponse);
   assert.equal(validReceipt["http.status"], 303);
   assert.equal(validReceipt["auth.form_rejection_reason"], undefined);
@@ -755,6 +781,12 @@ try {
     )?.value,
     rotatedCookie,
   );
+  rejectProviderSession = true;
+  await expectRedirectClass(
+    await staleContext.request.get(redirectProbe, { maxRedirects: 0 }),
+    "session_rejected",
+  );
+  rejectProviderSession = false;
   await staleContext.close();
   console.log(
     "LOGIN_DIAGNOSTIC " +

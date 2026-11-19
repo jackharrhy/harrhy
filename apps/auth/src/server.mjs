@@ -612,6 +612,7 @@ async function handleBrowser(request, routeAction, routePhase) {
       )
         return;
       if (!session.userId) {
+        currentLog()?.set({ "auth.redirect_class": "login_required" });
         redirect(
           `/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`,
         );
@@ -625,6 +626,7 @@ async function handleBrowser(request, routeAction, routePhase) {
       } catch (error) {
         if (![401, 403, 404].includes(error.status)) throw error;
         sessions.delete(session.id);
+        currentLog()?.set({ "auth.redirect_class": "session_rejected" });
         redirect(
           `/login?returnTo=${encodeURIComponent(url.pathname + url.search)}`,
         );
