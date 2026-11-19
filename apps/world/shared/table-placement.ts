@@ -18,6 +18,24 @@ export type AuthoredTable = TablePlacement & {
 export const CHESS_HALF_WIDTH = 0.7;
 export const CHESS_BOARD_Y = 0.86;
 
+export function tableStand(
+  table: TablePlacement,
+  kind: AuthoredTable["kind"],
+  seat: number,
+) {
+  const yaw =
+    table.yaw +
+    (kind === "pool" ? Math.PI / 2 : 0) +
+    (seat === 0 ? Math.PI : 0);
+  const radius = kind === "pool" ? 1.25 : 1.17;
+  return {
+    x: table.x + Math.sin(yaw) * radius,
+    y: table.y,
+    z: table.z + Math.cos(yaw) * radius,
+    yaw,
+  };
+}
+
 export function readTables(
   entities: ParsedWorld["entities"],
   scale: number,

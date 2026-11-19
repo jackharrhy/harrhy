@@ -1,3 +1,4 @@
+import { tableStand } from "../shared/table-placement.ts";
 import { createPoolSession } from "@harrhy/pool/session";
 import type { PoolCommand, PoolTable, PoolState } from "../shared/pool-wire.ts";
 const botId = "house-bot";
@@ -16,10 +17,7 @@ export async function createWorldTable(table: PoolTable) {
       // Stand just beyond the long rail, facing the table.
       state.bot = {
         id: botId,
-        x: table.x + 1.25 * Math.cos(table.yaw),
-        y: table.y,
-        z: table.z - 1.25 * Math.sin(table.yaw),
-        yaw: table.yaw + Math.PI / 2,
+        ...tableStand(table, "pool", 1),
       };
     }
     return state;

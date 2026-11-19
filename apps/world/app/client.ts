@@ -1,3 +1,4 @@
+import { tableStand } from "../shared/table-placement";
 import { squareAt } from "./chess-model";
 import type { ChessState, ChessCommand } from "../shared/chess-wire";
 import { createWorldShotPrediction } from "./pool-prediction";
@@ -6,7 +7,7 @@ import { createPoolAudio } from "@harrhy/pool/audio";
 import { createPoolInterpolation } from "../shared/pool-interpolation";
 import { CueDrag } from "@harrhy/pool/cue-drag";
 import type { PoolCommand, PoolState } from "../shared/pool-wire";
-import type { FloorPoint } from "./bsp-render";
+import { createWorldNavigation, type NavPoint } from "../shared/navigation";
 import { loadBspCollision } from "../shared/bsp-collision";
 import { createMotion } from "../shared/motion";
 import {
@@ -83,6 +84,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     if (!mapResponse.ok) throw Error("Could not load the authored hall");
     const bytes = await mapResponse.arrayBuffer();
     const collision = await loadBspCollision(bytes);
+    const navigation = createWorldNavigation(collision);
     if (collision.revision !== revision)
       throw Error("The hall changed during loading; reload to join");
     if (signal.aborted) return;
@@ -100,7 +102,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     let orbitDistance = 3.6;
     let mode: "walk" | "fps" = "walk";
     let destination:
-      | (FloorPoint & { best: number; progressAt: number })
+      | (NavPoint & { remaining: NavPoint[]; best: number; progressAt: number })
       | undefined;
     let gesture:
       | {
@@ -223,27 +225,27 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       },
       { signal },
     );
-    const chessButtons = (
-      ["chess-join", "chess-rematch", "chess-leave"] as const
-    ).map((type) => {
-      const button = root.querySelector<HTMLButtonElement>("#" + type)!;
-      button.addEventListener(
-        "click",
-        () => {
-          if (chess) {
-            clearChessSelection();
-            sendCommand({
-              type,
-              tableId: chess.table.id,
-              turnToken: chess.turnToken,
-            });
-            showTables();
-          }
-        },
-        { signal },
-      );
-      return { type, button };
-    });
+    const chessButtons = (["chess-rematch", "chess-leave"] as const).map(
+      (type) => {
+        const button = root.querySelector<HTMLButtonElement>("#" + type)!;
+        button.addEventListener(
+          "click",
+          () => {
+            if (chess) {
+              clearChessSelection();
+              sendCommand({
+                type,
+                tableId: chess.table.id,
+                turnToken: chess.turnToken,
+              });
+              showTables();
+            }
+          },
+          { signal },
+        );
+        return { type, button };
+      },
+    );
     const shotPrediction = createWorldShotPrediction();
     signal.addEventListener("abort", () => shotPrediction.cancel(), {
       once: true,
@@ -269,6 +271,19 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
       const nextChess = chosen?.type === "chess" ? chosen : undefined;
       if (nextChess !== chess) clearChessSelection();
       chess = nextChess;
+    }
+    function navigate(point: NavPoint) {
+      const path = predicted && navigation.findPath(predicted.pose(), point);
+      const next = path && path.shift();
+      destination =
+        next && path
+          ? {
+              ...next,
+              remaining: path,
+              best: Infinity,
+              progressAt: performance.now(),
+            }
+          : undefined;
     }
     let joiningTable: string | undefined;
     let keyboardCharge: { at: number; token: number } | undefined;
@@ -331,11 +346,7 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           chessStatus.textContent = status;
         for (const { type, button } of chessButtons)
           button.hidden =
-            type === "chess-join"
-              ? isSeated || chess.seats.length === 2
-              : type === "chess-rematch"
-                ? !isSeated || !chess.result
-                : !isSeated;
+            !isSeated || (type === "chess-rematch" && !chess.result);
       }
       poolControls.hidden =
         !pool ||
@@ -839,34 +850,24 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
             ? (pools.get(hitTable) ?? chessGames.get(hitTable))
             : undefined;
           if (selected && !seated()) {
-            const pose = predicted!.pose();
-            const dx = pose.x - selected.table.x,
-              dz = pose.z - selected.table.z;
-            const distance = Math.hypot(dx, dz);
-            if (distance < 2.8)
-              sendCommand({
-                type: selected.type === "pool" ? "pool-join" : "chess-join",
-                tableId: selected.table.id,
-              });
-            else {
+            const capacity = selected.table.houseBot ? 1 : 2;
+            if (selected.seats.length < capacity) {
               joiningTable = selected.table.id;
-              destination = {
-                x: selected.table.x + (dx / distance) * 2.45,
-                z: selected.table.z + (dz / distance) * 2.45,
-                best: Infinity,
-                progressAt: performance.now(),
-              };
+              navigate(
+                tableStand(
+                  selected.table,
+                  selected.type,
+                  selected.seats.length,
+                ),
+              );
             }
             gesture = undefined;
             return;
           }
           joiningTable = undefined;
           const point = view.pickFloor(event.clientX, event.clientY);
-          destination = point && {
-            ...point,
-            best: Infinity,
-            progressAt: performance.now(),
-          };
+          if (point) navigate(point);
+          else destination = undefined;
         }
         gesture = undefined;
       },
@@ -1042,8 +1043,13 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
         const pose = predicted.pose();
         if (
           destination &&
-          Math.hypot(pose.x - approachTable.x, pose.z - approachTable.z) < 2.8
+          !destination.remaining.length &&
+          Math.hypot(pose.x - destination.x, pose.z - destination.z) < 0.18
         ) {
+          facing = Math.atan2(
+            pose.x - approachTable.x,
+            pose.z - approachTable.z,
+          );
           destination = undefined;
           sendCommand({
             type: chessGames.has(approachTable.id) ? "chess-join" : "pool-join",
@@ -1062,8 +1068,16 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           destination.best = distance;
           destination.progressAt = now;
         }
-        if (distance < 0.14 || now - destination.progressAt > 500)
-          destination = undefined;
+        if (distance < 0.14) {
+          const remaining = destination.remaining;
+          const next = remaining.shift();
+          destination = next && {
+            ...next,
+            remaining,
+            best: Infinity,
+            progressAt: now,
+          };
+        } else if (now - destination.progressAt > 750) destination = undefined;
         else {
           const approach = Math.min(0.65, distance * 0.75);
           forward =

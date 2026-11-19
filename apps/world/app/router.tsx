@@ -106,7 +106,6 @@ router.map(routes.home, (context) =>
             <div id="chess-controls" hidden>
               <Text id="chess-status" aria-live="polite" />
               <Inline>
-                <Button id="chess-join">Join chess</Button>
                 <Button id="chess-rematch">Rematch</Button>
                 <Button id="chess-leave">Leave table</Button>
               </Inline>

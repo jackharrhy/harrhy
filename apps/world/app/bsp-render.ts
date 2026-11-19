@@ -1,3 +1,4 @@
+import { tableStand } from "../shared/table-placement";
 import type { ChessState } from "../shared/chess-wire";
 import { CHESS_BOARD_Y, CHESS_HALF_WIDTH } from "../shared/table-placement";
 import {
@@ -42,7 +43,7 @@ type View = {
     x: number,
     z: number,
   ): { x: number; y: number } | undefined;
-  pickFloor(x: number, y: number): FloorPoint | undefined;
+  pickFloor(x: number, y: number): (FloorPoint & { y: number }) | undefined;
   dispose(): void;
 };
 type Layout = Awaited<ReturnType<typeof loadBillboardLayout>>;
@@ -321,7 +322,7 @@ export async function createBspView(
       if (normal.dot(ray.ray.direction) > 0) normal.negate();
       if (normal.y < 0.7) return;
       floor = { point: hit.point, normal };
-      return { x: hit.point.x, z: hit.point.z };
+      return { x: hit.point.x, y: hit.point.y, z: hit.point.z };
     },
     draw(
       local,
@@ -438,6 +439,15 @@ export async function createBspView(
             pool.bot,
             layout,
             [2.5, 0.45, 0.28],
+          );
+      for (const chess of chessGames)
+        if (chess.table.houseBot)
+          appendBillboard(
+            triangles,
+            activeCamera,
+            tableStand(chess.table, "chess", 1),
+            layout,
+            [0.65, 1.25, 1.6],
           );
       const spriteLength = triangles.length;
       const rotation = new THREE.Euler().setFromQuaternion(
