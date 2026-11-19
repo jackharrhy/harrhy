@@ -6,34 +6,42 @@ import {
 } from "@harrhy/worldview-renderer/core";
 import type { PoolTable } from "./pool-wire.ts";
 
-export function readPoolTable(
+export function readPoolTables(
   entities: ParsedWorld["entities"],
   scale: number,
-): PoolTable | undefined {
-  const tables = entities.filter(
+): PoolTable[] {
+  const authored = entities.filter(
     (entity) => entityValue(entity, "classname") === "world_pool_table",
   );
-  if (!tables.length) return;
-  if (tables.length !== 1)
-    throw Error("World currently supports one pool table");
-  const [entity] = tables;
-  const id = entityValue(entity, "id") ?? "";
-  const origin = entityValue(entity, "origin")?.trim().split(/\s+/).map(Number);
-  const angle = Number(entityValue(entity, "angle") ?? 0);
-  if (
-    !/^[a-z0-9-]{1,48}$/.test(id) ||
-    origin?.length !== 3 ||
-    !origin.every(Number.isFinite) ||
-    !Number.isFinite(angle)
-  )
-    throw Error("Invalid authored pool table");
-  return {
-    id,
-    x: -origin[1] / scale,
-    y: origin[2] / scale,
-    z: -origin[0] / scale,
-    yaw: ((angle % 360) * Math.PI) / 180,
-  };
+  if (authored.length > 2)
+    throw Error("World supports up to two authored pool tables");
+  const ids = new Set<string>();
+  return authored.map((entity) => {
+    const id = entityValue(entity, "id") ?? "";
+    const origin = entityValue(entity, "origin")
+      ?.trim()
+      .split(/\s+/)
+      .map(Number);
+    const angle = Number(entityValue(entity, "angle") ?? 0);
+    const houseBot = entityValue(entity, "house_bot") === "1";
+    if (
+      !/^[a-z0-9-]{1,48}$/.test(id) ||
+      ids.has(id) ||
+      origin?.length !== 3 ||
+      !origin.every(Number.isFinite) ||
+      !Number.isFinite(angle)
+    )
+      throw Error("Invalid authored pool table");
+    ids.add(id);
+    return {
+      id,
+      x: -origin[1] / scale,
+      y: origin[2] / scale,
+      z: -origin[0] / scale,
+      yaw: ((angle % 360) * Math.PI) / 180,
+      houseBot,
+    };
+  });
 }
 
 export function withPoolCabinet(

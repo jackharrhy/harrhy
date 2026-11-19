@@ -129,6 +129,11 @@ async function scenario(base, revision, players, seconds) {
         maxPayload: 64 * 1024,
       });
       const client = { ws, sentAt: [null], ack: 0 };
+      ws.on("open", () =>
+        ws.send(
+          JSON.stringify({ type: "hello", resumeToken: crypto.randomUUID() }),
+        ),
+      );
       clients.push(client);
       ws.on("error", fail);
       ws.on("close", (code) =>

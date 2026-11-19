@@ -11,8 +11,12 @@ export async function createPoolSession() {
   const physics = new PoolPhysics();
   let match = createMatch();
   let turnToken = 0;
+  let shotTick = 0;
   let result = createShotResult();
   let pendingSounds: PoolSound[] = [];
+  type Cue = { id: string; yaw: number; power: number };
+  let cue: Cue | undefined;
+  let strike: (Cue & { turnToken: number }) | undefined;
   let disposed = false;
 
   function canPlay(
@@ -40,6 +44,50 @@ export async function createPoolSession() {
     get phase() {
       return match.phase;
     },
+    hasSeat(id: string) {
+      return match.players.includes(id);
+    },
+    rematch(id: string, token: number) {
+      const [a, b] = match.players;
+      if (
+        disposed ||
+        !a ||
+        !b ||
+        token !== turnToken ||
+        match.phase !== "finished" ||
+        !match.players.includes(id)
+      )
+        return false;
+      startMatch(match, [a, b]);
+      physics.reset();
+      result = createShotResult();
+      pendingSounds.length = 0;
+      cue = strike = undefined;
+      turnToken++;
+      return true;
+    },
+    aim(id: string, token: number, yaw: number, power: number) {
+      if (
+        !canPlay(id, token, "aiming") ||
+        !Number.isFinite(yaw) ||
+        !Number.isFinite(power) ||
+        power < 0 ||
+        power > 1
+      )
+        return false;
+      cue = { id, yaw, power };
+      return true;
+    },
+    clearAim(id: string) {
+      if (cue?.id !== id) return false;
+      cue = undefined;
+      return true;
+    },
+    drainStrike() {
+      const value = strike;
+      strike = undefined;
+      return value;
+    },
     join(id: string): boolean {
       if (disposed || !id || match.players.includes(id)) return false;
       const [first, second] = match.players;
@@ -52,6 +100,7 @@ export async function createPoolSession() {
     leave(id: string): boolean {
       if (disposed || !match.players.includes(id)) return false;
       const remaining = match.players.find((player) => player && player !== id);
+      cue = strike = undefined;
       match = createMatch();
       match.players[0] = remaining ?? null;
       physics.reset();
@@ -70,6 +119,9 @@ export async function createPoolSession() {
       )
         return false;
       result = createShotResult();
+      cue = undefined;
+      strike = { id, yaw, power, turnToken };
+      shotTick = 0;
       physics.strike(yaw, power);
       match.phase = "rolling";
       match.message = "Balls rolling.";
@@ -84,18 +136,19 @@ export async function createPoolSession() {
       turnToken++;
       return true;
     },
+    aimBot(id: string) {
+      if (!canPlay(id, turnToken, "aiming")) return false;
+      const { angle, power } = chooseBotShot(physics.balls, match, match.turn);
+      return session.aim(id, turnToken, angle, power);
+    },
     playBot(id: string): boolean {
       if (canPlay(id, turnToken, "ball-in-hand")) {
         const { x, z } = chooseBotPlacement(physics.balls, match, match.turn);
         return session.place(id, turnToken, x, z);
       }
       if (canPlay(id, turnToken, "aiming")) {
-        const { angle, power } = chooseBotShot(
-          physics.balls,
-          match,
-          match.turn,
-        );
-        return session.shot(id, turnToken, angle, power);
+        if (cue?.id !== id && !session.aimBot(id)) return false;
+        return session.shot(id, turnToken, cue!.yaw, cue!.power);
       }
       return false;
     },
@@ -105,6 +158,7 @@ export async function createPoolSession() {
       // The cabinet can still produce contacts after play passes to the next turn.
       if (!rolling && !physics.balls.some((ball) => ball.stage === "return"))
         return false;
+      if (rolling) shotTick++;
       const moving = physics.step(dt, result);
       pendingSounds.push(...physics.sounds);
       if (pendingSounds.length > MAX_PENDING_SOUNDS)
@@ -122,15 +176,30 @@ export async function createPoolSession() {
     snapshot() {
       const { phase, players, winner, message } = match;
       return {
+        shotTick: phase === "rolling" ? shotTick : undefined,
         balls: physics.balls
           .filter((ball) => !ball.pocketed)
-          .map(({ id, x, y, z, q }) => ({
+          .map(({ id, x, y, z, q, vx, vy, vz, stage }) => ({
+            vx,
+            vy,
+            vz,
+            stage,
             id,
             x,
             y,
             z,
             q: [...q] as typeof q,
           })),
+        cue,
+        groups: [...match.groups] as typeof match.groups,
+        remaining: {
+          solid: physics.balls.filter(
+            (b) => b.id >= 1 && b.id <= 7 && !b.pocketed,
+          ).length,
+          stripe: physics.balls.filter(
+            (b) => b.id >= 9 && b.id <= 15 && !b.pocketed,
+          ).length,
+        },
         seats: players.filter((id): id is string => id !== null),
         turn: session.turn,
         phase,

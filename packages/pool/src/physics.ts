@@ -1,6 +1,14 @@
-import { BALL_RADIUS, TABLE_HALF_WIDTH, TABLE_HALF_LENGTH } from "./dimensions";
-import { isOverPocket, FELT_LIP_WIDTH } from "./physical-table";
-export { BALL_RADIUS, TABLE_HALF_WIDTH, TABLE_HALF_LENGTH } from "./dimensions";
+import {
+  BALL_RADIUS,
+  TABLE_HALF_WIDTH,
+  TABLE_HALF_LENGTH,
+} from "./dimensions.ts";
+import { isOverPocket, FELT_LIP_WIDTH } from "./physical-table.ts";
+export {
+  BALL_RADIUS,
+  TABLE_HALF_WIDTH,
+  TABLE_HALF_LENGTH,
+} from "./dimensions.ts";
 const DIAMETER = BALL_RADIUS * 2;
 const MAX_SHOT_SPEED = 7.5;
 const SHOT_POWER_EXPONENT = 1.4;

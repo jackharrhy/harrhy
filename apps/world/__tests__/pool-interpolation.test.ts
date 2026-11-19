@@ -22,6 +22,8 @@ function snapshot(
     table: { id: "table", x: 0, y: 0, z: 0, yaw: 0 },
     balls,
     seats: ["alice", "bob"],
+    groups: [null, null],
+    remaining: { solid: 7, stripe: 7 },
     turn: "alice",
     turnToken: 3,
     phase: "rolling",

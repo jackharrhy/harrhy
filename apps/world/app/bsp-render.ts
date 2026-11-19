@@ -7,7 +7,8 @@ import { UNITS_PER_METRE as scale } from "../shared/bsp-collision";
 import { billboardAtlasPath, loadBillboardLayout } from "./player-billboard";
 import type { Pose } from "../shared/protocol";
 import type { PoolState, PoolTable } from "../shared/pool-wire";
-import { CABINET_BOUNDS, FELT_Y } from "@harrhy/pool/table";
+import { FELT_Y } from "@harrhy/pool/table";
+import { ViewCamera } from "@harrhy/pool/presentation";
 import { createPoolLayer } from "./pool-overlay";
 
 export type FloorPoint = { x: number; z: number };
@@ -18,14 +19,20 @@ type View = {
     destination?: FloorPoint,
     avatar?: Pose,
     orbitDistance?: number,
-    pool?: PoolState,
-    poolView?: { aim?: number; power?: number },
+    pools?: readonly PoolState[],
+    poolView?: { tableId: string; aim?: number; power?: number },
   ): void;
   /** Convert a canvas point to table-local felt coordinates while aiming. */
-  pickPool(x: number, y: number): FloorPoint | undefined;
+  pickPool(id: string, x: number, y: number): FloorPoint | undefined;
   panPool(dx: number, dy: number): void;
-  hitPool(x: number, y: number): boolean;
-  projectPool(x: number, z: number): { x: number; y: number } | undefined;
+  hitPool(x: number, y: number): string | undefined;
+  orbitPool(dx: number, dy: number): void;
+  zoomPool(delta: number): void;
+  projectPool(
+    id: string,
+    x: number,
+    z: number,
+  ): { x: number; y: number } | undefined;
   pickFloor(x: number, y: number): FloorPoint | undefined;
   dispose(): void;
 };
@@ -210,16 +217,17 @@ export async function createBspView(
   }
   const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
   camera.coordinateSystem = THREE.WebGPUCoordinateSystem;
-  const tableCamera = new THREE.PerspectiveCamera(48, 1, 0.04, 60);
+  const tableCamera = new THREE.PerspectiveCamera(43, 1, 0.04, 60);
   tableCamera.coordinateSystem = THREE.WebGPUCoordinateSystem;
   let activeCamera = camera;
-  const transitionCamera = new THREE.PerspectiveCamera(48, 1, 0.04, 60);
+  const transitionCamera = new THREE.PerspectiveCamera(43, 1, 0.04, 60);
   transitionCamera.coordinateSystem = THREE.WebGPUCoordinateSystem;
-  const tablePan = new THREE.Vector3();
+  const rig = new ViewCamera(tableCamera);
+  const anchor = new THREE.Vector3();
   let transition = 0;
   let lastDraw = 0;
   let tableView: PoolTable | undefined;
-  let visibleTable = false;
+  let tables: readonly PoolState[] = [];
   const ray = new THREE.Raycaster(
     undefined,
     undefined,
@@ -245,21 +253,23 @@ export async function createBspView(
     return true;
   }
   return {
-    pickPool(x, y) {
-      if (!tableView || !pointerRay(x, y)) return;
-      const felt = new THREE.Plane(up, -(tableView.y + FELT_Y));
+    pickPool(id, x, y) {
+      const pickedTable = tables.find((p) => p.table.id === id)?.table;
+      if (!pickedTable || !pointerRay(x, y)) return;
+      const felt = new THREE.Plane(up, -(pickedTable.y + FELT_Y));
       const point = ray.ray.intersectPlane(felt, new THREE.Vector3());
       if (!point) return;
-      point.sub(new THREE.Vector3(tableView.x, tableView.y, tableView.z));
-      point.applyAxisAngle(up, -tableView.yaw);
+      point.sub(new THREE.Vector3(pickedTable.x, pickedTable.y, pickedTable.z));
+      point.applyAxisAngle(up, -pickedTable.yaw);
       return { x: point.x, z: point.z };
     },
-    projectPool(x, z) {
-      if (disposed || !drewFrame || !tableView) return;
+    projectPool(id, x, z) {
+      const pickedTable = tables.find((p) => p.table.id === id)?.table;
+      if (disposed || !drewFrame || !pickedTable) return;
       const rect = canvas.getBoundingClientRect();
       const point = new THREE.Vector3(x, FELT_Y, z)
-        .applyAxisAngle(up, tableView.yaw)
-        .add(new THREE.Vector3(tableView.x, tableView.y, tableView.z))
+        .applyAxisAngle(up, pickedTable.yaw)
+        .add(new THREE.Vector3(pickedTable.x, pickedTable.y, pickedTable.z))
         .project(activeCamera);
       return {
         x: rect.left + ((point.x + 1) * rect.width) / 2,
@@ -268,21 +278,27 @@ export async function createBspView(
     },
     panPool(dx, dy) {
       if (!tableView) return;
-      const amount = 2.7 / Math.max(1, canvas.clientHeight);
-      const offset = new THREE.Vector3(
-        -dx * amount,
-        dy * amount,
-        0,
-      ).applyQuaternion(activeCamera.quaternion);
-      offset.y = 0;
-      tablePan.add(offset).clampLength(0, 1);
+      rig.panBy(dx, dy, canvas.clientHeight);
+    },
+    orbitPool(dx, dy) {
+      if (tableView) rig.orbitBy(dx, dy);
+    },
+    zoomPool(delta) {
+      if (tableView) rig.zoomBy(delta);
     },
     hitPool(x, y) {
-      if (!visibleTable || !pointerRay(x, y)) return false;
-      const hit = ray.intersectObject(poolLayer.graphics, true)[0];
-      if (!hit) return false;
-      const wall = ray.intersectObject(hall, false)[0];
-      return !wall || hit.distance < wall.distance;
+      if (!pointerRay(x, y)) return;
+      let nearest = ray.intersectObject(hall, false)[0]?.distance ?? Infinity;
+      let result: string | undefined;
+      for (const pool of tables) {
+        const graphics = poolLayer.graphics(pool.table.id);
+        const hit = graphics && ray.intersectObject(graphics, true)[0];
+        if (hit && hit.distance < nearest) {
+          nearest = hit.distance;
+          result = pool.table.id;
+        }
+      }
+      return result;
     },
     pickFloor(x, y) {
       if (tableView || !pointerRay(x, y)) return;
@@ -300,7 +316,7 @@ export async function createBspView(
       destination,
       avatar,
       orbitDistance = 3.6,
-      pool,
+      pools = [],
       poolView,
     ) {
       if (disposed || !canvas.clientWidth || !canvas.clientHeight) return;
@@ -331,45 +347,32 @@ export async function createBspView(
       }
       camera.updateMatrixWorld();
       const triangles: number[] = [];
-      tableView = poolView ? pool?.table : undefined;
+      const previous = tableView;
+      tables = pools;
+      tableView = pools.find((p) => p.table.id === poolView?.tableId)?.table;
       activeCamera = camera;
       let yaw = local.yaw;
       let pitch = local.pitch;
       if (tableView) {
-        const aspect = width / height;
-        const { x, y, z, yaw: tableYaw } = tableView;
-        // A side view suits landscape; a foot-end view keeps the table wide on phones.
-        yaw = tableYaw + (aspect >= 1 ? -1.37 : 0.17);
-        pitch = -Math.atan2(7.3, 3.8);
-        tableCamera.aspect = aspect;
-        tableCamera.rotation.set(pitch, yaw, 0, "YXZ");
-        const center = new THREE.Vector3(x, y + FELT_Y, z);
-        const inverseRotation = tableCamera.quaternion.clone().invert();
-        const slope = Math.tan(THREE.MathUtils.degToRad(tableCamera.fov / 2));
-        const corner = new THREE.Vector3();
-        let distance = 2.0;
-        for (const side of [-1, 1])
-          for (const end of [-1, 1]) {
-            corner.set(side * CABINET_BOUNDS.x, 0.08, end * CABINET_BOUNDS.z);
-            corner
-              .applyAxisAngle(up, tableYaw)
-              .applyQuaternion(inverseRotation);
-            distance = Math.max(
-              distance,
-              corner.z + Math.abs(corner.x) / (0.84 * slope * aspect),
-              corner.z + Math.abs(corner.y) / (0.84 * slope),
-            );
-          }
+        tableCamera.aspect = width / height;
+        const entering = previous?.id !== tableView.id;
+        if (entering) rig.recenter();
+        rig.update(
+          entering ? 10 : Math.min(0.1, (performance.now() - lastDraw) / 1000),
+          anchor.set(0, 0, 0),
+          "table",
+          canvas.clientWidth < 700,
+        );
+        // The break cue ball starts on negative local Z.
+        const cueEndYaw = tableView.yaw + Math.PI;
         tableCamera.position
-          .set(0, 0, distance)
-          .applyQuaternion(tableCamera.quaternion)
-          .add(center)
-          .add(tablePan);
+          .applyAxisAngle(up, cueEndYaw)
+          .add(anchor.set(tableView.x, tableView.y + FELT_Y, tableView.z));
+        tableCamera.rotateOnWorldAxis(up, cueEndYaw);
         tableCamera.updateProjectionMatrix();
         tableCamera.updateMatrixWorld();
         activeCamera = tableCamera;
       } else {
-        if (transition < 0.001) tablePan.set(0, 0, 0);
         for (const player of remotes)
           appendBillboard(triangles, camera, player, layout);
       }
@@ -395,15 +398,22 @@ export async function createBspView(
         transitionCamera.updateMatrixWorld();
         activeCamera = transitionCamera;
       }
-      if (pool?.bot)
-        appendBillboard(
-          triangles,
-          activeCamera,
-          pool.bot,
-          layout,
-          [2.5, 0.45, 0.28],
-        );
+      for (const pool of pools)
+        if (pool.bot)
+          appendBillboard(
+            triangles,
+            activeCamera,
+            pool.bot,
+            layout,
+            [2.5, 0.45, 0.28],
+          );
       const spriteLength = triangles.length;
+      const rotation = new THREE.Euler().setFromQuaternion(
+        activeCamera.quaternion,
+        "YXZ",
+      );
+      yaw = rotation.y;
+      pitch = rotation.x;
       if (destination && !tableView) {
         if (
           floor &&
@@ -437,8 +447,8 @@ export async function createBspView(
         timeSeconds: performance.now() / 1000,
         overlay: new Float32Array(triangles),
       });
-      poolLayer.draw(activeCamera, pool, poolView, triangles, spriteLength);
-      visibleTable = !!pool;
+      poolLayer.draw(activeCamera, pools, poolView, triangles, spriteLength);
+
       drewFrame = true;
     },
     dispose() {

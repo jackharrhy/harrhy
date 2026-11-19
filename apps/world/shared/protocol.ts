@@ -41,6 +41,12 @@ export type Pose = {
 export type Snapshot = { tick: number; players: Pose[] };
 
 export type ServerMessage =
+  | {
+      type: "pool-shot-ack";
+      tableId: string;
+      turnToken: number;
+      accepted: boolean;
+    }
   | PoolState
   | { type: "welcome"; id: string; revision: string }
   | { type: "joined"; id: string }
@@ -86,4 +92,19 @@ export function validateInput(value: unknown): InputCommand | null {
   if (wrappedYaw > Math.PI) wrappedYaw -= turn;
   if (wrappedYaw < -Math.PI) wrappedYaw += turn;
   return { seq, forward, strafe, jump, yaw: wrappedYaw, pitch };
+}
+
+export function parseResumeToken(raw: string) {
+  try {
+    const hello = JSON.parse(raw);
+    return hello?.type === "hello" &&
+      typeof hello.resumeToken === "string" &&
+      /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
+        hello.resumeToken,
+      )
+      ? (hello.resumeToken as string)
+      : null;
+  } catch {
+    return null;
+  }
 }

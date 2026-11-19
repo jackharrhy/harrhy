@@ -18,7 +18,12 @@ const router = createRouter<Context>({
         const { host, protocol } = new URL(context.request.url);
         return {
           defaultSrc: ["'none'"],
-          scriptSrc: ["'self'", "'nonce-" + nonce + "'"],
+          scriptSrc: [
+            "'self'",
+            "'nonce-" + nonce + "'",
+            "'wasm-unsafe-eval'",
+            "'unsafe-eval'",
+          ],
           styleSrc: ["'self'", "'nonce-" + nonce + "'"],
           styleSrcAttr: ["'unsafe-inline'"],
           connectSrc: [
@@ -103,6 +108,9 @@ router.map(routes.home, (context) =>
               <Inline>
                 <Button id="pool-join">Join table</Button>
                 <Button id="pool-bot">Play Moss</Button>
+                <Button id="pool-rematch" hidden>
+                  Rematch
+                </Button>
                 <Button id="pool-leave" hidden>
                   Leave table
                 </Button>

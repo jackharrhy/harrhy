@@ -3,7 +3,7 @@
 World is a private multiplayer walk-through of the authored GoldSrc hall. Node serves a Remix 3 page and bridges same-origin game traffic to the local Celld Worker. `WorldRoomCell` owns player simulation. The browser uses Worldview’s WebGPU renderer, Gurgur’s directional sprites and a Wood HUD built with `@harrhy/ui`.
 
 Right-drag to orbit your avatar (drag on touch), click or tap the floor to walk, and scroll all the way in for first person. Click to capture the mouse, use WASD, and hold Space to auto-bhop. Scroll out to return to third person. The west wall has a surf ramp. A WebGPU-capable browser is required.
-Walk up to the pool table and join with a second player. Use the overhead view, Aim and Power controls, then Shoot. Leave the table to resume walking.
+Click either table to walk up and sit. Moss joins automatically at the west table; the east table is human-only. Right-drag orbits the shared Pool camera; middle-drag pans and the wheel zooms. Pull back and release to shoot, or use arrow keys and hold Space. A disconnected seat stays reserved for 30 seconds in the same tab. Leave the table to resume walking.
 
 ## Run locally
 

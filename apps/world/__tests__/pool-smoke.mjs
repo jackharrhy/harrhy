@@ -8,9 +8,12 @@ const url = new URL(
   `/room?revision=${revision}`,
   origin.replace(/^http/, "ws"),
 );
-const clients = [0, 1].map(() => {
+function connect(token = crypto.randomUUID()) {
   const ws = new WebSocket(url, { origin });
-  const client = { ws, seq: 0, sounds: [] };
+  const client = { ws, seq: 0, sounds: [], token, tables: new Map() };
+  ws.on("open", () =>
+    ws.send(JSON.stringify({ type: "hello", resumeToken: token })),
+  );
   ws.on("error", (error) => {
     client.error = error;
   });
@@ -19,13 +22,15 @@ const clients = [0, 1].map(() => {
     if (m.type === "welcome") client.id = m.id;
     if (m.type === "motion")
       client.pose = m.players.find(({ id }) => id === client.id);
-    if (m.type === "pool") {
+    if (m.type === "pool") client.tables.set(m.table.id, m);
+    if (m.type === "pool" && m.table.id === "hall-table") {
       client.pool = m;
       if (m.sounds) client.sounds.push(...m.sounds);
     }
   });
   return client;
-});
+}
+const clients = [connect(), connect()];
 async function until(predicate, label, timeout = 8000) {
   const end = performance.now() + timeout;
   while (performance.now() < end) {
@@ -43,7 +48,8 @@ try {
     () => clients.every((c) => c.pose && c.pool),
     "both clients receive table",
   );
-  const [a, b] = clients;
+  const [a] = clients;
+  let b = clients[1];
   const { table } = a.pool;
   for (const c of clients) {
     send(c, { type: "pool-join", tableId: table.id });
@@ -115,6 +121,17 @@ try {
     assert.ok(cues[0].speed > 0);
   }
   assert.notEqual(a.pool.turnToken, shot.turnToken);
+  assert.equal(a.tables.get("moss-table").phase, "waiting");
+  assert.equal(a.tables.get("moss-table").balls.length, 16);
+  const oldId = b.id;
+  b.ws.terminate();
+  b = connect(b.token);
+  clients[1] = b;
+  await until(
+    () => b.id === oldId && b.pool?.seats.includes(oldId),
+    "reconnect preserves identity and seat",
+  );
+  assert.equal(a.pool.turnToken, b.pool.turnToken);
   send(b, { type: "pool-leave", tableId: table.id });
   await until(
     () => a.pool.phase === "waiting" && a.pool.seats.length === 1,

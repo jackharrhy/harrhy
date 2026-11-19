@@ -829,6 +829,14 @@
 {
 "classname" "world_pool_table"
 "id" "hall-table"
-"origin" "80 0 0"
+"origin" "80 -126 0"
 "angle" "0"
+}
+
+{
+"classname" "world_pool_table"
+"id" "moss-table"
+"origin" "80 126 0"
+"angle" "0"
+"house_bot" "1"
 }

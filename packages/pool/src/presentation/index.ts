@@ -11,3 +11,4 @@ export {
 
 export const walnutUrl = new URL("../../assets/walnut.webp", import.meta.url)
   .href;
+export { ViewCamera } from "./view-camera";

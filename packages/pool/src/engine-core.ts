@@ -13,8 +13,8 @@ import {
   createRack,
   canPlaceCue,
   shotSpeed,
-} from "./physics";
-import type { Ball, PhysicalBall, ShotResult, PoolSound } from "./physics";
+} from "./physics.ts";
+import type { Ball, PhysicalBall, ShotResult, PoolSound } from "./physics.ts";
 import {
   type StaticBox,
   FELT_Y,
@@ -29,8 +29,8 @@ import {
   isOverPocket,
   TRAY_FLOOR_Y,
   TABLE_BOUNDS,
-} from "./physical-table";
-export type { PhysicalBall } from "./physics";
+} from "./physical-table.ts";
+export type { PhysicalBall } from "./physics.ts";
 
 type Vector3 = readonly [number, number, number];
 type PhysicsEventContext = {

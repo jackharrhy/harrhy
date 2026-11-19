@@ -9,6 +9,7 @@
 @PointClass color(80 180 255) size(-16 -16 -36, 16 16 36) = info_player_start : "Default spawn"
 [
   angle(angle) : "Yaw" : 0
+  house_bot(choices) : "House bot" : 0 = [ 0 : "None" 1 : "Moss" ]
 ]
 
 @PointClass color(255 215 150) size(-8 -8 -8, 8 8 8) = light : "Baked point light"
@@ -25,4 +26,5 @@
 [
   id(string) : "Stable table ID"
   angle(angle) : "Yaw" : 0
+  house_bot(choices) : "House bot" : 0 = [ 0 : "None" 1 : "Moss" ]
 ]
