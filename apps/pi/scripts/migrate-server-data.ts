@@ -168,6 +168,7 @@ const sharesFacet = (use: (owned: Owned<ShareTables>) => void) =>
 				authenticateEmail: refused,
 				grant: refused,
 				active: refused,
+				isShared: refused,
 				link: refused,
 				share: refused,
 				remove: refused,

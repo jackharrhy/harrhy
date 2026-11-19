@@ -81,7 +81,9 @@ const SharesV1 = local("p2.shares", {
 });
 
 /** Ends all sharing of exactly one session. */
-export const Shares = evolve(SharesV1, (e) => e.addMethod("disableSession", obj({ session: str() }), nul()));
+const SharesV2 = evolve(SharesV1, (e) => e.addMethod("disableSession", obj({ session: str() }), nul()));
+
+export const Shares = evolve(SharesV2, (e) => e.addMethod("isShared", obj({ session: str() }), bool()));
 
 /** Guests whose browsers are connected now (server, in memory). */
 export const Presence = local("p2.share-presence", {

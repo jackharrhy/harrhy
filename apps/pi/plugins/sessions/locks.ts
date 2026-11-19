@@ -11,6 +11,7 @@ import {
 	record,
 	SessionLockSchema,
 } from "@p2/app/v1";
+import { sessionAdmissionOf } from "@p2/app/v1/server";
 import { SessionLock, SessionLocks } from "./contract.ts";
 
 const Locks = defineState("p2.session-locks", {
@@ -24,13 +25,24 @@ const Locks = defineState("p2.session-locks", {
 export function serveLocks(host: FacetHost): void {
 	host.serve(SessionLocks, (_params, self) => {
 		const state = self.state(Locks);
+		const admission = sessionAdmissionOf(self);
 		return {
 			locks: deriveTyped(self, [state], ([value]) => value.locks),
 			set: async ({ session, lock }, ctx) => {
-				await state.change((draft) => {
-					if (lock === null) delete draft.locks[session];
-					else draft.locks[session] = lock;
-				}, ctx);
+				if (lock === null) {
+					await state.change((draft) => {
+						delete draft.locks[session];
+					}, ctx);
+				} else {
+					await admission().mutate(
+						session,
+						() =>
+							state.change((draft) => {
+								draft.locks[session] = lock;
+							}, ctx),
+						ctx,
+					);
+				}
 				return null;
 			},
 		};

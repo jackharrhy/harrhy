@@ -55,6 +55,7 @@ import { type BundleInput, buildTuiBundle, type TuiBundle, tuiManifest } from ".
 import { devControl } from "./dev.ts";
 import { readDevCommand, sendDevCommand, serveDevChannel } from "./dev-channel.ts";
 import { LoadedModules, loadedModuleHashes, loadedPluginFiles } from "./dev-modules.ts";
+import { GuestUpgrades } from "./guest-upgrades.ts";
 import {
 	createP2Plugins,
 	listPlugins,
@@ -148,7 +149,9 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	const resume: unknown = dev ? JSON.parse(process.env.P2_DEV_RESUME ?? "[]") : [];
 	if (!Array.isArray(resume) || !resume.every((id: unknown) => typeof id === "string"))
 		throw new Error("Invalid dev resume list");
-	const dataDir = options.dataDir ?? process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+	const requestedDataDir = options.dataDir ?? process.env.P2_DATA_DIR ?? join(homedir(), ".pi", "p2");
+	mkdirSync(requestedDataDir, { recursive: true, mode: 0o700 });
+	const dataDir = await realpath(requestedDataDir);
 	// The user plugin root (`<data>/plugins/`): created here, so the plugin watcher watches it from the start.
 	const userRoot = userPluginsDirectory(dataDir);
 	mkdirSync(userRoot, { recursive: true, mode: 0o700 });
@@ -239,15 +242,16 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 		markLoaded = resolve;
 	});
 	const http = createServer();
+	const guestUpgrades = new GuestUpgrades();
 	http.on("request", (request: IncomingMessage, response: ServerResponse) => {
 		void loaded.then(() => handle(request, response));
 	});
 	http.on("upgrade", (request, socket, head) => {
 		const path = new URL(request.url ?? "/", "http://localhost").pathname;
 		void loaded
-			.then(() => upgradePrincipal(request))
-			.catch(() => undefined)
-			.then(async (principal) => {
+			.then(async () => {
+				const current = guestUpgrades.begin();
+				const principal = await upgradePrincipal(request).catch(() => undefined);
 				if (path === "/chord" && principal !== undefined) {
 					const stale = await stalePage(request);
 					if (stale) {
@@ -257,13 +261,23 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 						sockets.handleUpgrade(request, socket, head, (ws) => ws.close(STALE_PAGE_CODE, STALE_PAGE_REASON));
 						return;
 					}
-					upgraded.set(request, principal);
-					sockets.handleUpgrade(request, socket, head, (ws) => sockets.emit("connection", ws, request));
+					sockets.handleUpgrade(request, socket, head, (ws) => {
+						if (isGuest(principal) && !current()) return ws.terminate();
+						host.accept(
+							webSocketLink(limitedSocket(ws)),
+							{ principal, limits: { part: MAX_CLIENT_FRAME } },
+							BACKGROUND_CONTEXT,
+						);
+					});
 				} else if (principal !== undefined) {
 					await host.root(async (ctx) => {
 						const upgrade = (await host.registry(Upgrades, ctx)).value.get(path);
-						if (upgrade) await upgrade(request, socket, head, principal, ctx);
-						else socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+						if (!upgrade) {
+							socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
+							return;
+						}
+						if (isGuest(principal) && !guestUpgrades.track(principal.id, socket, current)) return;
+						await upgrade(request, socket, head, principal, ctx);
 					}, BACKGROUND_CONTEXT);
 				} else socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
 			})
@@ -392,14 +406,19 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 				core: [
 					{
 						name: "@p2/core",
-						facet: serverCore(host, info, {
-							resourceOptions: options.resources ?? {},
-							workers,
-							root: (fn, context) => host.root(fn, context),
-							store,
-							...(telemetry === undefined ? {} : { telemetry: telemetry.telemetry }),
-							plugins: { root: userRoot, reload: (requested) => applyPlugins(requested) },
-						}),
+						facet: serverCore(
+							host,
+							info,
+							{
+								resourceOptions: options.resources ?? {},
+								workers,
+								root: (fn, context) => host.root(fn, context),
+								store,
+								...(telemetry === undefined ? {} : { telemetry: telemetry.telemetry }),
+								plugins: { root: userRoot, reload: (requested) => applyPlugins(requested) },
+							},
+							(id) => guestUpgrades.revoke(id),
+						),
 					},
 					{ name: "@p2/tui-preferences", facet: tuiPreferencesFacet(dataDir) },
 					// The server's files (the kit's `Files`): `<data>/server/files/`.
@@ -860,7 +879,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 			return access !== undefined && sameOrigin(request, access.origin) ? access.principal : undefined;
 		}, BACKGROUND_CONTEXT);
 	};
-	const upgraded = new WeakMap<IncomingMessage, P2Principal>();
 	/**
 	 * A page's link from code other than the current: its `web` query names another base bundle, or it names neither a
 	 * base nor a client (`client`: the TUI, Cloud Brain's pages, scripts), a page from before pages named their base
@@ -888,16 +906,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 		staleReported.add(key);
 		processLogs.append("stale-pages", "event", text);
 	};
-	// Mobile's limits: frames up to 1 MiB, 4 MiB unsent output (socket-limits.ts); Chord queues calls behind its window.
-	sockets.on("connection", (socket, request: IncomingMessage) => {
-		const principal = upgraded.get(request);
-		if (principal === undefined) return socket.terminate();
-		host.accept(
-			webSocketLink(limitedSocket(socket)),
-			{ principal, limits: { part: MAX_CLIENT_FRAME } },
-			BACKGROUND_CONTEXT,
-		);
-	});
 	if (dev) {
 		// A dev restart restores the workers that ran before, viewed or not (their Durable work resumes there).
 		for (const session of resume)

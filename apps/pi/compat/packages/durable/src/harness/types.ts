@@ -90,7 +90,8 @@ export type SubmissionDraft = {
 	| {
 			readonly type: "input";
 			readonly content: UserInput;
-			readonly whenBusy?: "steer" | "followUp" | "reject";
+			/** `reject-unless-idle` also rejects a nonempty inbox, compaction, or live foreground work. */
+			readonly whenBusy?: "steer" | "followUp" | "reject" | "reject-unless-idle";
 			/**
 			 * `reject`: an idle conversation (no run) rejects the input with `ConversationIdle` and writes nothing, so the input
 			 * never starts a run of its own. With `whenBusy: "steer"` it steers the current run or is refused; a run that

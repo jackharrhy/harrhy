@@ -9,7 +9,7 @@ import {
 import { ConversationBusy, ConversationIdle, ReadAfterWrite } from "../errors.ts";
 import type { ObservedCommit, SessionImpl } from "../session/session.ts";
 import { isSettled } from "../signals.ts";
-import type { ConversationId, JsonObject, SubmissionId, SubmissionRecord, Tx } from "../types.ts";
+import type { ConversationId, Cursor, JsonObject, SubmissionId, SubmissionRecord, TaskId, Tx } from "../types.ts";
 import { startRun } from "./generation.ts";
 import {
 	appendInput,
@@ -27,6 +27,32 @@ import { LiveDoc } from "./live.ts";
 import { DURABLE_TELEMETRY_SCHEMA } from "./telemetry.ts";
 import type { InputEntry, SettledSubmissionRecord, Submission, SubmissionDraft, UserInput } from "./types.ts";
 import { closedError, Waiters } from "./util.ts";
+
+async function hasForegroundWork(tx: Tx, target: ConversationId): Promise<boolean> {
+	// Terminal owners still link live descendants to their scope; background owners cut that link.
+	const belongs = async (conversation: ConversationId, owner: TaskId | undefined): Promise<boolean> => {
+		while (true) {
+			if (owner === undefined) {
+				if (conversation === target) return true;
+				owner = (await tx.conversation(conversation))?.owner?.taskId;
+				if (owner === undefined) return false;
+			}
+			const parent = await tx.task(owner);
+			if (!parent || parent.background) return false;
+			conversation = parent.conversationId;
+			owner = parent.owner;
+		}
+	};
+	for (const status of ["pending", "running", "waiting", "sleeping", "completing"] as const) {
+		let cursor: Cursor | undefined;
+		do {
+			const page = await tx.scanTasks({ status, background: false }, 64, cursor);
+			for (const task of page.items) if (await belongs(task.conversationId, task.owner)) return true;
+			cursor = page.next;
+		} while (cursor !== undefined);
+	}
+	return false;
+}
 
 type AbortResult = "aborted" | "already_placed" | "settled";
 type Admission = { readonly id: SubmissionId; readonly status: "queued" | "placed" | "done" };
@@ -260,6 +286,11 @@ export async function admitSubmission(
 	) {
 		const run = await tx.task(live.run.taskId);
 		if (run?.trace !== undefined) span.addLink({ context: span.propagation.extract(run.trace) });
+	}
+	if (draft.type === "input" && draft.whenBusy === "reject-unless-idle") {
+		if (busy || live.compactions?.length || (await tx.doc(InboxDoc, conversationId)).items.length > 0)
+			throw new ConversationBusy(conversationId);
+		if (await hasForegroundWork(tx, conversationId)) throw new ConversationBusy(conversationId);
 	}
 	if (busy && draft.type === "input" && draft.whenBusy === "reject") throw new ConversationBusy(conversationId);
 	if (!busy && draft.type === "input" && draft.whenIdle === "reject") throw new ConversationIdle(conversationId);
