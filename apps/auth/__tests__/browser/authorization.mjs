@@ -583,6 +583,32 @@ try {
   assert.equal(completions - beforeFreshness, 4);
   promptOverride = maxAgeOverride = undefined;
   currentClient = applications.find((app) => app.id === "artbin").clientIds[0];
+  async function completion(response) {
+    const id = response.headers()["x-request-id"];
+    assert.match(id, /^[0-9a-f-]{36}$/);
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const events = logs
+        .split("\n")
+        .flatMap((line) => {
+          try {
+            return [JSON.parse(line)];
+          } catch {
+            return [];
+          }
+        })
+        .filter((entry) => entry?.request_id === id);
+      if (events.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 20));
+        continue;
+      }
+      assert.equal(events.length, 1);
+      const { timestamp, duration_ms, notes: _notes, ...receipt } = events[0];
+      assert.ok(Number.isFinite(Date.parse(timestamp)));
+      assert.ok(duration_ms >= 0);
+      return receipt;
+    }
+    assert.fail("Missing Auth completion");
+  }
   const staleContext = await browser.newContext();
   const stalePage = await staleContext.newPage();
   const staleReturn = "/authorize?authRequest=restart-form";
@@ -619,6 +645,10 @@ try {
   await stalePage.getByRole("button", { name: "Sign in", exact: true }).click();
   const rejected = await rejectedResponse;
   assert.equal(rejected.status(), 403);
+  assert.equal(
+    (await completion(rejected))["auth.form_rejection_reason"],
+    "session_unknown",
+  );
   assert.equal((await rejected.request().allHeaders()).origin, origin);
   assert.equal(credentialAttempts, attemptsBeforeRestart);
   assert.equal(await stalePage.locator("[name=password]").count(), 1);
@@ -642,10 +672,18 @@ try {
   );
   await stalePage.locator("[name=username]").fill("fixture-user-artbin");
   await stalePage.locator("[name=password]").fill("fixture-password");
+  const validResponse = stalePage.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/login",
+  );
   await stalePage.getByRole("button", { name: "Sign in", exact: true }).click();
   await stalePage.waitForURL(`${callbackOrigin}/callback?**`, {
     timeout: 5000,
   });
+  const validReceipt = await completion(await validResponse);
+  assert.equal(validReceipt["http.status"], 303);
+  assert.equal(validReceipt["auth.form_rejection_reason"], undefined);
   assert.equal(credentialAttempts, attemptsBeforeRestart + 1);
   const deviceCodePage = await stalePage.goto(`${origin}/device`);
   assert.equal(deviceCodePage.status(), 200);
@@ -668,6 +706,10 @@ try {
     data: "csrf=expired&returnTo=%2Faccount&username=fixture-user-artbin&password=fixture-password",
   });
   assert.equal(signedInReject.status(), 403);
+  assert.equal(
+    (await completion(signedInReject))["auth.form_rejection_reason"],
+    "csrf_mismatch",
+  );
   const recoveredSignedInForm = await signedInReject.text();
   assert.match(recoveredSignedInForm, /This form expired/);
   await stalePage.setContent(recoveredSignedInForm);
@@ -814,32 +856,6 @@ try {
   const problem = await diagnosticsPage.locator("body").innerText();
   assert.match(problem, /This authorization request is not enabled\./);
   assert.doesNotMatch(problem, /authorization_unexpected_scope|private-/);
-  async function completion(response) {
-    const id = response.headers()["x-request-id"];
-    assert.match(id, /^[0-9a-f-]{36}$/);
-    for (let attempt = 0; attempt < 50; attempt++) {
-      const events = logs
-        .split("\n")
-        .flatMap((line) => {
-          try {
-            return [JSON.parse(line)];
-          } catch {
-            return [];
-          }
-        })
-        .filter((entry) => entry?.request_id === id);
-      if (events.length === 0) {
-        await new Promise((resolve) => setTimeout(resolve, 20));
-        continue;
-      }
-      assert.equal(events.length, 1);
-      const { timestamp, duration_ms, notes: _notes, ...receipt } = events[0];
-      assert.ok(Number.isFinite(Date.parse(timestamp)));
-      assert.ok(duration_ms >= 0);
-      return receipt;
-    }
-    assert.fail("Missing Auth completion");
-  }
   assert.equal(
     (await completion(failure))["error.code"],
     "authorization_unexpected_scope",
