@@ -2,6 +2,7 @@ FROM platformatic/node-caged:26-slim AS assets
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/auth/package.json apps/auth/package.json
+COPY packages/logger/package.json packages/logger/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/ui/styles.ts packages/ui/styles.ts
 RUN npm ci --workspace @harrhy/auth --include-workspace-root=false
@@ -11,6 +12,9 @@ RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
 WORKDIR /app
 COPY --from=assets --chown=node:node /app/node_modules ./node_modules
 COPY --from=assets --chown=node:node /app/packages/ui ./packages/ui
+COPY --chown=node:node packages/logger ./packages/logger
+ARG HARRHY_AUTH_VERSION=development
+ENV HARRHY_AUTH_VERSION=${HARRHY_AUTH_VERSION} NODE_ENV=production
 WORKDIR /app/apps/auth
 RUN node -e "const assert = require('node:assert/strict'); assert.equal(process.versions.node.split('.')[0], '26'); assert.equal(process.config.variables.v8_enable_pointer_compression, 1)"
 COPY --chown=node:node apps/auth/package.json ./package.json

@@ -47,13 +47,13 @@ export function createZitadel({
       error.status = response.status;
       error.code = result.code;
       error.providerFailure = {
-        upstream_service: "zitadel",
-        phase: rejectionPhase(path, method),
-        upstream_status: response.status,
+        "upstream.service": "zitadel",
+        "upstream.phase": rejectionPhase(path, method),
+        "upstream.status": response.status,
         ...(Number.isInteger(result.code) &&
         result.code >= 1 &&
         result.code <= 16
-          ? { code: result.code }
+          ? { "upstream.code": result.code }
           : {}),
       };
       // Installed ZITADEL 4.20 rejects an invalid invite without consuming it.

@@ -1,3 +1,9 @@
+import { currentLog } from "@harrhy/logger";
+import {
+  currentRequestId,
+  logRequests,
+  markRequestRoute,
+} from "./request-logging.mjs";
 import { createServer } from "node:http";
 import "remix/node-tsx";
 import { createRequestListener } from "remix/node-fetch-server";
@@ -434,6 +440,20 @@ const invitationRoute = createInvitationRoute({
 });
 const supportBrowserRoute = (input) => supportRoutes?.browser(input) ?? false;
 
+const authorizationFailureCodes = new Set([
+  "authorization_request_shape",
+  "authorization_audience",
+  "authorization_delegation_unavailable",
+  "authorization_hold",
+  "authorization_membership_scope",
+  "authorization_permission_scope",
+  "authorization_permission_family",
+  "authorization_required_scope",
+  "authorization_unexpected_scope",
+  "authorization_callback_url",
+  "authorization_callback_policy",
+]);
+
 async function handleBrowser(request, routeAction, routePhase) {
   const url = new URL(request.url);
   const headers = new Headers({
@@ -522,20 +542,7 @@ async function handleBrowser(request, routeAction, routePhase) {
             session.csrf,
           )
         ) {
-          console.warn(
-            "form_rejected",
-            JSON.stringify({
-              originMatches: request.headers.get("origin") === origin,
-              hasCookie: Boolean(cookieValue),
-              knownSession: Boolean(cookieValue && sessions.has(cookieValue)),
-              csrfMatches: validPost(
-                origin,
-                origin,
-                form.get("csrf"),
-                session.csrf,
-              ),
-            }),
-          );
+          currentLog()?.set({ "auth.form_rejected": true });
           if (
             request.headers.get("origin") === origin &&
             url.pathname === "/login"
@@ -662,20 +669,10 @@ async function handleBrowser(request, routeAction, routePhase) {
       const expected = error.status && error.status < 500;
       const status = expected ? error.status : 502;
       const failure = error.providerFailure;
-      const requestId = failure ? crypto.randomUUID() : undefined;
-      if (requestId) headers.set("X-Request-Id", requestId);
-      console.error(
-        "request_failed",
-        JSON.stringify(
-          failure
-            ? { service: "auth", request_id: requestId, status, ...failure }
-            : {
-                path: url.pathname,
-                status: error.status || 500,
-                code: error.code,
-              },
-        ),
-      );
+      const requestId = failure ? currentRequestId() : undefined;
+      if (failure) currentLog()?.set(failure);
+      else if (authorizationFailureCodes.has(error.code))
+        currentLog()?.set({ "error.code": error.code });
       const message = expected
         ? error.message
         : "The identity service could not complete this request. Please try again.";
@@ -707,6 +704,7 @@ const browserRouter = createBrowserRouter(handleBrowser, {
 });
 const fetchRequest = (request) => {
   const path = new URL(request.url).pathname;
+  markRequestRoute(path);
   if (
     ["/support/redeem", "/support/session", "/support/end"].includes(path) &&
     supportRoutes
@@ -719,10 +717,13 @@ const fetchRequest = (request) => {
 };
 
 const server = createServer(
-  createRequestListener(fetchRequest, {
-    host: new URL(origin).host,
-    protocol: new URL(origin).protocol,
-  }),
+  logRequests(
+    createRequestListener(fetchRequest, {
+      host: new URL(origin).host,
+      protocol: new URL(origin).protocol,
+      onError() {}, // Keep Remix error responses without dumping the raw error.
+    }),
+  ),
 );
 server.listen(
   Number(process.env.PORT || 3000),
