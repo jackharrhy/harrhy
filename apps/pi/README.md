@@ -7,6 +7,7 @@
 App implementation lives directly in `src/`, `plugins/`, `public/`, `scripts/` and `voice-server/`, preserving upstream names and relative structure. Shared compatibility source lives in `compat/packages/`; it is checked in, not fetched or supplied as opaque archives. `harrhy/` contains the small install, qualification and sandbox adapters. Focused tests live in `__tests__/`. See [UPSTREAM.md](UPSTREAM.md) for the deterministic path map and reviewed update procedure, and [PROVENANCE.md](PROVENANCE.md) for the source baseline and exclusions. Preserve upstream formatting; do not mass-rename or reformat retained implementation.
 
 The host entry points remain `src/hosts/{server,tui}.ts`. `npm start` invokes only Harrhy's disposable fixture sandbox, not a production host.
+For a standalone supervised server, set an absolute `P2_DATA_DIR` and run `node --import ./src/source.ts ./harrhy/run-server.mjs` from `apps/pi`. It binds loopback, respects the retained host settings, and does not mint a sign-in token on boot.
 To open an existing local session directly, run `node --import ./src/source.ts ./src/hosts/tui.ts --session <p2-session-id>` from `apps/pi` after installing dependencies. This requires owner sign-in and rejects missing or archived sessions. Omit `--session` to open the picker. Automatic Rex mirroring is no longer included; standalone Rex and existing panes are unaffected by this source change.
 
 ## Setup and checks
