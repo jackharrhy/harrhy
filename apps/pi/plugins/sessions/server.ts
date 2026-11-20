@@ -38,7 +38,6 @@ import { Server, serverOf, sessionAdmissionOf, WorkerInitValues } from "@p2/app/
 import { EnvManagers, EnvService } from "../envs/contract.ts";
 import { ModelConfig, ModelResources } from "../models/contract.ts";
 import { ChildStore } from "../subagents/contract.ts";
-import { serveActivity } from "./activity-server.ts";
 import {
 	automaticTitle,
 	BY_ACTIVITY,
@@ -291,7 +290,6 @@ const ROW_WAIT_MS = 10_000;
 
 export default defineFacet((host) => {
 	serveLocks(host);
-	serveActivity(host);
 	serveSidebarSettings(host);
 	serveKeyed(host, SessionArchived);
 	serveKeyed(host, SessionCopied);

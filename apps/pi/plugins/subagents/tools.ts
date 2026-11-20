@@ -383,7 +383,7 @@ export function createSubagentExtension(
 			"  env is an environment name from location_envs, or null for this device (default: yours).",
 			"  model is 'provider/modelId' (default: yours); thinkingLevel is off|minimal|low|medium|high|xhigh|max",
 			"  (clamped to the model); tools names tools of yours it gets (default: all you can give; [] for none). Tools that",
-			"  work only in your conversation (subagent, set_activity, …) cannot be given. With codemode its scripts call",
+			"  work only in your conversation (subagent, …) cannot be given. With codemode its scripts call",
 			"  its tools and the tools behind code mode (MCP tools, terminal, one-shot agents). With location_move it can",
 			"  move itself.",
 			"- send (name, message; followUp: true queues after the current answer instead of steering).",

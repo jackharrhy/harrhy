@@ -30,7 +30,6 @@ import {
 	ContextUsage,
 	CostPanel,
 	closeLayers,
-	commandPageLayer,
 	conversationKey,
 	conversationRoute,
 	type Detail,
@@ -52,6 +51,7 @@ import {
 	keepSessions,
 	keptSizes,
 	knownMain,
+	ListIcon,
 	LockIcon,
 	lightTap,
 	loadKept,
@@ -1631,9 +1631,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 					value={session.cwd}
 					env={session.env ?? null}
 					moving={{ env: session.env ?? null }}
-					recent={(env) => [
-						...new Set((listed ?? []).filter((row) => (row.env ?? null) === env).map((row) => row.cwd)),
-					]}
+					sessions={listed}
 					onClose={closeLayers}
 					onChange={(env, cwd) => {
 						const catalog = liveIn(sessions, "owner");
@@ -1921,18 +1919,12 @@ function NewSession() {
 				<DirectoryPicker
 					value={location.cwd}
 					env={location.env}
+					sessions={listed}
 					onChange={(env, cwd) => {
 						setLocation({ env, cwd });
 						closeLayers();
 					}}
 					onClose={closeLayers}
-					// Back returns to the recent folders (the command menu's folder page), in place of the picker.
-					onBack={() =>
-						void getNavigation().closeThenPush((route) => ({
-							...route,
-							layers: [commandPageLayer("new-session-folder", NEW_SESSION_TARGET)],
-						}))
-					}
 				/>
 			)}
 			<ErrorToast />
@@ -1946,16 +1938,30 @@ function NewSession() {
 								<PiLogo />
 								<h2>What should Pi do?</h2>
 							</div>
-							<button
-								type="button"
-								className="cwd-pick"
-								onClick={() => openCommandPage("new-session-folder", NEW_SESSION_TARGET)}
-							>
-								<FolderIcon />
-								<span>{locationLabel(location.env, location.cwd)}</span>
-								{join && <small className="cwd-join">in {join.label}</small>}
-								<ChevronIcon size={14} />
-							</button>
+							{/* The project the session joins, then where it starts: each opens its own picker. */}
+							<div className="new-session-choices">
+								{owner && (
+									<button
+										type="button"
+										className="project-pick"
+										aria-label={`Project: ${join?.label ?? "No project"}`}
+										onClick={() => openCommandPage("new-session-project", NEW_SESSION_TARGET)}
+									>
+										<ListIcon />
+										<span>{join?.label ?? "No project"}</span>
+										<ChevronIcon size={14} />
+									</button>
+								)}
+								<button
+									type="button"
+									className="cwd-pick"
+									onClick={() => openLayer(directoryPickerLayer(location.env, location.cwd))}
+								>
+									<FolderIcon />
+									<span>{locationLabel(location.env, location.cwd)}</span>
+									<ChevronIcon size={14} />
+								</button>
+							</div>
 							{owner && resources && !resources.credentials.length && (
 								<button
 									type="button"

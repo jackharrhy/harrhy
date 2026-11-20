@@ -224,8 +224,6 @@ export function createFakeModels(options: CreateModelsOptions = {}) {
 							? SCRIPTED[text]?.()
 							: text.startsWith("conversations ")
 								? fauxToolCall("conversations", JSON.parse(text.slice("conversations ".length)))
-								: text.startsWith("set-activity ")
-									? fauxToolCall("set_activity", { text: text.slice("set-activity ".length) })
 									: text.startsWith("ports ")
 										? fauxToolCall("ports", JSON.parse(text.slice("ports ".length)))
 										: // `codemode <script>` runs that script (the bare `codemode` above is a fixed one).

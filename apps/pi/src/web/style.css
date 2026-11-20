@@ -10,7 +10,9 @@
  * always sets <html data-theme="light|dark"> from the sidebar choice or the
  * system preference. Colours below key off that attribute, never a media query.
  */
-:root {
+/* The settings samples use the same palettes in a local scope, without changing the page scheme. */
+:root,
+[data-pi-theme-preview] {
 	color-scheme: light;
 	--bg: #fbfaf8;
 	--text: #1d1b19;
@@ -30,7 +32,8 @@
 	--del: #fde7e6;
 	--del-ink: #b03a35;
 	--scrim: rgb(0 0 0 / 0.2);
-
+}
+:root {
 	--x: 16px;
 	--s1: 4px;
 	--s2: 8px;
@@ -72,7 +75,8 @@
 	/* Checkboxes, radios and ranges in the interface's ink, not the browser's blue. */
 	accent-color: var(--text);
 }
-:root[data-theme="dark"] {
+:root[data-theme="dark"],
+[data-pi-theme-preview="dark"] {
 	color-scheme: dark;
 	--bg: #151413;
 	--text: #ecebe8;
@@ -397,7 +401,8 @@ textarea.input {
 .footer-action,
 .title-cwd,
 .crumb,
-.cwd-pick span {
+.cwd-pick span,
+.project-pick span {
 	text-decoration: underline dotted;
 	text-decoration-color: var(--faint);
 	text-underline-offset: 3px;
@@ -408,7 +413,8 @@ textarea.input {
 	.footer-action:hover,
 	.title-cwd:hover,
 	.crumb:hover,
-	.cwd-pick:hover span {
+	.cwd-pick:hover span,
+	.project-pick:hover span {
 		color: var(--text);
 		text-decoration-color: currentColor;
 	}
@@ -2226,7 +2232,8 @@ button.diff-number:hover {
 	font-weight: var(--fw-strong);
 	letter-spacing: -0.02em;
 }
-.cwd-pick {
+.cwd-pick,
+.project-pick {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--s2);
@@ -2235,13 +2242,20 @@ button.diff-number:hover {
 	font-family: var(--mono);
 	font-size: var(--fs-sm);
 }
-/* The sidebar group a new session joins (a group's "+"), after its location. */
-.cwd-join {
-	color: var(--muted);
-	font-size: var(--fs-sm);
-	white-space: nowrap;
+/* The new-session screen's choices: the project the session joins, then its location, one per line. */
+.new-session-choices {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--s2);
+	max-width: 100%;
 }
-.cwd-pick span {
+/* A project is a name, not a path. */
+.project-pick {
+	font-family: inherit;
+}
+.cwd-pick span,
+.project-pick span {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
@@ -3069,25 +3083,6 @@ button.diff-number:hover {
 	flex-direction: column;
 	margin-top: var(--s3);
 }
-.directory-use,
-.directory-error {
-	margin-top: var(--s3);
-}
-.directory-head {
-	padding-bottom: var(--s3);
-}
-/* A path in the directory picker (the Use button, folder and recent rows): one line, cut with "…" at its end; the
-   element's title has it whole. */
-.directory-path {
-	min-width: 0;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-.list .row-button.mono {
-	font-family: var(--mono);
-	font-size: var(--fs-sm);
-}
 
 .model-list section h3 {
 	padding-top: var(--s4);
@@ -3600,35 +3595,12 @@ button.history-edge:disabled {
 	overflow-wrap: anywhere;
 }
 
-/* Location picker: loading state while a (remote) listing arrives. */
-.directory-loading {
-	display: flex;
-	align-items: center;
-	gap: var(--s2);
-	padding: var(--s3) 0;
-	color: var(--muted);
-	font-size: var(--fs-sm);
-}
-.directory-busy > .row-button {
-	opacity: 0.5;
-}
-.directory-note {
-	margin: var(--s2) 0 0;
-}
-
 /* The lock of a sandboxed location, in the top bar's location line. */
 .title-lock {
 	display: inline-flex;
 	margin-right: 3px;
 	vertical-align: -1px;
 }
-/* The location's project glyph (plugins/glyphs), before the path in the top bar's location line. */
-.title .glyph-icon {
-	display: inline-block;
-	margin-right: var(--s1);
-	vertical-align: -1px;
-}
-
 /* Touch targets: on a coarse pointer every list row and small control is at least one --row (44px) tall. The
    transcript's own rows keep their rhythm (.row, TranscriptRow.gap in Chat.tsx). */
 @media (pointer: coarse) {
@@ -3694,14 +3666,16 @@ button.history-edge:disabled {
 :root[data-shell="macos"] [data-shell-corner] {
 	padding-left: var(--shell-inset-start);
 }
-:root[data-pi-tint="custom"] {
+:root[data-pi-tint="custom"],
+[data-pi-theme-preview][data-pi-tint="custom"] {
 	--bg: oklch(0.985 0.012 var(--pi-base-hue));
 	--hover: oklch(0.95 0.022 var(--pi-base-hue));
 	--user: oklch(0.94 0.025 var(--pi-base-hue));
 	--code: oklch(0.96 0.017 var(--pi-base-hue));
 	--line: oklch(0.91 0.018 var(--pi-base-hue));
 }
-:root[data-theme="dark"][data-pi-tint="custom"] {
+:root[data-theme="dark"][data-pi-tint="custom"],
+[data-pi-theme-preview="dark"][data-pi-tint="custom"] {
 	--bg: oklch(0.19 0.022 var(--pi-base-hue));
 	--hover: oklch(0.24 0.028 var(--pi-base-hue));
 	--user: oklch(0.26 0.03 var(--pi-base-hue));
