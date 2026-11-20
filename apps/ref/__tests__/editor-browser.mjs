@@ -84,3 +84,61 @@ export async function checkQueuedMove(page, second, id) {
   await expect(page.locator(selector)).toHaveCSS("left", moved);
   await expect(card).toHaveCSS("left", moved);
 }
+
+export async function checkInlineRename(page) {
+  const title = page.getByRole("textbox", { name: "Board name" });
+  const documentStart = await page.evaluate(() => performance.timeOrigin);
+  let posts = 0;
+  page.on("request", (request) => {
+    if (request.method() === "POST" && request.url().endsWith("/rename"))
+      posts++;
+  });
+  await title.fill("  Title on blur  ");
+  await title.press("Tab");
+  await expect(title).toHaveValue("Title on blur");
+  await expect(page).toHaveTitle("Title on blur · ref");
+
+  await title.fill("Discard me");
+  await title.press("Escape");
+  await title.press("Tab");
+  await expect(title).toHaveValue("Title on blur");
+
+  await title.fill(" ");
+  await title.press("Tab");
+  await expect(page.locator("#toast")).toContainText("Name not saved");
+  await expect(title).toHaveValue("Title on blur");
+  await page.route("**/rename", (route) => route.abort(), { times: 1 });
+  await title.fill("Not confirmed");
+  await title.press("Enter");
+  await expect(page.locator("#toast")).toContainText("Rename not confirmed");
+  await expect(title).toHaveValue("Title on blur");
+
+  await title.fill("Renamed board");
+  await title.press("Enter");
+  await title.press("Tab");
+  await expect(page).toHaveTitle("Renamed board · ref");
+  expect(posts).toBe(4);
+  expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStart);
+
+  // Native Enter still submits to the same action without the editor script.
+  const native = await page
+    .context()
+    .browser()
+    .newContext({
+      javaScriptEnabled: false,
+      storageState: await page.context().storageState(),
+    });
+  try {
+    const plain = await native.newPage();
+    await plain.goto(page.url());
+    const field = plain.getByRole("textbox", { name: "Board name" });
+    await expect(field).toHaveValue("Renamed board");
+    await field.fill("  Renamed board  ");
+    const response = plain.waitForResponse((r) => r.url().endsWith("/rename"));
+    await field.press("Enter");
+    expect((await response).status()).toBe(303);
+    await expect(field).toHaveValue("Renamed board");
+  } finally {
+    await native.close();
+  }
+}

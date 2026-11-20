@@ -1,8 +1,11 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import assert from "node:assert/strict";
 import {
   installFrameGate,
   checkUnconfirmedCard,
   checkQueuedMove,
+  checkInlineRename,
   removeImageByKeyboard,
 } from "../__tests__/editor-browser.mjs";
 import { chromium, expect } from "@playwright/test";
@@ -54,14 +57,14 @@ try {
     await signIn.evaluate((el) => getComputedStyle(el).borderRadius),
     "5px",
   );
-  await page.screenshot({ path: "/tmp/ref-ui-signin-desktop.png" });
+  await page.screenshot({ path: join(tmpdir(), "ref-ui-signin-desktop.png") });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   );
-  await page.screenshot({ path: "/tmp/ref-ui-signin-mobile.png" });
+  await page.screenshot({ path: join(tmpdir(), "ref-ui-signin-mobile.png") });
   await page.setViewportSize({ width: 1440, height: 900 });
   assert.equal(await page.locator('input[type="password"]').count(), 0);
   assert.equal((await context.request.post(`${base}/login`)).status(), 404);
@@ -101,14 +104,14 @@ try {
   assert.equal(await page.locator("#link-menu").getAttribute("open"), "");
   await page.keyboard.press("Enter");
   assert.equal(await page.locator("#link-menu").getAttribute("open"), null);
-  await page.screenshot({ path: "/tmp/ref-ui-board-desktop.png" });
+  await page.screenshot({ path: join(tmpdir(), "ref-ui-board-desktop.png") });
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= innerWidth,
     ),
   );
-  await page.screenshot({ path: "/tmp/ref-ui-board-mobile.png" });
+  await page.screenshot({ path: join(tmpdir(), "ref-ui-board-mobile.png") });
   await page.setViewportSize({ width: 1440, height: 900 });
   const boardCsp = (await context.request.get(page.url())).headers()[
     "content-security-policy"
@@ -354,15 +357,7 @@ try {
   await page.reload();
   await page.locator(".link-item").nth(1).waitFor();
 
-  await page.locator(".board-title-menu summary").click();
-  await page
-    .locator('form[action$="/rename"] input[name=title]')
-    .fill("Renamed board");
-  await page.getByRole("button", { name: "Rename" }).click();
-  assert.equal(
-    (await page.locator(".board-title-menu summary").textContent())?.trim(),
-    "Renamed board",
-  );
+  await checkInlineRename(page);
   await checkWebMcpRemoval(page, second);
   await removeImageByKeyboard(page);
   await page

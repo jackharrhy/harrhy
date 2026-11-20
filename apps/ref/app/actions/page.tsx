@@ -6,6 +6,7 @@ import {
   uiSecondaryActionStyles,
 } from "@harrhy/ui";
 import type { BoardRecord } from "../data/directory-cell.ts";
+import { routes } from "../routes.ts";
 import { browserAssets } from "../assets/build-manifest.ts";
 import { refStyles, refThemeStyles } from "../styles.ts";
 
@@ -174,20 +175,20 @@ export function BoardPage(
           <a class="back-link" href="/" aria-label="Back to boards">
             ←
           </a>
-          <details class="board-title-menu">
-            <summary>{board.title}</summary>
-            <form method="post" action={`/boards/${board.id}/rename`}>
-              <input
-                name="title"
-                defaultValue={board.title}
-                maxLength={100}
-                required
-                aria-label="Board name"
-              />
-              <button type="submit">Rename</button>
-            </form>
-          </details>
-          <div class="header-spacer"></div>
+          <form
+            id="board-title-form"
+            method="post"
+            action={routes.boards.rename.href({ boardId: board.id })}
+          >
+            <input
+              id="board-title"
+              name="title"
+              defaultValue={board.title}
+              maxLength={100}
+              required
+              aria-label="Board name"
+            />
+          </form>
           <div id="connection" class="connection connecting" role="status">
             <span class="connection-dot"></span>
             <span class="connection-text">Connecting</span>
