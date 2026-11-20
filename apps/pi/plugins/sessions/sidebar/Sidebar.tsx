@@ -19,6 +19,7 @@ import {
 	useLinkHref,
 } from "@p2/app/v1/web";
 import { memo, type ReactNode, useId } from "react";
+import { SidebarBrand } from "../../settings/theme-web.tsx";
 import { GlyphIcon } from "../../glyphs/GlyphIcon.tsx";
 import { IconMarker, WorkingMark } from "./marks.tsx";
 import type { Glyphs, GroupSection, NewTarget, Section, SidebarRow } from "./model.ts";
@@ -323,7 +324,7 @@ export const SidebarView = memo(function SidebarView({
 		"Sessions",
 		<div className="drawer-header-row">
 			<div className="brand">
-				<PiLogo compact />
+				<SidebarBrand />
 			</div>
 			{headerActions}
 			<Sidebar.Trigger className="collapse-sidebar" aria-label="Collapse sidebar" />

@@ -1,0 +1,15 @@
+.pi-logo.custom-logo { object-fit: contain; }
+.pi-theme-fields { display: grid; gap: var(--s3); }
+.pi-theme-fields label { display: grid; gap: var(--s1); }
+.pi-theme-fields input { max-inline-size: 100%; }
+.pi-theme-actions { display: flex; flex-wrap: wrap; gap: var(--s2); }
+.pi-theme-actions button, .pi-theme-fields input::file-selector-button {
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--hover);
+	color: var(--text);
+	min-block-size: var(--control-sm);
+	padding-inline: var(--s2);
+}
+.pi-theme-actions button:disabled { opacity: 0.55; }
+.pi-theme-fields [role="alert"] { color: var(--bad); }

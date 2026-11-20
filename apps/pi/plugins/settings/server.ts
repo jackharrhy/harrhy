@@ -3,8 +3,10 @@ import { defineFacet, deriveTyped, forbidden, isOwner, nativeOf } from "@p2/app/
 import { validateSettings } from "@p2/app/v1/node";
 import { ModelConfig, ModelResources } from "../models/contract.ts";
 import { Settings } from "./contract.ts";
+import { serveThemeBranding } from "./theme-server.ts";
 
 export default defineFacet((host) => {
+	serveThemeBranding(host);
 	host.serve(Settings, (_params, principal, self) => {
 		if (!isOwner(principal)) throw forbidden("settings are owner-only");
 		const config = self.get(ModelConfig, {});
