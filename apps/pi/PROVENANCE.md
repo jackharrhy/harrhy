@@ -25,6 +25,8 @@ The original MIT license (copyright 2025 Mario Zechner) is retained at `LICENSE`
 
 The Harrhy Previews and optional integration changes are source-only ports on top of the pinned fork snapshot. The `integrations` digest covers the matching adapter code, not installed plugins or instance configuration.
 
+The project plugin uses the server-store implementation from fork commit `20901d66e4ca8b20751f31fc5755a452c04b3e32` (`apps/p2/plugins/projects` only). The existing import marker is authoritative even when the project tables are empty. This port does not change the pinned base or import the fork's sidebar.
+
 ## Evidence boundary
 
 Synthetic tests run in a fresh Bubblewrap filesystem/network namespace, without host HOME, production data or outbound network. They qualify source behavior, not a real-data restore. The separate private preview must preserve those isolation principles and owner authentication.
