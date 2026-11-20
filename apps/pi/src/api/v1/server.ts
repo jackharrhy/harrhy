@@ -9,6 +9,8 @@ export {
 	sourceKey,
 } from "../../../plugins/stimuli/contract.server.ts";
 export {
+	AddressedPolicies,
+	type AddressedPolicy,
 	type EventReadbackSchema,
 	StimulusWorker,
 	type SubscriptionSchema,

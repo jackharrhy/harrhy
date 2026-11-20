@@ -1,6 +1,6 @@
 // Worker-owned admission and receipt recovery for immutable external deliveries.
 import { arr, bool, int, nul, num, obj, opt, recursive, str, union } from "@earendil-works/pi-schema";
-import { evolve, literal, local, method, param, record, remote, serverHost, sessionHost } from "@p2/app/v1";
+import { evolve, keyedRegistry, literal, local, method, param, record, remote, serverHost, sessionHost } from "@p2/app/v1";
 
 // Keep the legacy wire shape structural here: copied plugin contracts cannot import a third plugin.
 const EventIdSchema = str({ minLength: 1, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" });
@@ -185,6 +185,33 @@ const Binding = {
 	eventId: str({ minLength: 1, maxLength: 256 }),
 };
 
+export type AddressedPolicy = {
+	label: string;
+	revision: string;
+	discover?: readonly string[];
+	send?: { sessions: readonly string[]; familiar?: boolean };
+	receipts?: boolean;
+};
+export const AddressedPolicies = keyedRegistry<AddressedPolicy>("p2.addressed-policies");
+const Selector = opt(str({ minLength: 1, maxLength: 128 }));
+export const AddressedIntent = obj({
+	peer: EventIdSchema, label: str(), revision: str(), eventId: EventIdSchema,
+	selector: Selector, payloadHash: str(), delivery: DeliverySchema,
+	phase: WakePhaseSchema, lastError: opt(str()),
+});
+export type AddressedIntent = import("@earendil-works/pi-schema").Static<typeof AddressedIntent>;
+export const AddressedReadback = union([
+	obj({ state: literal("missing") }), obj({ state: literal("recorded") }),
+	obj({ state: literal("blocked") }), obj({ state: literal("unknown") }),
+	obj({ state: literal("admitted"), receipt: DeliveryReceiptSchema }),
+]);
+/** Server-local only; adapters bind peer to the authenticated identity. */
+const AddressedMethods = {
+		discover: obj({ peer: EventIdSchema }),
+		send: obj({ peer: EventIdSchema, eventId: EventIdSchema, session: Selector, text: str({ minLength: 1, maxLength: 32768 }) }),
+		receipt: obj({ peer: EventIdSchema, eventId: EventIdSchema }),
+};
+
 /** Additive methods preserve released one-shot callers and their contract identity. */
 export const WakeStore = evolve(WakeStoreV1, (e) =>
 	e
@@ -193,8 +220,13 @@ export const WakeStore = evolve(WakeStoreV1, (e) =>
 		.addMethod("enableSubscription", EnableSubscription, SubscriptionSchema)
 		.addMethod("subscriptions", obj({ session: opt(str()) }), arr(SubscriptionSchema))
 		.addMethod("publish", obj({ ...Binding, event: StimulusJsonSchema }), EventReadbackSchema)
-		.addMethod("receipt", obj(Binding), EventReadbackSchema),
+		.addMethod("receipt", obj(Binding), EventReadbackSchema)
+		.addMethod("discoverAddressed", AddressedMethods.discover, arr(obj({ id: str(), title: str() })))
+		.addMethod("sendAddressed", AddressedMethods.send, AddressedReadback)
+		.addMethod("receiptAddressed", AddressedMethods.receipt, AddressedReadback)
+		.addMethod("addressedRow", obj({ id: str() }), union([AddressedIntent, nul()])),
 );
+
 
 /** Only authorized registrations are remote; source publication is a trusted server capability. */
 export const Subscriptions = remote("p2.stimulus-subscriptions", {
@@ -232,10 +264,13 @@ export const Subscriptions = remote("p2.stimulus-subscriptions", {
 	},
 });
 
+const AddressedDelivery = obj({ delivery: DeliverySchema, peer: EventIdSchema, label: str() });
 /** Native source admission shares the existing receipt transaction and status authority. */
 export const Admission = evolve(AdmissionV1, (e) =>
 	e
 		.addMethod("admitSource", SourceDeliverySchema, DeliveryResult)
+		.addMethod("admitAddressed", AddressedDelivery, DeliveryResult)
+		.addMethod("main", obj({}), int())
 		.addMethod("validateTarget", obj({ conversation: int() }), nul()),
 );
 export const StimulusWorker = evolve(StimulusWorkerV1, (e) =>
@@ -243,3 +278,17 @@ export const StimulusWorker = evolve(StimulusWorkerV1, (e) =>
 		.addMethod("server", "admitSource", SourceDeliverySchema, DeliveryResult)
 		.addMethod("server", "validateTarget", obj({ conversation: int() }), nul()),
 );
+
+export const AddressedFence = remote("p2.addressed-fence", {
+	version: 1, params: {}, hostAddress: serverHost, variants: { worker: { methods: {
+		reserve: method(obj({ id: str(), intentHash: str(), token: EventIdSchema }), nul()),
+		releaseReservation: method(obj({ token: EventIdSchema }), nul()),
+	} } },
+});
+export const AddressedWorker = remote("p2.addressed-worker", {
+	version: 1, params: { session: param.str() }, hostAddress: sessionHost,
+	variants: { server: { methods: {
+		main: method(obj({}), int()),
+		admit: method(AddressedDelivery, DeliveryResult),
+	} } },
+});
