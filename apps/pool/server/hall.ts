@@ -7,7 +7,7 @@ import {
 } from "@harrhy/pool-simulation/geometry";
 import { INPUT_DT, roomSettingsSchema } from "@harrhy/pool-protocol";
 import type { MoveInput } from "@harrhy/pool-protocol";
-import { chooseBotShot, chooseBotPlacement } from "./bot";
+import { chooseBotShot, chooseBotPlacement } from "@harrhy/pool/bot";
 import {
   createShotResult,
   TABLE_HALF_WIDTH,

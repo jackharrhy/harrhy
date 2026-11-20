@@ -2,6 +2,7 @@ import * as THREE from "three/webgpu";
 import { CollisionDebug } from "./collision-debug";
 import {
   createTable,
+  ViewCamera,
   BALL_Y,
   createBallMaterials,
   createCue,
@@ -17,7 +18,6 @@ import { createAvatar, disposeAvatar, poseAvatar } from "./avatar";
 import { plaque, tableStatus } from "./textures";
 import { createSmoke } from "./smoke";
 import type { MotionEntity } from "../prediction/net-state";
-import { ViewCamera } from "./view-camera";
 import { TablePresence, type LocalPlacement } from "./table-presence";
 import { TABLES, AVATAR_SCALE } from "@harrhy/pool-simulation/geometry";
 import {
