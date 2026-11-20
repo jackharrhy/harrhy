@@ -4,7 +4,8 @@ import { startServer } from "../src/hosts/server.ts";
 import { configureFetch } from "../src/runtime/fetch.ts";
 
 const dataDir = process.env.P2_DATA_DIR;
-if (!dataDir || !isAbsolute(dataDir)) throw new Error("Set P2_DATA_DIR to an absolute path");
+if (!dataDir || !isAbsolute(dataDir))
+  throw new Error("Set P2_DATA_DIR to an absolute path");
 process.umask(0o077);
 configureFetch();
 
