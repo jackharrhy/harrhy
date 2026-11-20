@@ -78,8 +78,12 @@ test("CLI login reports only bounded outcomes without changing handoff or redemp
         third.cookie,
       ),
     );
-    expect(handedOff.status).toBe(302);
-    const loopback = new URL(handedOff.headers.get("Location")!);
+    expect(handedOff.status).toBe(200);
+    expect(handedOff.headers.has("Location")).toBe(false);
+    const link = (await handedOff.text()).match(
+      /href="(http:\/\/127\.0\.0\.1:[^"]+)"/,
+    );
+    const loopback = new URL(link?.[1] ?? "");
     expect(loopback.origin).toBe("http://127.0.0.1:43217");
     const code = loopback.searchParams.get("code")!;
     const success = await redeem(code);

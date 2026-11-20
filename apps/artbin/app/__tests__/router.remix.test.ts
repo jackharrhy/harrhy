@@ -270,13 +270,16 @@ describe("native Remix router", () => {
         headers: { Cookie: oauthCookie.split(";", 1)[0]! },
       }),
     );
-    assert.equal(callback.status, 302);
+    assert.equal(callback.status, 200);
     assert.match(
       callback.headers.get("set-cookie") ?? "",
       /artbin_cli_oauth_[A-Za-z0-9_-]{43}=.*Max-Age=0/,
     );
 
-    const loopbackUrl = new URL(callback.headers.get("location")!);
+    const link = (await callback.text()).match(
+      /href="(http:\/\/127\.0\.0\.1:[^"]+)"/,
+    );
+    const loopbackUrl = new URL(link?.[1] ?? "");
     assert.equal(loopbackUrl.origin, "http://127.0.0.1:43210");
     assert.equal(loopbackUrl.pathname, "/callback");
     assert.equal(loopbackUrl.searchParams.has("session"), false);
@@ -319,10 +322,12 @@ describe("native Remix router", () => {
       {
         start: routes.auth.login.href(),
         callback: routes.auth.callback.href(),
+        status: 302,
       },
       {
         start: `${routes.auth.cliAuthorize.href()}?port=43210`,
         callback: routes.auth.cliCallback.href(),
+        status: 200,
       },
     ]) {
       const start = async () => {
@@ -353,7 +358,7 @@ describe("native Remix router", () => {
       assert.equal(invalid.headers.get("set-cookie"), null);
       globalThis.fetch = identityFetch(first.nonce);
       const firstResult = await callback(first.state);
-      assert.equal(firstResult.status, 302);
+      assert.equal(firstResult.status, channel.status);
       assert.ok(
         firstResult.headers
           .getSetCookie()[0]
@@ -361,7 +366,7 @@ describe("native Remix router", () => {
       );
       globalThis.fetch = identityFetch(second.nonce);
       const secondResult = await callback(second.state);
-      assert.equal(secondResult.status, 302);
+      assert.equal(secondResult.status, channel.status);
       assert.ok(
         secondResult.headers
           .getSetCookie()[0]
