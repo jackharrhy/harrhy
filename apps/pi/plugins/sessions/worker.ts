@@ -1,13 +1,11 @@
 import { type ConversationId, type EntryDraft, type EntryId, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
 import { defineFacet, forbidden } from "@p2/app/v1";
 import { harnessOf, isTopLevel, workerOf } from "@p2/app/v1/worker";
-import { serveActivity } from "./activity-worker.ts";
 import { SessionTransfer } from "./contract.ts";
 import { serveLockMirror } from "./lock-worker.ts";
 
 export default defineFacet((host) => {
 	serveLockMirror(host);
-	serveActivity(host);
 	// `Sessions.fork`: the server reads a conversation's active context here and seeds the new session's worker.
 	host.serve(SessionTransfer, (_params, principal, self) => {
 		if (principal.kind !== "server") throw forbidden("server only");

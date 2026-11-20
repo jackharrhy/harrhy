@@ -36,7 +36,7 @@ version 2; absent: `{ 1, [{ 1, null }] }`):
 - **Top-level** = in `branches`: conversation 1 and every conversation `/tree` created, added in the switch's commit.
   An explicit list, not "conversations no task owns": older sessions (and `harness-cwd.test.ts`) have subagents
   created without an owner, and conversation records are table reads, which only commits offer. Every "main agent
-  only" check (tools and sections of ports, conversations, locations, dev-tools, `set_activity`, the one-shot agent
+  only" check (tools and sections of ports, conversations, locations, dev-tools, the one-shot agent
   list, `Sessions.fork`) uses `isTopLevel`, a document read every tool (`api`) and section (`input.read`) can do.
 - **Current main** = `conversation`. It answers "which top-level conversation is shown and followed": the session row
   (`main`; model and thinking level follow it), the web home route, the drawer, the chat's back links, TUI checks,

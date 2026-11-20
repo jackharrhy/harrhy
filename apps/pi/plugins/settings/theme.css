@@ -13,3 +13,61 @@
 }
 .pi-theme-actions button:disabled { opacity: 0.55; }
 .pi-theme-fields [role="alert"] { color: var(--bad); }
+.pi-theme-fields .pi-tint-picker {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
+	width: fit-content;
+}
+.pi-theme-fields input[type="color"] {
+	inline-size: 3rem;
+	block-size: var(--control-sm);
+	min-block-size: 2rem;
+	padding: var(--s1) var(--s3);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--hover);
+}
+.pi-theme-fields input[type="color"]:focus-visible {
+	outline: 2px solid var(--text);
+	outline-offset: 2px;
+}
+.pi-tint-previews {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+	gap: var(--s2);
+}
+.pi-tint-previews figure {
+	display: grid;
+	gap: var(--s2);
+	padding: var(--s2);
+	border: 1px solid var(--line);
+	border-radius: var(--radius);
+	background: var(--bg);
+	color: var(--text);
+	font-size: var(--fs-sm);
+}
+.pi-tint-previews figcaption { font-weight: var(--fw-strong); }
+.pi-tint-preview-session, .pi-tint-preview-message {
+	padding: var(--s1) var(--s2);
+	border-radius: var(--radius);
+}
+.pi-tint-preview-session { background: var(--hover); }
+.pi-tint-preview-message {
+	justify-self: end;
+	background: var(--user);
+}
+.pi-tint-preview-composer {
+	border-block: 1px solid var(--line);
+	padding: var(--s1) var(--s2);
+}
+.pi-theme-logo-preview {
+	display: flex;
+	align-items: center;
+	gap: var(--s2);
+	margin-block-start: var(--s2);
+}
+.pi-theme-logo-preview .pi-logo {
+	inline-size: 3rem;
+	block-size: 3rem;
+}

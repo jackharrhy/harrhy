@@ -2,8 +2,11 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { compile, obj } from "@earendil-works/pi-schema";
 import sharp from "sharp";
-import { MAX_LOGO_BASE64_LENGTH, MAX_LOGO_BYTES, PNG_DATA_URL_PREFIX, themeState } from "../../plugins/settings/theme-contract.ts";
+import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
+import { MAX_LOGO_BASE64_LENGTH, MAX_LOGO_BYTES, PNG_DATA_URL_PREFIX, ThemeBranding, themeState } from "../../plugins/settings/theme-contract.ts";
 import { normalizeLogo } from "../../plugins/settings/theme-server.ts";
+
+import { expectChord, startFixture } from "./helpers.ts";
 
 const image = (width: number) => sharp({ create: { width, height: 2, channels: 3, background: "red" } });
 
@@ -11,6 +14,15 @@ test("theme branding stores a nullable integer hue in the full 0–359 range", (
 	const state = compile(obj(themeState));
 	for (const tint of [null, 0, 359]) assert.equal(state.check({ tint, logo: null }), true);
 	for (const tint of [-1, 360, 10.5, "15"]) assert.equal(state.check({ tint, logo: null }), false);
+});
+
+test("theme branding is unavailable to guests even with full session access", async (t) => {
+	const fixture = await startFixture();
+	t.after(() => fixture.close());
+	const guest = fixture.as({ kind: "guest", id: "guest", name: "Guest", home: "fixture", sessions: { fixture: "full" }, revision: 1 });
+	const ref = guest.hold(ThemeBranding, {}, BACKGROUND_CONTEXT);
+	await expectChord(whenLive(ref), "forbidden");
+	ref.release();
 });
 
 test("logo upload decodes PNG, JPEG and WebP and returns a PNG", async () => {
