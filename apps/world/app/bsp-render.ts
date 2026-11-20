@@ -14,7 +14,7 @@ import { FELT_Y } from "@harrhy/pool/table";
 import { ViewCamera } from "@harrhy/pool/presentation";
 import { createTableLayer } from "./pool-overlay";
 
-export type FloorPoint = { x: number; z: number };
+type FloorPoint = { x: number; z: number };
 type View = {
   draw(
     local: Pose,
