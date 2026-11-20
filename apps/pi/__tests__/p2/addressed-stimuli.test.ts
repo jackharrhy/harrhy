@@ -7,8 +7,10 @@ import { BACKGROUND_CONTEXT, type Ctx } from "@p2/app/v1";
 import { Hosts, WakeStore } from "@p2/app/v1/server";
 import { FamiliarStore } from "../../plugins/familiar/contract.ts";
 import { Catalog } from "../../plugins/sessions/contract.ts";
+import { Sharing } from "../../plugins/sharing/contract.ts";
+import { SessionTree } from "../../plugins/tree/contract.ts";
 import { startServer } from "../../src/hosts/server.ts";
-import { poll } from "./helpers.ts";
+import { clientHost, holdIn, localOwner, poll } from "./helpers.ts";
 
 it("addresses one native admission per peer event across competing selectors and server restart", { timeout: 45_000 }, async () => {
 	const dataDir = await mkdtemp(join(tmpdir(), "p2-addressed-"));
@@ -28,7 +30,7 @@ it("addresses one native admission per peer event across competing selectors and
 		const start = () => startServer({ dataDir, fake: true, port: 0, web: false });
 		server = await start();
 		const root = <T>(fn: (ctx: Ctx) => Promise<T>) => server!.host.root(fn, BACKGROUND_CONTEXT);
-		await root(async (ctx) => (await ctx.get(FamiliarStore, {})).open(ctx));
+		const familiar = await root(async (ctx) => (await ctx.get(FamiliarStore, {})).open(ctx));
 		await root(async (ctx) => (await ctx.get(Catalog, {})).create({
 			id: "00000000-0000-4000-8000-000000000001", title: "Other", cwd: dataDir, model: { provider: "faux", modelId: "faux-1" }, thinkingLevel: "off",
 		}, ctx));
@@ -49,6 +51,29 @@ it("addresses one native admission per peer event across competing selectors and
 		assert.equal(before.state, "admitted");
 		assert.equal(before.receipt.conversation, 1);
 		assert.deepEqual(await receipt("observer"), { state: "missing" });
+		const other = "00000000-0000-4000-8000-000000000001";
+		const winner = attempts[0]?.status === "fulfilled" ? undefined : other;
+		const owner = clientHost(await localOwner(server));
+		try {
+			const tree = await holdIn(owner, SessionTree, { session: winner ?? familiar.id }, "owner");
+			try {
+				const branch = await tree.branch({ conversation: 1, label: "New main" }, BACKGROUND_CONTEXT);
+				assert.notEqual(branch.conversation, 1);
+				assert.deepEqual(await send(winner), before);
+			} finally {
+				tree.release();
+			}
+			const sharing = await holdIn(owner, Sharing, { session: other }, "owner");
+			try {
+				await sharing.link({ mode: "view" }, BACKGROUND_CONTEXT);
+				assert.deepEqual(await discover(), []);
+				await assert.rejects(send(other, "shared-event"), /unavailable/);
+			} finally {
+				sharing.release();
+			}
+		} finally {
+			await owner.close(BACKGROUND_CONTEXT);
+		}
 		await server.close();
 		await writeFile(join(plugin, "server.ts"), `
 			import { defineFacet } from '@p2/app/v1';
@@ -58,7 +83,7 @@ it("addresses one native admission per peer event across competing selectors and
 			}));
 		`);
 		server = await start();
-		assert.deepEqual(await send(attempts[0]?.status === "fulfilled" ? undefined : "00000000-0000-4000-8000-000000000001"), before);
+		assert.deepEqual(await send(winner), before);
 		assert.deepEqual(await receipt(), before);
 		await assert.rejects(send(undefined, "new-event"), /not authorized/);
 		assert.deepEqual(await discover(), []);
