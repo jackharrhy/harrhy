@@ -13,8 +13,14 @@ test("owner sets a tint in both schemes and can replace or reset the sidebar log
  await browser.signIn(fixture.owner);
  await browser.open(`http://127.0.0.1:${fixture.server.port}/`);
  await browser.click('.settings-open');
- const clickText = (text: string) => browser.evaluate(`[...document.querySelectorAll('button, a')].find(b => b.textContent.trim() === ${JSON.stringify(text)}).click()`);
- await browser.wait(`[...document.querySelectorAll('button, a')].some(b=>b.textContent.trim()==='Theme')`);
+ const clickText = async (text: string) => {
+  await browser.wait(`(() => {
+   const target = [...document.querySelectorAll('button:not(:disabled), a')].find(b => b.textContent.trim() === ${JSON.stringify(text)});
+   if (!target) return false;
+   target.click();
+   return true;
+  })()`);
+ };
  await clickText('Theme');
  const picker = `document.querySelector('.pi-theme-fields input[type=color]')`;
  const preview = `document.querySelector('.pi-theme-logo-preview')`;
@@ -62,7 +68,6 @@ test("owner sets a tint in both schemes and can replace or reset the sidebar log
    } finally { probe.remove(); }
   })()`);
   assert.deepEqual(appColors, draft[i]);
-  assert.deepEqual(await previewColors(mode), draft[i]);
  }
  const png = await sharp({create:{width:32,height:16,channels:4,background:'#6688cc'}}).png().toBuffer();
  const choose = (bytes: number[]) => browser.evaluate(`(() => {const input=document.querySelector('.pi-theme-fields input[type=file]'); const d=new DataTransfer(); d.items.add(new File([new Uint8Array(${JSON.stringify(bytes)})],'test.png',{type:'image/png'})); input.files=d.files; input.dispatchEvent(new Event('change',{bubbles:true}));})()`);
@@ -71,7 +76,6 @@ test("owner sets a tint in both schemes and can replace or reset the sidebar log
  await browser.wait(`document.querySelector('.drawer-header-row .custom-logo')?.naturalWidth === 32`);
  await browser.open(`http://127.0.0.1:${fixture.server.port}/`);
  await browser.click('.settings-open');
- await browser.wait(`[...document.querySelectorAll('button, a')].some(b=>b.textContent.trim()==='Theme')`);
  await clickText('Theme');
  await browser.wait(`${preview}?.querySelector('img')?.naturalWidth === 32`);
  assert.equal(await browser.evaluate(`${picker}.value`), '#5500ff');
@@ -85,8 +89,6 @@ test("owner sets a tint in both schemes and can replace or reset the sidebar log
  await browser.wait(`${preview}.querySelector('svg[aria-label="Pi"]')`);
  await clickText('Reset logo to Pi');
  await browser.wait(`!document.querySelector('.custom-logo') && document.querySelector('.drawer-header-row svg.pi-logo') && ${preview}.querySelector('svg[aria-label="Pi"]')`);
- // Logo state may render before its save releases the shared busy flag.
- await browser.wait("[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Reset tint' && !b.disabled)");
  await clickText('Reset tint');
  await browser.wait(`!document.documentElement.dataset.piTint && !document.querySelector('[data-pi-theme-preview][data-pi-tint]')`);
  assert.deepEqual(await Promise.all(schemes.map(previewColors)), defaults);

@@ -9,6 +9,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
+import WebSocket from "ws";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { LogNotices, Logs } from "../../plugins/logs/contract.ts";
@@ -134,14 +135,20 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 		}
 	});
 
-	it("refuses a link naming another base or nothing at once, and logs which device", async () => {
+	it("refuses a link naming another base or nothing and logs which device", async () => {
 		await browser.open(`http://127.0.0.1:${port}/`);
 		await browser.wait("document.documentElement.dataset.webVersion");
 		const closeOf = (query: string) =>
-			browser.evaluate<number>(`new Promise((resolve) => {
+			browser.evaluate<number>(`new Promise((resolve, reject) => {
 				const socket = new WebSocket('ws://' + location.host + '/chord${query}');
-				socket.onclose = (event) => resolve(event.code);
-				setTimeout(() => resolve(-1), 5000);
+				const deadline = setTimeout(() => {
+					socket.close();
+					reject(new Error("stale page socket did not close"));
+				}, 10000);
+				socket.onclose = (event) => {
+					clearTimeout(deadline);
+					resolve(event.code);
+				};
 			})`);
 		const host = clientHost(owner);
 		try {
@@ -155,7 +162,19 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 			assert.equal(await closeOf(""), STALE_PAGE_CODE);
 			await told(/web bundle unnamed: from before/);
 			assert.equal(await closeOf("?client=nobody"), STALE_PAGE_CODE);
-			for (const client of LINK_CLIENTS) assert.equal(await closeOf(`?client=${client}`), -1, client);
+			for (const client of LINK_CLIENTS.filter((client) => client !== "script")) {
+				// The script client already proved it could hold Logs above. Require a real reply for the others too.
+				const socket = new WebSocket(`ws://127.0.0.1:${port}/chord?client=${client}`, {
+					headers: { Cookie: owner.cookie },
+				});
+				const link = clientHost(socket);
+				try {
+					const ref = link.hold(Logs, { source: "stale-pages" }, BACKGROUND_CONTEXT);
+					await until(ref.state, (state) => state.kind === "live");
+				} finally {
+					await link.close(BACKGROUND_CONTEXT);
+				}
+			}
 			// The page reloads by itself: nothing for the owner to act on, so no notice.
 			assert.equal(
 				notices.notices.value.some((each) => each.source === "stale-pages"),
