@@ -11,7 +11,8 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/worldview/package.json ./apps/worldview/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
 COPY packages/maps-protocol/package.json ./packages/maps-protocol/
-COPY packages/maps-renderer/package.json ./packages/maps-renderer/
+COPY packages/schmovement/package.json ./packages/schmovement/
+COPY packages/schmovement/package.json ./packages/schmovement/
 COPY packages/webmcp/package.json ./packages/webmcp/
 
 FROM manifests AS dependencies
@@ -24,7 +25,8 @@ COPY tsconfig.base.json ./
 COPY apps/worldview ./apps/worldview
 COPY packages/maps-editor ./packages/maps-editor
 COPY packages/maps-protocol ./packages/maps-protocol
-COPY packages/maps-renderer ./packages/maps-renderer
+COPY packages/schmovement ./packages/schmovement
+COPY packages/schmovement ./packages/schmovement
 COPY packages/webmcp ./packages/webmcp
 RUN pnpm --filter @harrhy/worldview-renderer run build \
   && pnpm --filter @harrhy/maps-editor run build \
@@ -55,8 +57,10 @@ COPY --from=dependencies --chown=node:node /app/packages/maps-editor /app/packag
 COPY --from=build --chown=node:node /app/packages/maps-editor /app/packages/maps-editor
 COPY --from=dependencies --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=build --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
-COPY --from=dependencies --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
-COPY --from=build --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=dependencies --chown=node:node /app/packages/schmovement /app/packages/schmovement
+COPY --from=dependencies --chown=node:node /app/packages/schmovement /app/packages/schmovement
+COPY --from=build --chown=node:node /app/packages/schmovement /app/packages/schmovement
+COPY --from=build --chown=node:node /app/packages/schmovement /app/packages/schmovement
 COPY --from=dependencies --chown=node:node /app/packages/webmcp /app/packages/webmcp
 COPY --from=build --chown=node:node /app/packages/webmcp /app/packages/webmcp
 RUN mkdir -p /app/.celld \

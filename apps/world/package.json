@@ -8,13 +8,13 @@
     "test": "node --test __tests__/*.test.ts",
     "build": "vite build && node scripts/build-server.mjs",
     "start": "node dist/server/index.js",
-    "dev": "npm run build && npm start",
+    "dev": "pnpm run build && pnpm start",
     "test:browser": "node __tests__/browser-smoke.mjs",
     "test:pool-live": "node __tests__/pool-smoke.mjs",
-    "check": "npm run typecheck && npm test && npm run build && node --test __tests__/frontend.test.mjs",
-    "prebuild": "npm run build --workspace @harrhy/worldview-renderer",
-    "pretypecheck": "npm run build --workspace @harrhy/worldview-renderer",
-    "pretest": "npm run build --workspace @harrhy/worldview-renderer"
+    "check": "pnpm run typecheck && npm test && pnpm run build && node --test __tests__/frontend.test.mjs",
+    "prebuild": "pnpm --filter @harrhy/worldview-renderer run build",
+    "pretypecheck": "pnpm --filter @harrhy/worldview-renderer run build",
+    "pretest": "pnpm --filter @harrhy/worldview-renderer run build"
   },
   "dependencies": {
     "@harrhy/pool": "0.1.0",

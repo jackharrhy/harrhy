@@ -21,6 +21,6 @@
   "scripts": {
     "build": "tsrs -p tsconfig.json",
     "test": "node --test __tests__/movement.test.ts",
-    "check": "npm run build && npm test"
+    "check": "pnpm run build && npm test"
   }
 }

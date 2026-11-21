@@ -54,10 +54,10 @@
     "build": "vite build && vite build --config vite.standalone.config.ts && tsrs -p tsconfig.build.json --emitDeclarationOnly",
     "typecheck": "tsrs -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "check": "npm run typecheck && npm test && npm run build",
-    "prebuild": "npm run build --workspace @harrhy/schmovement",
-    "pretypecheck": "npm run build --workspace @harrhy/schmovement",
-    "pretest": "npm run build --workspace @harrhy/schmovement"
+    "check": "pnpm run typecheck && npm test && pnpm run build",
+    "prebuild": "pnpm --filter @harrhy/schmovement run build",
+    "pretypecheck": "pnpm --filter @harrhy/schmovement run build",
+    "pretest": "pnpm --filter @harrhy/schmovement run build"
   },
   "dependencies": {
     "typegpu": "0.12.10",
