@@ -1,12 +1,17 @@
 import { logRequest, failOperation } from "./app/logging.ts";
 import { BoardCell } from "./app/data/board-cell.ts";
 import { DirectoryCell } from "./app/data/directory-cell.ts";
+import { ExportCell } from "./app/data/export-cell.ts";
 import { createRuntime } from "./app/data/runtime.ts";
 import { readSessionCookie } from "./app/middleware/session.ts";
 import { createAppRouter } from "./app/router.ts";
 import { authorizeArchive } from "./app/middleware/archive-auth.ts";
 import {
   authorizeRefMcp,
+  archiveMcpMetadataPath,
+  archiveMcpMetadata,
+  archiveMcpPath,
+  authorizeArchiveMcp,
   mcpScopes,
   mcpAuthError,
   type RefMcpAccess,
@@ -19,7 +24,7 @@ import {
   roleScope,
 } from "@harrhy/identity";
 
-export { BoardCell, DirectoryCell };
+export { BoardCell, DirectoryCell, ExportCell };
 
 type RefEnv = Env & { HARRHY_REF_ALTERNATE_BROWSER_ORIGIN?: string };
 
@@ -85,6 +90,20 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
   }
   const onAlternate =
     alternate === url.origin && alternate !== publicOrigin.origin;
+  const archiveMcp = url.pathname === archiveMcpPath;
+  if (
+    (archiveMcp ||
+      url.pathname === archiveMcpMetadataPath ||
+      url.pathname.startsWith("/api/archive/exports")) &&
+    url.origin !== publicOrigin.origin
+  )
+    return new Response("Use the canonical Ref origin", { status: 421 });
+  if (url.pathname === archiveMcpMetadataPath)
+    return archiveMcpMetadata(
+      publicOrigin.origin,
+      env.AUTH_ISSUER,
+      env.AUTH_PROJECT_ID,
+    );
   if (url.pathname === "/.well-known/oauth-protected-resource/mcp") {
     return Response.json(
       {
@@ -137,12 +156,15 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
           }
         : null;
     let mcpAccess: RefMcpAccess | null = null;
-    if (url.pathname === "/mcp") {
+    if (url.pathname === "/mcp" || archiveMcp) {
       if (!bearer?.startsWith("Bearer "))
         return mcpAuthError(
           env.AUTH_PUBLIC_ORIGIN,
           401,
           "Ref MCP bearer authorization is required",
+          archiveMcp
+            ? { projectId: env.AUTH_PROJECT_ID, missingBearer: true }
+            : undefined,
         );
       if (!introspection)
         return mcpAuthError(
@@ -155,22 +177,29 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
           bearer.slice(7),
           introspection,
         );
-        mcpAccess = authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
+        mcpAccess = archiveMcp
+          ? authorizeArchiveMcp(
+              principal,
+              env.AUTH_PROJECT_ID,
+              env.AUTH_CLIENT_ID,
+            )
+          : authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
       } catch (error) {
         return mcpAuthError(
           env.AUTH_PUBLIC_ORIGIN,
           error instanceof IdentityError ? error.status : 503,
           "Ref MCP authorization failed",
+          archiveMcp ? { projectId: env.AUTH_PROJECT_ID } : undefined,
         );
       }
     }
-    const token = readSessionCookie(request);
-    let authenticated = token ? await runtime.directory.session(token) : false;
     const archive = url.pathname.startsWith("/api/archive/");
+    const token = archive ? null : readSessionCookie(request);
+    let authenticated = token ? await runtime.directory.session(token) : false;
+    let archiveSubject: string | null = null;
     const archiveSnapshot =
       request.method === "GET" &&
       /^\/api\/boards\/[^/]+\/snapshot$/.test(url.pathname);
-    if (archive) authenticated = false;
     if (
       bearer?.startsWith("Bearer ") &&
       (archive ||
@@ -182,6 +211,7 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
       if (!introspection)
         return new Response("Archive authentication is unavailable", {
           status: 503,
+          headers: { "Cache-Control": "no-store" },
         });
       try {
         const principal = await createIdentityClient(config).introspect(
@@ -197,23 +227,34 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
               "Ref board read authorization is required",
               403,
             );
-        } else
-          authorizeArchive(
-            principal,
-            env.AUTH_PROJECT_ID,
-            archive && request.method !== "GET" ? "restore" : "read",
-          );
-        authenticated = true;
+        } else {
+          if (url.pathname.startsWith("/api/archive/exports"))
+            authorizeArchiveMcp(
+              principal,
+              env.AUTH_PROJECT_ID,
+              env.AUTH_CLIENT_ID,
+            );
+          else
+            authorizeArchive(
+              principal,
+              env.AUTH_PROJECT_ID,
+              archive && request.method !== "GET" ? "restore" : "read",
+            );
+          if (archive) archiveSubject = principal.subject;
+        }
+        if (!archive) authenticated = true;
       } catch (error) {
         return new Response("Archive authorization failed", {
           status: error instanceof IdentityError ? error.status : 503,
+          headers: { "Cache-Control": "no-store" },
         });
       }
     }
-    if (archive && !authenticated)
+    if (archive && !archiveSubject)
       return new Response("Archive bearer token required", {
         status: 401,
         headers: {
+          "Cache-Control": "no-store",
           "WWW-Authenticate": `Bearer resource_metadata="${env.AUTH_PUBLIC_ORIGIN}/.well-known/oauth-protected-resource/api/archive"`,
         },
       });
@@ -227,6 +268,7 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
         onAlternate,
       },
       mcpAccess,
+      archiveSubject,
     );
     return withSecurityHeaders(await router.fetch(request), true);
   } catch (error) {

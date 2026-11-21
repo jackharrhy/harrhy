@@ -5,6 +5,8 @@ import {
   uiPrimaryActionStyles,
   uiSecondaryActionStyles,
 } from "@harrhy/ui";
+import { archiveMcpScopes } from "../mcp/auth.ts";
+import { routes } from "../routes.ts";
 import type { BoardRecord } from "../data/directory-cell.ts";
 import { browserAssets } from "../assets/build-manifest.ts";
 import { refStyles, refThemeStyles } from "../styles.ts";
@@ -118,6 +120,12 @@ export function HomePage(
           <a class="wordmark" href="/">
             ref
           </a>
+          <a
+            href={routes.exportPage.href()}
+            mix={[uiActionStyles, uiSecondaryActionStyles]}
+          >
+            Export archive
+          </a>
           <form method="post" action="/logout">
             <button class="quiet-button" type="submit">
               Lock
@@ -157,6 +165,99 @@ export function HomePage(
               ))
             )}
           </div>
+        </section>
+      </main>
+    </Document>
+  );
+}
+
+export function ExportPage(handle: Handle<{ projectId: string }>) {
+  const scopes = archiveMcpScopes(handle.props.projectId);
+  return () => (
+    <Document title="Export archive">
+      <main class="home-content">
+        <a
+          href={routes.home.href()}
+          mix={[uiActionStyles, uiSecondaryActionStyles]}
+        >
+          Back to boards
+        </a>
+        <section
+          mix={css({ marginTop: "2rem", maxWidth: "38rem", lineHeight: "1.5" })}
+        >
+          <h1>Export archive</h1>
+          <p>
+            Download a private copy of all shared boards and their stored media.
+          </p>
+          <p id="export-help">
+            Sign in with your archive OAuth client and request a short-lived Ref
+            access token with the admin and archive-read scopes. Paste that
+            token below. Board sign-in alone cannot authorize an export. This
+            tab clears the token after five minutes, on download, or when you
+            leave.
+          </p>
+          <details>
+            <summary>OAuth request details</summary>
+            <p>
+              Use the resource and issuer in Ref’s{" "}
+              <a
+                href="/.well-known/oauth-protected-resource/mcp/archive"
+                mix={css({ textDecoration: "underline" })}
+              >
+                archive resource metadata
+              </a>
+              . Request these scopes:
+            </p>
+            <code mix={css({ overflowWrap: "anywhere" })}>
+              {scopes.join(" ")}
+            </code>
+          </details>
+          <div
+            mix={css({ display: "grid", gap: "0.5rem", marginBlock: "1.5rem" })}
+          >
+            <label htmlFor="archive-token">Archive access token</label>
+            <input
+              id="archive-token"
+              type="password"
+              autoComplete="off"
+              spellCheck={false}
+              aria-describedby="export-help"
+              maxLength={32768}
+              required
+            />
+          </div>
+          <div mix={css({ display: "flex", flexWrap: "wrap", gap: "0.5rem" })}>
+            <button
+              id="start-export"
+              type="button"
+              disabled
+              mix={[uiActionStyles, uiPrimaryActionStyles]}
+            >
+              Start export
+            </button>
+            <button
+              id="check-export"
+              type="button"
+              disabled
+              mix={[uiActionStyles, uiSecondaryActionStyles]}
+            >
+              Check status
+            </button>
+            <button
+              id="download-export"
+              type="button"
+              disabled
+              mix={[uiActionStyles, uiSecondaryActionStyles]}
+            >
+              Download archive
+            </button>
+          </div>
+          <p id="export-status" role="status"></p>
+          <noscript>
+            Enable JavaScript to authorize the export in this tab, or use the
+            archive CLI.
+          </noscript>
+          <script type="module" src="/assets/archive-export.js"></script>
         </section>
       </main>
     </Document>

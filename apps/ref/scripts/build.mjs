@@ -24,6 +24,10 @@ const outputDirectory = path.join(root, "dist", "client");
 await fs.rm(outputDirectory, { recursive: true, force: true });
 await fs.cp(path.join(root, "public"), outputDirectory, { recursive: true });
 await fs.mkdir(path.join(outputDirectory, "assets"), { recursive: true });
+await fs.copyFile(
+  new URL("../app/assets/archive-export.js", import.meta.url),
+  path.join(outputDirectory, "assets", "archive-export.js"),
+);
 
 const result = await build({
   absWorkingDir: root,
