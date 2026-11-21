@@ -1363,6 +1363,18 @@ required("#zoom-out").addEventListener("click", () =>
     y: viewport.clientHeight / 2,
   }),
 );
+// After choosing a card, Tab skips the unrelated canvas tools to its details.
+picker.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Tab" &&
+    !event.shiftKey &&
+    selectedId &&
+    !inspectorPanel.hidden
+  ) {
+    event.preventDefault();
+    required<HTMLButtonElement>("#inspector-close").focus();
+  }
+});
 picker.addEventListener("change", () => select(picker.value || null));
 required("#inspector-close").addEventListener("click", () => select(null));
 window.addEventListener("resize", revealSelected);

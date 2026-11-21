@@ -207,13 +207,16 @@ export const refStyles = css({
     outline: "none",
   },
   "& #card-picker": {
-    position: "absolute",
-    left: "12px",
-    top: "12px",
-    "max-width": "min(14em, 80%)",
+    "max-width": "min(14em, 30%)",
     "min-height": "28px",
   },
   "& #card-picker:not(:focus)": {
+    position: "absolute",
+    width: "1px",
+    height: "1px",
+    minHeight: "0",
+    padding: "0",
+    border: "0",
     "clip-path": "inset(50%)",
   },
   "& .viewport:focus-visible, & #card-picker:focus-visible": {

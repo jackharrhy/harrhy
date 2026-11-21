@@ -110,10 +110,26 @@ export async function checkMacCanvas(context, url) {
 export async function removeImageByKeyboard(page) {
   const picker = page.getByRole("combobox", { name: "Choose card" });
   await expect(picker).toHaveCSS("clip-path", "inset(50%)");
-  await page.getByRole("button", { name: "Zoom in" }).focus();
+  const clipped = await picker.boundingBox();
+  expect(clipped.width).toBeLessThanOrEqual(1);
+  expect(clipped.height).toBeLessThanOrEqual(1);
+  await page.getByRole("textbox", { name: "Board name" }).focus();
   await page.keyboard.press("Tab");
   await expect(picker).toBeFocused();
   await expect(picker).toHaveCSS("clip-path", "none");
+  expect(
+    await picker.evaluate((el) => {
+      const r = el.getBoundingClientRect(),
+        h = el.closest("header").getBoundingClientRect();
+      return (
+        r.width > 20 &&
+        r.height > 20 &&
+        r.top >= h.top &&
+        r.bottom <= h.bottom &&
+        document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el
+      );
+    }),
+  ).toBe(true);
   expect(
     await picker.evaluate((el) => getComputedStyle(el).outlineStyle),
   ).not.toBe("none");

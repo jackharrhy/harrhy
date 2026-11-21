@@ -298,6 +298,9 @@ export function BoardPage(
               aria-label="Board name"
             />
           </form>
+          <select id="card-picker" aria-label="Choose card" hidden>
+            <option value="">Choose card</option>
+          </select>
           <div id="connection" class="connection connecting" role="status">
             <span class="connection-dot"></span>
             <span class="connection-text">Connecting</span>
@@ -372,9 +375,6 @@ export function BoardPage(
                 +
               </button>
             </div>
-            <select id="card-picker" aria-label="Choose card" hidden>
-              <option value="">Choose card</option>
-            </select>
           </section>
           <aside id="inspector" class="inspector" hidden>
             <div class="inspector-top">
