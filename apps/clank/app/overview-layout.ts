@@ -1,10 +1,5 @@
 import type { Box } from "@harrhy/board/geometry";
-import type { Row } from "./session-state.ts";
-
-export type OverviewRow = Pick<
-  Row,
-  "id" | "title" | "createdAt" | "main" | "branches"
->;
+import type { OverviewRow } from "./session-state.ts";
 
 interface Node extends Box {
   id: string;

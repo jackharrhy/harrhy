@@ -4,7 +4,7 @@ Standalone Clank is a Remix 3 session list and read-only Overview for a disposab
 
 **Show overview** maps active sessions and their reported conversations. A session connects to branches without a reported parent; fork lines require both conversations in the same row. Selecting, fitting, panning and zooming are local; Overview reads the existing provider and does not issue commands. Use the list for text details and edits.
 
-For an existing Pi, use the separate [owner-only read-only connector and SSH runbook](../../docs/clank/read-only-overview.md). Never point the mutable fixture bridge at it.
+For Newport Pi, start this same app in [read-only mode](../../docs/clank/read-only-overview.md) with the separate authenticated owner Chord source. Never use the fixture bridge with a live Pi.
 
 ## Standalone fixture
 

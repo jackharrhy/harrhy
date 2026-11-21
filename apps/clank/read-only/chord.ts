@@ -11,13 +11,13 @@ import {
 import { createHost } from "../../pi/src/runtime/chord.ts";
 import { SERVER } from "../../pi/src/runtime/principals.ts";
 import { clientLinkPath } from "../../pi/src/runtime/stale-page.ts";
-import type { OverviewRow } from "../app/overview-layout.ts";
+import { MAX_ROWS, MAX_BYTES, type OverviewRow } from "../app/session-state.ts";
 
 function snapshot(sessions: readonly Session[]) {
   const rows: OverviewRow[] = [];
   for (const { id, title, createdAt, main, branches, archivedAt } of sessions) {
     if (archivedAt !== null) continue;
-    if (rows.length >= 256 || branches.length > 128)
+    if (rows.length >= MAX_ROWS || branches.length > 128)
       throw Error("Catalog too large");
     rows.push({
       id,
@@ -32,15 +32,15 @@ function snapshot(sessions: readonly Session[]) {
     });
   }
   const json = JSON.stringify(rows);
-  if (Buffer.byteLength(json) > 192 * 1024) throw Error("Catalog too large");
-  return json;
+  if (Buffer.byteLength(json) > MAX_BYTES) throw Error("Catalog too large");
+  return rows;
 }
 
 /** Ends rather than reusing the Pi credential if the authenticated upstream link is lost. */
 export async function followCatalog(
   port: number,
   cookie: string,
-  publish: (json: string) => void,
+  publish: (rows: OverviewRow[]) => void,
   unavailable: () => void,
 ) {
   const socket = new WebSocket(

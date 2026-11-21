@@ -1,35 +1,35 @@
-# Owner-only session map over SSH
+# Clank read-only allocation
 
-`apps/clank/read-only/server.ts` is a separate Node process. It never runs inside Pi, starts a worker, opens a Pi database, or loads Clank's fixture bridge, SessionCell or command API. It makes one authenticated WebSocket connection to `127.0.0.1:PI_PORT/chord?client=script` and acquires only `Sessions` (owner variant), watching its binding and `sessions` member. No session methods are called.
+Use the **same** compiled Remix document, `/sessions.js`, ClankProvider and Cap’n Web `SessionApi` as the synthetic fixture. In read-only mode the UI opens on Overview; the list remains available without commands. SessionCell rejects create/rename/archive **before** forwarding, regardless of client props or RPC arguments. There is no SSE endpoint or alternative browser bundle.
 
-**The viewer is read-only; the upstream credential is not.** Pi's owner `Sessions` is not a catalog-only credential; guest variants cover only shared sessions and are refused. The connector is trusted with an owner bearer cookie and the session catalog, including fields it discards. Don't install it as a generic proxy or give the cookie to a browser, agent, forwarded client or fixture. Trust the local host and confirm the Pi listener/process before supplying a credential. Loopback alone does not authenticate either party.
+## Infra contract
 
-The viewer accepts only authenticated GET requests for `/`, `/client.js` and `/catalog` (server-sent events). It requires the exact loopback Host, rejects foreign Origins and cross-site fetches, and has no WebSocket endpoint. Only active session ID/title/creation time/main and branch conversation/label/optional parent leave the connector. No cwd, model, history, messages, tools, or archive. Titles and labels are private too. Latest snapshots remain in memory; a disconnected browser clears its graph and receives a current snapshot on reconnect. A lost/non-owner upstream binding closes the listener and requires a deliberate new launch; it never reuses the Pi credential against a restarted port. Closing one local Pi login does **not** revoke all its already-open links: stop the connector to withdraw this preview immediately.
+- Pin the app and source to the same reviewed SHA. Build with `pnpm install --frozen-lockfile`, `node apps/pi/harrhy/install.mjs` (first install of Pi's isolated dependencies) and `pnpm --filter @harrhy/clank build`. Stage **only** `apps/clank/.celld/standalone/{worker.mjs,wrangler.jsonc}` in a new generation directory. Use the checksum-qualified native [Celld](../celld-runtime.md); bind the app privately, never to a wildcard.
+- Required Worker **and SessionCell** startup bindings: `HARRHY_CLANK_MODE=read-only`; `HARRHY_CLANK_PUBLIC_ORIGIN` = exact canonical HTTPS origin **without trailing slash** (literal `http://127.0.0.1:<port>` for isolated local tests); `HARRHY_CLANK_SOURCE_PORT` = numeric private loopback source port, not 18149; `HARRHY_CLANK_VIEW_PASSWORD` = generation-specific private Basic password; `HARRHY_CLANK_BRIDGE_TOKEN` = separate 32 random bytes in lowercase hex. Change mode/credentials only by replacing that generation. An invalid mode, omitted read-only origin/port, or a custom origin with omitted mode fails closed.
+- **Edge → app:** generation-specific private socket/relay and route lifetime are owned by Infra/Go, not Clank. Strip caller-supplied Authorization and forwarded identity headers. Authorize the intended viewer, then inject `Authorization: Basic base64(clank:<VIEW_PASSWORD>)` on every admitted request, including upgrades. This is a private edge credential; do not deliver it to the browser. Preserve the configured public **Host/authority** (including any non-default port); read-only mode compares it to the request URL authority, not the private HTTP scheme. No X-Forwarded-* trust. Preserve the browser's actual Origin; never manufacture an allowed Origin for a caller.
+- Allow exactly **GET /** (HTML), **GET /sessions.js** and **GET /live** (WebSocket upgrade with exact `Origin: <PUBLIC_ORIGIN>`). No query strings. Wrong host/path/method: 404; missing/wrong Basic on these paths: 401; wrong or absent WS Origin: 403; non-upgrade /live with valid Origin: 426. No forwarding to a Pi sign-in, /chord, /rpc or any other destination. A bridge token, Pi cookie or SSH reachability is not viewer authorization. Revocation must close established edge WS streams, not just refuse new requests.
+- **App → source:** SessionCell dials `ws://127.0.0.1:<SOURCE_PORT>/rpc` in the same private network namespace, no Origin, subprotocol `clank.<BRIDGE_TOKEN>`. Only that source process may own the destination port during the allocation. Source pushes a seq-zero snapshot in a fresh epoch, then acknowledged keyed changes. It exposes **no** command target. Never publish this listener or route it through the edge.
+- Keep fixture mode on its existing listener. With mode, public origin and source port all unset, it retains `http://127.0.0.1:18148`, the synthetic write bridge on 18149 and the original create/rename/archive behavior. Never install that bridge in Newport Pi.
 
-Limits: eight readers, 256 active sessions, 128 branches per session, 192 KiB projected snapshot, 4 MiB upstream WS message, eight seconds to bind. Oversized input fails closed rather than showing a partial map. A backed-up reader is disconnected on the next changed snapshot. Whole bounded snapshots, not an event log. Review lease: at most one hour or the cookie's remaining lifetime, whichever is shorter.
+## Owner Chord source (operator only)
 
-## Enable (operator only, after explicit live activation approval)
+`apps/clank/read-only/source.ts` runs **out of process**. From the verified local Pi listener it acquires only owner `Sessions`, its binding and `sessions` watch over `/chord?client=script`. It calls no session method, reads no Pi database or transcript and loads no Pi facet. Pi has no narrower owner-catalog credential: this **trusted process holds an owner-capable bearer cookie**, not a read-only Pi identity. It receives full catalog rows and projects only active ID/title/creation time/main and branch conversation/label/optional parent. These are private too. No cwd, model, archived rows or history crosses into the app.
 
-Use a separate unused port on the existing Voxl/SSH loopback path. **Do not** stop/reconfigure the fixture, reload Pi, change ingress, register a preview lease, use SSH `-g`, or expose a non-loopback address. From the reviewed worktree on Newport in **bash**:
+For a separately authorized live activation, choose and verify the actual Pi port and directory plus two unused loopback ports (app, source). The source must share loopback with Pi and SessionCell. Never attach a synthetic test or the mutable fixture to the live host. Example provisioning in bash **from the reviewed repo root**, inside the allocation supervisor:
 
 ```bash
 set -eu
 root=$PWD
-pnpm install --frozen-lockfile
-# Once per clean worktree, install Pi's isolated pinned source dependencies.
-node apps/pi/harrhy/install.mjs
-pnpm --filter @harrhy/clank build
-read -rp 'Verified loopback Pi port: ' pi
-read -rp 'Verified absolute Pi data directory (sign-in helper only): ' pi_data
-view=19883
-ss -lntp "sport = :$pi"      # verify LISTEN belongs to the intended Pi
-if ss -H -lnt "sport = :$view" | grep -q .; then echo 'Choose an unused view port'; exit 1; fi
+: "${PI_PORT:?verified owner Pi port}" "${PI_DATA_DIR:?verified directory for one-shot sign-in}"
+: "${SOURCE_PORT:?unused private source port}" "${APP_PORT:?unused private Celld port}"
+: "${PUBLIC_ORIGIN:?exact owner-authorized allocation origin}"
+pi=$PI_PORT; pi_data=$PI_DATA_DIR
+ss -lntp "sport = :$pi"  # verify the intended process, don't probe with credentials
 umask 077
-creds=$(mktemp -d "${XDG_RUNTIME_DIR:?}/clank-read-only.XXXXXX")
-trap 'rm -f -- "$creds/pi-cookie" "$creds/view-password"; rmdir -- "$creds"' EXIT
+creds=$(mktemp -d "${XDG_RUNTIME_DIR:?}/clank-generation.XXXXXX")
+openssl rand -hex 32 > "$creds/bridge-token"
 openssl rand -hex 32 > "$creds/view-password"
-# Trusted one-shot Pi sign-in, outside the connector. Only the cookie pair goes
-# into the private file. No owner key leaves the sign-in helper. No token on stdout.
+# Trusted one-shot helper reads the owner key and performs Pi challenge/claim.
 node --input-type=module - "$pi" "$pi_data" "$creds" <<'JS'
 import { writeFile } from 'node:fs/promises';
 import { localOwnerSignIn } from './apps/pi/src/runtime/local-owner.ts';
@@ -38,20 +38,25 @@ const result=await localOwnerSignIn(new URL(`http://127.0.0.1:${Number(port)}`),
 if(result.kind!=='signed-in')throw Error('Local owner sign-in refused');
 await writeFile(`${dir}/pi-cookie`,result.cookie,{mode:0o600,flag:'wx'});
 JS
-# Supply ONLY the viewer password to Jack through his private password channel.
-printf 'Viewer password file (not the Pi cookie): %s/view-password\n' "$creds"
-node_bin=$(node -p process.execPath)
-cd "$root/apps/clank"
-env -i PATH="$(dirname "$node_bin"):/usr/bin:/bin" "$node_bin" \
-  --import ../pi/src/source-resolver.ts read-only/server.ts "$pi" "$view" "$creds"
+# Only the source receives pi-cookie. Stage the worker without the source credentials.
+mkdir "$creds/app"
+cp apps/clank/.celld/standalone/{worker.mjs,wrangler.jsonc} "$creds/app/"
+printf 'HARRHY_CLANK_MODE=read-only
+HARRHY_CLANK_PUBLIC_ORIGIN=%s
+HARRHY_CLANK_SOURCE_PORT=%s
+HARRHY_CLANK_VIEW_PASSWORD=%s
+HARRHY_CLANK_BRIDGE_TOKEN=%s
+'   "$PUBLIC_ORIGIN" "$SOURCE_PORT" "$(cat "$creds/view-password")" "$(cat "$creds/bridge-token")" > "$creds/app/.dev.vars"
+node scripts/celld-runtime.mjs verify "${CELLD_BIN:?qualified binary}"
+# Launch as separate supervised children. Supply the edge only view-password via private file.
+node --import ./apps/pi/src/source-resolver.ts apps/clank/read-only/source.ts "$pi" "$SOURCE_PORT" "$creds" &
+CELLD_ESBUILD="$root/apps/clank/node_modules/.bin/esbuild" "$CELLD_BIN" dev "$creds/app" --host 127.0.0.1 --port "$APP_PORT" --no-watch &
 ```
 
-Keep that foreground terminal open. On Jack's side use the existing **private SSH local forward** for the chosen port, or equivalent in Voxl: local `127.0.0.1:19883` → Newport `127.0.0.1:19883`. Use the same local/remote port and literal address (exact Host admission). In an isolated browser profile open `http://127.0.0.1:19883/`, Basic user `clank` with the **viewer** password. An unauthenticated GET must return 401. Avoid a browser profile containing Pi cookies (cookies are not isolated by port). Don't print/share catalog output as a health check. If the upstream bind fails, check identity, contract version, expiry and bounds; don't switch to the fixture bridge.
+Confirm the source listener belongs to the intended process before handing the app to the edge. Limit the allocation to at most one hour (source enforces one hour or remaining cookie lifetime). One owner watch; up to eight readers, one delivery per reader in flight and an eight-second acknowledgement deadline. Limits: 256 active rows, 128 branches per row, 192 KiB projected, 4 MiB upstream WS message. Oversize or lost owner binding shuts down the source; it never retries an owner credential against a restarted Pi port. A browser reconnect accepts a fresh authoritative epoch, not stale rows. Do not log credentials, titles or snapshots.
 
-## Disable
+**Teardown:** withdraw the generation from the authenticated edge, close its WS streams and remove its socket; stop that Celld process, then that source process. On premature source exit withdraw the app too, before another service can bind its port. Confirm both listeners are gone and remove the generation directory, credentials and Celld state. Don't rotate Pi keys, sign out other devices, stop any existing fixture, or reuse an old generation's password. Closing one local Pi login doesn't revoke all its already-open links; stopping the source is the immediate cutoff.
 
-Close the isolated tab/profile and remove **only this** SSH forward. Interrupt the foreground connector (Ctrl-C); let the bash block exit so the `EXIT` trap removes the two private files and directory. If a shell was killed instead, remove those two files from its specific temporary directory. Confirm `ss -H -lnt 'sport = :19883'` is empty before port reuse. This does not revoke other Pi sessions, change Pi state or restart services. A new review should use a fresh viewer password and a newly verified upstream listener.
+## Disposable verification
 
-## Disposable qualification
-
-With the same dependencies and client build, execute `node --import ../pi/src/source.ts __tests__/read-only.mjs` from `apps/clank` in an isolated loopback namespace with a private writable temp dir and Chromium (`CHROMIUM_BIN` if not installed in the test profile). It starts a fresh fake Pi, independently seeds catalog data and a valid view guest, and spawns the real connector. It exercises guest denial, HTTP write denial, projection, Chromium live update, disconnect/clear/fresh reconnect and owner-link revocation. No endpoint or credential of an existing Pi is supplied. HTTP and Chord access are tested, not WAN capacity or Voxl UI automation.
+With dependencies and browser bundle built, run `node --import ../pi/src/source.ts __tests__/read-only.mjs` in `apps/clank` in an isolated loopback namespace (ports 19883–19885), with `CELLD_BIN` set to the qualified executable and `CHROMIUM_BIN` if needed. It starts its own fake Pi, uses a legitimate guest and owner login, and tests the actual source, Worker, SessionCell and browser RPCs. No live endpoint/credential is input. Host/Origin preservation is checked over private HTTP; this does not exercise the separate Go edge, its auth or its allocation socket.
