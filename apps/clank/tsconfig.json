@@ -1,0 +1,11 @@
+{
+  "extends": "../pi/tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "jsxImportSource": "remix/component",
+    "types": ["node", "@cloudflare/workers-types"],
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["*.ts", "*.tsx", "app", "__tests__/*.test.ts"]
+}

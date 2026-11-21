@@ -1,0 +1,25 @@
+{
+  "name": "@harrhy/clank",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "npm run build && node --test __tests__/*.test.ts",
+    "check:fixture": "node __tests__/live-fixture.mjs"
+  },
+  "dependencies": {
+    "@harrhy/ui": "workspace:*",
+    "capnweb": "0.13.0",
+    "remix": "3.2.0",
+    "ws": "8.21.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261112.1",
+    "@types/ws": "^8.18.2",
+    "esbuild": "0.28.2",
+    "playwright": "1.65.0"
+  },
+  "engines": {
+    "node": ">=26.13.0"
+  }
+}
