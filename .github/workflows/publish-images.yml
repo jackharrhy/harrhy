@@ -5,6 +5,7 @@ on: # jactionlint ignore=concurrency-limits
     branches: [main]
     paths:
       - .dockerignore
+      - .npmrc
       - .nvmrc
       - apps/8mb/**
       - apps/artbin/**
@@ -30,6 +31,7 @@ on: # jactionlint ignore=concurrency-limits
       - packages/**
       - pnpm-lock.yaml
       - pnpm-workspace.yaml
+      - tsconfig.base.json
   workflow_dispatch:
     inputs:
       image:

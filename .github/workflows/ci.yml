@@ -49,17 +49,17 @@ jobs:
         if: github.event_name != 'push'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          HEAD_SHA: ${{ github.sha }}
           EVENT: ${{ github.event_name }}
         run: node scripts/ci/node-image-impact.mjs
       - name: Select runtime image groups
         id: image_paths
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
-          # Match the former PR path filters, running all groups on dispatch
-          # or when the three-dot comparison cannot be resolved.
+          # Compare the base with the merge checkout the image jobs build.
+          # Run all groups on dispatch or when the comparison fails.
           select_group() {
             local group=$1
             shift
@@ -68,7 +68,7 @@ jobs:
               push) selected=false ;;
               pull_request)
                 if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ] &&
-                  git diff --quiet --no-renames "$BASE_SHA...$HEAD_SHA" -- .github/workflows/ci.yml "$@"; then
+                  git diff --quiet --no-renames "$BASE_SHA" "$HEAD_SHA" -- .github/workflows/ci.yml "$@"; then
                   selected=false
                 fi
                 ;;
@@ -80,7 +80,7 @@ jobs:
             apps/ref/ apps/radio/ apps/worldview/ apps/maps-collaboration/ \
             apps/burger/ apps/gurgur/ apps/pool/ packages/
           select_group garden .github/workflows/publish-garden.yml .github/workflows/publish-images.yml \
-            .dockerignore .nvmrc tsconfig.base.json package.json pnpm-lock.yaml \
+            .dockerignore .npmrc .nvmrc tsconfig.base.json package.json pnpm-lock.yaml \
             pnpm-workspace.yaml apps/garden/ packages/ui/
           select_group harry_sluggers .dockerignore .npmrc package.json pnpm-lock.yaml \
             pnpm-workspace.yaml tsconfig.base.json apps/harry-sluggers/ packages/ui/
@@ -108,6 +108,8 @@ jobs:
           cache: true
       - if: needs.select.outputs.any == 'true'
         run: pnpm install --frozen-lockfile
+      - if: needs.select.outputs.any == 'true'
+        run: pnpm run ci:preflight
       - name: Install Pi isolated browser prerequisites
         if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/pi')
         run: |
@@ -130,8 +132,6 @@ jobs:
           key: img-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/img/rust-toolchain.toml', 'apps/img/Cargo.lock', 'apps/img/Cargo.toml') }}-${{ hashFiles('apps/img/**/*.rs', 'apps/img/assets/**') }}
           restore-keys: |
             img-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/img/rust-toolchain.toml', 'apps/img/Cargo.lock', 'apps/img/Cargo.toml') }}-
-      - if: needs.select.outputs.any == 'true'
-        run: pnpm run ci:preflight
       - name: Ensure ImageMagick for Artbin checks
         if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app')
         timeout-minutes: 3
