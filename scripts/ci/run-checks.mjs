@@ -5,6 +5,13 @@ import { loadWorkspaces, planChecks } from "./affected.mjs";
 const selected = JSON.parse(process.env.SELECTED_CHECKS || "[]");
 const workspaces = loadWorkspaces();
 const timings = [];
+const env = { ...process.env };
+if (env.GITHUB_ACTIONS === "true") {
+  const preload = new URL("./vitest-output.mjs", import.meta.url);
+  env.NODE_OPTIONS = [env.NODE_OPTIONS, `--import=${preload.href}`]
+    .filter(Boolean)
+    .join(" ");
+}
 for (const { name, script } of planChecks(selected, workspaces)) {
   console.log(
     `\n${script === "check" ? "Checking" : "Building dependency"} ${name}`,
@@ -12,6 +19,7 @@ for (const { name, script } of planChecks(selected, workspaces)) {
   const start = performance.now();
   const result = spawnSync("pnpm", ["--filter", name, "run", script], {
     stdio: "inherit",
+    env,
   });
   const seconds = ((performance.now() - start) / 1000).toFixed(2);
   const passed = result.status === 0;
