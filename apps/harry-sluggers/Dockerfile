@@ -1,10 +1,11 @@
 FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS build
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc tsconfig.base.json ./
 COPY apps/harry-sluggers/package.json apps/harry-sluggers/
 COPY packages/ui/package.json packages/ui/
-RUN pnpm --filter @harrhy/harry-sluggers... install --frozen-lockfile --ignore-scripts
+RUN pnpm --filter @harrhy/harry-sluggers... install --frozen-lockfile --config.enable-global-virtual-store=false --ignore-scripts
 COPY apps/harry-sluggers apps/harry-sluggers
 COPY packages/ui packages/ui
 RUN pnpm --filter @harrhy/harry-sluggers exec esbuild app/browser.ts --bundle --format=esm --platform=browser --outfile=dist/runtime.js

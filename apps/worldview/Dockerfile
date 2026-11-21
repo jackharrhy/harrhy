@@ -7,6 +7,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/worldview/package.json ./apps/worldview/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
@@ -16,11 +17,11 @@ COPY packages/schmovement/package.json ./packages/schmovement/
 COPY packages/webmcp/package.json ./packages/webmcp/
 
 FROM manifests AS dependencies
-RUN pnpm --filter @harrhy/worldview... install --frozen-lockfile
+RUN pnpm --filter @harrhy/worldview... install --frozen-lockfile --config.enable-global-virtual-store=false
 
 FROM manifests AS build
 # Shared Maps builds need root tsrs; runtime dependencies remain in the prior stage.
-RUN pnpm --filter @harrhy/worldview... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/worldview... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/worldview ./apps/worldview
 COPY packages/maps-editor ./packages/maps-editor

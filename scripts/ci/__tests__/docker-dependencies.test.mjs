@@ -77,9 +77,14 @@ for (const [name, workspace] of workspaces) {
     assert.doesNotMatch(dockerfile, /^COPY .*?\s\. \.\s*$/m);
     const install = [...dockerfile.matchAll(/^RUN pnpm (.+\binstall\b.*)$/gm)];
     assert.ok(install.length > 0);
+    assert.match(
+      dockerfile.slice(0, install[0].index),
+      /^ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false$/m,
+    );
     for (const [, args] of install) {
       assert.ok(args.startsWith(`--filter ${name}... `), args);
       assert.match(args, / --frozen-lockfile\b/);
+      assert.match(args, / --config\.enable-global-virtual-store=false(?: |$)/);
     }
     assert.equal(
       install.some(([, args]) => args.includes("--filter . ")),

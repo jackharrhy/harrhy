@@ -4,6 +4,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/maps-compiler/package.json ./apps/maps-compiler/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
@@ -13,10 +14,10 @@ COPY packages/schmovement/package.json ./packages/schmovement/
 COPY packages/request-body/package.json ./packages/request-body/
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/maps-compiler... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/maps-compiler... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/maps-compiler... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/maps-compiler... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/maps-compiler ./apps/maps-compiler
 COPY packages/maps-editor ./packages/maps-editor

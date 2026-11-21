@@ -1,12 +1,13 @@
 FROM platformatic/node-caged:26-slim AS assets
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/auth/package.json apps/auth/package.json
 COPY packages/logger/package.json packages/logger/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/ui/styles.ts packages/ui/styles.ts
-RUN pnpm --filter @harrhy/auth... install --frozen-lockfile
+RUN pnpm --filter @harrhy/auth... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY packages/logger ./packages/logger
 
 FROM platformatic/node-caged:26-slim

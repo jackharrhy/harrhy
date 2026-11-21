@@ -2,14 +2,15 @@ FROM platformatic/node-caged:26-slim AS manifests
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/rotund/package.json apps/rotund/package.json
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/rotund... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/rotund... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/rotund... install --frozen-lockfile
+RUN pnpm --filter @harrhy/rotund... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY apps/rotund ./apps/rotund
 RUN pnpm --filter @harrhy/rotund run build
 

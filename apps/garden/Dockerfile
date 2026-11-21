@@ -1,10 +1,11 @@
 FROM platformatic/node-caged:26-slim AS build
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/garden/package.json apps/garden/package.json
 COPY packages/ui/package.json packages/ui/package.json
-RUN pnpm --filter @harrhy/garden... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/garden... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 COPY apps/garden ./apps/garden
 COPY packages/ui ./packages/ui
 

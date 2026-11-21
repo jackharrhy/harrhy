@@ -2,10 +2,11 @@ FROM platformatic/node-caged:26-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/marky/package.json apps/marky/package.json
 COPY packages/identity/package.json packages/identity/package.json
-RUN pnpm --filter @harrhy/marky... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/marky... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 COPY apps/marky ./apps/marky
 COPY packages/identity ./packages/identity
 

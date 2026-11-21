@@ -2,10 +2,11 @@ FROM platformatic/node-caged:26-slim AS build
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/letters-to-steve/package.json apps/letters-to-steve/package.json
 COPY packages/identity/package.json packages/identity/package.json
-RUN pnpm --filter @harrhy/letters-to-steve... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/letters-to-steve... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 COPY apps/letters-to-steve ./apps/letters-to-steve
 COPY packages/identity ./packages/identity
 

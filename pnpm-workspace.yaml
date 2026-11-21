@@ -4,6 +4,7 @@ packages:
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 packageImportMethod: hardlink
+enableGlobalVirtualStore: true
 # Temporary for the live-board draft; remove after 2026-11-21 19:46:49 UTC.
 minimumReleaseAgeExclude:
   - capnweb@0.13.0

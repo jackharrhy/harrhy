@@ -9,11 +9,12 @@ RUN apt-get update \
 WORKDIR /app
 
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/radio/package.json ./apps/radio/
 COPY packages/identity/package.json ./packages/identity/
 COPY apps/radio/scripts/sync-icon-font.mjs ./apps/radio/scripts/
-RUN pnpm --filter @harrhy/radio... install --frozen-lockfile
+RUN pnpm --filter @harrhy/radio... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/radio ./apps/radio
 COPY packages/identity ./packages/identity

@@ -2,12 +2,13 @@ FROM node:26-bookworm AS build
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/pool/package.json ./apps/pool/
 COPY packages/pool/package.json ./packages/pool/
 COPY packages/pool-protocol/package.json ./packages/pool-protocol/
 COPY packages/pool-simulation/package.json ./packages/pool-simulation/
-RUN pnpm --filter @harrhy/pool-app... install --frozen-lockfile
+RUN pnpm --filter @harrhy/pool-app... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/pool ./apps/pool
 COPY packages/pool ./packages/pool

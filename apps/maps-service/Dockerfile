@@ -5,6 +5,7 @@ RUN apt-get update \
 
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/maps-service/package.json ./apps/maps-service/
 COPY packages/identity/package.json ./packages/identity/
@@ -18,10 +19,10 @@ COPY packages/request-body/package.json ./packages/request-body/
 COPY packages/result/package.json ./packages/result/
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/maps-service... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/maps-service... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/maps-service... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/maps-service... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/maps-service ./apps/maps-service
 COPY packages/identity ./packages/identity

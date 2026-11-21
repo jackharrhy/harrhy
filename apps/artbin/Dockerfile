@@ -2,6 +2,7 @@ FROM platformatic/node-caged:26-slim AS manifests
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/artbin/package.json apps/artbin/package.json
 COPY packages/ui/package.json packages/ui/package.json
@@ -15,10 +16,10 @@ COPY packages/maps-renderer/package.json packages/maps-renderer/package.json
 COPY packages/schmovement/package.json packages/schmovement/package.json
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/artbin-app... install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm --filter @harrhy/artbin-app... install --frozen-lockfile --config.enable-global-virtual-store=false --prod --ignore-scripts
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/artbin-app... --filter . install --frozen-lockfile --ignore-scripts
+RUN pnpm --filter @harrhy/artbin-app... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false --ignore-scripts
 # Build against the compression-enabled runtime, then transfer only the binding.
 RUN addon="$(realpath apps/artbin/node_modules/better-sqlite3)" \
   && rm -rf "$addon/prebuilds" \

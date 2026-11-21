@@ -59,6 +59,8 @@ on: # jactionlint ignore=concurrency-limits
           - rotund
           - worldview
 permissions: {}
+env:
+  PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE: "false"
 jobs:
   select:
     if: github.ref == 'refs/heads/main'
@@ -114,7 +116,7 @@ jobs:
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         if: matrix.check
       - if: matrix.check
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --frozen-lockfile --config.enable-global-virtual-store=false
       - if: matrix.app == '8mb'
         run: pnpm run 8mb:check
       - name: Ensure ImageMagick for Artbin checks

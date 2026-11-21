@@ -4,6 +4,7 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/cms/package.json ./apps/cms/
 COPY packages/identity/package.json ./packages/identity/
@@ -16,10 +17,10 @@ COPY packages/rich-text/package.json ./packages/rich-text/
 COPY packages/ui/package.json ./packages/ui/
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/cms... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/cms... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/cms... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/cms... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/cms ./apps/cms
 COPY packages/identity ./packages/identity

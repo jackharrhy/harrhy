@@ -2,6 +2,7 @@ FROM node:26-bookworm AS manifests
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/lists/package.json apps/lists/package.json
 COPY packages/ui/package.json packages/ui/package.json
@@ -12,10 +13,10 @@ COPY packages/json-schema/package.json packages/json-schema/package.json
 COPY packages/result/package.json packages/result/package.json
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/lists... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/lists... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/lists... install --frozen-lockfile
+RUN pnpm --filter @harrhy/lists... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY apps/lists apps/lists
 COPY packages/ui packages/ui
 COPY packages/identity packages/identity
