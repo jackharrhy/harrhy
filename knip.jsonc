@@ -1,7 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  // Celld is a host/container tool; Wrangler is provided by app workspaces in CI.
-  "ignoreBinaries": ["celld", "wrangler"],
+  // Celld is a host/container tool.
+  "ignoreBinaries": ["celld"],
+  // The Artbin Dockerfile rebuilds the SQLite binding against the image Node.
+  "ignoreDependencies": ["node-gyp"],
   "ignore": [
     "apps/pi/compat/**",
     "apps/pi/src/**",
@@ -14,6 +16,14 @@
     "apps/pi/__tests__/fixtures/**",
   ],
   "workspaces": {
+    "apps/maps-collaboration": {
+      // start-celld.sh resolves the compiler at runtime.
+      "ignoreDependencies": ["esbuild"],
+    },
+    "packages/maps-protocol": {
+      // Emitted declarations name renderer types inferred through maps-editor.
+      "ignoreDependencies": ["@harrhy/worldview-renderer"],
+    },
     "apps/pi": {
       "entry": ["harrhy/*.mjs", "__tests__/*.mjs"],
       "ignoreBinaries": ["bwrap"],
