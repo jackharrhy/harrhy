@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { fileURLToPath } from "node:url";
+import { loadWorkspaces } from "../affected.mjs";
 import {
   nodeImageApps,
   selectNodeImages,
@@ -9,21 +11,23 @@ import {
 
 const broad = ["cms", "maps-service", "maps-compiler"];
 function fixture() {
-  const packages = Object.fromEntries([
-    ["", {}],
-    ...nodeImageApps.map((app) => [`apps/${app}`, {}]),
-    ["apps/unrelated", {}],
-    ["packages/shared", {}],
-    ["packages/bridge", { dependencies: { shared: "*" } }],
-    ["packages/extra-copy", {}],
-    ["node_modules/shared", { link: true, resolved: "packages/shared" }],
-    ["node_modules/bridge", { link: true, resolved: "packages/bridge" }],
+  const beforeManifests = new Map([
+    ["", { name: "root" }],
+    ...nodeImageApps.map((app) => ["apps/" + app, { name: app }]),
+    ["apps/unrelated", { name: "unrelated" }],
+    ["packages/shared", { name: "shared" }],
+    [
+      "packages/bridge",
+      { name: "bridge", peerDependencies: { shared: "workspace:*" } },
+    ],
+    ["packages/extra-copy", { name: "extra-copy" }],
   ]);
-  packages["apps/auth"] = { dependencies: { bridge: "*" } };
-  const beforeLock = { packages };
+  beforeManifests.get("apps/auth").optionalDependencies = {
+    bridge: "workspace:*",
+  };
   return {
-    beforeLock,
-    afterLock: structuredClone(beforeLock),
+    beforeManifests,
+    afterManifests: structuredClone(beforeManifests),
     dockerfiles: Object.fromEntries(
       nodeImageApps.map((app) => [
         app,
@@ -47,11 +51,11 @@ test("app-only changes avoid unrelated narrow images but retain whole-context im
   );
 });
 
-test("shared source reaches transitive consumers from either lock revision", () => {
+test("shared source reaches transitive consumers from either manifest revision", () => {
   for (const removed of [false, true]) {
     const f = fixture();
-    if (removed) f.afterLock.packages["apps/auth"] = {};
-    else f.beforeLock.packages["apps/auth"] = {};
+    if (removed) delete f.afterManifests.get("apps/auth").optionalDependencies;
+    else delete f.beforeManifests.get("apps/auth").optionalDependencies;
     assert.deepEqual(
       selectNodeImages({ ...f, paths: ["packages/shared/index.ts"] }),
       ordered(...broad, "auth"),
@@ -74,9 +78,11 @@ test("root runtime, bootstrap, configuration and unknown inputs check every imag
   for (const path of [
     ".nvmrc",
     "package-lock.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
     "tsconfig.base.json",
     "scripts/tooling/ensure-worker-types.mjs",
-    ".github/workflows/node-images.yml",
+    ".github/workflows/ci.yml",
     "new-root-input",
     "apps/new-unknown/source.ts",
   ])
@@ -87,7 +93,7 @@ test("root runtime, bootstrap, configuration and unknown inputs check every imag
     );
 });
 
-test("explicit Docker COPY outside the lock graph is an image input", () => {
+test("explicit Docker COPY outside the manifest graph is an image input", () => {
   const f = fixture();
   f.dockerfiles.marky += "\nCOPY packages/extra-copy ./extra";
   assert.deepEqual(
@@ -114,7 +120,15 @@ test("comparison reads both Dockerfile revisions and falls back on errors", () =
     reads.push(args);
     if (args[0] === "diff") return "apps/unrelated/file.ts\0";
     const [commit, path] = args[1].split(":");
-    if (path === "package-lock.json") return JSON.stringify(f.beforeLock);
+    if (args[0] === "ls-tree")
+      return [...f.beforeManifests.keys()]
+        .filter(Boolean)
+        .map((workspacePath) => workspacePath + "/package.json")
+        .join("\0");
+    if (path.endsWith("package.json"))
+      return JSON.stringify(
+        f.beforeManifests.get(path.slice(0, -"/package.json".length)),
+      );
     const app = path.split("/")[1];
     return app === "marky" && commit === "base"
       ? "COPY . ."
@@ -131,7 +145,7 @@ test("comparison reads both Dockerfile revisions and falls back on errors", () =
     () => {
       throw new Error("missing base");
     },
-    () => "not json",
+    (args) => (args[0] === "diff" ? "apps/auth/index.ts\0" : "not json"),
   ]) {
     const warnings = [];
     assert.deepEqual(
@@ -150,12 +164,10 @@ function unexpectedRead() {
   throw new Error("must not read");
 }
 
-function malformedLockRead(args) {
-  return args[0] === "diff"
-    ? "apps/auth/src/server.mjs\0"
-    : args[1].endsWith("package-lock.json")
-      ? "{}"
-      : "COPY apps/auth ./app";
+function malformedManifestRead(args) {
+  if (args[0] === "diff") return "apps/auth/src/server.mjs\0";
+  if (args[0] === "ls-tree") return "apps/auth/package.json\0";
+  return "{}";
 }
 
 test("manual, missing and zero bases check all without comparing; no diff is a noop", () => {
@@ -174,11 +186,11 @@ test("manual, missing and zero bases check all without comparing; no diff is a n
   );
 });
 
-test("malformed lock data conservatively checks every image through the entry point", () => {
+test("malformed manifest data conservatively checks every image through the entry point", () => {
   assert.deepEqual(
     selectNodeImagesFromCommits({
       before: "base",
-      read: malformedLockRead,
+      read: malformedManifestRead,
       warn: () => {},
     }),
     nodeImageApps,
@@ -187,9 +199,13 @@ test("malformed lock data conservatively checks every image through the entry po
 
 test("repository selected Dockerfiles check actual UI consumers without unrelated apps", () => {
   const root = new URL("../../../", import.meta.url);
-  const lock = JSON.parse(
-    readFileSync(new URL("package-lock.json", root), "utf8"),
-  );
+  const manifests = new Map([
+    ["", JSON.parse(readFileSync(new URL("package.json", root), "utf8"))],
+    ...loadWorkspaces(fileURLToPath(root)).map(({ path, manifest }) => [
+      path,
+      manifest,
+    ]),
+  ]);
   const dockerfiles = Object.fromEntries(
     nodeImageApps.map((app) => [
       app,
@@ -199,8 +215,8 @@ test("repository selected Dockerfiles check actual UI consumers without unrelate
   assert.deepEqual(
     selectNodeImages({
       paths: ["packages/ui/styles.ts"],
-      beforeLock: lock,
-      afterLock: lock,
+      beforeManifests: manifests,
+      afterManifests: manifests,
       dockerfiles,
     }),
     ordered("cms", "auth", "artbin"),

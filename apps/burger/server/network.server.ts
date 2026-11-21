@@ -89,9 +89,7 @@ export const tagMessage = (type: number, data: ArrayBuffer): ArrayBuffer => {
   return tagged.buffer;
 };
 
-export const createServer = (
-  deps: AppDeps & { port: number },
-): ReturnType<ReturnType<typeof buildApp>["listen"]> => {
+export const createServer = async (deps: AppDeps & { port: number }) => {
   snapshotSerializer = createSnapshotSerializer(
     deps.world,
     networkedComponents,
@@ -106,7 +104,10 @@ export const createServer = (
     mkdirSync(assetRoot, { recursive: true });
   }
 
-  const app = buildApp(deps).listen(deps.port);
+  const app = buildApp(deps);
+  // Wait for static routes before accepting requests.
+  await app.modules;
+  app.listen(deps.port);
   console.log(`Server running on ${app.server?.hostname}:${app.server?.port}`);
   return app;
 };

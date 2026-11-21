@@ -1,34 +1,37 @@
 ARG CELLD_IMAGE=ghcr.io/jackharrhy/celld@sha256:dfea10316af715b6540c4d2257182537e5bc620b072310273c54d5cbd929820a
 FROM ${CELLD_IMAGE} AS celld
 
-FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS dependencies
+FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS manifests
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json package-lock.json .npmrc ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/worldview/package.json ./apps/worldview/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
 COPY packages/maps-protocol/package.json ./packages/maps-protocol/
 COPY packages/maps-renderer/package.json ./packages/maps-renderer/
 COPY packages/webmcp/package.json ./packages/webmcp/
-RUN npm ci --workspace @harrhy/worldview --include-workspace-root=false
 
-FROM dependencies AS build
+FROM manifests AS dependencies
+RUN pnpm --filter @harrhy/worldview... install --frozen-lockfile
+
+FROM manifests AS build
 # Shared Maps builds need root tsrs; runtime dependencies remain in the prior stage.
-RUN npm ci --workspace @harrhy/worldview --include-workspace-root=true
+RUN pnpm --filter @harrhy/worldview... --filter . install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/worldview ./apps/worldview
 COPY packages/maps-editor ./packages/maps-editor
 COPY packages/maps-protocol ./packages/maps-protocol
 COPY packages/maps-renderer ./packages/maps-renderer
 COPY packages/webmcp ./packages/webmcp
-RUN npm run build --workspace @harrhy/worldview-renderer \
-  && npm run build --workspace @harrhy/maps-editor \
-  && npm run build --workspace @harrhy/maps-protocol \
-  && npm run build:client --workspace @harrhy/worldview
+RUN pnpm --filter @harrhy/worldview-renderer run build \
+  && pnpm --filter @harrhy/maps-editor run build \
+  && pnpm --filter @harrhy/maps-protocol run build \
+  && pnpm --filter @harrhy/worldview run build:client
 
-# Runtime uses the original selected dependency tree, including nested installs.
+# Overlay built sources without replacing the runtime workspace links.
 RUN find apps packages -type d -name node_modules -prune -exec rm -rf {} +
 
 FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68
@@ -43,12 +46,18 @@ WORKDIR /app/apps/worldview
 ARG CELLD_IMAGE
 LABEL dev.jackharrhy.worldview.celld-image=${CELLD_IMAGE}
 COPY --from=celld /usr/local/bin/celld /usr/local/bin/celld
-COPY --from=dependencies --chown=node:node /app /app
+COPY --from=dependencies --chown=node:node /app/node_modules /app/node_modules
+COPY --from=dependencies --chown=node:node /app/package.json /app/
 COPY --from=build --chown=node:node /app/tsconfig.base.json /app/
+COPY --from=dependencies --chown=node:node /app/apps/worldview /app/apps/worldview
 COPY --from=build --chown=node:node /app/apps/worldview /app/apps/worldview
+COPY --from=dependencies --chown=node:node /app/packages/maps-editor /app/packages/maps-editor
 COPY --from=build --chown=node:node /app/packages/maps-editor /app/packages/maps-editor
+COPY --from=dependencies --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=build --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
+COPY --from=dependencies --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
 COPY --from=build --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=dependencies --chown=node:node /app/packages/webmcp /app/packages/webmcp
 COPY --from=build --chown=node:node /app/packages/webmcp /app/packages/webmcp
 RUN mkdir -p /app/.celld \
   && chmod +x /app/apps/worldview/scripts/start-celld.sh \

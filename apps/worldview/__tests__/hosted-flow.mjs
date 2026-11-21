@@ -209,8 +209,8 @@ try {
   );
 
   await command(
-    "npm",
-    ["run", "build", "--workspace", "@harrhy/maps-service"],
+    "pnpm",
+    ["--filter", "@harrhy/maps-service", "run", "build"],
     teaRoot,
   );
   await command(process.execPath, ["scripts/build.mjs", "--dev"], mapsRoot);
@@ -218,7 +218,7 @@ try {
   await writeFile(secrets, `HARRHY_MAPS_REALTIME_TICKET_SECRET=${secret}\n`);
   const collaboration = start(
     "collaboration",
-    join(teaRoot, "node_modules/.bin/wrangler"),
+    join(collaborationRoot, "node_modules/.bin/wrangler"),
     [
       "dev",
       "--port",
@@ -262,7 +262,7 @@ try {
   await ready(service, `${serviceOrigin}/health`);
   const maps = start(
     "maps",
-    join(teaRoot, "node_modules/.bin/wrangler"),
+    join(mapsRoot, "node_modules/.bin/wrangler"),
     [
       "dev",
       "--config",

@@ -15,7 +15,7 @@ await cp(
   `${directory}/tsconfig.json`,
 );
 await symlink(
-  new URL("../../../../node_modules/", import.meta.url).pathname,
+  new URL("../../node_modules/", import.meta.url).pathname,
   `${directory}/node_modules`,
 );
 await symlink(

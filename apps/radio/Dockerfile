@@ -8,16 +8,17 @@ RUN apt-get update \
 
 WORKDIR /app
 
-COPY package.json package-lock.json .npmrc ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/radio/package.json ./apps/radio/
 COPY packages/identity/package.json ./packages/identity/
 COPY apps/radio/scripts/sync-icon-font.mjs ./apps/radio/scripts/
-RUN npm ci --workspace @harrhy/radio --include-workspace-root=false
+RUN pnpm --filter @harrhy/radio... install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/radio ./apps/radio
 COPY packages/identity ./packages/identity
 
-RUN NODE_ENV=production npm run build --workspace @harrhy/radio
+RUN NODE_ENV=production pnpm --filter @harrhy/radio run build
 
 FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*

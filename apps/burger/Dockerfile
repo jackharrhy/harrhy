@@ -1,14 +1,15 @@
 FROM node:26-bookworm AS build
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
-COPY package.json package-lock.json .npmrc ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/burger/package.json ./apps/burger/
 COPY packages/burger-core/package.json ./packages/burger-core/
-RUN npm ci --workspace @harrhy/burger --include-workspace-root=false
+RUN pnpm --filter @harrhy/burger... install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/burger ./apps/burger
 COPY packages/burger-core ./packages/burger-core
-RUN npm run build --workspace @harrhy/burger
+RUN pnpm --filter @harrhy/burger run build
 
 FROM oven/bun:1.4.4-slim AS runtime
 WORKDIR /app

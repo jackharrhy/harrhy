@@ -11,7 +11,7 @@ App runtime, plugins, public assets, original scripts and voice sidecar live dir
 - `src/hosts/dev-modules.ts`: local compatibility package path.
 - `plugins/terminals/daemon.ts`: local native daemon package path.
 - `plugins/prompt/worker.ts`: agent guidance points to Harrhy's retained guides and preserves upstream-compatible editing.
-- `__tests__/p2/web-sources.test.ts`: path-mapped source-resolution comparison.
+- `__tests__/p2/web-sources.test.ts`: builds the base bundle and checks that no compatibility package resolves through `dist/`.
 
 Harrhy-only adapters live in `harrhy/`. Root/app TypeScript and npm manifests express the same source aliases and isolated dependency identities in the new topology. The nested lock is derived from the pinned source lock and reconciled for the moved workspaces; dependencies are installed without lifecycle scripts. TypeScript 5.9 checks the app; the retained compatibility build toolchain is separate. Root marked 18.0.11 and app-local marked 18.0.14 preserve the original type boundary.
 

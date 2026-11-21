@@ -137,7 +137,7 @@ const idleTick = () => {
 
 const SERVER_PORT = Number(process.env.PORT ?? 5000);
 
-const server = createServer({
+const server = await createServer({
   port: SERVER_PORT,
   world,
   db,

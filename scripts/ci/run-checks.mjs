@@ -7,7 +7,7 @@ for (const { name, script } of planChecks(selected, workspaces)) {
   console.log(
     `\n${script === "check" ? "Checking" : "Building dependency"} ${name}`,
   );
-  const result = spawnSync("npm", ["run", script, "--workspace", name], {
+  const result = spawnSync("pnpm", ["--filter", name, "run", script], {
     stdio: "inherit",
   });
   if (result.status !== 0) {

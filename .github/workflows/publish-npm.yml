@@ -30,14 +30,15 @@ jobs:
           node-version-file: .nvmrc
           registry-url: https://registry.npmjs.org
           package-manager-cache: false
-      - run: npm ci --allow-remote=all
-      - run: npm run tooling:check
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run tooling:check
       - env:
           PACKAGE: ${{ inputs.package }}
         run: |
-          npm run check --workspace "$PACKAGE"
-          npm run build --workspace "$PACKAGE"
-          npm pack --dry-run --json --workspace "$PACKAGE" > "$RUNNER_TEMP/package.json"
+          pnpm --filter "$PACKAGE" --fail-if-no-match run check
+          pnpm --filter "$PACKAGE" --fail-if-no-match run build
+          pnpm --filter "$PACKAGE" --fail-if-no-match exec npm pack --dry-run --json > "$RUNNER_TEMP/package.json"
           PACKAGE="$PACKAGE" node --input-type=module -e '
             import { readFileSync } from "node:fs";
             const [packed] = JSON.parse(readFileSync(process.argv[1], "utf8"));
@@ -45,4 +46,4 @@ jobs:
           ' "$RUNNER_TEMP/package.json"
       - env:
           PACKAGE: ${{ inputs.package }}
-        run: npm publish --workspace "$PACKAGE" --access public --provenance
+        run: pnpm --filter "$PACKAGE" --fail-if-no-match exec npm publish --access public --provenance
