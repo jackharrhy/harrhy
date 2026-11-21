@@ -163,10 +163,17 @@ impl Supervisor {
             .collect())
     }
 
-    fn caddy_config(&self, ready: &Routes) -> Value {
+    pub(super) fn caddy_config(&self, ready: &Routes) -> Value {
         let mut routes: Vec<_> = ready.iter().map(|name| {
             let spec = &self.config.apps[name];
-            json!({"match":[{"host":[spec.host]}], "terminal":true, "handle":[{"handler":"reverse_proxy", "upstreams":[{"dial":format!("127.0.0.1:{}", spec.port)}]}]})
+            let mut proxy = json!({"handler":"reverse_proxy", "upstreams":[{"dial":format!("127.0.0.1:{}", spec.port)}]});
+            if name == "slides" {
+                // The private gateway terminates TLS; Slides validates its native auth origin.
+                proxy["headers"] = json!({"request":{"set":{
+                    "X-Forwarded-Proto":["https"], "X-Forwarded-Host":[spec.host]
+                }}});
+            }
+            json!({"match":[{"host":[spec.host]}], "terminal":true, "handle":[proxy]})
         }).collect();
         routes.push(json!({"handle":[{"handler":"static_response", "status_code":404}]}));
         let mut config = self.base.clone();

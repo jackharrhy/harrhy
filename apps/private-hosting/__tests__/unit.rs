@@ -42,3 +42,24 @@ fn sqlite_remembers_atlas_stop_but_not_demo_start() -> Result<()> {
     assert!(Supervisor::new(config(), root, root)?.wanted()?.is_empty());
     Ok(())
 }
+
+#[test]
+fn regenerated_routes_restore_only_slides_forwarded_origin() -> Result<()> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path();
+    let mut config = registry(root);
+    config["apps"]["slides"] = json!({"host":"slides.test", "port":21394});
+    let supervisor = Supervisor::new(serde_json::from_value(config)?, root, root)?;
+    let config = supervisor.caddy_config(&supervisor.wanted()?);
+    let routes = &config["apps"]["http"]["servers"]["private"]["routes"];
+    assert!(routes[0]["handle"][0].get("headers").is_none());
+    let slides = &routes[1];
+    assert_eq!(slides["match"][0]["host"], json!(["slides.test"]));
+    assert_eq!(
+        slides["handle"][0]["headers"]["request"]["set"],
+        json!({
+            "X-Forwarded-Proto":["https"], "X-Forwarded-Host":["slides.test"]
+        })
+    );
+    Ok(())
+}
