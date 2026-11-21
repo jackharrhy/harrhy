@@ -10,6 +10,7 @@ import type { RefMcpAccess } from "./auth.ts";
 
 const uuidSchema = { type: "string", format: "uuid" };
 const board = { boardId: uuidSchema };
+const exportId = /^[a-zA-Z0-9_-]{1,128}$/;
 const geometry = {
   x: { type: "number", minimum: -1_000_000, maximum: 1_000_000 },
   y: { type: "number", minimum: -1_000_000, maximum: 1_000_000 },
@@ -50,6 +51,18 @@ function tool(
 }
 const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
   tools: [
+    tool(
+      "export_start",
+      "Build an archive of all shared Ref boards and media. Poll export_status with the returned id; retries may start another build.",
+      {},
+      { idempotentHint: false },
+    ),
+    tool(
+      "export_status",
+      "Check your export. When ready, fetch downloadUrl with the same fresh archive bearer. The URL alone grants no access.",
+      { id: { type: "string", pattern: exportId.source } },
+      { readOnlyHint: true },
+    ),
     tool(
       "boards_list",
       "List the shared boards visible to all approved Ref members.",
@@ -143,9 +156,11 @@ if (catalog.issues) throw new Error("Invalid Ref MCP catalog");
 const refTools = catalog.value.tools;
 const readTools = new Set(["boards_list", "board_get", "asset_get"]);
 export function toolsFor(access: RefMcpAccess) {
-  return refTools.filter((t) =>
-    readTools.has(t.name) ? access.canRead : access.canWrite,
-  );
+  return refTools.filter((t) => {
+    if (t.name === "export_start" || t.name === "export_status")
+      return access.canExport === true;
+    return readTools.has(t.name) ? access.canRead : access.canWrite;
+  });
 }
 function string(
   args: Record<string, unknown>,
@@ -209,6 +224,26 @@ export async function callRefTool(
   )
     return failure("Tool input is invalid");
   try {
+    if (name === "export_start" || name === "export_status") {
+      let job;
+      if (name === "export_start") {
+        job = await runtime.exports.start(access.subject);
+      } else {
+        if (typeof args.id !== "string" || !exportId.test(args.id))
+          return failure("Invalid export id");
+        job = await runtime.exports.status(access.subject, args.id);
+      }
+      if (!job) return failure("Export unavailable");
+      if (!exportId.test(job.id)) throw new Error("Invalid export identifier");
+      return success({
+        id: job.id,
+        state: job.state,
+        expiresAt: job.expiresAt,
+        ...(job.state === "ready"
+          ? { downloadUrl: `${origin}/api/archive/exports/${job.id}/download` }
+          : {}),
+      });
+    }
     if (name === "boards_list") {
       const boards = await runtime.directory.listBoards();
       log?.set({ "boards.count": boards.length, "mcp.outcome": "ok" });

@@ -82,6 +82,47 @@ test("Ref delegation keeps board and archive permission families separate", () =
   );
 });
 
+test("archive export consent is delegated-client authorization, not per-export approval", async () => {
+  const current = request("admin", ["archive-read"]);
+  // Auth resolves a registered client first, even for identical requested scopes.
+  const direct = authorizationForRequest([app], {
+    ...current,
+    clientId: app.clientIds[0],
+  });
+  assert.equal(direct.consent, false);
+  assert.deepEqual(direct.anyRoles, app.clientRoleRequirements[app.clientIds[0]]);
+
+  const session = { userId: "admin-fixture" };
+  let roles = ["admin", "archive-read"];
+  const decisions = [];
+  const actions = createAuthorizationActions({
+    applications: [app],
+    api: async (_path, options) => {
+      if (!options) return { authRequest: current };
+      decisions.push(options.body.error ? "deny" : "allow");
+      return { callbackUrl: current.redirectUri };
+    },
+    grants: async () => [{
+      userId: session.userId,
+      state: "USER_GRANT_STATE_ACTIVE",
+      roleKeys: roles,
+    }],
+  });
+  await assert.rejects(actions.complete("first", session, "approve"), { status: 400 });
+  const intent = await actions.view("first", session);
+  assert.equal(intent.consent, true);
+  assert.deepEqual(intent.roles, ["admin", "archive-read"]);
+  await assert.rejects(actions.complete("first", session, "approve", true), { status: 400 });
+  roles = ["admin"];
+  await assert.rejects(actions.complete("first", session, "approve"), { status: 403 });
+  assert.deepEqual(decisions, []);
+  roles = ["admin", "archive-read"];
+  await actions.complete("first", session, "deny");
+  await actions.view("second", session);
+  await actions.complete("second", session, "approve");
+  assert.deepEqual(decisions, ["deny", "allow"]);
+});
+
 test("Ref board consent requires every real operation grant, not just requested scope text", async () => {
   const current = request("member", ["boards-read", "boards-write"]);
   let roles = ["member", "boards-read"];
