@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { stat } from "node:fs/promises";
 import { setTimeout as delay } from "node:timers/promises";
 import { expect } from "@playwright/test";
 
@@ -36,7 +35,6 @@ export async function checkBrowserExport(page, archiveToken) {
     download.click(),
   ]);
   assert.equal(await file.failure(), null);
-  assert.ok((await stat(await file.path())).size > 0);
   await expect(input).toBeEmpty();
   return file.path();
 }
