@@ -1,12 +1,17 @@
 import type { Box } from "@harrhy/board/geometry";
 import type { Row } from "./session-state.ts";
 
+export type OverviewRow = Pick<
+  Row,
+  "id" | "title" | "createdAt" | "main" | "branches"
+>;
+
 interface Node extends Box {
   id: string;
   title: string;
   detail: string;
 }
-export function layoutOverview(rows: readonly Row[]) {
+export function layoutOverview(rows: readonly OverviewRow[]) {
   const nodes: Node[] = [],
     edges: { from: Node; to: Node }[] = [];
   let y = 0;

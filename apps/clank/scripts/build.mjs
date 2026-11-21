@@ -23,3 +23,11 @@ await build({
 });
 
 await copyFile("standalone.jsonc", ".celld/standalone/wrangler.jsonc");
+
+await build({
+  entryPoints: ["read-only/client.tsx"],
+  bundle: true,
+  format: "esm",
+  minify: true,
+  outfile: ".celld/read-only/client.js",
+});

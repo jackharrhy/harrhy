@@ -4,6 +4,8 @@ Standalone Clank is a Remix 3 session list and read-only Overview for a disposab
 
 **Show overview** maps active sessions and their reported conversations. A session connects to branches without a reported parent; fork lines require both conversations in the same row. Selecting, fitting, panning and zooming are local; Overview reads the existing provider and does not issue commands. Use the list for text details and edits.
 
+For an existing Pi, use the separate [owner-only read-only connector and SSH runbook](../../docs/clank/read-only-overview.md). Never point the mutable fixture bridge at it.
+
 ## Standalone fixture
 
 - `standalone.tsx` serves the document, hydrated component bundle and authorized `/live` upgrade. `app/session-api.ts` is the browser-facing Cap’n Web contract (one typed watch and three epoch-scoped commands). `app/session-cell.ts` terminates that session and owns a separate private RPC socket to the fixture adapter. `bridge.ts` runs **inside the disposable Node Pi process**, never inside Celld or the browser. Pi data is authoritative.
