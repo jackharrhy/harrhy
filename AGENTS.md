@@ -39,6 +39,10 @@ Keep Markdown tables unpadded and put `<!-- prettier-ignore -->` immediately bef
 
 Apps import packages; packages must not import apps. Use Remix 3 for app routing, controllers, middleware, and UI. Read the [Remix skill](.agents/skills/remix/SKILL.md) and relevant installed guides before changing framework behavior. Put Node and Cloudflare runtime rules in the relevant workspace guide.
 
+Write first-party application source and tests in TypeScript (`.ts`, or `.tsx` for JSX). Use TypeScript directly rather than adding JSDoc types to JavaScript in a TypeScript workspace. Keep new app code inside the workspace's `tsconfig.json` and its typecheck. Use JavaScript only where a tool, runtime, or external consumer actually expects it; explain that exception in the workspace guide. Leave generated and imported code in its existing format.
+
+For a new app, use `apps/<name>` and `@harrhy/<name>`. Start from the nearest existing Remix app with the same runtime. Follow its route, controller, and entry-point layout; declare dependencies in the app's `package.json` and use pnpm from the repository root. Include typechecking and relevant tests in the workspace `check` script rather than adding a separate CI job by default.
+
 Prefix first-party environment settings with `HARRHY_`; use `HARRHY_AUTH_*` for Auth integration and an app-specific prefix where settings differ. Preserve platform and third-party environment contracts. Coordinate existing setting renames with their deployed consumers; never rename secret values or silently change runtime behavior.
 
 Keep Auth entry links and session-changing forms native with Remix's `data-rmx-document` attribute. Same-origin routes can redirect to another origin; they must not be fetched as frame navigation. Shared `ButtonLink` forwards this attribute. Keep ordinary internal navigation client-side; follow [the document navigation guide](docs/remix-navigation.md) and test actual hydrated clicks, not just rendered markup.
