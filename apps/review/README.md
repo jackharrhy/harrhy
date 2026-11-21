@@ -7,9 +7,9 @@ A local inbox for reviewing synthetic Git diffs. `review submit` resolves two co
 Use Node.js 26.13+ and the [qualified Celld binary](../../docs/celld-runtime.md#native-use). From the Harrhy root:
 
 ```sh
-npm ci
+pnpm install --frozen-lockfile
 export HARRHY_REVIEW_CELLD_BIN=/absolute/path/to/qualified/celld
-npm run dev -w @harrhy/review
+pnpm --filter @harrhy/review dev
 ```
 
 Open <http://127.0.0.1:9867>. From a **synthetic** Git checkout, run the workspace's CLI (use its absolute path, or `review` if it is on `PATH`):
@@ -42,8 +42,8 @@ The managed gateway integration can set `HARRHY_REVIEW_BROWSER_ORIGIN` to one ex
 ## Checks
 
 ```sh
-npm run check -w @harrhy/review
-npm run smoke -w @harrhy/review
+pnpm --filter @harrhy/review check
+pnpm --filter @harrhy/review smoke
 ```
 
-The smoke requires the same Celld binary and Playwright Chromium (`npx playwright install chromium`). It runs on an ephemeral loopback port with a disposable store and synthetic Git repository. It exercises CLI and browser rename, untitled reviews, comment workflows, and persistence after a Celld restart.
+The smoke requires the same Celld binary and Playwright Chromium (`pnpm --filter @harrhy/review exec playwright install chromium`). It runs on an ephemeral loopback port with a disposable store and synthetic Git repository. It exercises CLI and browser rename, untitled reviews, comment workflows, and persistence after a Celld restart.

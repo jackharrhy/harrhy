@@ -8,14 +8,14 @@
   },
   "scripts": {
     "build": "node build.mjs",
-    "dev": "npm run build && node dev.mjs",
-    "check": "npm run build && npm run types && tsrs --noEmit && tsrs -p tsconfig.browser.json",
+    "dev": "pnpm run build && node dev.mjs",
+    "check": "pnpm run build && pnpm run types && tsrs --noEmit && tsrs -p tsconfig.browser.json",
     "types": "wrangler types worker-configuration.d.ts",
-    "smoke": "npm run build && node __tests__/smoke.mjs"
+    "smoke": "pnpm run build && node __tests__/smoke.mjs"
   },
   "dependencies": {
-    "@harrhy/request-body": "0.1.0",
-    "@harrhy/ui": "0.1.0",
+    "@harrhy/request-body": "workspace:*",
+    "@harrhy/ui": "workspace:*",
     "@pierre/diffs": "^1.6.4",
     "remix": "3.2.0"
   },

@@ -52,7 +52,7 @@ async function start() {
     {
       env: {
         ...process.env,
-        CELLD_ESBUILD: resolve("../../node_modules/.bin/esbuild"),
+        CELLD_ESBUILD: resolve("node_modules/.bin/esbuild"),
       },
       stdio: ["ignore", "pipe", "pipe"],
     },
