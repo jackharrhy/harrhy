@@ -15,7 +15,11 @@ export async function startDoodleGallery() {
   const origin = `http://127.0.0.1:${port}`;
   const server = spawn(
     process.execPath,
-    [fileURLToPath(new URL("../../tools/doodle-gallery/server.mjs", import.meta.url))],
+    [
+      fileURLToPath(
+        new URL("../../tools/doodle-gallery/server.mjs", import.meta.url),
+      ),
+    ],
     {
       env: {
         ...process.env,

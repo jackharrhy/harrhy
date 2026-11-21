@@ -44,14 +44,17 @@ test("forwarded authorization policy enforces PKCE and reports the staged client
     },
     200,
   );
-  const [stagedClient, boundary] = Object.entries(fourm.authRequestNotBefore)[0];
+  const [stagedClient, boundary] = Object.entries(
+    fourm.authRequestNotBefore,
+  )[0];
   const staged = await send(router, path, forwarded(stagedClient), 400);
   assert.equal(staged.headers.get("x-jack-auth-not-before"), boundary);
 });
 
 test("enrollment completion requires POST and bearer proof and accepts no nominated project", async () => {
   const enrollmentKey = "fixture-only-enrollment-key".repeat(3);
-  const unexpected = () => assert.fail("Rejected input must not reach upstream");
+  const unexpected = () =>
+    assert.fail("Rejected input must not reach upstream");
   const enrollmentCompletion = createEnrollmentCompletion({
     api: unexpected,
     request: unexpected,
@@ -60,9 +63,17 @@ test("enrollment completion requires POST and bearer proof and accepts no nomina
     organizationId: "fixture",
     key: enrollmentKey,
   });
-  const router = createApiRouter({ enrollmentCompletion, enrollmentKey, applications, origin });
+  const router = createApiRouter({
+    enrollmentCompletion,
+    enrollmentKey,
+    applications,
+    origin,
+  });
   const path = "/enroll/complete";
-  const event = { requestId: "request_12345678901234567890", subject: "fixture-user" };
+  const event = {
+    requestId: "request_12345678901234567890",
+    subject: "fixture-user",
+  };
   const post = (body, headers) => ({
     method: "POST",
     headers: { "content-type": "application/json", ...headers },

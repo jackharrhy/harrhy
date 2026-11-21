@@ -317,12 +317,17 @@ try {
         .evaluate((style) => style.nonce);
       assert(styleNonce);
       assert(
-        loginResponse.headers()["content-security-policy"].includes(`'nonce-${styleNonce}'`),
+        loginResponse
+          .headers()
+          ["content-security-policy"].includes(`'nonce-${styleNonce}'`),
       );
       await page.locator("[name=username]").fill("fixture-user-fourm");
       await page.locator("[name=password]").fill("wrong");
       await page.getByRole("button", { name: "Sign in", exact: true }).click();
-      assert.match(await page.locator("[role=alert]").innerText(), /Sign-in failed/);
+      assert.match(
+        await page.locator("[role=alert]").innerText(),
+        /Sign-in failed/,
+      );
     }
     await page.locator("[name=username]").fill("fixture-user-" + app.id);
     await page.locator("[name=password]").fill("fixture-password");
@@ -344,7 +349,10 @@ try {
       const attempts = credentialAttempts;
       await page.goto(`${origin}/login?authRequest=existing-session-probe`);
       await page.waitForURL(`${callbackOrigin}/callback?**`, { timeout: 5000 });
-      assert.equal(await page.locator("h1").innerText(), "Consumer session established");
+      assert.equal(
+        await page.locator("h1").innerText(),
+        "Consumer session established",
+      );
       assert.equal(credentialAttempts, attempts);
       silent = false;
     }
@@ -393,9 +401,7 @@ try {
       delegated = false;
     }
     await context.close();
-    console.log(
-      `PASS ${app.id}: native login and callback`,
-    );
+    console.log(`PASS ${app.id}: native login and callback`);
   }
   currentClient = applications.find((app) => app.id === "artbin").clientIds[0];
   const beforeFreshness = completions;

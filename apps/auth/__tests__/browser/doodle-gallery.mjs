@@ -60,13 +60,12 @@ try {
   await page.getByLabel("Silk", { exact: true }).check();
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await page.getByText("Saved", { exact: true }).waitFor();
-  assert.deepEqual(
-    JSON.parse(await readFile(poolFile, "utf8")).enabled,
-    ["silk", "silk-braid"],
-  );
+  assert.deepEqual(JSON.parse(await readFile(poolFile, "utf8")).enabled, [
+    "silk",
+    "silk-braid",
+  ]);
   assert.equal(
-    JSON.parse(await readFile(poolFile, "utf8")).settings.silk
-      .color,
+    JSON.parse(await readFile(poolFile, "utf8")).settings.silk.color,
     1.65,
   );
   await page.reload();
