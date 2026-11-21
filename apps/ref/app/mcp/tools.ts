@@ -59,7 +59,7 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
     ),
     tool(
       "export_status",
-      "Check your export. When ready, fetch downloadUrl with the same fresh archive bearer. The URL alone grants no access.",
+      "Check your export. When ready, fetch downloadUrl with the same authorized bearer. The URL alone grants no access.",
       { id: { type: "string", pattern: exportId.source } },
       { readOnlyHint: true },
     ),
@@ -154,13 +154,17 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
 });
 if (catalog.issues) throw new Error("Invalid Ref MCP catalog");
 const refTools = catalog.value.tools;
-const readTools = new Set(["boards_list", "board_get", "asset_get"]);
+const readTools = new Set([
+  "boards_list",
+  "board_get",
+  "asset_get",
+  "export_start",
+  "export_status",
+]);
 export function toolsFor(access: RefMcpAccess) {
-  return refTools.filter((t) => {
-    if (t.name === "export_start" || t.name === "export_status")
-      return access.canExport === true;
-    return readTools.has(t.name) ? access.canRead : access.canWrite;
-  });
+  return refTools.filter((t) =>
+    readTools.has(t.name) ? access.canRead : access.canWrite,
+  );
 }
 function string(
   args: Record<string, unknown>,

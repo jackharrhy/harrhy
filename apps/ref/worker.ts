@@ -5,13 +5,12 @@ import { ExportCell } from "./app/data/export-cell.ts";
 import { createRuntime } from "./app/data/runtime.ts";
 import { readSessionCookie } from "./app/middleware/session.ts";
 import { createAppRouter } from "./app/router.ts";
-import { authorizeArchive } from "./app/middleware/archive-auth.ts";
+import {
+  authorizeArchive,
+  authorizeArchiveExport,
+} from "./app/middleware/archive-auth.ts";
 import {
   authorizeRefMcp,
-  archiveMcpMetadataPath,
-  archiveMcpMetadata,
-  archiveMcpPath,
-  authorizeArchiveMcp,
   mcpScopes,
   mcpAuthError,
   type RefMcpAccess,
@@ -90,20 +89,11 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
   }
   const onAlternate =
     alternate === url.origin && alternate !== publicOrigin.origin;
-  const archiveMcp = url.pathname === archiveMcpPath;
   if (
-    (archiveMcp ||
-      url.pathname === archiveMcpMetadataPath ||
-      url.pathname.startsWith("/api/archive/exports")) &&
+    url.pathname.startsWith("/api/archive/exports") &&
     url.origin !== publicOrigin.origin
   )
     return new Response("Use the canonical Ref origin", { status: 421 });
-  if (url.pathname === archiveMcpMetadataPath)
-    return archiveMcpMetadata(
-      publicOrigin.origin,
-      env.AUTH_ISSUER,
-      env.AUTH_PROJECT_ID,
-    );
   if (url.pathname === "/.well-known/oauth-protected-resource/mcp") {
     return Response.json(
       {
@@ -156,15 +146,12 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
           }
         : null;
     let mcpAccess: RefMcpAccess | null = null;
-    if (url.pathname === "/mcp" || archiveMcp) {
+    if (url.pathname === "/mcp") {
       if (!bearer?.startsWith("Bearer "))
         return mcpAuthError(
           env.AUTH_PUBLIC_ORIGIN,
           401,
           "Ref MCP bearer authorization is required",
-          archiveMcp
-            ? { projectId: env.AUTH_PROJECT_ID, missingBearer: true }
-            : undefined,
         );
       if (!introspection)
         return mcpAuthError(
@@ -177,19 +164,12 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
           bearer.slice(7),
           introspection,
         );
-        mcpAccess = archiveMcp
-          ? authorizeArchiveMcp(
-              principal,
-              env.AUTH_PROJECT_ID,
-              env.AUTH_CLIENT_ID,
-            )
-          : authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
+        mcpAccess = authorizeRefMcp(principal, env.AUTH_PROJECT_ID);
       } catch (error) {
         return mcpAuthError(
           env.AUTH_PUBLIC_ORIGIN,
           error instanceof IdentityError ? error.status : 503,
           "Ref MCP authorization failed",
-          archiveMcp ? { projectId: env.AUTH_PROJECT_ID } : undefined,
         );
       }
     }
@@ -221,15 +201,19 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
         const boardGrant =
           principal.scopes.has(roleScope("boards-read")) ||
           principal.scopes.has(roleScope("boards-write"));
-        if (!archive && boardGrant) {
+        const exportDownload =
+          request.method === "GET" &&
+          /^\/api\/archive\/exports\/[^/]+\/download$/.test(url.pathname);
+        if (boardGrant && (!archive || exportDownload)) {
           if (!authorizeRefMcp(principal, env.AUTH_PROJECT_ID).canRead)
             throw new IdentityError(
               "Ref board read authorization is required",
               403,
             );
+          if (exportDownload) archiveSubject = principal.subject;
         } else {
           if (url.pathname.startsWith("/api/archive/exports"))
-            authorizeArchiveMcp(
+            authorizeArchiveExport(
               principal,
               env.AUTH_PROJECT_ID,
               env.AUTH_CLIENT_ID,
@@ -264,7 +248,7 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
       token,
       {
         config,
-        origin: onAlternate ? url.origin : publicOrigin.origin,
+        origin: onAlternate && !mcpAccess ? url.origin : publicOrigin.origin,
         onAlternate,
       },
       mcpAccess,

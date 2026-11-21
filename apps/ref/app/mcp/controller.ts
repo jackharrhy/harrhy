@@ -1,8 +1,6 @@
 import { bindLogContext, currentLog } from "@harrhy/logger";
 import { openLinkedJob } from "../logging.ts";
-import { get, post, route } from "remix/routes";
 import type { AppContext } from "../router.ts";
-import { archiveMcpPath } from "./auth.ts";
 import { createController } from "remix/router";
 import { createNativeHandler, Server } from "@harrhy/mcp";
 import { AppRuntime, AppIdentity, McpAccess } from "../data/runtime.ts";
@@ -22,12 +20,6 @@ const actions = {
       return new Response("Bearer authorization required", { status: 401 });
     const runtime = context.get(AppRuntime)!;
     const identity = context.get(AppIdentity)!;
-    const archive = new URL(context.request.url).pathname === archiveMcpPath;
-    if (
-      archive !== (access.canExport === true) ||
-      (archive && identity.onAlternate)
-    )
-      return new Response("Forbidden", { status: 403 });
     const origin = identity.origin;
     const handler = createNativeHandler(
       () => {
@@ -78,11 +70,3 @@ const actions = {
 };
 
 export default createController(routes.mcp, { actions });
-
-export const archiveMcpRoutes = route({
-  endpointGet: get(archiveMcpPath),
-  endpoint: post(archiveMcpPath),
-});
-export const archiveMcpController = createController(archiveMcpRoutes, {
-  actions,
-});

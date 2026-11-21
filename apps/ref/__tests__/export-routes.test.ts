@@ -97,5 +97,43 @@ it("passes only the freshly authorized subject to the singleton for every export
     ["main"],
     ["main"],
   ]);
-  expect(introspect).toHaveBeenCalledTimes(5);
+  const reader = {
+    ...principal,
+    subject: "board-reader",
+    roles: new Set(["member", "boards-read"]),
+    scopes: new Set([
+      "openid",
+      projectAudienceScope("project"),
+      PROJECT_ROLES_SCOPE,
+      roleScope("member"),
+      roleScope("boards-read"),
+    ]),
+  };
+  introspect.mockResolvedValue(reader);
+  expect((await request(download, "GET")).status).toBe(200);
+  expect(service.readPage).toHaveBeenLastCalledWith(reader.subject, job.id, 1);
+  for (const [path, method] of [
+    [jobs, "POST"],
+    [status, "GET"],
+    ["/api/archive/boards", "GET"],
+    ["/api/archive/boards", "POST"],
+  ]) {
+    expect((await request(path, method)).status).toBe(403);
+  }
+  service.readPage.mockClear();
+  // Same token/subject, but the issuer no longer confirms the read grant.
+  introspect.mockResolvedValue({ ...reader, roles: new Set(["member"]) });
+  expect((await request(download, "GET")).status).toBe(403);
+  expect((await request("/mcp", "POST")).status).toBe(403);
+  introspect.mockResolvedValue({
+    ...reader,
+    roles: new Set(["member", "boards-write"]),
+    scopes: new Set(
+      [...reader.scopes]
+        .filter((scope) => scope !== roleScope("boards-read"))
+        .concat(roleScope("boards-write")),
+    ),
+  });
+  expect((await request(download, "GET")).status).toBe(403);
+  expect(service.readPage).not.toHaveBeenCalled();
 });
