@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -58,7 +58,7 @@ test("Garden selects an npmrc-only merge diff and falls back safely", (t) => {
   const head = git("rev-parse", "HEAD");
   const script = ci
     .split("        id: image_paths\n")[1]
-    .split("\n  check:")[0]
+    .split("\n      - id: plan")[0]
     .split("        run: |\n")[1]
     .replace(/^ {10}/gm, "");
   const output = join(cwd, "outputs");
@@ -79,4 +79,143 @@ test("Garden selects an npmrc-only merge diff and falls back safely", (t) => {
   assert.ok(select(base, base).includes("garden=false"));
   assert.ok(select("missing", head).includes("garden=true"));
   assert.ok(select(base, head, "push").includes("garden=false"));
+});
+
+test("job plan emits only nonempty matrices and rejects invalid selector output", (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), "ci-job-plan-"));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  const output = join(cwd, "outputs");
+  const summary = join(cwd, "summary");
+  const plan = (overrides = {}) => {
+    writeFileSync(output, "");
+    writeFileSync(summary, "");
+    return spawnSync(
+      process.execPath,
+      [new URL("../plan-jobs.mjs", import.meta.url).pathname],
+      {
+        env: {
+          ...process.env,
+          CHECK: "false",
+          NODE_APPS: "[]",
+          RUNTIME_IMAGES: "false",
+          GARDEN: "false",
+          HARRY_SLUGGERS: "false",
+          GITHUB_OUTPUT: output,
+          GITHUB_STEP_SUMMARY: summary,
+          ...overrides,
+        },
+        encoding: "utf8",
+      },
+    );
+  };
+  const readOutputs = () =>
+    Object.fromEntries(
+      readFileSync(output, "utf8")
+        .trim()
+        .split("\n")
+        .map((line) => {
+          const [key, json] = line.split("=");
+          return [key, JSON.parse(json)];
+        }),
+    );
+  const empty = plan();
+  assert.equal(empty.status, 0, empty.stderr);
+  assert.deepEqual(readOutputs(), {
+    jobs: {
+      check: false,
+      "node-images": false,
+      "selected-images": false,
+      "garden-image": false,
+      "harry-sluggers-image": false,
+    },
+  });
+  assert.match(
+    readFileSync(summary, "utf8"),
+    /Jobs omitted: check, node-images, selected-images, garden-image, harry-sluggers-image/,
+  );
+  const selected = plan({
+    CHECK: "true",
+    NODE_APPS: '["maps-compiler"]',
+    RUNTIME_IMAGES: "true",
+    GARDEN: "true",
+  });
+  assert.equal(selected.status, 0, selected.stderr);
+  assert.deepEqual(readOutputs(), {
+    jobs: {
+      check: true,
+      "node-images": true,
+      "selected-images": true,
+      "garden-image": true,
+      "harry-sluggers-image": false,
+    },
+    node_matrix: { app: ["maps-compiler"] },
+    runtime_matrix: {
+      app: [
+        "ref",
+        "radio",
+        "worldview",
+        "maps-collaboration",
+        "burger",
+        "gurgur",
+        "pool",
+      ],
+    },
+  });
+  for (const invalid of [
+    { NODE_APPS: "" },
+    { NODE_APPS: '["unknown"]' },
+    { GARDEN: "" },
+  ]) {
+    assert.equal(plan(invalid).status, 1);
+    assert.equal(readFileSync(output, "utf8"), "");
+  }
+});
+
+test("CI gate accepts only successful selected jobs and intentional skips", () => {
+  const script = ci
+    .split("\n  gate:")[1]
+    .split("        run: |\n")[1]
+    .replace(/^ {10}/gm, "");
+  const jobPlan = {
+    check: true,
+    "node-images": true,
+    "selected-images": false,
+    "garden-image": false,
+    "harry-sluggers-image": false,
+  };
+  const needs = {
+    select: { result: "success", outputs: { jobs: JSON.stringify(jobPlan) } },
+    workflows: { result: "success" },
+    ...Object.fromEntries(
+      Object.entries(jobPlan).map(([job, selected]) => [
+        job,
+        { result: selected ? "success" : "skipped" },
+      ]),
+    ),
+  };
+  const gate = (overrides = {}) =>
+    spawnSync("bash", ["-e", "-c", script], {
+      env: {
+        ...process.env,
+        RESULTS: JSON.stringify({ ...needs, ...overrides }),
+      },
+    }).status;
+  assert.equal(gate(), 0);
+  for (const result of ["failure", "cancelled", "skipped"]) {
+    assert.notEqual(gate({ select: { ...needs.select, result } }), 0);
+    assert.notEqual(gate({ "node-images": { result } }), 0);
+    assert.notEqual(gate({ workflows: { result } }), 0);
+  }
+  assert.notEqual(gate({ "garden-image": { result: "cancelled" } }), 0);
+  for (const jobs of [
+    undefined,
+    "invalid",
+    "{}",
+    JSON.stringify({ ...jobPlan, check: "true" }),
+  ]) {
+    assert.notEqual(
+      gate({ select: { result: "success", outputs: { jobs } } }),
+      0,
+    );
+  }
 });

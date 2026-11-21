@@ -16,7 +16,6 @@ jobs:
     timeout-minutes: 5
     outputs:
       selected: ${{ steps.affected.outputs.selected }}
-      any: ${{ steps.affected.outputs.any }}
       browser: ${{ steps.affected.outputs.browser }}
       cms: ${{ steps.affected.outputs.cms }}
       ref: ${{ steps.affected.outputs.ref }}
@@ -25,10 +24,9 @@ jobs:
       burger: ${{ steps.affected.outputs.burger }}
       gurgur: ${{ steps.affected.outputs.gurgur }}
       maps_hosted: ${{ steps.affected.outputs.maps_hosted }}
-      node_apps: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.apps }}
-      runtime_images: ${{ steps.image_paths.outputs.runtime_images }}
-      garden: ${{ steps.image_paths.outputs.garden }}
-      harry_sluggers: ${{ steps.image_paths.outputs.harry_sluggers }}
+      jobs: ${{ steps.plan.outputs.jobs }}
+      node_matrix: ${{ steps.plan.outputs.node_matrix }}
+      runtime_matrix: ${{ steps.plan.outputs.runtime_matrix }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -84,8 +82,17 @@ jobs:
             pnpm-workspace.yaml apps/garden/ packages/ui/
           select_group harry_sluggers .dockerignore .npmrc package.json pnpm-lock.yaml \
             pnpm-workspace.yaml tsconfig.base.json apps/harry-sluggers/ packages/ui/
+      - id: plan
+        env:
+          CHECK: ${{ steps.affected.outputs.any }}
+          NODE_APPS: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.apps }}
+          RUNTIME_IMAGES: ${{ steps.image_paths.outputs.runtime_images }}
+          GARDEN: ${{ steps.image_paths.outputs.garden }}
+          HARRY_SLUGGERS: ${{ steps.image_paths.outputs.harry_sluggers }}
+        run: node scripts/ci/plan-jobs.mjs
   check:
     needs: select
+    if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['check']
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     env:
@@ -102,14 +109,11 @@ jobs:
         if: needs.select.outputs.pool == 'true' || needs.select.outputs.burger == 'true' || needs.select.outputs.gurgur == 'true' || contains(fromJSON(needs.select.outputs.selected), '@harrhy/lists')
         with:
           bun-version: 1.4.4
-      - if: needs.select.outputs.any == 'true'
-        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: true
-      - if: needs.select.outputs.any == 'true'
-        run: pnpm install --frozen-lockfile
-      - if: needs.select.outputs.any == 'true'
-        run: pnpm run ci:preflight
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run ci:preflight
       - name: Install Pi isolated browser prerequisites
         if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/pi')
         run: |
@@ -148,8 +152,7 @@ jobs:
         run: pnpm --filter @harrhy/pool-app exec playwright install --only-shell chromium
       - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
         run: pnpm --filter @harrhy/worldview exec playwright install --only-shell chromium
-      - if: needs.select.outputs.any == 'true'
-        env:
+      - env:
           SELECTED_CHECKS: ${{ needs.select.outputs.selected }}
         run: node scripts/ci/run-checks.mjs
       - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.cms == 'true'
@@ -231,125 +234,84 @@ jobs:
           uvx --from jactionlint==2.3.0 jactionlint --format github --strict-exit
   node-images:
     needs: select
+    if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['node-images']
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        app:
-          [
-            cms,
-            auth,
-            artbin,
-            letters-to-steve,
-            marky,
-            maps-service,
-            maps-compiler,
-            rotund,
-            8mb,
-          ]
+      matrix: ${{ fromJSON(needs.select.outputs.node_matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
         with:
           node-version-file: .nvmrc
       - name: Build production image
-        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
         env:
           APP: ${{ matrix.app }}
         run: docker build --tag tea-smoke --file "apps/$APP/Dockerfile" .
       - name: Check runtime, native modules, migrations and requests
-        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
         env:
           APP: ${{ matrix.app }}
         run: node scripts/ci/node-image-smoke.mjs "$APP" tea-smoke
       - name: Check Gower compiler configuration
-        if: matrix.app == 'maps-compiler' && contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
+        if: matrix.app == 'maps-compiler'
         run: node scripts/ci/node-image-smoke.mjs maps-compiler tea-smoke gower
-      - name: Report image selection
-        env:
-          APP: ${{ matrix.app }}
-          SELECTED: ${{ contains(fromJSON(needs.select.outputs.node_apps), matrix.app) }}
-        run: echo "$APP image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
   selected-images:
     needs: select
+    if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['selected-images']
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix:
-        app: [ref, radio, worldview, maps-collaboration, burger, gurgur, pool]
+      matrix: ${{ fromJSON(needs.select.outputs.runtime_matrix) }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.select.outputs.runtime_images == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.select.outputs.runtime_images == 'true'
         with:
           node-version-file: .nvmrc
       - name: Build production image
-        if: needs.select.outputs.runtime_images == 'true'
         env:
           APP: ${{ matrix.app }}
         run: docker build --tag selected-smoke --file "apps/$APP/Dockerfile" .
       - name: Check default CMD, assets, compiler, SQLite and restart
-        if: needs.select.outputs.runtime_images == 'true'
         env:
           APP: ${{ matrix.app }}
         run: node scripts/ci/selected-image-smoke.mjs "$APP" selected-smoke
-      - name: Report image selection
-        env:
-          SELECTED: ${{ needs.select.outputs.runtime_images }}
-        run: echo "Image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
   garden-image:
     needs: select
+    if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['garden-image']
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.select.outputs.garden == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: needs.select.outputs.garden == 'true'
         with:
           node-version-file: .nvmrc
       - run: docker build --tag garden-smoke --file apps/garden/Dockerfile .
-        if: needs.select.outputs.garden == 'true'
       - run: node apps/garden/__tests__/image-smoke.mjs garden-smoke
-        if: needs.select.outputs.garden == 'true'
-      - name: Report image selection
-        env:
-          SELECTED: ${{ needs.select.outputs.garden }}
-        run: echo "Image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
   harry-sluggers-image:
     needs: select
+    if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['harry-sluggers-image']
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: needs.select.outputs.harry_sluggers == 'true'
         with:
           persist-credentials: false
       - run: docker build -t harry-sluggers-check -f apps/harry-sluggers/Dockerfile .
-        if: needs.select.outputs.harry_sluggers == 'true'
       - name: Missing database configuration fails closed
-        if: needs.select.outputs.harry_sluggers == 'true'
         run: |
           if docker run --rm harry-sluggers-check > startup.log 2>&1; then
             echo "Unexpected startup without a database" >&2
             exit 1
           fi
           grep -q 'HARRHY_SLUGGERS_DATABASE_URL is required' startup.log
-      - name: Report image selection
-        env:
-          SELECTED: ${{ needs.select.outputs.harry_sluggers }}
-        run: echo "Image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
   gate:
     name: CI gate
     if: always()
@@ -367,9 +329,15 @@ jobs:
     timeout-minutes: 5
     permissions: {}
     steps:
-      - name: Require every validation job to succeed
+      - name: Require selected jobs to succeed and unselected jobs to skip
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
           jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$RESULTS"
-          jq -e 'all(.[]; .result == "success")' <<< "$RESULTS" > /dev/null
+          jq -e '
+            (.select.outputs.jobs | fromjson) as $jobs
+            | ($jobs | all(.[]; type == "boolean"))
+              and (map_values(.result) == ($jobs
+                | map_values(if . then "success" else "skipped" end)
+                | . + {select: "success", workflows: "success"}))
+          ' <<< "$RESULTS" > /dev/null
