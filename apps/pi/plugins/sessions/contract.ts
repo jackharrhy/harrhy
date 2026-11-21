@@ -219,7 +219,7 @@ const CatalogV4 = evolve(CatalogV3, (e) =>
  * The session catalog (server, the server store's table keyed by each session's address): every session, archived
  * ones included. Host-internal. 5: a branch's `parent`. The provider still serves 2, 3 and 4 (its `accepts`).
  */
-export const Catalog = evolve(CatalogV4, (e) =>
+const CatalogV5 = evolve(CatalogV4, (e) =>
 	e
 		.state("sessions", arr(SessionSchema))
 		.result("get", SessionSchema)
@@ -230,6 +230,10 @@ export const Catalog = evolve(CatalogV4, (e) =>
 			SessionSchema,
 		),
 );
+
+/** Full discovery candidates, independent of the bounded sidebar projection. */
+export const Catalog = evolve(CatalogV5, (e) => e.addMethod("openIds", obj({}), arr(str())));
+
 
 /**
  * Sessions as a principal sees them, before `/tree`: the base of the history (2: thinking levels are an enum;

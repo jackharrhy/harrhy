@@ -1,10 +1,15 @@
-import { createHash, timingSafeEqual } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage } from "node:http";
-import { pluginFile } from "@earendil-works/chord/plugins";
-import { arr, bool, compile, obj, opt, str } from "@earendil-works/pi-schema";
-import { contribute, defineFacet, isChordError } from "@p2/app/v1";
+import { compile, nul, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import {
+  defineFacet,
+  defineState,
+  forbidden,
+  isChordError,
+  isOwner,
+  local,
+  type Ctx,
+} from "@p2/app/v1";
 import {
   AddressedPolicies,
   PROXY_MARKER_HEADER,
@@ -14,21 +19,38 @@ import {
   WakeStore,
 } from "@p2/app/v1/server";
 
+import { AdminMethods, Grant, GrantFields, Hash, LocalInboxAdmin } from "./contract.ts";
+
 const prefix = "/api/local-inbox/v1";
 const peer = "local-inbox";
 const id = str({ minLength: 1, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" });
 const sessionId = str({
   pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
 });
-const sessions = arr(sessionId, { maxItems: 100 });
-const configSchema = compile(
-  obj({
-    revision: id,
-    discover: opt(sessions),
-    send: opt(obj({ sessions, familiar: opt(bool()) })),
-    receipts: opt(bool()),
+
+type Status = Static<typeof import("./contract.ts").Status>;
+type InboxMembers = {
+  status(): Promise<Status>;
+  provision(args: { grant: Static<typeof Grant>; bearerHash: string }, ctx: Ctx): Promise<Status>;
+  rotate(args: { bearerHash: string }, ctx: Ctx): Promise<Status>;
+  revoke(args: object, ctx: Ctx): Promise<Status>;
+};
+const Inbox = local("p2.local-inbox", { version: 1, params: {}, members: AdminMethods });
+const Saved = defineState("p2.local-inbox-grant", {
+  version: 1,
+  schema: obj({
+    active: union([
+      obj({
+        policy: obj({ ...GrantFields, revision: id, label: str() }),
+        bearerHash: Hash,
+      }),
+      nul(),
+    ]),
   }),
-);
+  initial: () => ({ active: null }),
+  persist: true,
+  checkpointWhen: () => true,
+});
 const eventSchema = compile(
   obj({
     eventId: id,
@@ -39,56 +61,59 @@ const eventSchema = compile(
 const idSchema = compile(id);
 
 export default defineFacet((host) => {
-  contribute(host, "p2.local-inbox", (self) => {
-    let config: unknown;
-    try {
-      config = JSON.parse(readFileSync(pluginFile("policy.json"), "utf8"));
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
-      throw new Error("Local inbox policy is unreadable or invalid");
-    }
-    if (!configSchema.check(config)) throw new Error("Invalid local inbox policy");
-    const credentialFile = pluginFile("bearer.sha256");
-    self.contribute(AddressedPolicies, { [peer]: { ...config, label: "Local inbox" } });
+  const disabledPolicy = { label: "Local inbox", revision: "disabled" };
+  host.serve(Inbox, (_params, self) => {
+    const saved = self.state(Saved);
+    self.contribute(AddressedPolicies, {
+      [peer]: () => saved.value.active?.policy ?? disabledPolicy,
+    });
+    const status = (): Status => {
+      const policy = saved.value.active?.policy;
+      if (!policy) return { enabled: false };
+      const { label: _label, revision, ...grant } = policy;
+      return { enabled: true, revision, grant };
+    };
+    const admin = {
+      status: async () => status(),
+      provision: async ({ grant, bearerHash }, ctx) => {
+        await saved.change((draft) => {
+          draft.active = {
+            policy: { ...grant, label: "Local inbox", revision: randomUUID() },
+            bearerHash,
+          };
+        }, ctx);
+        return status();
+      },
+      rotate: async ({ bearerHash }, ctx) => {
+        await saved.change((draft) => {
+          if (!draft.active) throw forbidden("No active inbox grant");
+          draft.active.bearerHash = bearerHash;
+        }, ctx);
+        return status();
+      },
+      revoke: async (_args, ctx) => {
+        await saved.change((draft) => {
+          draft.active = null;
+        }, ctx);
+        return status();
+      },
+    } satisfies InboxMembers;
     const handle =
       (operation: "targets" | "send" | "receipt"): RouteHandler =>
       async (request, response, { origin }, ctx) => {
         const reply = (status: number, value: unknown, headers: Record<string, string> = {}) =>
           sendJson(response, status, value, { "Cache-Control": "no-store", ...headers });
         if (
-          origin.remote ||
-          origin.relayShellOrigin !== undefined ||
-          origin.relayUser !== undefined ||
-          request.socket.remoteAddress !== "127.0.0.1" ||
+          !directLoopback(request, origin) ||
           !request.url?.startsWith(prefix + "/") ||
           Object.keys(request.headers).some(
-            (key) =>
-              [
-                "origin",
-                "referer",
-                "cookie",
-                "forwarded",
-                "via",
-                "proxy-authorization",
-                "proxy-connection",
-                PROXY_MARKER_HEADER,
-              ].includes(key) ||
-              key.startsWith("sec-fetch-") ||
-              key.startsWith("x-forwarded-"),
+            (key) => ["origin", "referer", "cookie"].includes(key) || key.startsWith("sec-fetch-"),
           )
         )
           return reply(403, { error: "Direct loopback client required" });
 
-        let expected: string;
-        try {
-          expected = (await readFile(credentialFile, "utf8")).trim();
-        } catch (error) {
-          return (error as NodeJS.ErrnoException).code === "ENOENT"
-            ? reply(404, { error: "Local inbox disabled" })
-            : reply(503, { error: "Local inbox credential unavailable" });
-        }
-        if (!/^[a-f0-9]{64}$/.test(expected))
-          return reply(503, { error: "Local inbox credential unavailable" });
+        const expected = saved.value.active?.bearerHash;
+        if (!expected) return reply(404, { error: "Local inbox disabled" });
         const authorization = request.headers.authorization?.match(/^Bearer ([a-f0-9]{64})$/i);
         if (
           !authorization ||
@@ -108,12 +133,18 @@ export default defineFacet((host) => {
           return reply(400, { error: "Use only the documented path and JSON body" });
         try {
           const store = await ctx.get(WakeStore, {});
-          if (operation === "targets")
-            return reply(200, { targets: await store.discoverAddressed({ peer }, ctx) });
+          if (operation === "targets") {
+            const targets = await store.discoverAddressed({ peer }, ctx);
+            if (saved.value.active?.bearerHash !== expected)
+              return reply(401, { error: "Credential changed" });
+            return reply(200, { targets });
+          }
           if (operation === "receipt") {
             const eventId = url.pathname.slice((prefix + "/receipts/").length);
             if (!idSchema.check(eventId)) return reply(400, { error: "Invalid event ID" });
             const result = await store.receiptAddressed({ peer, eventId }, ctx);
+            if (saved.value.active?.bearerHash !== expected)
+              return reply(401, { error: "Credential changed" });
             return reply(result.state === "missing" ? 404 : 200, result);
           }
           if (
@@ -133,6 +164,8 @@ export default defineFacet((host) => {
             return reply(400, {
               error: "Expected eventId, optional session ID and text of 1–32768 bytes",
             });
+          if (saved.value.active?.bearerHash !== expected)
+            return reply(401, { error: "Credential changed" });
           const result = await store.sendAddressed({ ...event, peer }, ctx);
           return reply(
             result.state === "recorded" || result.state === "unknown" ? 202 : 200,
@@ -153,8 +186,42 @@ export default defineFacet((host) => {
       [`POST ${prefix}/events`]: handle("send"),
       [`GET ${prefix}/receipts/*`]: handle("receipt"),
     });
+    return admin;
+  });
+  host.serve(LocalInboxAdmin, (_params, principal, self) => {
+    if (!isOwner(principal)) throw forbidden("Local inbox administration is owner-only");
+    const inbox = self.get(Inbox, {});
+    return {
+      variant: "owner",
+      members: {
+        status: (_args, ctx) => inbox.status({}, ctx),
+        provision: (args, ctx) => inbox.provision(args, ctx),
+        rotate: (args, ctx) => inbox.rotate(args, ctx),
+        revoke: (_args, ctx) => inbox.revoke({}, ctx),
+      },
+    };
   });
 });
+
+function directLoopback(request: IncomingMessage, origin: Parameters<RouteHandler>[2]["origin"]) {
+  return (
+    !origin.remote &&
+    origin.relayShellOrigin === undefined &&
+    origin.relayUser === undefined &&
+    request.socket.remoteAddress === "127.0.0.1" &&
+    !Object.keys(request.headers).some(
+      (key) =>
+        key.startsWith("x-forwarded-") ||
+        [
+          PROXY_MARKER_HEADER,
+          "forwarded",
+          "via",
+          "proxy-authorization",
+          "proxy-connection",
+        ].includes(key),
+    )
+  );
+}
 
 async function readBody(request: IncomingMessage): Promise<Buffer | undefined> {
   const maxBytes = 256 * 1024;

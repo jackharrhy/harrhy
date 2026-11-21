@@ -188,11 +188,11 @@ const Binding = {
 export type AddressedPolicy = {
 	label: string;
 	revision: string;
-	discover?: readonly string[];
-	send?: { sessions: readonly string[]; familiar?: boolean };
+	discover?: readonly string[] | "all-private";
+	send?: { sessions: readonly string[] | "all-private"; familiar?: boolean };
 	receipts?: boolean;
 };
-export const AddressedPolicies = keyedRegistry<AddressedPolicy>("p2.addressed-policies");
+export const AddressedPolicies = keyedRegistry<AddressedPolicy | (() => AddressedPolicy | undefined)>("p2.addressed-policies");
 const Selector = opt(str({ minLength: 1, maxLength: 128 }));
 export const AddressedIntent = obj({
 	peer: EventIdSchema, label: str(), revision: str(), eventId: EventIdSchema,

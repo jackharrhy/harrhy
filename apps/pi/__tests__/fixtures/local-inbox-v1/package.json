@@ -1,0 +1,5 @@
+{
+  "name": "local-inbox",
+  "private": true,
+  "type": "module"
+}

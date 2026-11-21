@@ -12,8 +12,10 @@ import {
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const key = (peer: string, eventId: string) => `addressed:${JSON.stringify([peer, eventId])}`;
+export const currentPolicy = (entry: AddressedPolicy | (() => AddressedPolicy | undefined) | undefined) =>
+	typeof entry === "function" ? entry() : entry;
 const allowed = (policy: AddressedPolicy | undefined, selector: string | undefined) =>
-	selector === undefined ? policy?.send?.familiar === true : policy?.send?.sessions.includes(selector) === true;
+	selector === undefined ? policy?.send?.familiar === true : (policy?.send?.sessions === "all-private" || policy?.send?.sessions.includes(selector) === true);
 export const mayDeliver = (row: AddressedIntent, policy: AddressedPolicy | undefined) =>
 	row.revision === policy?.revision && allowed(policy, row.selector);
 
@@ -36,18 +38,22 @@ export function addressedMethods(
 	const catalog = self.get(Catalog, {});
 	const shares = self.get(Shares, {});
 	const requireReceipt = (peer: string) => {
-		if (!policies.value.get(peer)?.receipts) throw forbidden("Addressed receipt not authorized");
+		if (!currentPolicy(policies.value.get(peer))?.receipts) throw forbidden("Addressed receipt not authorized");
 	};
 	return {
 		discoverAddressed: async ({ peer }: { peer: string }, ctx: Ctx) => {
-			const policy = policies.value.get(peer);
+			const policy = currentPolicy(policies.value.get(peer));
 			const rows = [];
-			for (const id of new Set(policy?.discover ?? [])) {
+			const ids = policy?.discover === "all-private"
+				? await catalog.openIds({}, ctx)
+				: new Set(policy?.discover ?? []);
+			for (const id of ids) {
 				const row = await catalog.get({ id }, ctx).catch(() => undefined);
-				if (row?.archivedAt === null && !(await shares.isShared({ session: id }, ctx)))
+				if (row?.archivedAt === null && !(await shares.isShared({ session: id }, ctx)) &&
+					(await catalog.get({ id }, ctx).catch(() => undefined))?.archivedAt === null)
 					rows.push({ id, title: row.title });
 			}
-			return policy === policies.value.get(peer) ? rows : [];
+			return policy?.revision === currentPolicy(policies.value.get(peer))?.revision ? rows : [];
 		},
 		sendAddressed: async ({ peer, eventId, session: selector, text }: { peer: string; eventId: string; session?: string; text: string }, ctx: Ctx) => {
 			if (Buffer.byteLength(text) > 32768) throw new Error("Addressed stimulus exceeds 32768 bytes");
@@ -60,7 +66,7 @@ export function addressedMethods(
 			};
 			const existing = saved.value.addressed[id];
 			if (existing) return recover(existing);
-			const policy = policies.value.get(peer);
+			const policy = currentPolicy(policies.value.get(peer));
 			if (!policy || !allowed(policy, selector)) throw forbidden("Addressed send not authorized");
 			const session = selector ?? (await ctx.get(FamiliarStore, {})).session.value;
 			if (!session || (await catalog.get({ id: session }, ctx).catch(() => undefined))?.archivedAt !== null ||
@@ -69,7 +75,7 @@ export function addressedMethods(
 			let inserted = false;
 			await saved.change((draft) => {
 				if (draft.addressed[id]) return;
-				if (policies.value.get(peer) !== policy) throw forbidden("Addressed policy changed");
+				if (currentPolicy(policies.value.get(peer))?.revision !== policy.revision) throw forbidden("Addressed policy changed");
 				const intentHash = hash(JSON.stringify([id, selector ?? null, session, conversation, payloadHash, policy.revision]));
 				draft.addressed[id] = {
 					peer, eventId, ...(selector === undefined ? {} : { selector }), payloadHash,
@@ -108,7 +114,7 @@ export function serveAddressed(host: FacetHost) {
 					const row = await rows.addressedRow({ id }, ctx);
 					if (!row || row.delivery.session !== session || row.delivery.intentHash !== intentHash ||
 						row.phase.kind !== "pending" || (await catalog.get({ id: session }, ctx)).archivedAt !== null ||
-						await shares.isShared({ session }, ctx) || !mayDeliver(row, policies.value.get(row.peer)))
+						await shares.isShared({ session }, ctx) || !mayDeliver(row, currentPolicy(policies.value.get(row.peer))))
 						throw forbidden("Addressed admission withdrawn");
 					return true;
 				}, ctx);

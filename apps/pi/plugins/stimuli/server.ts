@@ -18,7 +18,7 @@ import { processLogs } from "@p2/app/v1/node";
 import { Hosts, serverOf, WorkerInitValues } from "@p2/app/v1/server";
 import { Catalog } from "../sessions/contract.ts";
 import { Shares } from "../sharing/contract.ts";
-import { addressedMethods, serveAddressed, mayDeliver } from "./addressed-server.ts";
+import { addressedMethods, currentPolicy, serveAddressed, mayDeliver } from "./addressed-server.ts";
 import { Saved } from "./saved.ts";
 import { StimulusSources, sourceKey } from "./contract.server.ts";
 import {
@@ -137,6 +137,7 @@ export default defineFacet((host) => {
 						const row = draft.wakes[id] ?? draft.addressed[id] ?? draft.events[id]!;
 						const delivery = draft.wakes[id]?.delivery ?? draft.addressed[id]?.delivery ?? draft.events[id]!.envelope.delivery;
 						const target = catalog.sessions.value.find((session) => session.id === delivery.session);
+						if (draft.addressed[id] && !target) continue; // The sidebar view is bounded, not an absence proof.
 						if (!target || (target.archivedAt === null && !shared(delivery.session))) continue;
 						if (row.phase.kind === "scheduled") row.phase = { kind: "closed", reason: "blocked" };
 						else if (row.phase.kind === "pending" || row.phase.kind === "uncertain")
@@ -159,9 +160,15 @@ export default defineFacet((host) => {
 				let row = rowFor(id);
 				const session = row.delivery.session;
 				const addressed = saved.value.addressed[id];
-				if ((await catalog.get({ id: session }, ctx)).archivedAt !== null) return;
+				if ((await catalog.get({ id: session }, ctx).catch((error) => {
+					if (addressed) return undefined;
+					throw error;
+				}))?.archivedAt !== null) {
+					if (addressed && row.phase.kind === "scheduled") await phase(id, { kind: "closed", reason: "blocked" }, ctx);
+					return;
+				}
 				const unavailable = async () => addressed
-					? !mayDeliver(addressed, policies.value.get(addressed.peer)) || await shares.isShared({ session }, ctx)
+					? !mayDeliver(addressed, currentPolicy(policies.value.get(addressed.peer))) || await shares.isShared({ session }, ctx)
 					: shared(session);
 				if (row.phase.kind === "scheduled" && await unavailable()) {
 					await phase(id, { kind: "closed", reason: "blocked" }, ctx);
@@ -270,7 +277,7 @@ export default defineFacet((host) => {
 							)
 								continue;
 							const target = catalog.sessions.value.find((entry) => entry.id === session);
-							if (!target || target.archivedAt !== null) continue;
+							if (target?.archivedAt != null || (!addressed && !target)) continue;
 							const at = Math.max(notBefore, retry.get(id)?.at ?? 0);
 							if (at > now) {
 								if (row.phase.kind !== "scheduled" &&

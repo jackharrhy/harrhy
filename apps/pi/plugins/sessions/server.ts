@@ -17,6 +17,7 @@ import {
 	defineState,
 	deriveTyped,
 	forbidden,
+	query,
 	isGuest,
 	isOwner,
 	isWorker,
@@ -87,6 +88,7 @@ function sessionV3({ main: _main, branches: _branches, ...row }: Session) {
 
 /** Catalog consumers built before its current version (a server plugin not reloaded yet) read rows mapped back. */
 const CATALOG_ACCEPTS: AcceptsTable<typeof Catalog> = {
+	5: {},
 	2: {
 		state: { sessions: (rows) => rows.map(sessionV3) },
 		methods: {
@@ -293,6 +295,7 @@ export default defineFacet((host) => {
 	serveSidebarSettings(host);
 	serveKeyed(host, SessionArchived);
 	serveKeyed(host, SessionCopied);
+
 	host.serve(
 		Catalog,
 		(_params, self) => {
@@ -308,6 +311,12 @@ export default defineFacet((host) => {
 				return sessionOf(row);
 			};
 			return {
+				openIds: async (_args, ctx) => {
+					const ids: string[] = [];
+					for await (const row of table.rows(query(SessionRows), ctx))
+						if (row.archivedAt === undefined) ids.push(row.session.params.id);
+					return ids;
+				},
 				sessions: deriveTyped(self, [rows], ([value]) => toSession(value)),
 				get: async ({ id }, ctx) => read(id, ctx),
 				create: async (input, ctx) => {

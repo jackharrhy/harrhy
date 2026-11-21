@@ -162,6 +162,7 @@ it("keeps a cancelled lost admission readback-only, recovers its native receipt,
 					Catalog,
 					(_params, _principal, self) => ({
 						sessions: self.state(rows),
+						openIds: async () => rows.map((row) => row.id),
 						get: async ({ id }: { id: string }) => rows.find((row) => row.id === id)!,
 						create: async () => {
 							throw new Error("unused");

@@ -5,11 +5,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it } from "node:test";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
+import { LocalInboxAdmin } from "../../integrations/local-inbox/contract.ts";
 import { Hosts } from "@p2/app/v1/server";
 import { FamiliarStore } from "../../plugins/familiar/contract.ts";
 import { Catalog } from "../../plugins/sessions/contract.ts";
 import { startServer } from "../../src/hosts/server.ts";
-import { APP, http, poll, startFixture } from "./helpers.ts";
+import { APP, clientHost, holdIn, http, localOwner, poll, startFixture } from "./helpers.ts";
 
 const prefix = "/api/local-inbox/v1";
 const credential = "a".repeat(64);
@@ -38,7 +39,7 @@ it(
       startServer({ dataDir, port: 0, fake: true, web: false, allowedHosts: ["tunnel.test"] });
     try {
       await mkdir(join(dataDir, "plugins"));
-      await cp(join(APP, "integrations", "local-inbox"), plugin, { recursive: true });
+      await cp(join(APP, "__tests__", "fixtures", "local-inbox-v1"), plugin, { recursive: true });
       const policy = (value: object) =>
         writeFile(join(plugin, "policy.json"), JSON.stringify(value), { mode: 0o600 });
       const rotate = (token: string) =>
@@ -143,17 +144,81 @@ it(
       await rotate(credential);
 
       await server.close();
-      await policy({ revision: "2", receipts: true });
+      // Keep legacy files and the original client digest, but only the Chord grant may authorize.
+      await cp(join(APP, "integrations", "local-inbox"), plugin, { recursive: true });
+      server = await start();
+      assert.equal((await receipt(explicit.eventId)).status, 404);
+      const owner = clientHost(await localOwner(server));
+      const admin = await holdIn(owner, LocalInboxAdmin, {}, "owner");
+      assert.deepEqual(await admin.status({}, BACKGROUND_CONTEXT), { enabled: false });
+      const broad = {
+        discover: "all-private",
+        send: { sessions: "all-private", familiar: true },
+        receipts: true,
+      } as const;
+      const first = await admin.provision(
+        { grant: broad, bearerHash: hash(credential) },
+        BACKGROUND_CONTEXT,
+      );
+      assert(first.enabled);
+      assert.deepEqual(first.grant, broad);
+      assert.equal((await receipt(explicit.eventId)).body, admitted.body); // GET only: no replay.
+      const future = randomUUID();
+      await server.host.root(async (ctx) => {
+        const catalog = await ctx.get(Catalog, {});
+        await catalog.create(
+          {
+            id: future,
+            title: "Created after grant",
+            cwd: dataDir,
+            model: { provider: "faux", modelId: "faux-1" },
+            thinkingLevel: "off",
+          },
+          ctx,
+        );
+        await catalog.update({ id: hidden, archived: true }, ctx);
+      }, BACKGROUND_CONTEXT);
+      const listed = JSON.parse((await targets()).body).targets as { id: string }[];
+      assert(listed.some(({ id }) => id === future));
+      assert(!listed.some(({ id }) => id === hidden));
+      assert.equal(
+        (await send({ eventId: "archived", session: hidden, text: "not allowed" })).status,
+        403,
+      );
+      assert.equal(
+        (await send({ eventId: "future", session: future, text: "broad scope" })).status,
+        202,
+      );
+      await poll(
+        async () => JSON.parse((await receipt("future")).body).state === "admitted",
+        12_000,
+      );
+      const rotated = await admin.rotate({ bearerHash: hash("b".repeat(64)) }, BACKGROUND_CONTEXT);
+      assert.deepEqual(rotated, first);
+      assert.equal((await receipt(explicit.eventId)).status, 401);
+      assert.equal(
+        (
+          await http(server.port, prefix + "/receipts/explicit", {
+            headers: { Authorization: "Bearer " + "b".repeat(64) },
+          })
+        ).body,
+        admitted.body,
+      );
+      assert.deepEqual(await admin.revoke({}, BACKGROUND_CONTEXT), { enabled: false });
+      assert.equal((await receipt(explicit.eventId)).status, 404);
+      const enabled = await admin.provision(
+        { grant: { receipts: true }, bearerHash: hash(credential) },
+        BACKGROUND_CONTEXT,
+      );
+      assert(enabled.enabled && enabled.revision !== first.revision);
+      admin.release();
+      await owner.close(BACKGROUND_CONTEXT);
+
+      await server.close();
       server = await start();
       assert.deepEqual(JSON.parse((await targets()).body), { targets: [] });
       assert.equal((await send({ ...explicit, eventId: "new" })).status, 403);
       assert.equal((await receipt(explicit.eventId)).body, admitted.body);
-      assert.equal((await send(explicit)).body, admitted.body);
-
-      await server.close();
-      await policy({ revision: "3" });
-      server = await start();
-      assert.equal((await receipt(explicit.eventId)).status, 403);
     } finally {
       await server?.close();
       await rm(dataDir, { recursive: true, force: true });
