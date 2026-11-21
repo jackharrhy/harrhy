@@ -52,6 +52,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/gurgur-engine`](packages/gurgur-engine/) | Gurgur Box3D physics, protocol and world format | [README](packages/gurgur-engine/README.md) |
 | [`@harrhy/gurgur-game`](packages/gurgur-game/) | Gurgur controllers, simulation and map compiler | [README](packages/gurgur-game/README.md) |
 | [`@harrhy/json-schema`](packages/json-schema/) | Remix data schemas with JSON Schema descriptions | [README](packages/json-schema/README.md) |
+| [`@harrhy/live-state`](packages/live-state/) | Scoped watches and acknowledged latest-state delivery | [README](packages/live-state/README.md) |
 | [`@harrhy/logger`](packages/logger/) | Request and job logging primitives | [README](packages/logger/README.md) |
 | [`@harrhy/maps-editor`](packages/maps-editor/) | Map document and source-rendering primitives | [README](packages/maps-editor/README.md) |
 | [`@harrhy/maps-protocol`](packages/maps-protocol/) | Hosted and collaborative map schemas | [README](packages/maps-protocol/README.md) |

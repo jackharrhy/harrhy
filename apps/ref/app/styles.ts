@@ -207,11 +207,17 @@ export const refStyles = css({
     outline: "none",
   },
   "& #card-picker": {
-    position: "absolute",
-    left: "12px",
-    top: "12px",
-    "max-width": "min(14em, 80%)",
+    "max-width": "min(14em, 30%)",
     "min-height": "28px",
+  },
+  "& #card-picker:not(:focus)": {
+    position: "absolute",
+    width: "1px",
+    height: "1px",
+    minHeight: "0",
+    padding: "0",
+    border: "0",
+    "clip-path": "inset(50%)",
   },
   "& .viewport:focus-visible, & #card-picker:focus-visible": {
     outline: "3px solid #3767d6",
@@ -227,6 +233,21 @@ export const refStyles = css({
     position: "absolute",
     inset: "0",
     "transform-origin": "0 0",
+  },
+  "& .remote-cursors": {
+    position: "absolute",
+    inset: "0",
+    pointerEvents: "none",
+    zIndex: "2147483647",
+  },
+  "& .remote-cursors i": {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: "14px",
+    height: "18px",
+    background: "currentColor",
+    clipPath: "polygon(0 0, 100% 64%, 48% 67%, 25% 100%)",
   },
   "& .empty-state": {
     position: "absolute",
@@ -298,6 +319,39 @@ export const refStyles = css({
     display: "block",
     "pointer-events": "none",
     "box-shadow": "0 4px 16px #00000019",
+  },
+  "& .board-item:has(img[data-image-state=loading])": {
+    backgroundColor: "#dedfdd",
+  },
+  "& .board-item img[data-image-state=loading], & .board-item img[data-image-state=failed]":
+    {
+      opacity: "0",
+    },
+  "& .image-failure": { display: "none" },
+  "& img[data-image-state=failed] + .image-failure": {
+    position: "absolute",
+    inset: "0",
+    display: "grid",
+    placeItems: "center",
+    background: "#e5e6e3",
+    color: "#4c504a",
+    fontSize: "13px",
+    textAlign: "center",
+  },
+  "@keyframes ref-image-shimmer": {
+    from: { backgroundPosition: "100% 0" },
+    to: { backgroundPosition: "0% 0" },
+  },
+  "@media (prefers-reduced-motion: no-preference)": {
+    "& .board-item:has(img[data-image-state=loading])": {
+      backgroundImage:
+        "linear-gradient(105deg, #dedfdd 35%, #e9eae8 50%, #dedfdd 65%)",
+      backgroundSize: "250% 100%",
+      animation: "ref-image-shimmer 1.8s ease-in-out infinite",
+    },
+    "& .board-item img[data-image-state=ready]": {
+      transition: "opacity 160ms ease-out",
+    },
   },
   "& .board-item.selected": {
     "border-color": "#4b7862",

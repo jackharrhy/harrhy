@@ -13,6 +13,7 @@
     "test": "vitest run",
     "smoke": "node __tests__/image-handoff.mjs && node scripts/smoke.mjs",
     "test:images": "node __tests__/image-handoff.mjs",
+    "test:live-board": "node __tests__/live-board-browser.mjs",
     "test:mcp": "node __tests__/mcp-smoke.mjs",
     "test:celld": "npm run build && node __tests__/celld-smoke.mjs",
     "test:archive:source": "node __tests__/source-archive-smoke.mjs",
@@ -23,10 +24,12 @@
   },
   "dependencies": {
     "@harrhy/identity": "0.1.0",
+    "@harrhy/live-state": "0.1.0",
     "@harrhy/logger": "0.1.0",
     "@harrhy/mcp": "0.1.0",
     "@harrhy/ui": "0.1.0",
     "@harrhy/webmcp": "0.1.0",
+    "capnweb": "0.13.0",
     "remix": "3.2.0"
   },
   "devDependencies": {

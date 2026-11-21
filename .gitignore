@@ -51,3 +51,5 @@ apps/ref/app/build-info.ts
 .agents/skills/durable-objects/
 .agents/skills/workers-best-practices/
 .agents/skills/wrangler/
+
+/.ref-discussion/

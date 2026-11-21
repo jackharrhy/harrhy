@@ -8,6 +8,7 @@ export async function installFrameGate(page, initial = null) {
     window.WebSocket = class extends WebSocket {
       constructor(...args) {
         super(...args);
+        if (this.url.endsWith("/ws")) window.refDropEditor = () => this.close();
         this.addEventListener("message", (event) => {
           if (JSON.parse(event.data).type !== window.refHoldFrame) return;
           window.refHoldFrame = null;
@@ -22,6 +23,65 @@ export async function installFrameGate(page, initial = null) {
       }
     };
   }, initial);
+}
+
+// Use an isolated cache so a previously decoded thumbnail cannot satisfy the gate.
+export async function checkBoardLoading(context, url) {
+  const isolated = await context
+    .browser()
+    .newContext({ storageState: await context.storageState() });
+  const page = await isolated.newPage();
+  const gate = Promise.withResolvers();
+  let fail = false;
+  try {
+    await installFrameGate(page, "ready");
+    await page.route("**/assets/thumb-worker.js", (r) =>
+      r.fulfill({ contentType: "application/javascript", body: "" }),
+    );
+    await page.route("**/media/**", async (r) => {
+      await gate.promise;
+      if (fail) await r.fulfill({ status: 503, body: "Unavailable" });
+      else await r.continue();
+    });
+    await page.goto(url);
+    const loading = page.getByText("Loading board…", { exact: true });
+    const card = page.locator(".board-item");
+    const image = card.locator("img");
+    await page.waitForFunction(() => !!window.refReleaseFrame);
+    await expect(loading).toBeVisible();
+    await expect(page.locator("#empty-state")).toBeHidden();
+    await page.evaluate(() => window.refReleaseFrame());
+    await expect(loading).toBeHidden();
+    await expect(image).toHaveCSS("opacity", "0");
+    await expect(card).toHaveCSS("animation-name", "ref-image-shimmer");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(card).toHaveCSS("animation-name", "none");
+    gate.resolve();
+    await expect(image).toHaveCSS("opacity", "1");
+    await expect(image).toHaveCSS("transition-duration", "0s");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await expect(image).toHaveCSS("transition-duration", "0.16s");
+    await page.evaluate(() => {
+      window.refHoldFrame = "ready";
+      window.refDropEditor();
+    });
+    await page.waitForFunction(() => !!window.refReleaseFrame);
+    await expect(loading).toBeHidden();
+    await expect(image).toBeVisible();
+    await expect(image).toHaveCSS("opacity", "1");
+    await page.evaluate(() => window.refReleaseFrame());
+    fail = true;
+    await page.reload();
+    await page.waitForFunction(() => !!window.refReleaseFrame);
+    await page.evaluate(() => window.refReleaseFrame());
+    await expect(
+      page.getByText("Image unavailable", { exact: true }),
+    ).toBeVisible();
+    await expect(card).toHaveCSS("animation-name", "none");
+  } finally {
+    gate.resolve();
+    await isolated.close();
+  }
 }
 
 async function dragCard(page, card) {
@@ -45,11 +105,91 @@ export async function checkUnconfirmedCard(page) {
   await page.evaluate(() => window.refReleaseFrame());
 }
 
+// Exercise the platform default without claiming to emulate trackpad hardware.
+export async function checkMacCanvas(context, url) {
+  const page = await context.newPage();
+  try {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, "platform", { value: "MacIntel" }),
+    );
+    await page.goto(url);
+    await page.locator("#connection.online").waitFor();
+    const mode = page.locator("#scroll-mode");
+    await expect(mode).toHaveText("Scroll: Pan");
+    const camera = () =>
+      page.locator("#world").evaluate((el) => {
+        const { a, e, f } = new DOMMatrix(getComputedStyle(el).transform);
+        return { scale: a, x: e, y: f };
+      });
+    const before = await camera();
+    await page.mouse.move(600, 450);
+    await page.mouse.wheel(0, 100);
+    await expect.poll(camera).toEqual({ ...before, y: before.y - 100 });
+    const canvas = page.locator("#viewport");
+    await canvas.dispatchEvent("wheel", {
+      ctrlKey: true,
+      deltaY: -3,
+      clientX: 600,
+      clientY: 450,
+    });
+    await expect
+      .poll(async () => (await camera()).scale)
+      .toBeGreaterThan(before.scale);
+    // WebKit reports scale relative to gesturestart, not to the last change.
+    const pinchStart = (await camera()).scale;
+    await canvas.evaluate((el) => {
+      for (const [type, scale] of [
+        ["gesturestart", 1],
+        ["gesturechange", 1.1],
+        ["gesturechange", 1.2],
+        ["gestureend", 1.2],
+      ]) {
+        const event = Object.assign(
+          new MouseEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            clientX: 600,
+            clientY: 450,
+          }),
+          { scale },
+        );
+        el.dispatchEvent(event);
+      }
+    });
+    await expect
+      .poll(async () => (await camera()).scale)
+      .toBeCloseTo(pinchStart * 1.2, 4);
+    await mode.click();
+    await page.reload();
+    await expect(mode).toHaveText("Scroll: Zoom");
+  } finally {
+    await page.close();
+  }
+}
+
 export async function removeImageByKeyboard(page) {
   const picker = page.getByRole("combobox", { name: "Choose card" });
-  await page.getByRole("button", { name: "Zoom in" }).focus();
+  await expect(picker).toHaveCSS("clip-path", "inset(50%)");
+  const clipped = await picker.boundingBox();
+  expect(clipped.width).toBeLessThanOrEqual(1);
+  expect(clipped.height).toBeLessThanOrEqual(1);
+  await page.getByRole("textbox", { name: "Board name" }).focus();
   await page.keyboard.press("Tab");
   await expect(picker).toBeFocused();
+  await expect(picker).toHaveCSS("clip-path", "none");
+  expect(
+    await picker.evaluate((el) => {
+      const r = el.getBoundingClientRect(),
+        h = el.closest("header").getBoundingClientRect();
+      return (
+        r.width > 20 &&
+        r.height > 20 &&
+        r.top >= h.top &&
+        r.bottom <= h.bottom &&
+        document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === el
+      );
+    }),
+  ).toBe(true);
   expect(
     await picker.evaluate((el) => getComputedStyle(el).outlineStyle),
   ).not.toBe("none");

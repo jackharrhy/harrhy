@@ -129,7 +129,10 @@ class BoardImages {
       () => {
         if (this.pending.get(element) !== candidate) return;
         this.pending.delete(element);
-        if (element.isConnected) element.src = desired;
+        if (element.isConnected) {
+          element.src = desired;
+          element.dataset.imageState = "ready";
+        }
       },
       () => {
         if (this.pending.get(element) !== candidate) return;

@@ -265,12 +265,21 @@ export function ExportPage(handle: Handle<{ projectId: string }>) {
 }
 
 export function BoardPage(
-  handle: Handle<{ board: BoardRecord; error?: string; moved?: boolean }>,
+  handle: Handle<{
+    board: BoardRecord;
+    liveBoard?: boolean;
+    error?: string;
+    moved?: boolean;
+  }>,
 ) {
   const board = handle.props.board;
   return () => (
     <Document title={board.title} moved={handle.props.moved}>
-      <main id="board-app" data-board-id={board.id}>
+      <main
+        id="board-app"
+        data-board-id={board.id}
+        data-live-board={handle.props.liveBoard ? "1" : undefined}
+      >
         <header class="board-header">
           <a class="back-link" href="/" aria-label="Back to boards">
             ←
@@ -289,6 +298,9 @@ export function BoardPage(
               aria-label="Board name"
             />
           </form>
+          <select id="card-picker" aria-label="Choose card" hidden>
+            <option value="">Choose card</option>
+          </select>
           <div id="connection" class="connection connecting" role="status">
             <span class="connection-dot"></span>
             <span class="connection-text">Connecting</span>
@@ -330,8 +342,11 @@ export function BoardPage(
             aria-label="Image board"
             tabIndex={0}
           >
-            <div id="world" class="world"></div>
-            <div id="empty-state" class="empty-state">
+            <div id="world" class="world" aria-busy="true"></div>
+            <div id="board-loading" class="empty-state" role="status">
+              Loading board…
+            </div>
+            <div id="empty-state" class="empty-state" hidden>
               <p>Drop images or links here</p>
               <button id="empty-add" type="button">
                 or choose files
@@ -343,7 +358,7 @@ export function BoardPage(
                 type="button"
                 aria-label="Scroll mode: Pan"
                 aria-pressed="false"
-                title="Scroll zooms. Enable Pan for two-finger scrolling; Ctrl/⌘ or pinch always zooms. Shift-scroll pans horizontally."
+                title="Switch between scroll to zoom and scroll to pan. Ctrl/⌘ or pinch zooms. Shift-scroll pans horizontally."
               >
                 Scroll: Zoom
               </button>
@@ -363,9 +378,6 @@ export function BoardPage(
                 +
               </button>
             </div>
-            <select id="card-picker" aria-label="Choose card" hidden>
-              <option value="">Choose card</option>
-            </select>
           </section>
           <aside id="inspector" class="inspector" hidden>
             <div class="inspector-top">
