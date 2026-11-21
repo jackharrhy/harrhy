@@ -10,7 +10,7 @@ The separate opt-in `/sluggers-lab` subpage compares six full experimental recip
 
 - `scene.tsx`: `SluggersScene(handle: Handle<{theme: string}>)`; Standings, Box score, Lineup and Tracker review with local scenario controls.
 - `fixtures.ts`: two leagues with overlapping Fireballs names and distinct IDs; conference standings, nine-character lineup, frozen appearances, validation and stat formatting.
-- `theme.ts`: shared `@harrhy/ui/theme` Sluggers tokens via `themeStyles(sluggersTokens)` and app-owned sports layouts. Sluggers is also selectable throughout Explorer.
+- `theme.ts`: app-owned sports layouts; palette and typography inherit the workbench selection. Sluggers is also selectable throughout Explorer.
 - `fonts.css`: scene-only optional private original type roles; binaries are not committed.
 - `../../../__tests__/sluggers.test.ts`, `sluggers.test.e2e.ts`: fixture arithmetic, unknown/zero, frozen history, tenant context, keyboard reorder, validation/error/retry, publication confirmation/focus and responsive bounds.
 
