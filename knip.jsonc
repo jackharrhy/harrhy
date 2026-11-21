@@ -56,6 +56,8 @@
       ],
     },
     "apps/ui": {
+      // The browser adapter resolves Remix's own runner, not a second copy.
+      "ignoreDependencies": ["@remix-run/test"],
       "entry": [
         "app/public/entry.ts",
         "__tests__/*.test.e2e.ts",
