@@ -16,6 +16,13 @@
     "apps/pi/__tests__/fixtures/**",
   ],
   "workspaces": {
+    ".": {
+      // The workflow smoke dispatcher spawns these runners as separate processes.
+      "entry": [
+        "scripts/ci/node-image-smoke.mjs",
+        "scripts/ci/selected-image-smoke.mjs",
+      ],
+    },
     "apps/clank": {
       "entry": [
         "app/start.ts",
