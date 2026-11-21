@@ -8,7 +8,6 @@ import {
 import { archiveExportScopes } from "../middleware/archive-auth.ts";
 import { routes } from "../routes.ts";
 import type { BoardRecord } from "../data/directory-cell.ts";
-import { routes } from "../routes.ts";
 import { browserAssets } from "../assets/build-manifest.ts";
 import { refStyles, refThemeStyles } from "../styles.ts";
 
