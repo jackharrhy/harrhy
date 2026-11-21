@@ -97,6 +97,12 @@ Read changing props from `handle.props` during render. Do not capture their init
 
 Event handlers need a mounted or hydrated browser component. Server-rendered HTML alone is not interactive. Follow the installed interactivity guide and the app's browser entry setup.
 
+## Styles and Auth navigation
+
+Use Remix `css(...)` mixins for static UI styles. Keep inline `style` for values computed at runtime. A small stylesheet is fine for CSS features the mixin cannot express, such as `@font-face`.
+
+Keep Auth entry links and session-changing forms native with Remix's `data-rmx-document` attribute. Same-origin routes can redirect to another origin; they must not be fetched as frame navigation. Shared `ButtonLink` forwards this attribute. Keep ordinary internal navigation client-side; follow [the document navigation guide](../../../docs/remix-navigation.md) and test actual hydrated clicks, not just rendered markup.
+
 ## Work Within the App
 
 - Keep the app's package manager, scripts, runtime, middleware order, and imports unless the task requires a change. Do not replace working code to match the starter.
