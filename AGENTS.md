@@ -39,7 +39,13 @@ Keep Markdown tables unpadded and put `<!-- prettier-ignore -->` immediately bef
 
 Apps import packages; packages must not import apps. Use Remix 3 for app routing, controllers, middleware, and UI. Read the [Remix skill](.agents/skills/remix/SKILL.md) and relevant installed guides before changing framework behavior. Put Node and Cloudflare runtime rules in the relevant workspace guide.
 
-Write first-party application source and tests in TypeScript (`.ts`, or `.tsx` for JSX). Use TypeScript directly rather than adding JSDoc types to JavaScript in a TypeScript workspace. Keep new app code inside the workspace's `tsconfig.json` and its typecheck. Use JavaScript only where a tool, runtime, or external consumer actually expects it; explain that exception in the workspace guide. Leave generated and imported code in its existing format.
+Use TypeScript first for first-party app source and tests. Use JavaScript when it fits the use case; don't use JSDoc as a substitute for TypeScript by default.
+
+Use Cap’n Web by default for first-party browser application reads, mutations, and subscriptions. After Remix loads the document, open an authenticated session with capabilities scoped to the resources the caller can use. Keep native HTTP for documents, auth redirects, and file transfers. Define operations and authorization in the owning app rather than maintaining a parallel JSON API.
+
+Prefer the qualified Celld runtime for new self-hosted durable coordination, and Durable Objects for deliberately Cloudflare-native apps. Key cells by the unit of consistency, such as a board or room. Verify the runtime behavior you rely on; don't assume cross-cell atomicity or Cloudflare parity.
+
+For realtime state, use [`@harrhy/live-state`](packages/live-state/README.md): `watch` in the frontend and `channel` for server-side delivery over Cap’n Web. The app still owns authorization, revision semantics, snapshot limits, and subscription lifetime. Ref’s live-board code is a worked example of this pair, not a requirement to copy its entire transport layout.
 
 For a new app, use `apps/<name>` and `@harrhy/<name>`. Start from the nearest existing Remix app with the same runtime. Follow its route, controller, and entry-point layout; declare dependencies in the app's `package.json` and use pnpm from the repository root. Include typechecking and relevant tests in the workspace `check` script rather than adding a separate CI job by default.
 
