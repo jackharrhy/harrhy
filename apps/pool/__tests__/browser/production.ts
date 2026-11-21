@@ -50,8 +50,12 @@ for (const [path, mime] of [
   assert(html.includes(`"${path}"`), `HTML links ${path}`);
   await asset(path, mime);
 }
-for (const texture of ["walnut", "aged-brass"])
-  await asset(`/textures/${texture}.webp`, /image\/webp/);
+await asset("/textures/aged-brass.webp", /image\/webp/);
+const css = await (await fetch(new URL("/assets/game.css", baseURL))).text();
+assert.match(
+  css,
+  /--wood:\s*url\(["']?data:image\/webp;base64,[A-Za-z0-9+/=]+["']?\)/,
+);
 
 for (const sound of [
   "impact",
