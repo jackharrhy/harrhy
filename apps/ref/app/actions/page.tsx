@@ -5,11 +5,7 @@ import {
   uiPrimaryActionStyles,
   uiSecondaryActionStyles,
 } from "@harrhy/ui";
-import {
-  PROJECT_ROLES_SCOPE,
-  projectAudienceScope,
-  roleScope,
-} from "@harrhy/identity";
+import { archiveMcpScopes } from "../mcp/auth.ts";
 import { routes } from "../routes.ts";
 import type { BoardRecord } from "../data/directory-cell.ts";
 import { browserAssets } from "../assets/build-manifest.ts";
@@ -176,13 +172,7 @@ export function HomePage(
 }
 
 export function ExportPage(handle: Handle<{ projectId: string }>) {
-  const scopes = [
-    "openid",
-    projectAudienceScope(handle.props.projectId),
-    PROJECT_ROLES_SCOPE,
-    roleScope("admin"),
-    roleScope("archive-read"),
-  ];
+  const scopes = archiveMcpScopes(handle.props.projectId);
   return () => (
     <Document title="Export archive">
       <main class="home-content">

@@ -183,6 +183,7 @@
         "app/assets/board.ts",
         "app/assets/inspector.ts",
         "public/assets/thumb-worker.js",
+        "public/assets/archive-export.js",
       ],
       // The dev script starts this package as a separate OAuth process.
       "ignoreDependencies": ["@harrhy/dev-auth"],
