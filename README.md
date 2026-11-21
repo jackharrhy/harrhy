@@ -20,6 +20,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/burger`](apps/burger/) | Remix game UI and authoritative Bun world server | [README](apps/burger/README.md) |
 | [`@harrhy/cms`](apps/cms/) | Multi-site CMS, operator dashboard, and Node host | [README](apps/cms/README.md) |
 | [`@harrhy/cms-edge`](apps/cms-edge/) | Cloudflare Worker CMS backed by D1 and R2 | [README](apps/cms-edge/README.md) |
+| [`@harrhy/dirstat`](apps/dirstat/) | Read-only synthetic disk usage preview on Celld | [README](apps/dirstat/README.md) |
 | [`@harrhy/4orm`](apps/4orm/) | Isolated native 4orm community candidate on Celld | [README](apps/4orm/README.md) |
 | [`@harrhy/harry-sluggers`](apps/harry-sluggers/) | Read-only historical Sluggers league website over PostgreSQL | [README](apps/harry-sluggers/README.md) |
 | [`@harrhy/garden`](apps/garden/) | Obsidian-backed personal website and publishing tools | [README](apps/garden/README.md) |
@@ -34,6 +35,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/maps-compiler`](apps/maps-compiler/) | Local native map compiler helper | [README](apps/maps-compiler/README.md) |
 | [`@harrhy/maps-service`](apps/maps-service/) | Hosted map projects and API | [README](apps/maps-service/README.md) |
 | [`@harrhy/ref`](apps/ref/) | Private image and link boards on a Worker and Celld | [README](apps/ref/README.md) |
+| [`@harrhy/review`](apps/review/) | Loopback Git diff inbox with durable inline comments | [README](apps/review/README.md) |
 | [`@harrhy/rotund`](apps/rotund/) | Personal service directory with Jack Auth entitlements | [README](apps/rotund/README.md) |
 | [`@harrhy/radio`](apps/radio/) | Synchronized listening rooms on a Worker and Celld | [README](apps/radio/README.md) |
 

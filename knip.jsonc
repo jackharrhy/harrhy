@@ -25,6 +25,9 @@
       ],
       "ignoreBinaries": ["ss"],
     },
+    "apps/review": {
+      "entry": ["worker.ts", "browser.ts"],
+    },
     "apps/maps-collaboration": {
       // start-celld.sh resolves the compiler at runtime.
       "ignoreDependencies": ["esbuild"],
@@ -36,6 +39,15 @@
     "apps/pi": {
       "entry": ["harrhy/*.mjs", "__tests__/*.mjs"],
       "ignoreBinaries": ["bwrap"],
+    },
+    "apps/dirstat": {
+      "entry": [
+        "preview/worker.js",
+        "preview/record.mjs",
+        "preview/synthetic-host.mjs",
+        "__tests__/camera.mjs",
+        "__tests__/preview.mjs",
+      ],
     },
     "apps/ui": {
       "entry": [

@@ -18,7 +18,7 @@ import { Views } from "../../plugins/views/contract.ts";
 import { type P2Server, startServer } from "../../src/hosts/server.ts";
 import { LINK_CLIENTS, STALE_PAGE_CODE } from "../../src/runtime/stale-page.ts";
 import { Browser, browserTests, COMPOSER } from "./browser.ts";
-import { clientHost, holdIn, type LocalOwner, localOwner, until, webAssets } from "./helpers.ts";
+import { clientHost, holdIn, type LocalOwner, localOwner, poll, until, webAssets } from "./helpers.ts";
 
 describe("pages on the web surface", { skip: !browserTests }, () => {
 	const root = mkdtempSync(join(tmpdir(), "p2-surface-"));
@@ -103,35 +103,29 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 		await browser.open(`http://127.0.0.1:${port}/s/${session}`);
 		await browser.wait(`${shows("two")} && document.querySelector('${COMPOSER}')`);
 		await browser.evaluate("window.__sameDocument = true");
-		// The page asks the server's base when it reconnects; here CDP answers another one once, after a restart.
-		let answered = false;
-		const changed = (raw: unknown) => {
+		// A reconnect can ask for the base while the server is still down. Hold its request until a reload can succeed.
+		let requestId: string | undefined;
+		const paused = (raw: unknown) => {
 			const message = JSON.parse(String(raw)) as { method?: string; params?: { requestId: string } };
-			if (message.method !== "Fetch.requestPaused" || !message.params) return;
-			const body = answered ? undefined : Buffer.from(JSON.stringify("0123456789abcdef")).toString("base64");
-			answered = true;
-			void browser.call(
-				body === undefined ? "Fetch.continueRequest" : "Fetch.fulfillRequest",
-				body === undefined
-					? { requestId: message.params.requestId }
-					: {
-							requestId: message.params.requestId,
-							responseCode: 200,
-							responseHeaders: [{ name: "Content-Type", value: "application/json" }],
-							body,
-						},
-			);
+			if (message.method === "Fetch.requestPaused") requestId ??= message.params?.requestId;
 		};
-		browser.socket.on("message", changed);
-		await browser.call("Fetch.enable", { patterns: [{ urlPattern: "*/_chord/web/base" }] });
+		browser.socket.on("message", paused);
 		try {
+			await browser.call("Fetch.enable", { patterns: [{ urlPattern: "*/_chord/web/base" }] });
 			await server!.close();
 			await start();
+			await webAssets(port, { Cookie: owner.cookie });
+			await poll(() => requestId !== undefined, 20_000, "the reconnect base request");
+			await browser.call("Fetch.fulfillRequest", {
+				requestId,
+				responseCode: 200,
+				responseHeaders: [{ name: "Content-Type", value: "application/json" }],
+				body: Buffer.from(JSON.stringify("0123456789abcdef")).toString("base64"),
+			});
 			await browser.wait(`!window.__sameDocument && ${shows("two")} && document.querySelector('${COMPOSER}')`);
-			assert.equal(answered, true);
 		} finally {
+			browser.socket.off("message", paused);
 			await browser.call("Fetch.disable");
-			browser.socket.off("message", changed);
 		}
 	});
 

@@ -1,4 +1,5 @@
 import { css, on, ref, type Handle } from "remix/component";
+import type { ThemeName } from "../themes.ts";
 import { themeRoot } from "@harrhy/ui/theme";
 import {
   Badge,
@@ -29,14 +30,7 @@ import {
   stat,
   innings,
 } from "./fixtures.ts";
-import {
-  sluggersTheme,
-  sheet,
-  columns,
-  number,
-  heading,
-  quiet,
-} from "./theme.ts";
+import { sheet, columns, number, heading, quiet } from "./theme.ts";
 
 type View = "standings" | "match" | "lineup" | "import";
 const views: { value: View; label: string }[] = [
@@ -50,7 +44,7 @@ const nav = css({
   flexWrap: "wrap",
   gap: "8px",
   "& button": {
-    border: "1px solid #a9c5f4",
+    border: "1px solid var(--hui-control-border)",
     color: "var(--hui-ink)",
     background: "transparent",
     padding: "10px 14px",
@@ -59,11 +53,11 @@ const nav = css({
     cursor: "pointer",
   },
   "& button[aria-pressed=true]": {
-    background: "var(--hui-ink)",
-    color: "#173f81",
+    background: "var(--hui-selected-surface)",
+    color: "var(--hui-selected-ink)",
   },
   "& button:focus-visible": {
-    outline: "3px solid white",
+    outline: "3px solid var(--hui-focus)",
     outlineOffset: "3px",
   },
 });
@@ -71,7 +65,7 @@ const cellName = css({ textAlign: "left", minWidth: "180px" });
 const fieldOptions = positions.map((value) => ({ value, label: value }));
 const characterOptions = characters.map((value) => ({ value, label: value }));
 
-export function SluggersScene(handle: Handle<{ theme: string }>) {
+export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
   let view: View = "standings";
   let leagueIndex = 0;
   let lineupTeamIndex = 0;
@@ -255,18 +249,20 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
         data-season-id={league.seasonId}
         data-match-id={`${league.id}-match-${view === "match" ? matchDay : 3}`}
         mix={[
-          sluggersTheme,
           themeRoot,
+          handle.props.theme === "sluggers" &&
+            css({
+              backgroundImage:
+                "radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%), radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%)",
+              backgroundSize: "112px 112px",
+              backgroundPosition: "0 0, 56px 56px",
+            }),
           css({
             borderRadius: "8px",
             padding: "20px",
             minWidth: 0,
             overflowWrap: "anywhere",
             color: "var(--hui-ink)",
-            backgroundImage:
-              "radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%), radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%)",
-            backgroundSize: "112px 112px",
-            backgroundPosition: "0 0, 56px 56px",
             "& *": { boxSizing: "border-box" },
             "& ::selection": {
               background: "var(--hui-accent)",
@@ -298,11 +294,7 @@ export function SluggersScene(handle: Handle<{ theme: string }>) {
       >
         <Stack mix={css({ gap: "20px" })}>
           <Inline>
-            <Badge
-              mix={css({ "--hui-muted": "#ffffff", "--hui-border": "#a9c5f4" })}
-            >
-              Synthetic league preview
-            </Badge>
+            <Badge>Synthetic league preview</Badge>
             <span mix={css({ color: "var(--hui-ink)", fontSize: "13px" })}>
               No accounts, uploads or backend · reload resets changes
             </span>
