@@ -51,10 +51,15 @@ test("forwarded authorization policy enforces PKCE and reports the staged client
   assert.equal(staged.headers.get("x-jack-auth-not-before"), boundary);
 });
 
+const unexpected = () => assert.fail("Rejected input must not reach upstream");
+const post = (body, headers) => ({
+  method: "POST",
+  headers: { "content-type": "application/json", ...headers },
+  body: JSON.stringify(body),
+});
+
 test("enrollment completion requires POST and bearer proof and accepts no nominated project", async () => {
   const enrollmentKey = "fixture-only-enrollment-key".repeat(3);
-  const unexpected = () =>
-    assert.fail("Rejected input must not reach upstream");
   const enrollmentCompletion = createEnrollmentCompletion({
     api: unexpected,
     request: unexpected,
@@ -74,11 +79,6 @@ test("enrollment completion requires POST and bearer proof and accepts no nomina
     requestId: "request_12345678901234567890",
     subject: "fixture-user",
   };
-  const post = (body, headers) => ({
-    method: "POST",
-    headers: { "content-type": "application/json", ...headers },
-    body: JSON.stringify(body),
-  });
   await send(router, path, {}, 405);
   await send(router, path, post(event), 401);
   await send(

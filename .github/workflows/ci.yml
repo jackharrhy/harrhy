@@ -122,7 +122,7 @@ jobs:
           fi
           convert -version
           identify -version
-      - if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/ui-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/auth') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/letters-to-steve') || (needs.select.outputs.browser == 'true' && (env.RUN_INTEGRATION == 'true' || needs.select.outputs.radio == 'true'))
+      - if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/ui-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/letters-to-steve') || (needs.select.outputs.browser == 'true' && (env.RUN_INTEGRATION == 'true' || needs.select.outputs.radio == 'true'))
         run: pnpm --filter @harrhy/ui-app exec playwright install --only-shell chromium
       - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.pool == 'true'
         run: pnpm --filter @harrhy/pool-app exec playwright install --only-shell chromium

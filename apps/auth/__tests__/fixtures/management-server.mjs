@@ -6,6 +6,7 @@ import { mkdtemp, writeFile, readFile, rename, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { loadAuthFetch } from "./auth-fetch.mjs";
 import { createAccessStore } from "../../src/access-store.mjs";
 
 function listenLoopback(listener, port = 0) {
@@ -22,13 +23,15 @@ function listenLoopback(listener, port = 0) {
 export async function createManagementFixture({
   publicOrigin,
   port = 0,
+  inProcess = false,
   mediaWrites = true,
   mediaProvisioningOnly = false,
   mediaProvisioningDisabled = false,
 } = {}) {
   const directory = await mkdtemp(`${tmpdir()}/auth-management-`);
-  let server, provider, nativeServer, proxy;
+  let server, provider, nativeServer, proxy, app;
   async function close() {
+    await app?.close();
     if (server?.pid && server.exitCode === null && server.signalCode === null) {
       await new Promise((resolve) => {
         const timer = setTimeout(() => server.kill("SIGKILL"), 5000);
@@ -642,11 +645,14 @@ export async function createManagementFixture({
       response.end(JSON.stringify(result));
     });
     await listenLoopback(provider);
-    const reservation = createServer();
-    await listenLoopback(reservation, port);
-    const listenPort = reservation.address().port;
-    await new Promise((resolve) => reservation.close(resolve));
-    if (!publicOrigin) {
+    let listenPort;
+    if (!inProcess) {
+      const reservation = createServer();
+      await listenLoopback(reservation, port);
+      listenPort = reservation.address().port;
+      await new Promise((resolve) => reservation.close(resolve));
+    }
+    if (!inProcess && !publicOrigin) {
       execFileSync(
         "openssl",
         [
@@ -694,7 +700,11 @@ export async function createManagementFixture({
       );
       await listenLoopback(proxy);
     }
-    const origin = publicOrigin || `https://127.0.0.1:${proxy?.address().port}`;
+    const origin =
+      publicOrigin ||
+      (inProcess
+        ? "https://auth.test"
+        : `https://127.0.0.1:${proxy.address().port}`);
     if (mediaProvisioningOnly || mediaProvisioningDisabled)
       await writeFile(
         `${directory}/media-provisioning.json`,
@@ -706,60 +716,66 @@ export async function createManagementFixture({
               ).filter((item) => item.service === "jellyfin"),
         ),
       );
-    server = spawn(process.execPath, ["src/server.mjs"], {
-      cwd: fileURLToPath(new URL("../../", import.meta.url)),
-      env: {
-        PATH: process.env.PATH,
-        HOME: directory,
-        LISTEN_HOST: "127.0.0.1",
-        PORT: String(listenPort),
-        PUBLIC_ORIGIN: origin,
-        ZITADEL_API_URL: `http://127.0.0.1:${provider.address().port}`,
-        LOGIN_TOKEN_FILE: `${directory}/key.json`,
-        MANAGEMENT_TOKEN_FILE: `${directory}/key.json`,
-        AUTH_PROVISIONING_TOKEN_FILE: `${directory}/key.json`,
-        ACCESS_DB_FILE: `${directory}/access.sqlite`,
-        AUTH_MEDIA_INSTANCES_FILE: `${directory}/media-instances.json`,
-        ...(mediaWrites && !mediaProvisioningOnly
-          ? { AUTH_MEDIA_WRITES_FILE: `${directory}/media-writes.json` }
-          : {}),
-        ...(mediaProvisioningOnly || mediaProvisioningDisabled
-          ? {
-              HARRHY_AUTH_MEDIA_PROVISIONING_FILE: `${directory}/media-provisioning.json`,
-            }
-          : {}),
-        ORGANIZATION_ID: "org",
-        LORE_PROJECT_ID: "unused",
-        LORE_CLIENT_ID: "unused",
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
+    const env = {
+      PATH: process.env.PATH,
+      HOME: directory,
+      LISTEN_HOST: "127.0.0.1",
+      PORT: String(listenPort),
+      PUBLIC_ORIGIN: origin,
+      ZITADEL_API_URL: `http://127.0.0.1:${provider.address().port}`,
+      LOGIN_TOKEN_FILE: `${directory}/key.json`,
+      MANAGEMENT_TOKEN_FILE: `${directory}/key.json`,
+      AUTH_PROVISIONING_TOKEN_FILE: `${directory}/key.json`,
+      ACCESS_DB_FILE: `${directory}/access.sqlite`,
+      AUTH_MEDIA_INSTANCES_FILE: `${directory}/media-instances.json`,
+      ...(mediaWrites && !mediaProvisioningOnly
+        ? { AUTH_MEDIA_WRITES_FILE: `${directory}/media-writes.json` }
+        : {}),
+      ...(mediaProvisioningOnly || mediaProvisioningDisabled
+        ? {
+            HARRHY_AUTH_MEDIA_PROVISIONING_FILE: `${directory}/media-provisioning.json`,
+          }
+        : {}),
+      ORGANIZATION_ID: "org",
+      LORE_PROJECT_ID: "unused",
+      LORE_CLIENT_ID: "unused",
+    };
     let logs = "";
-    server.stderr.on("data", (data) => (logs += data));
+    if (inProcess) {
+      app = await loadAuthFetch(env);
+    } else {
+      server = spawn(process.execPath, ["src/server.mjs"], {
+        cwd: fileURLToPath(new URL("../../", import.meta.url)),
+        env,
+        stdio: ["ignore", "pipe", "pipe"],
+      });
+      server.stderr.on("data", (data) => (logs += data));
 
-    await new Promise((resolve, reject) => {
-      const timer = setTimeout(
-        () => finish(new Error("Fixture Auth startup timed out")),
-        15000,
-      );
-      const ready = () => finish();
-      const exited = () =>
-        finish(new Error("Fixture Auth exited before startup"));
-      const failed = () => finish(new Error("Fixture Auth could not start"));
-      function finish(error) {
-        clearTimeout(timer);
-        server.stdout.off("data", ready);
-        server.off("exit", exited);
-        server.off("error", failed);
-        if (error) reject(error);
-        else resolve();
-      }
-      server.stdout.once("data", ready);
-      server.once("exit", exited);
-      server.once("error", failed);
-    });
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(
+          () => finish(new Error("Fixture Auth startup timed out")),
+          15000,
+        );
+        const ready = () => finish();
+        const exited = () =>
+          finish(new Error("Fixture Auth exited before startup"));
+        const failed = () => finish(new Error("Fixture Auth could not start"));
+        function finish(error) {
+          clearTimeout(timer);
+          server.stdout.off("data", ready);
+          server.off("exit", exited);
+          server.off("error", failed);
+          if (error) reject(error);
+          else resolve();
+        }
+        server.stdout.once("data", ready);
+        server.once("exit", exited);
+        server.once("error", failed);
+      });
+    }
     return {
       origin,
+      fetch: app?.fetch,
       listenPort,
       directory,
       users,

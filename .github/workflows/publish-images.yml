@@ -133,8 +133,6 @@ jobs:
       - if: matrix.app == 'artbin'
         run: pnpm run artbin:check
       - if: matrix.app == 'auth'
-        run: pnpm --filter @harrhy/auth exec playwright install --only-shell chromium
-      - if: matrix.app == 'auth'
         run: pnpm --filter @harrhy/auth run check
       - if: matrix.app == 'cms'
         run: pnpm run cms:check
