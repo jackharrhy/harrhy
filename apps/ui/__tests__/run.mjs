@@ -1,3 +1,12 @@
+// Temporary workaround for @remix-run/test: its browser server needs module
+// URLs under rootDir, but pnpm's global virtual store resolves dependencies
+// outside the checkout. Stage only the known browser harness modules inside
+// the checkout and resolve their imports from their original package paths.
+// This does not change the test server's HTTP filesystem boundary.
+// remix-run/remix#11793 and #11814 address the app asset server, not this
+// harness; Remix 3.3.0 / @remix-run/test 1.2.0 still reproduced the error.
+// Remove this adapter once the upstream harness passes the full UI check via
+// the stock Remix test CLI with the global virtual store enabled.
 import {
   copyFileSync,
   mkdtempSync,
