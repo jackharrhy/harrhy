@@ -6,6 +6,8 @@ Read-only Remix 3 website over the existing historical Sluggers PostgreSQL datab
 
 Use the root Node 26 toolchain and `npm ci --ignore-scripts`. Set `HARRHY_SLUGGERS_DATABASE_URL` through an external private environment file, then `npm start --workspace @harrhy/harry-sluggers`. Run `npm run build --workspace @harrhy/harry-sluggers` before starting to bundle the native Remix browser runtime. The native server binds loopback on `PORT` (default 18950); only the explicit container setting `HARRHY_SLUGGERS_HOST=0.0.0.0` enables a non-loopback bind. A private serving boundary is required; this app has no authentication. Run `npm run check --workspace @harrhy/harry-sluggers` and `npm run build --workspace @harrhy/harry-sluggers`.
 
+The workspace check seeds an in-memory PGlite archive and runs the real reader SQL through Remix. It needs no PostgreSQL service or historical data. The fixture does not test the deployed schema, reader grants, or `pg` connectivity and pool settings.
+
 Against a running authorized private preview, install Chromium with `npx playwright install --only-shell chromium` and run `npm run test:browser --workspace @harrhy/harry-sluggers`. `HARRHY_SLUGGERS_TEST_URL` optionally selects that preview. This exercises all page families, six styles and four viewport widths, checks native Remix navigation, player search and saved style selection. It reads public pages only and does not write league data.
 
 The previous misspelled `HARRHY_SLEGGERS_DATABASE_URL`, `HARRHY_SLEGGERS_ASSET_ROOT` and `HARRHY_SLEGGERS_HOST` settings remain compatibility fallbacks while external preview configuration transitions. Correctly spelled `HARRHY_SLUGGERS_*` settings take precedence; database values are unchanged.

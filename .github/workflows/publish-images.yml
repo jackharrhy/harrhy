@@ -144,7 +144,7 @@ jobs:
         if: matrix.app == 'garden'
         run: |
           docker build --tag garden-smoke --file apps/garden/Dockerfile .
-          node apps/garden/__tests__/image-smoke.mjs garden-smoke
+          node scripts/ci/selected-image-smoke.mjs garden garden-smoke
       - if: matrix.app == 'harry-sluggers'
         run: pnpm --filter @harrhy/harry-sluggers run check
       - if: matrix.app == 'letters-to-steve'

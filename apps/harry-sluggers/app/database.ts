@@ -9,6 +9,12 @@ export function openArchive(connectionString: string) {
     options:
       "-c default_transaction_read_only=on -c statement_timeout=5000 -c idle_in_transaction_session_timeout=5000",
   });
+  return { ...createArchiveReader(db), close: () => db.close() };
+}
+
+export function createArchiveReader(
+  db: Pick<ReturnType<typeof createPostgresDatabase>, "transaction">,
+) {
   async function read() {
     return db.transaction(
       async (tx) => ({
@@ -244,7 +250,7 @@ export function openArchive(connectionString: string) {
       { readOnly: true, isolationLevel: "repeatable read" },
     );
   }
-  return { read, close: () => db.close() };
+  return { read };
 }
 export type Archive = Awaited<
   ReturnType<ReturnType<typeof openArchive>["read"]>
