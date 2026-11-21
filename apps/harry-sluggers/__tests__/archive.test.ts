@@ -1,7 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import { PGlite } from "@electric-sql/pglite";
+import type { Client } from "pg";
+import { createPostgresDatabase } from "remix/data-table/postgres";
 import { createArchiveApp } from "../app/router.tsx";
 import {
+  createArchiveReader,
   positiveId,
   result,
   type Archive,
@@ -54,79 +59,49 @@ test("unknown scores never manufacture a result; zero is recorded", () => {
   m.state = "live";
   assert.equal(result(m, 1), null);
 });
-test("match pages retain recorded team and position after a roster change", async () => {
-  const data: Archive = {
-    ...empty,
-    teams: [
-      {
-        id: 1,
-        name: "Former club",
-        color: null,
-        user_id: 1,
-        abbreviation: "OLD",
-        captain_id: null,
-        conference_id: null,
-      },
-      {
-        id: 2,
-        name: "Current club",
-        color: null,
-        user_id: 2,
-        abbreviation: "NEW",
-        captain_id: 1,
-        conference_id: null,
-      },
-    ],
-    players: [
-      {
-        id: 1,
-        name: "Transferred player",
-        team_id: 2,
-        stats_character: null,
-        sort_position: 1,
-      },
-    ],
-    lineups: [
-      {
-        player_id: 1,
-        fielding_position: "C",
-        batting_order: 2,
-        is_starred: false,
-      },
-    ],
-    matches: [
-      {
-        id: 1,
-        match_day_id: null,
-        order_in_day: null,
-        team_a_id: 1,
-        team_b_id: 2,
-        location_id: null,
-        state: "finished",
-        scheduled_date: null,
-        team_a_score: 0,
-        team_b_score: 1,
-      },
-    ],
-    appearances: [
-      {
-        match_id: 1,
-        team_id: 1,
-        player_id: 1,
-        batting_order: 1,
-        fielding_position: "P",
-        is_starred: true,
-      },
-    ],
-  };
-  const app = await createArchiveApp({
-    async read() {
-      return data;
+test("match pages read the frozen lineup after a database roster change", async (t) => {
+  const fixture = new PGlite();
+  t.after(() => fixture.close());
+  await fixture.exec(
+    await readFile(new URL("./archive-schema.sql", import.meta.url), "utf8"),
+  );
+  await fixture.exec(`
+    INSERT INTO team (id, name, user_id, abbreviation, captain_id) VALUES
+      (1, 'Former club', 1, 'OLD', NULL), (2, 'Current club', 2, 'NEW', 1);
+    INSERT INTO players (id, name, team_id, sort_position) VALUES (1, 'Transferred player', 1, 1);
+    INSERT INTO team_lineup VALUES (1, 'P', 1, true);
+    INSERT INTO matches (id, team_a_id, team_b_id, state, team_a_score, team_b_score)
+      VALUES (1, 1, 2, 'finished', 0, 1);
+    INSERT INTO match_batting_orders VALUES (1, 1, 1, 1, 'P', true);
+  `);
+
+  // Remix uses the promise-based pg query(text, values) subset for reads and
+  // transactions. PGlite executes that same SQL; it is not a full pg client.
+  const client = {
+    async query(text: string, values?: unknown[]) {
+      const queryResult = await fixture.query(text, values);
+      return {
+        rows: queryResult.rows,
+        rowCount: queryResult.affectedRows ?? null,
+      };
     },
-  });
+  };
+  const reader = createArchiveReader(
+    createPostgresDatabase(client as unknown as Client),
+  );
+  const app = await createArchiveApp(reader);
+  const currentLineup = new Request("http://league.test/teams/2/lineup");
+  const before = await app.fetch(currentLineup);
+  assert.equal(before.status, 200);
+  assert.doesNotMatch(await before.text(), /Transferred player/);
+  await fixture.exec(`
+    UPDATE players SET team_id = 2 WHERE id = 1;
+    UPDATE team_lineup SET fielding_position = 'C', batting_order = 2, is_starred = false WHERE player_id = 1;
+  `);
   const historical = await app.fetch(
     new Request("http://league.test/matches/1/lineup"),
   );
+  assert.equal(historical.status, 200);
   const html = await historical.text();
   assert.match(html, /Former club recorded lineup/);
   assert.match(html, /data-result="Loss">0/);
@@ -134,10 +109,11 @@ test("match pages retain recorded team and position after a roster change", asyn
   assert.match(html, />P</);
   assert.match(html, />Starred</);
   assert.doesNotMatch(html, /<td>Captain</);
-  const current = await app.fetch(
-    new Request("http://league.test/teams/2/lineup"),
-  );
-  assert.match(await current.text(), />C</);
+  const current = await app.fetch(currentLineup);
+  assert.equal(current.status, 200);
+  const currentHtml = await current.text();
+  assert.match(currentHtml, /Transferred player/);
+  assert.match(currentHtml, />C</);
   assert.equal(
     (await app.fetch(new Request("http://league.test/", { method: "HEAD" })))
       .status,

@@ -4,6 +4,10 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import {
+  runtimeApps,
+  selectNodeImagesFromCommits,
+} from "../node-image-impact.mjs";
 
 const readWorkflow = (name) =>
   readFileSync(
@@ -22,15 +26,13 @@ test("publication triggers on shared inputs copied by Garden", () => {
 });
 
 test("PR image selectors use the tested merge SHA", () => {
-  for (const id of ["node_images", "image_paths"]) {
-    const step =
-      ci.split(`        id: ${id}\n`)[1]?.split("\n      - ")[0] ??
-      ci.split(`      - id: ${id}\n`)[1]?.split("\n      - ")[0];
-    assert.ok(step?.includes("HEAD_SHA: ${{ github.sha }}"), id);
-  }
+  const step = ci
+    .split("      - id: node_images")[1]
+    ?.split("      - id: plan")[0];
+  assert.ok(step?.includes("HEAD_SHA: ${{ github.sha }}"));
 });
 
-test("Garden selects an npmrc-only merge diff and falls back safely", (t) => {
+test("Garden and Sluggers select an npmrc-only merge diff and falls back safely", (t) => {
   const cwd = mkdtempSync(join(tmpdir(), "ci-image-workflows-"));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));
   const run = (cmd, args, options) =>
@@ -56,29 +58,20 @@ test("Garden selects an npmrc-only merge diff and falls back safely", (t) => {
   commit(".npmrc");
   git("merge", "--no-edit", "main");
   const head = git("rev-parse", "HEAD");
-  const script = ci
-    .split("        id: image_paths\n")[1]
-    .split("\n      - id: plan")[0]
-    .split("        run: |\n")[1]
-    .replace(/^ {10}/gm, "");
-  const output = join(cwd, "outputs");
-  const select = (baseSha, headSha, event = "pull_request") => {
-    writeFileSync(output, "");
-    run("bash", ["-e", "-c", script], {
-      env: {
-        ...process.env,
-        BASE_SHA: baseSha,
-        HEAD_SHA: headSha,
-        GITHUB_EVENT_NAME: event,
-        GITHUB_OUTPUT: output,
-      },
+  const select = (before, testedHead) =>
+    selectNodeImagesFromCommits({
+      apps: runtimeApps,
+      before,
+      head: testedHead,
+      event: "pull_request",
+      read: (args) => git(...args),
+      warn: () => {},
     });
-    return readFileSync(output, "utf8").split("\n");
-  };
-  assert.ok(select(base, head).includes("garden=true"));
-  assert.ok(select(base, base).includes("garden=false"));
-  assert.ok(select("missing", head).includes("garden=true"));
-  assert.ok(select(base, head, "push").includes("garden=false"));
+  for (const app of ["garden", "harry-sluggers"]) {
+    assert.ok(select(base, head).includes(app));
+    assert.ok(!select(base, base).includes(app));
+    assert.ok(select("missing", head).includes(app));
+  }
 });
 
 test("main push compares across failed and cancelled runs or has no baseline", (t) => {
@@ -88,7 +81,10 @@ test("main push compares across failed and cancelled runs or has no baseline", (
     execFileSync(
       "git",
       ["-c", "user.name=CI", "-c", "user.email=ci@example.invalid", ...args],
-      { cwd, encoding: "utf8" },
+      {
+        cwd,
+        encoding: "utf8",
+      },
     ).trim();
   git("init", "-qb", "main");
   const commits = ["success", "failure", "cancelled", "current"].map(
@@ -151,8 +147,6 @@ test("job plan emits only nonempty matrices and rejects invalid selector output"
           CHECK: "false",
           NODE_APPS: "[]",
           RUNTIME_IMAGES: "[]",
-          GARDEN: "false",
-          HARRY_SLUGGERS: "false",
           GITHUB_OUTPUT: output,
           GITHUB_STEP_SUMMARY: summary,
           ...overrides,
@@ -178,19 +172,16 @@ test("job plan emits only nonempty matrices and rejects invalid selector output"
       check: false,
       "node-images": false,
       "selected-images": false,
-      "garden-image": false,
-      "harry-sluggers-image": false,
     },
   });
   assert.match(
     readFileSync(summary, "utf8"),
-    /Jobs omitted: check, node-images, selected-images, garden-image, harry-sluggers-image/,
+    /Jobs omitted: check, node-images, selected-images/,
   );
   const selected = plan({
     CHECK: "true",
     NODE_APPS: '["maps-compiler"]',
-    RUNTIME_IMAGES: '["ref"]',
-    GARDEN: "true",
+    RUNTIME_IMAGES: '["garden","harry-sluggers","ref"]',
   });
   assert.equal(selected.status, 0, selected.stderr);
   assert.deepEqual(readOutputs(), {
@@ -198,18 +189,16 @@ test("job plan emits only nonempty matrices and rejects invalid selector output"
       check: true,
       "node-images": true,
       "selected-images": true,
-      "garden-image": true,
-      "harry-sluggers-image": false,
     },
     node_matrix: { app: ["maps-compiler"] },
     runtime_matrix: {
-      app: ["ref"],
+      app: ["garden", "harry-sluggers", "ref"],
     },
   });
   for (const invalid of [
     { NODE_APPS: "" },
+    { RUNTIME_IMAGES: "" },
     { NODE_APPS: '["unknown"]' },
-    { GARDEN: "" },
   ]) {
     assert.equal(plan(invalid).status, 1);
     assert.equal(readFileSync(output, "utf8"), "");
@@ -225,8 +214,6 @@ test("CI gate accepts only successful selected jobs and intentional skips", () =
     check: true,
     "node-images": true,
     "selected-images": false,
-    "garden-image": false,
-    "harry-sluggers-image": false,
   };
   const needs = {
     select: { result: "success", outputs: { jobs: JSON.stringify(jobPlan) } },
@@ -251,7 +238,7 @@ test("CI gate accepts only successful selected jobs and intentional skips", () =
     assert.notEqual(gate({ "node-images": { result } }), 0);
     assert.notEqual(gate({ workflows: { result } }), 0);
   }
-  assert.notEqual(gate({ "garden-image": { result: "cancelled" } }), 0);
+  assert.notEqual(gate({ "selected-images": { result: "cancelled" } }), 0);
   for (const jobs of [
     undefined,
     "invalid",

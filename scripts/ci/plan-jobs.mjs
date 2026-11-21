@@ -27,8 +27,6 @@ const jobs = {
   check: flag("CHECK"),
   "node-images": nodeApps.length > 0,
   "selected-images": runtime.length > 0,
-  "garden-image": flag("GARDEN"),
-  "harry-sluggers-image": flag("HARRY_SLUGGERS"),
 };
 const outputs = [`jobs=${JSON.stringify(jobs)}`];
 if (jobs["node-images"])

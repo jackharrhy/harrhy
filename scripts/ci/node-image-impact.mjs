@@ -22,6 +22,8 @@ export const nodeImageApps = [
 ];
 
 export const runtimeApps = [
+  "garden",
+  "harry-sluggers",
   "ref",
   "radio",
   "worldview",

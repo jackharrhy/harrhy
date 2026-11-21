@@ -20,6 +20,7 @@
     "remix": "3.2.0"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "0.5.17",
     "@types/d3": "7.4.3",
     "@types/node": "26.6.6",
     "@types/pg": "8.15.6",

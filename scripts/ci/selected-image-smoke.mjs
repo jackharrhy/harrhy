@@ -1,5 +1,10 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { smokeGarden } from "../../apps/garden/__tests__/image-smoke.mjs";
+import { smokeSluggers } from "../../apps/harry-sluggers/__tests__/image-smoke.mjs";
+
+const docker = (...args) =>
+  execFileSync("docker", args, { encoding: "utf8", timeout: 180_000 });
 
 const [app, image] = process.argv.slice(2);
 const configs = {
@@ -39,36 +44,43 @@ const configs = {
   },
   pool: { port: 3188, paths: [["/api/health", 200]], bun: true },
 };
-const config = configs[app];
-assert.ok(
-  config && image,
-  "Usage: node scripts/ci/selected-image-smoke.mjs APP IMAGE",
-);
-const docker = (...args) =>
-  execFileSync("docker", args, { encoding: "utf8", timeout: 180_000 });
-const variables = {
-  AUTH_ISSUER: "https://auth.example.test",
-  AUTH_CLIENT_ID: "image-smoke",
-  AUTH_PROJECT_ID: "image-smoke-project",
-  AUTH_ORGANIZATION_ID: "image-smoke-org",
-  AUTH_PUBLIC_ORIGIN: "https://image-smoke.example.test",
-  RADIO_SESSION_SECRET: "disposable-image-smoke-session-secret",
-  HARRHY_MAPS_REALTIME_TICKET_SECRET: "disposable-image-smoke-ticket-secret",
-};
-const environment = Object.entries(variables).flatMap(([key, value]) => [
-  "-e",
-  `${config.bun ? "" : "CELLD_VAR_"}${key}=${value}`,
-]);
-const id = docker(
-  "run",
-  "-d",
-  "--network",
-  "none",
-  ...environment,
-  image,
-).trim();
-try {
-  const script = `
+if (app === "garden" && image) {
+  smokeGarden(image);
+} else if (app === "harry-sluggers" && image) {
+  smokeSluggers(image);
+} else {
+  await smokeExistingRuntime();
+}
+
+async function smokeExistingRuntime() {
+  const config = configs[app];
+  assert.ok(
+    config && image,
+    "Usage: node scripts/ci/selected-image-smoke.mjs APP IMAGE",
+  );
+  const variables = {
+    AUTH_ISSUER: "https://auth.example.test",
+    AUTH_CLIENT_ID: "image-smoke",
+    AUTH_PROJECT_ID: "image-smoke-project",
+    AUTH_ORGANIZATION_ID: "image-smoke-org",
+    AUTH_PUBLIC_ORIGIN: "https://image-smoke.example.test",
+    RADIO_SESSION_SECRET: "disposable-image-smoke-session-secret",
+    HARRHY_MAPS_REALTIME_TICKET_SECRET: "disposable-image-smoke-ticket-secret",
+  };
+  const environment = Object.entries(variables).flatMap(([key, value]) => [
+    "-e",
+    `${config.bun ? "" : "CELLD_VAR_"}${key}=${value}`,
+  ]);
+  const id = docker(
+    "run",
+    "-d",
+    "--network",
+    "none",
+    ...environment,
+    image,
+  ).trim();
+  try {
+    const script = `
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync, existsSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -130,34 +142,35 @@ ${app === "radio" ? `const azure=await import('@azure/storage-blob');assert.equa
 }
 console.log('selected runtime, compiler and SQLite write/reopen passed');
 `;
-  process.stdout.write(
-    docker(
-      "exec",
-      id,
-      ...(config.bun ? ["bun", "-e"] : ["node", "--input-type=module", "-e"]),
-      script,
-    ),
-  );
-  docker("stop", "--time", "15", id);
-  if (!config.bun) {
-    // Startup diagnostics reject offline peers until Celld's 10-second lease expires.
-    await new Promise((resolve) => setTimeout(resolve, 15_000));
+    process.stdout.write(
+      docker(
+        "exec",
+        id,
+        ...(config.bun ? ["bun", "-e"] : ["node", "--input-type=module", "-e"]),
+        script,
+      ),
+    );
+    docker("stop", "--time", "15", id);
+    if (!config.bun) {
+      // Startup diagnostics reject offline peers until Celld's 10-second lease expires.
+      await new Promise((resolve) => setTimeout(resolve, 15_000));
+    }
+    docker("start", id);
+    process.stdout.write(
+      docker(
+        "exec",
+        id,
+        ...(config.bun ? ["bun", "-e"] : ["node", "--input-type=module", "-e"]),
+        script.replace("const restarted = false;", "const restarted = true;"),
+      ),
+    );
+    console.log(
+      `${app}: default CMD, assets, SQLite capability and same-container restart passed`,
+    );
+  } catch (error) {
+    process.stderr.write(docker("logs", id));
+    throw error;
+  } finally {
+    docker("rm", "-f", "-v", id);
   }
-  docker("start", id);
-  process.stdout.write(
-    docker(
-      "exec",
-      id,
-      ...(config.bun ? ["bun", "-e"] : ["node", "--input-type=module", "-e"]),
-      script.replace("const restarted = false;", "const restarted = true;"),
-    ),
-  );
-  console.log(
-    `${app}: default CMD, assets, SQLite capability and same-container restart passed`,
-  );
-} catch (error) {
-  process.stderr.write(docker("logs", id));
-  throw error;
-} finally {
-  docker("rm", "-f", "-v", id);
 }

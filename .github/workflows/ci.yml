@@ -60,41 +60,11 @@ jobs:
           HEAD_SHA: ${{ github.sha }}
           EVENT: ${{ github.event_name }}
         run: node scripts/ci/node-image-impact.mjs
-      - name: Select runtime image groups
-        id: image_paths
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.sha }}
-        run: |
-          # Compare the base with the merge checkout the image jobs build.
-          # Run all groups on dispatch or when the comparison fails.
-          select_group() {
-            local group=$1
-            shift
-            local selected=true
-            case "$GITHUB_EVENT_NAME" in
-              push) selected=false ;;
-              pull_request)
-                if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ] &&
-                  git diff --quiet --no-renames "$BASE_SHA" "$HEAD_SHA" -- .github/workflows/ci.yml "$@"; then
-                  selected=false
-                fi
-                ;;
-            esac
-            echo "$group=$selected" >> "$GITHUB_OUTPUT"
-          }
-          select_group garden .github/workflows/publish-garden.yml .github/workflows/publish-images.yml \
-            .dockerignore .npmrc .nvmrc tsconfig.base.json package.json pnpm-lock.yaml \
-            pnpm-workspace.yaml apps/garden/ packages/ui/
-          select_group harry_sluggers .dockerignore .npmrc package.json pnpm-lock.yaml \
-            pnpm-workspace.yaml tsconfig.base.json apps/harry-sluggers/ packages/ui/
       - id: plan
         env:
           CHECK: ${{ steps.affected.outputs.any }}
           NODE_APPS: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.apps }}
           RUNTIME_IMAGES: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.runtime }}
-          GARDEN: ${{ steps.image_paths.outputs.garden }}
-          HARRY_SLUGGERS: ${{ steps.image_paths.outputs.harry_sluggers }}
         run: node scripts/ci/plan-jobs.mjs
   check:
     needs: select
@@ -283,54 +253,14 @@ jobs:
         env:
           APP: ${{ matrix.app }}
         run: docker build --tag selected-smoke --file "apps/$APP/Dockerfile" .
-      - name: Check default CMD, assets, compiler, SQLite and restart
+      - name: Check app-specific production runtime
         env:
           APP: ${{ matrix.app }}
         run: node scripts/ci/selected-image-smoke.mjs "$APP" selected-smoke
-  garden-image:
-    needs: select
-    if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['garden-image']
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version-file: .nvmrc
-      - run: docker build --tag garden-smoke --file apps/garden/Dockerfile .
-      - run: node apps/garden/__tests__/image-smoke.mjs garden-smoke
-  harry-sluggers-image:
-    needs: select
-    if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['harry-sluggers-image']
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - run: docker build -t harry-sluggers-check -f apps/harry-sluggers/Dockerfile .
-      - name: Missing database configuration fails closed
-        run: |
-          if docker run --rm harry-sluggers-check > startup.log 2>&1; then
-            echo "Unexpected startup without a database" >&2
-            exit 1
-          fi
-          grep -q 'HARRHY_SLUGGERS_DATABASE_URL is required' startup.log
   gate:
     name: CI gate
     if: always()
-    needs:
-      [
-        select,
-        check,
-        workflows,
-        node-images,
-        selected-images,
-        garden-image,
-        harry-sluggers-image,
-      ]
+    needs: [select, check, workflows, node-images, selected-images]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions: {}
