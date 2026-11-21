@@ -1,22 +1,5 @@
 import { build } from "esbuild";
-import { copyFile, readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-const pi = new URL("../../pi/", import.meta.url);
-const {
-  compilerOptions: { paths },
-} = JSON.parse(await readFile(new URL("tsconfig.json", pi)));
-await build({
-  entryPoints: ["app/browser.tsx"],
-  outfile: "dist/assets/clank.js",
-  bundle: true,
-  platform: "browser",
-  format: "esm",
-  jsx: "automatic",
-  jsxImportSource: "remix/component",
-  tsconfigRaw: { compilerOptions: { baseUrl: fileURLToPath(pi), paths } },
-  define: { "process.env.NODE_ENV": '"production"' },
-});
-
+import { copyFile } from "node:fs/promises";
 const browser = await build({
   entryPoints: ["app/start.ts"],
   bundle: true,

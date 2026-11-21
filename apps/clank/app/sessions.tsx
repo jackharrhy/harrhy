@@ -1,4 +1,14 @@
-import { clientEntry, on, type Handle } from "remix/component";
+import {
+  Badge,
+  Button,
+  Heading,
+  Input,
+  Notice,
+  Panel,
+  Stack,
+  Text,
+} from "@harrhy/ui/native";
+import { clientEntry, css, on, type Handle } from "remix/component";
 import type { Row } from "./session-state.ts";
 import { ClankProvider } from "./clank-provider.tsx";
 
@@ -10,14 +20,14 @@ function ConnectionPane(handle: Handle) {
   notice.subscribe(() => handle.update(), handle);
   return () => (
     <>
-      <p role="status" aria-label="Fixture connection">
+      <Badge role="status" aria-label="Fixture connection">
         {status.current === "live"
           ? "Live"
           : status.current === "connecting"
             ? "Connecting…"
             : "Disconnected. Reconnecting…"}
-      </p>
-      {notice.current && <p role="alert">{notice.current}</p>}
+      </Badge>
+      {notice.current && <Notice role="alert">{notice.current}</Notice>}
     </>
   );
 }
@@ -42,17 +52,19 @@ function Commands(handle: Handle<{ id?: string; disabled: boolean }>) {
         >
           <label>
             {id ? "New title" : "Session title"}{" "}
-            <input name="title" required maxLength={120} />
+            <Input name="title" required maxLength={120} />
           </label>{" "}
-          <button disabled={disabled}>{id ? "Rename" : "Create"}</button>
+          <Button type="submit" variant="primary" disabled={disabled}>
+            {id ? "Rename" : "Create"}
+          </Button>
         </form>
         {id && (
-          <button
+          <Button
             disabled={disabled}
             mix={on("click", () => app.sessions.archive(id))}
           >
             Archive
-          </button>
+          </Button>
         )}
       </>
     );
@@ -64,37 +76,41 @@ function SessionRow(handle: Handle<{ row: Row; disabled: boolean }>) {
     const { row, disabled } = handle.props;
     return (
       <li>
-        <h3>{row.title || "Untitled session"}</h3>
-        <p>
-          {row.pinned ? "Pinned · " : ""}
-          {row.model.provider}/{row.model.modelId} · {row.thinkingLevel}
-        </p>
-        <details>
-          <summary>Session details</summary>
-          <p>
-            {row.env ?? "Local"} · {row.cwd}
-          </p>
-          <p>
-            Created {new Date(row.createdAt).toISOString()} · Updated{" "}
-            {new Date(row.updatedAt).toISOString()}
-          </p>
-          <p>Main conversation {row.main}</p>
-          <ul>
-            {row.branches.map((b) => (
-              <li key={b.conversation}>
-                {b.conversation}: {b.label ?? row.title}
-                {b.parent ? ` (from ${b.parent})` : ""}
-              </li>
-            ))}
-          </ul>
-          {row.archivedAt !== null && (
-            <p>Archived {new Date(row.archivedAt).toISOString()}</p>
-          )}
-        </details>
+        <Panel>
+          <Stack>
+            <Heading level={3}>{row.title || "Untitled session"}</Heading>
+            <Text tone="muted">
+              {row.pinned ? "Pinned · " : ""}
+              {row.model.provider}/{row.model.modelId} · {row.thinkingLevel}
+            </Text>
+            <details>
+              <summary>Session details</summary>
+              <p>
+                {row.env ?? "Local"} · {row.cwd}
+              </p>
+              <p>
+                Created {new Date(row.createdAt).toISOString()} · Updated{" "}
+                {new Date(row.updatedAt).toISOString()}
+              </p>
+              <p>Main conversation {row.main}</p>
+              <ul>
+                {row.branches.map((b) => (
+                  <li key={b.conversation}>
+                    {b.conversation}: {b.label ?? row.title}
+                    {b.parent ? ` (from ${b.parent})` : ""}
+                  </li>
+                ))}
+              </ul>
+              {row.archivedAt !== null && (
+                <p>Archived {new Date(row.archivedAt).toISOString()}</p>
+              )}
+            </details>
 
-        {row.archivedAt === null && (
-          <Commands id={row.id} disabled={disabled} />
-        )}
+            {row.archivedAt === null && (
+              <Commands id={row.id} disabled={disabled} />
+            )}
+          </Stack>
+        </Panel>
       </li>
     );
   };
@@ -115,7 +131,16 @@ function OrderedList(handle: Handle<{ archived: boolean; disabled: boolean }>) {
       {rows.current?.length === 0 && (
         <p>No {handle.props.archived ? "archived" : "active"} sessions.</p>
       )}
-      <ul aria-label="Sessions in activity order">
+      <ul
+        aria-label="Sessions in activity order"
+        mix={css({
+          listStyle: "none",
+          padding: 0,
+          margin: 0,
+          display: "grid",
+          gap: "0.75rem",
+        })}
+      >
         {rows.current?.map((row) => (
           <SessionRow key={row.id} row={row} disabled={handle.props.disabled} />
         ))}
@@ -132,15 +157,15 @@ function CatalogPane(handle: Handle) {
   return () => (
     <>
       <Commands disabled={disabled.current} />
-      <h2>{archived ? "Archive" : "Active sessions"}</h2>
-      <button
+      <Heading level={2}>{archived ? "Archive" : "Active sessions"}</Heading>
+      <Button
         mix={on("click", () => {
           archived = !archived;
           handle.update();
         })}
       >
         {archived ? "Show active" : "Show archive"}
-      </button>
+      </Button>
       <OrderedList
         key={archived ? "archive" : "active"}
         archived={archived}
@@ -154,10 +179,10 @@ export const SessionList = clientEntry(
   function SessionList() {
     return () => (
       <ClankProvider>
-        <section>
+        <Stack>
           <ConnectionPane />
           <CatalogPane />
-        </section>
+        </Stack>
       </ClankProvider>
     );
   },

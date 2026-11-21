@@ -1,6 +1,8 @@
 import { renderToString } from "remix/component/server";
 import { createRouter } from "remix/router";
-import { Badge } from "@harrhy/ui/native";
+import { css } from "remix/component";
+import { cleanTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { Badge, Heading, Inline, Stack } from "@harrhy/ui/native";
 import { SessionList } from "./app/sessions.tsx";
 export { SessionCell } from "./app/session-cell.ts";
 
@@ -29,11 +31,27 @@ router.get("/", async () => {
         <title>Clank</title>
         <script type="module" src="/sessions.js" />
       </head>
-      <body>
-        <main>
-          <h1>Clank</h1>
-          <Badge>Pi fixture</Badge>
-          <SessionList />
+      <body
+        mix={[
+          themeStyles(cleanTheme),
+          themeRoot,
+          css({ margin: 0, minHeight: "100dvh" }),
+        ]}
+      >
+        <main
+          mix={css({
+            maxWidth: "56rem",
+            marginInline: "auto",
+            padding: "clamp(1rem, 4vw, 2rem)",
+          })}
+        >
+          <Stack>
+            <Inline>
+              <Heading level={1}>Clank</Heading>
+              <Badge>Pi fixture</Badge>
+            </Inline>
+            <SessionList />
+          </Stack>
         </main>
       </body>
     </html>,
