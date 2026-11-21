@@ -16,6 +16,15 @@
     "apps/pi/__tests__/fixtures/**",
   ],
   "workspaces": {
+    "apps/clank": {
+      "entry": [
+        "app/start.ts",
+        "standalone.tsx",
+        "bridge.ts",
+        "__tests__/browser-probe.mjs",
+      ],
+      "ignoreBinaries": ["ss"],
+    },
     "apps/review": {
       "entry": ["worker.ts", "browser.ts"],
     },

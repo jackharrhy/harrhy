@@ -11,6 +11,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | --- | --- | --- |
 | [`@harrhy/8mb`](apps/8mb/) | Browser video compression and opt-in aggregate diagnostics | [README](apps/8mb/README.md) |
 | [`@harrhy/pi`](apps/pi/) | Faithful P2 React/Chord v0 review import; no live cutover | [README](apps/pi/README.md) |
+| [`@harrhy/clank`](apps/clank/) | Live session catalog for a disposable Pi fixture | [README](apps/clank/README.md) |
 | [`@harrhy/atlas`](apps/atlas/) | Private agent-owned Markdown spaces and trusted page widgets | [README](apps/atlas/README.md) |
 | [`@harrhy/ui-app`](apps/ui/) | Internal component showcase, theme comparisons and synthetic Auth/Ref patterns | [README](apps/ui/README.md) |
 | [`@harrhy/auth`](apps/auth/) | Jack Auth browser login, consent, directory, and access management | [README](apps/auth/README.md) |

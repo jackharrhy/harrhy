@@ -609,6 +609,34 @@ importers:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
 
+  apps/clank:
+    dependencies:
+      '@harrhy/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      capnweb:
+        specifier: 0.13.0
+        version: 0.13.0
+      remix:
+        specifier: 3.2.0
+        version: 3.2.0(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(pg@8.16.3)(playwright@1.65.0)
+      ws:
+        specifier: 8.21.0
+        version: 8.21.0
+    devDependencies:
+      '@cloudflare/workers-types':
+        specifier: ^5.20261112.1
+        version: 5.20261112.1
+      '@types/ws':
+        specifier: ^8.18.2
+        version: 8.18.2
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      playwright:
+        specifier: 1.65.0
+        version: 1.65.0
+
   apps/cms:
     dependencies:
       '@harrhy/identity':
