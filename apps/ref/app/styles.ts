@@ -320,6 +320,39 @@ export const refStyles = css({
     "pointer-events": "none",
     "box-shadow": "0 4px 16px #00000019",
   },
+  "& .board-item:has(img[data-image-state=loading])": {
+    backgroundColor: "#dedfdd",
+  },
+  "& .board-item img[data-image-state=loading], & .board-item img[data-image-state=failed]":
+    {
+      opacity: "0",
+    },
+  "& .image-failure": { display: "none" },
+  "& img[data-image-state=failed] + .image-failure": {
+    position: "absolute",
+    inset: "0",
+    display: "grid",
+    placeItems: "center",
+    background: "#e5e6e3",
+    color: "#4c504a",
+    fontSize: "13px",
+    textAlign: "center",
+  },
+  "@keyframes ref-image-shimmer": {
+    from: { backgroundPosition: "100% 0" },
+    to: { backgroundPosition: "0% 0" },
+  },
+  "@media (prefers-reduced-motion: no-preference)": {
+    "& .board-item:has(img[data-image-state=loading])": {
+      backgroundImage:
+        "linear-gradient(105deg, #dedfdd 35%, #e9eae8 50%, #dedfdd 65%)",
+      backgroundSize: "250% 100%",
+      animation: "ref-image-shimmer 1.8s ease-in-out infinite",
+    },
+    "& .board-item img[data-image-state=ready]": {
+      transition: "opacity 160ms ease-out",
+    },
+  },
   "& .board-item.selected": {
     "border-color": "#4b7862",
   },

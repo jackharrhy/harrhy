@@ -26,6 +26,8 @@ const pickerElement = document.querySelector("select#card-picker");
 if (!(pickerElement instanceof HTMLSelectElement))
   throw new Error("Card picker is missing");
 const picker = pickerElement;
+const loading = required<HTMLElement>("#board-loading");
+let hasSnapshot = false;
 const empty = required<HTMLElement>("#empty-state");
 const fileInput = required<HTMLInputElement>("#file-input");
 const inspector = required<HTMLElement>("#inspector-content");
@@ -415,7 +417,6 @@ function endAccess() {
   selectedId = null;
   items.clear();
   renderItems();
-  empty.hidden = true;
   required<HTMLButtonElement>("#tool-add").disabled = true;
   for (const selector of [".board-layout", "#board-title-form", "#link-menu"])
     required<HTMLElement>(selector).inert = true;
@@ -493,7 +494,7 @@ function receive(frame: BoardServerFrame) {
       removeElement(frame.itemId);
       if (selectedId === frame.itemId) selectedId = null;
     }
-    empty.hidden = items.size > 0;
+    renderBoardStatus();
     if (selectedId === frame.itemId || !frame.item) renderInspector();
     return;
   }
@@ -523,6 +524,7 @@ async function refreshSnapshot() {
 }
 
 function loadSnapshot(snapshot: BoardSnapshot) {
+  hasSnapshot = true;
   sequence = snapshot.sequence;
   items.clear();
   for (const item of snapshot.items) items.set(item.id, item);
@@ -564,10 +566,17 @@ function positionElement(element: HTMLElement, item: BoardItem) {
   element.style.transform = `rotate(${item.rotation}deg)`;
 }
 
+function renderBoardStatus() {
+  const ended = connectionState === "ended";
+  loading.hidden = hasSnapshot || ended;
+  world.setAttribute("aria-busy", String(!loading.hidden));
+  empty.hidden = !hasSnapshot || ended || items.size > 0;
+}
+
 function renderItems() {
   for (const item of items.values()) renderItem(item);
   for (const id of elements.keys()) if (!items.has(id)) removeElement(id);
-  empty.hidden = items.size > 0;
+  renderBoardStatus();
   renderInspector();
   scheduleImageDetail();
 }
@@ -589,16 +598,20 @@ function renderItem(item: BoardItem) {
       element.appendChild(linkCard(item.id, item.link));
     } else {
       const image = document.createElement("img");
+      image.dataset.imageState = "loading";
       image.dataset.src = `/media/${boardId}/${item.assetId}`;
       image.alt = displayFilename(item.filename);
       image.loading = "lazy";
       image.decoding = "async";
       image.draggable = false;
       image.addEventListener("error", () => {
-        if (image.src.startsWith("blob:") && image.dataset.original)
-          image.src = image.dataset.original;
+        image.dataset.imageState = "failed";
       });
+      const failure = document.createElement("span");
+      failure.className = "image-failure";
+      failure.textContent = "Image unavailable";
       element.appendChild(image);
+      element.appendChild(failure);
     }
     const resize = document.createElement("span");
     resize.className = "resize-handle";
@@ -687,6 +700,7 @@ function linkCard(itemId: string, link: LinkPreview): HTMLElement {
       const current = items.get(itemId);
       if (element && current) positionElement(element, current);
     });
+    image.dataset.imageState = "loading";
     image.dataset.src = link.imageUrl;
     card.appendChild(image);
   } else {

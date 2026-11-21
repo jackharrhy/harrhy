@@ -342,8 +342,11 @@ export function BoardPage(
             aria-label="Image board"
             tabIndex={0}
           >
-            <div id="world" class="world"></div>
-            <div id="empty-state" class="empty-state">
+            <div id="world" class="world" aria-busy="true"></div>
+            <div id="board-loading" class="empty-state" role="status">
+              Loading board…
+            </div>
+            <div id="empty-state" class="empty-state" hidden>
               <p>Drop images or links here</p>
               <button id="empty-add" type="button">
                 or choose files

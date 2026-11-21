@@ -8,6 +8,7 @@ export async function installFrameGate(page, initial = null) {
     window.WebSocket = class extends WebSocket {
       constructor(...args) {
         super(...args);
+        if (this.url.endsWith("/ws")) window.refDropEditor = () => this.close();
         this.addEventListener("message", (event) => {
           if (JSON.parse(event.data).type !== window.refHoldFrame) return;
           window.refHoldFrame = null;
@@ -22,6 +23,65 @@ export async function installFrameGate(page, initial = null) {
       }
     };
   }, initial);
+}
+
+// Use an isolated cache so a previously decoded thumbnail cannot satisfy the gate.
+export async function checkBoardLoading(context, url) {
+  const isolated = await context
+    .browser()
+    .newContext({ storageState: await context.storageState() });
+  const page = await isolated.newPage();
+  const gate = Promise.withResolvers();
+  let fail = false;
+  try {
+    await installFrameGate(page, "ready");
+    await page.route("**/assets/thumb-worker.js", (r) =>
+      r.fulfill({ contentType: "application/javascript", body: "" }),
+    );
+    await page.route("**/media/**", async (r) => {
+      await gate.promise;
+      if (fail) await r.fulfill({ status: 503, body: "Unavailable" });
+      else await r.continue();
+    });
+    await page.goto(url);
+    const loading = page.getByText("Loading board…", { exact: true });
+    const card = page.locator(".board-item");
+    const image = card.locator("img");
+    await page.waitForFunction(() => !!window.refReleaseFrame);
+    await expect(loading).toBeVisible();
+    await expect(page.locator("#empty-state")).toBeHidden();
+    await page.evaluate(() => window.refReleaseFrame());
+    await expect(loading).toBeHidden();
+    await expect(image).toHaveCSS("opacity", "0");
+    await expect(card).toHaveCSS("animation-name", "ref-image-shimmer");
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    await expect(card).toHaveCSS("animation-name", "none");
+    gate.resolve();
+    await expect(image).toHaveCSS("opacity", "1");
+    await expect(image).toHaveCSS("transition-duration", "0s");
+    await page.emulateMedia({ reducedMotion: "no-preference" });
+    await expect(image).toHaveCSS("transition-duration", "0.16s");
+    await page.evaluate(() => {
+      window.refHoldFrame = "ready";
+      window.refDropEditor();
+    });
+    await page.waitForFunction(() => !!window.refReleaseFrame);
+    await expect(loading).toBeHidden();
+    await expect(image).toBeVisible();
+    await expect(image).toHaveCSS("opacity", "1");
+    await page.evaluate(() => window.refReleaseFrame());
+    fail = true;
+    await page.reload();
+    await page.waitForFunction(() => !!window.refReleaseFrame);
+    await page.evaluate(() => window.refReleaseFrame());
+    await expect(
+      page.getByText("Image unavailable", { exact: true }),
+    ).toBeVisible();
+    await expect(card).toHaveCSS("animation-name", "none");
+  } finally {
+    gate.resolve();
+    await isolated.close();
+  }
 }
 
 async function dragCard(page, card) {

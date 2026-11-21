@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import {
   installFrameGate,
   checkUnconfirmedCard,
+  checkBoardLoading,
   checkQueuedMove,
   checkInlineRename,
   checkMacCanvas,
@@ -128,8 +129,12 @@ try {
   await second.goto(`${base}/boards/${boardId}`);
   await second.waitForFunction(() => !!window.refReleaseFrame);
   await expect(second.locator(".connection-text")).toHaveText("Connecting");
+  await expect(second.locator("#board-loading")).toBeVisible();
+  await expect(second.locator("#empty-state")).toBeHidden();
   await second.evaluate(() => window.refReleaseFrame());
   await second.locator("#connection.online").waitFor();
+  await expect(second.locator("#empty-state")).toBeVisible();
+  await expect(second.locator("#board-loading")).toBeHidden();
 
   const image = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==",
@@ -151,6 +156,7 @@ try {
     itemId,
   );
   await checkUnconfirmedCard(page);
+  await checkBoardLoading(context, page.url());
   await checkWebMcpBrowser(page, second, itemId);
   await page.locator(".board-item img[src]").waitFor();
   const mediaPath = await page
