@@ -17,6 +17,7 @@ const atlas = await createAtlas(
   root,
   manifest,
   process.env.HARRHY_ATLAS_WIDGETS,
+  process.env.HARRHY_ATLAS_COMMENTS,
 );
 const stopWatching = atlas.catalog.watch();
 const server = http.createServer(
@@ -38,7 +39,7 @@ server.listen(port, "127.0.0.1", () =>
 function shutdown() {
   stopWatching();
   server.closeAllConnections();
-  server.close();
+  server.close(() => atlas.close());
 }
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);

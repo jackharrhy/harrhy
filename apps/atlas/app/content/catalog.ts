@@ -3,8 +3,13 @@ import { existsSync, constants, watch as watchDirectory } from "node:fs";
 import { lstat, open, readdir } from "node:fs/promises";
 import path from "node:path";
 import { parseDocument } from "yaml";
+import { imageHref } from "../images.ts";
 import { spacePath } from "../spaces.ts";
 import type { Widget } from "../widgets.ts";
+import {
+  articleAnnotationText,
+  annotationProjectionInput,
+} from "./annotation.ts";
 import { renderMarkdown } from "./markdown.ts";
 
 /** Explicit trusted registry entry. directory is relative to the external root. */
@@ -35,6 +40,10 @@ interface CatalogPage {
   readonly contributors: readonly string[];
   readonly author: string;
   readonly source: string;
+  readonly sourceDigest: string;
+  readonly sourceContent: string;
+  readonly annotationText: string;
+  readonly annotationDigest: string;
   readonly html: string;
   readonly text: string;
   readonly links: readonly string[];
@@ -294,24 +303,28 @@ export function createCatalog(options: CatalogOptions): Catalog {
             const rendered =
               nextCache.get(digest) ??
               renderedCache.get(digest) ??
-              (await renderMarkdown(match[2]!, (href) => {
-                if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(href)) return href;
-                let url: URL;
-                try {
-                  url = new URL(
-                    href,
-                    `http://atlas.local${displayRoute(localPath)}`,
+              (await renderMarkdown(
+                match[2]!,
+                (href) => {
+                  if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(href)) return href;
+                  let url: URL;
+                  try {
+                    url = new URL(
+                      href,
+                      `http://atlas.local${displayRoute(localPath)}`,
+                    );
+                  } catch {
+                    return href;
+                  }
+                  if (url.origin !== "http://atlas.local") return href;
+                  if (url.pathname.startsWith("/spaces/"))
+                    return url.pathname + url.search + url.hash;
+                  return (
+                    spacePath(author.id) + url.pathname + url.search + url.hash
                   );
-                } catch {
-                  return href;
-                }
-                if (url.origin !== "http://atlas.local") return href;
-                if (url.pathname.startsWith("/spaces/"))
-                  return url.pathname + url.search + url.hash;
-                return (
-                  spacePath(author.id) + url.pathname + url.search + url.hash
-                );
-              }));
+                },
+                (src) => imageHref(author.id, displayRoute(localPath), src),
+              ));
             nextCache.set(digest, rendered);
             for (const address of [canonical, ...aliases]) {
               if (Object.hasOwn(routes, address))
@@ -327,6 +340,19 @@ export function createCatalog(options: CatalogOptions): Catalog {
               contributors: Object.freeze(contributors),
               author: author.id,
               source: path.relative(root, filename),
+              sourceDigest: createHash("sha256").update(source).digest("hex"),
+              sourceContent: source,
+              annotationText: articleAnnotationText(
+                data.title,
+                rendered.annotationText,
+              ),
+              annotationDigest: createHash("sha256")
+                .update(
+                  annotationProjectionInput(
+                    articleAnnotationText(data.title, rendered.annotationText),
+                  ),
+                )
+                .digest("hex"),
               html: rendered.html,
               text: rendered.text,
               links: Object.freeze([...rendered.links]),
@@ -388,7 +414,11 @@ export function createCatalog(options: CatalogOptions): Catalog {
       const nextFingerprint = JSON.stringify([
         authors,
         sourceDigests,
-        widgets.map(({ id, page, digest }) => ({ id, page, digest })),
+        widgets.map(({ id, page, digest }) => ({
+          id,
+          page,
+          digest,
+        })),
       ]);
       renderedCache = nextCache;
       if (state.generation && nextFingerprint === fingerprint) {
