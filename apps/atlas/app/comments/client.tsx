@@ -1,4 +1,7 @@
-import { annotationProjectionInput, ANNOTATION_PROJECTION_VERSION } from "../content/annotation.ts";
+import {
+  annotationProjectionInput,
+  ANNOTATION_PROJECTION_VERSION,
+} from "../content/annotation.ts";
 import { css, on, ref, type Handle } from "remix/component";
 import { controlStyles, focusStyles } from "@harrhy/ui/recipes";
 import type { AgentCatalog } from "./bridge.ts";
@@ -6,7 +9,11 @@ import { Button, Textarea } from "@harrhy/ui/native";
 import { canonicalComments, type QuoteEvidence } from "./contract.ts";
 import { createCommentDrafts, type RecoverableDraft } from "./browser-draft.ts";
 import { captureQuote, projectArticle, restoreQuote } from "./projection.ts";
-import { renderCommentFragments, clearCommentFragments, commentIdsAtTarget } from "./fragments.ts";
+import {
+  renderCommentFragments,
+  clearCommentFragments,
+  commentIdsAtTarget,
+} from "./fragments.ts";
 import {
   createCommentBrowserApi,
   originalBatch,
@@ -58,7 +65,12 @@ const controls = css({
     fontSize: ".85rem",
     lineHeight: 1.5,
   },
-  "& h2": { fontFamily: "var(--hui-font-ui)", fontSize: "1rem", fontWeight: 600, margin: 0 },
+  "& h2": {
+    fontFamily: "var(--hui-font-ui)",
+    fontSize: "1rem",
+    fontWeight: 600,
+    margin: 0,
+  },
   "& .atlas-comment-review-header": { marginBottom: ".25rem", marginTop: 0 },
   "& .atlas-comment-review-header h2": { marginRight: "auto" },
   "& .atlas-comment-send-row": {
@@ -80,7 +92,10 @@ const controls = css({
   "& .atlas-comment-mode-dot[data-on]": { background: "var(--hui-accent)" },
   "& p": { margin: ".5rem 0" },
   "& ol": { listStyle: "none", margin: ".5rem 0", padding: 0 },
-  "& li": { borderBottom: "1px solid var(--hui-border)", paddingBlock: ".6rem" },
+  "& li": {
+    borderBottom: "1px solid var(--hui-border)",
+    paddingBlock: ".6rem",
+  },
   "& blockquote": {
     margin: "0 0 .25rem",
     padding: 0,
@@ -98,7 +113,12 @@ const controls = css({
     marginTop: ".4rem",
   },
   "& fieldset": { border: 0, margin: ".5rem 0", padding: 0 },
-  "& label": { display: "flex", alignItems: "center", gap: ".4rem", paddingBlock: ".35rem" },
+  "& label": {
+    display: "flex",
+    alignItems: "center",
+    gap: ".4rem",
+    paddingBlock: ".35rem",
+  },
   "& .atlas-comment-editor": {
     position: "fixed",
     margin: 0,
@@ -125,11 +145,12 @@ const controls = css({
     outline: "none",
     boxShadow: "none",
   },
-  "& .atlas-comment-editor textarea:focus-visible, & .atlas-comment-editor textarea:focus": {
-    borderColor: "var(--hui-focus)",
-    outline: "none",
-    boxShadow: "none",
-  },
+  "& .atlas-comment-editor textarea:focus-visible, & .atlas-comment-editor textarea:focus":
+    {
+      borderColor: "var(--hui-focus)",
+      outline: "none",
+      boxShadow: "none",
+    },
   "& .atlas-comment-editor-status": {
     padding: ".25rem .4rem",
     background: "var(--hui-surface)",
@@ -153,6 +174,8 @@ export const annotationStyles = css({
   },
 });
 
+const recipientId = (target: ReviewTarget) => target.sessionId ?? target.key;
+
 export function Comments(handle: Handle) {
   const api = createCommentBrowserApi();
   const drafts = createCommentDrafts(sessionStorage, location.origin);
@@ -168,16 +191,21 @@ export function Comments(handle: Handle) {
   let state: ReviewState | undefined;
   let reviewed = false;
   let targets: readonly ReviewTarget[] = [];
-  let selectedRecipient = sessionStorage.getItem("atlas-comment-recipient") ?? "";
+  let selectedRecipient =
+    sessionStorage.getItem("atlas-comment-recipient") ?? "";
   let catalog: AgentCatalog = { targets: [] };
-  const recipientId = (target: ReviewTarget) => target.sessionId ?? target.key;
-  const selected = () => targets.find((target) => recipientId(target) === selectedRecipient);
-  const unsent = () => state?.comments.filter((comment) => !originalBatch(state!, comment)) ?? [];
-  const unresolved = () => state?.batches.find((batch) => batch.state !== "admitted");
+  const selected = () =>
+    targets.find((target) => recipientId(target) === selectedRecipient);
+  const unsent = () =>
+    state?.comments.filter((comment) => !originalBatch(state!, comment)) ?? [];
+  const unresolved = () =>
+    state?.batches.find((batch) => batch.state !== "admitted");
   let sentBatchId = sessionStorage.getItem("atlas-comment-visible-sent") ?? "";
   let uiEpoch = 0;
   const currentSent = () =>
-    state?.batches.find((batch) => batch.batchId === sentBatchId && batch.state === "admitted");
+    state?.batches.find(
+      (batch) => batch.batchId === sentBatchId && batch.state === "admitted",
+    );
   function visibleSent(batchId = "") {
     sentBatchId = batchId;
     if (batchId) sessionStorage.setItem("atlas-comment-visible-sent", batchId);
@@ -222,7 +250,14 @@ export function Comments(handle: Handle) {
   let blurTimer: ReturnType<typeof setTimeout> | undefined;
   let selectedQuote: QuoteEvidence["quote"] | undefined;
   let gesture:
-    | { x: number; y: number; at: number; moved: boolean; cancelled: boolean; quote?: string }
+    | {
+        x: number;
+        y: number;
+        at: number;
+        moved: boolean;
+        cancelled: boolean;
+        quote?: string;
+      }
     | undefined;
   let selectionFrame = 0,
     autoSelectionFrame = 0;
@@ -234,7 +269,8 @@ export function Comments(handle: Handle) {
     metadata &&
     comment.evidence.articleUrl === metadata.articleUrl &&
     comment.evidence.sourceSha256 === metadata.sourceSha256 &&
-    comment.evidence.annotationProjectionSha256 === metadata.annotationProjectionSha256;
+    comment.evidence.annotationProjectionSha256 ===
+      metadata.annotationProjectionSha256;
   const rangeFor = (comment: ReviewComment) =>
     root && validProjection && local(comment)
       ? restoreQuote(root, comment.evidence.quote)
@@ -242,10 +278,19 @@ export function Comments(handle: Handle) {
   function paint() {
     if (!root || !validProjection) return;
     renderCommentFragments(root, [
-      ...(state?.comments
-        .filter(local)
-        .map((comment) => ({ id: comment.evidence.id, quote: comment.evidence.quote })) ?? []),
-      ...(active ? [{ id: active.evidence.id, quote: active.evidence.quote, active: true }] : []),
+      ...(state?.comments.filter(local).map((comment) => ({
+        id: comment.evidence.id,
+        quote: comment.evidence.quote,
+      })) ?? []),
+      ...(active
+        ? [
+            {
+              id: active.evidence.id,
+              quote: active.evidence.quote,
+              active: true,
+            },
+          ]
+        : []),
     ]);
   }
   async function refresh() {
@@ -260,7 +305,9 @@ export function Comments(handle: Handle) {
       catalog = await api.catalog();
       targets = catalog.targets;
       if (!selectedRecipient) {
-        const legacy = targets.find((target) => target.key === state?.defaultTargetKey);
+        const legacy = targets.find(
+          (target) => target.key === state?.defaultTargetKey,
+        );
         selectedRecipient =
           catalog.defaultSessionId !== undefined
             ? catalog.defaultSessionId
@@ -293,11 +340,17 @@ export function Comments(handle: Handle) {
     const below = docked ? height - 24 : top + height - last.bottom - 20;
     const above = docked ? height - 24 : first.top - top - 20;
     placement ??= below >= 88 || below >= above ? "below" : "above";
-    if (placement === "below" && below < 64 && above > below) placement = "above";
-    if (placement === "above" && above < 64 && below > above) placement = "below";
+    if (placement === "below" && below < 64 && above > below)
+      placement = "above";
+    if (placement === "above" && above < 64 && below > above)
+      placement = "below";
     const available = Math.max(
       24,
-      Math.min(280, height * 0.45, docked ? height - 24 : placement === "below" ? below : above),
+      Math.min(
+        280,
+        height * 0.45,
+        docked ? height - 24 : placement === "below" ? below : above,
+      ),
     );
     editor.style.width = `${Math.min(352, width - 24)}px`;
     const field = editor.querySelector("textarea")!;
@@ -310,7 +363,8 @@ export function Comments(handle: Handle) {
     const size = editor.getBoundingClientRect();
     const center = docked
       ? left + width / 2
-      : range!.getBoundingClientRect().left + range!.getBoundingClientRect().width / 2;
+      : range!.getBoundingClientRect().left +
+        range!.getBoundingClientRect().width / 2;
     editor.style.left = `${Math.max(left + 12, Math.min(center - size.width / 2, left + width - size.width - 12))}px`;
     editor.style.top = `${docked ? Math.max(top + 12, top + height - size.height - 12) : Math.max(top + 12, Math.min(placement === "below" ? last.bottom + 8 : first.top - size.height - 8, top + height - size.height - 12))}px`;
   }
@@ -347,12 +401,16 @@ export function Comments(handle: Handle) {
     draft.error = "Saving…";
     update();
     try {
-      await api.save({ ...draft.evidence, comment: draft.text }, draft.revision);
+      await api.save(
+        { ...draft.evidence, comment: draft.text },
+        draft.revision,
+      );
       closeEditor(restoreFocus);
       status = "";
       await refresh();
     } catch (error) {
-      if (active === draft) draft.error = `${(error as Error).message} Text kept.`;
+      if (active === draft)
+        draft.error = `${(error as Error).message} Text kept.`;
     } finally {
       busy = false;
       update();
@@ -380,14 +438,21 @@ export function Comments(handle: Handle) {
     paint();
     update();
     handle.queueTask(() => {
-      if (!mode || epoch !== uiEpoch || active !== draft || handle.signal.aborted) return;
+      if (
+        !mode ||
+        epoch !== uiEpoch ||
+        active !== draft ||
+        handle.signal.aborted
+      )
+        return;
       editor.showPopover();
       position();
       editor.querySelector("textarea")?.focus({ preventScroll: true });
     });
   }
   function capture() {
-    if (!mode || !validProjection || !root || !metadata || active || busy) return;
+    if (!mode || !validProjection || !root || !metadata || active || busy)
+      return;
     const selection = getSelection();
     const current =
       selection?.rangeCount && !selection.isCollapsed
@@ -409,7 +474,12 @@ export function Comments(handle: Handle) {
         comment.evidence.quote.end === quote.end,
     );
     openEditor(
-      existing?.evidence ?? { ...metadata, id: crypto.randomUUID(), quote, comment: "" },
+      existing?.evidence ?? {
+        ...metadata,
+        id: crypto.randomUUID(),
+        quote,
+        comment: "",
+      },
       existing?.revision ?? 0,
     );
   }
@@ -423,7 +493,14 @@ export function Comments(handle: Handle) {
     reviewing = true;
     update();
     handle.queueTask(() => {
-      if (!mode || epoch !== uiEpoch || !reviewing || active || handle.signal.aborted) return;
+      if (
+        !mode ||
+        epoch !== uiEpoch ||
+        !reviewing ||
+        active ||
+        handle.signal.aborted
+      )
+        return;
       review.showPopover();
       review.querySelector<HTMLButtonElement>("button")?.focus();
     });
@@ -436,7 +513,9 @@ export function Comments(handle: Handle) {
     for (const batch of state?.batches ?? []) {
       if (batch.state === "admitted" && batch.chatUrl) continue;
       try {
-        const receipt = (await api.receipt(batch.batchId)) as { state?: string };
+        const receipt = (await api.receipt(batch.batchId)) as {
+          state?: string;
+        };
         if (
           batch.state !== "admitted" &&
           receipt.state === "admitted" &&
@@ -460,7 +539,9 @@ export function Comments(handle: Handle) {
     status = "";
     update();
     try {
-      const result = (await run()) as { batchId?: string; state?: string } | undefined;
+      const result = (await run()) as
+        | { batchId?: string; state?: string }
+        | undefined;
       if (result?.batchId && result.state === "admitted") {
         rememberRecipient("");
         if (mode && reviewing && epoch === uiEpoch && !handle.signal.aborted)
@@ -487,14 +568,16 @@ export function Comments(handle: Handle) {
     if (!mode) return;
     const batch = state && originalBatch(state, comment);
     if (batch) {
-      if (batch.state !== "admitted" || batch.batchId === sentBatchId) openReview();
+      if (batch.state !== "admitted" || batch.batchId === sentBatchId)
+        openReview();
       return;
     }
     const range = rangeFor(comment);
     if (!range) {
       if (comment.evidence.articleUrl !== metadata?.articleUrl) {
         location.assign(
-          comment.evidence.articleUrl + `#atlas-comment-${encodeURIComponent(comment.evidence.id)}`,
+          comment.evidence.articleUrl +
+            `#atlas-comment-${encodeURIComponent(comment.evidence.id)}`,
         );
         return;
       }
@@ -503,11 +586,17 @@ export function Comments(handle: Handle) {
       return;
     }
     root!.querySelectorAll("details").forEach((details) => {
-      if (details.contains(range.startContainer) || details.contains(range.endContainer))
+      if (
+        details.contains(range.startContainer) ||
+        details.contains(range.endContainer)
+      )
         details.open = true;
     });
     const rect = range.getBoundingClientRect();
-    scrollTo({ top: Math.max(0, scrollY + rect.top - innerHeight / 3), behavior: "instant" });
+    scrollTo({
+      top: Math.max(0, scrollY + rect.top - innerHeight / 3),
+      behavior: "instant",
+    });
     openEditor(comment.evidence, comment.revision);
   }
   function articleSelection() {
@@ -520,7 +609,8 @@ export function Comments(handle: Handle) {
     cancelAnimationFrame(autoSelectionFrame);
     autoSelectionFrame = 0;
     if (event.pointerType) inputKind = event.pointerType;
-    if (mode && active && !event.composedPath().includes(editor)) void save(false);
+    if (mode && active && !event.composedPath().includes(editor))
+      void save(false);
     if (!root?.contains(event.target as Node)) {
       gesture = undefined;
       return;
@@ -535,13 +625,18 @@ export function Comments(handle: Handle) {
     };
   }
   function pointerMove(event: PointerEvent) {
-    if (gesture && Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8)
+    if (
+      gesture &&
+      Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y) > 8
+    )
       gesture.moved = true;
   }
   function pointerUp(event: PointerEvent) {
     if (event.pointerType) inputKind = event.pointerType;
     if (resizing) {
-      manualHeight = editor.querySelector("textarea")!.getBoundingClientRect().height;
+      manualHeight = editor
+        .querySelector("textarea")!
+        .getBoundingClientRect().height;
       resizing = false;
     }
     selectionChanged();
@@ -562,7 +657,11 @@ export function Comments(handle: Handle) {
       autoSelectionFrame = 0;
       if (!mode || active || busy || interaction.cancelled) return;
       const quote = articleSelection();
-      if (!quote || (!interaction.moved && JSON.stringify(quote) === interaction.quote)) return;
+      if (
+        !quote ||
+        (!interaction.moved && JSON.stringify(quote) === interaction.quote)
+      )
+        return;
       selectedQuote = quote;
       capture();
     });
@@ -581,13 +680,18 @@ export function Comments(handle: Handle) {
     gesture = undefined;
     if (
       interaction &&
-      (interaction.cancelled || interaction.moved || performance.now() - interaction.at > 500)
+      (interaction.cancelled ||
+        interaction.moved ||
+        performance.now() - interaction.at > 500)
     )
       return;
     const quote = articleSelection();
-    if (interaction && quote && JSON.stringify(quote) !== interaction.quote) return;
+    if (interaction && quote && JSON.stringify(quote) !== interaction.quote)
+      return;
     const ids = commentIdsAtTarget(root, event.target);
-    const hits = state?.comments.filter((comment) => ids.includes(comment.evidence.id)) ?? [];
+    const hits =
+      state?.comments.filter((comment) => ids.includes(comment.evidence.id)) ??
+      [];
     if (hits.length === 1) jump(hits[0]);
     else if (hits.length > 1) {
       openReview();
@@ -602,7 +706,9 @@ export function Comments(handle: Handle) {
       if (active || !mode) return;
       const selection = getSelection();
       if (!selection?.rangeCount || selection.isCollapsed) return;
-      selectedQuote = validProjection ? captureQuote(root, selection.getRangeAt(0)) : undefined;
+      selectedQuote = validProjection
+        ? captureQuote(root, selection.getRangeAt(0))
+        : undefined;
       status = "";
       update();
     });
@@ -612,7 +718,14 @@ export function Comments(handle: Handle) {
     if (
       !active &&
       ((event.shiftKey &&
-        ["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) ||
+        [
+          "ArrowLeft",
+          "ArrowRight",
+          "ArrowUp",
+          "ArrowDown",
+          "Home",
+          "End",
+        ].includes(event.key)) ||
         ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "a"))
     ) {
       inputKind = "keyboard";
@@ -674,11 +787,14 @@ export function Comments(handle: Handle) {
         const bytes = new TextEncoder().encode(
           annotationProjectionInput(projectArticle(root).text),
         );
-        const digest = [...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes))]
+        const digest = [
+          ...new Uint8Array(await crypto.subtle.digest("SHA-256", bytes)),
+        ]
           .map((byte) => byte.toString(16).padStart(2, "0"))
           .join("");
         validProjection =
-          root.dataset.annotationProjectionVersion === String(ANNOTATION_PROJECTION_VERSION) &&
+          root.dataset.annotationProjectionVersion ===
+            String(ANNOTATION_PROJECTION_VERSION) &&
           digest === metadata.annotationProjectionSha256;
       }
       await refresh();
@@ -692,14 +808,16 @@ export function Comments(handle: Handle) {
             );
             if (
               saved &&
-              canonicalComments([saved.evidence]) === canonicalComments([recovery.evidence])
+              canonicalComments([saved.evidence]) ===
+                canonicalComments([recovery.evidence])
             ) {
               drafts.forget(metadata.articleUrl);
               recovery = undefined;
             } else if (
               validProjection &&
               recovery.evidence.sourceSha256 === metadata.sourceSha256 &&
-              recovery.evidence.annotationProjectionSha256 === metadata.annotationProjectionSha256
+              recovery.evidence.annotationProjectionSha256 ===
+                metadata.annotationProjectionSha256
             ) {
               const range = restoreQuote(root, recovery.evidence.quote);
               if (range && mode) {
@@ -714,7 +832,9 @@ export function Comments(handle: Handle) {
           status = "Draft recovery unavailable.";
         }
       }
-      const id = decodeURIComponent(location.hash.replace(/^#atlas-comment-/, ""));
+      const id = decodeURIComponent(
+        location.hash.replace(/^#atlas-comment-/, ""),
+      );
       const comment = state?.comments.find((item) => item.evidence.id === id);
       if (comment) jump(comment);
     } catch {
@@ -755,7 +875,12 @@ export function Comments(handle: Handle) {
             const epoch = uiEpoch;
             if (draft)
               handle.queueTask(() => {
-                if (mode && epoch === uiEpoch && active === draft && !handle.signal.aborted) {
+                if (
+                  mode &&
+                  epoch === uiEpoch &&
+                  active === draft &&
+                  !handle.signal.aborted
+                ) {
                   editor.showPopover();
                   position();
                   editor.querySelector("textarea")?.focus();
@@ -765,7 +890,10 @@ export function Comments(handle: Handle) {
               recovery &&
               validProjection &&
               root &&
-              local({ evidence: recovery.evidence, revision: recovery.revision }) &&
+              local({
+                evidence: recovery.evidence,
+                revision: recovery.revision,
+              }) &&
               restoreQuote(root, recovery.evidence.quote)
             )
               openEditor(recovery.evidence, recovery.revision);
@@ -799,7 +927,11 @@ export function Comments(handle: Handle) {
           currentSent() ||
           selectedQuote) && (
           <aside className="atlas-comment-tray" aria-label="Saved comments">
-            {(unsent().length > 0 || unresolved() || recovery || reviewing || currentSent()) && (
+            {(unsent().length > 0 ||
+              unresolved() ||
+              recovery ||
+              reviewing ||
+              currentSent()) && (
               <Button variant="quiet" mix={on("click", openReview)}>
                 Review
               </Button>
@@ -834,16 +966,24 @@ export function Comments(handle: Handle) {
           mix={[
             on("pointerdown", (event) => {
               const rect = event.currentTarget.getBoundingClientRect();
-              if (event.clientX > rect.right - 18 && event.clientY > rect.bottom - 18)
+              if (
+                event.clientX > rect.right - 18 &&
+                event.clientY > rect.bottom - 18
+              )
                 resizing = true;
             }),
             on("input", (event) => {
               if (active) {
                 active.text = event.currentTarget.value;
                 try {
-                  drafts.remember(active.evidence, active.revision, active.text);
+                  drafts.remember(
+                    active.evidence,
+                    active.revision,
+                    active.text,
+                  );
                 } catch {
-                  active.error = "Draft recovery unavailable. Keep this page open.";
+                  active.error =
+                    "Draft recovery unavailable. Keep this page open.";
                 }
                 update();
                 handle.queueTask(position);
@@ -867,7 +1007,11 @@ export function Comments(handle: Handle) {
               }, 120);
             }),
             on("keydown", (event) => {
-              if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+              if (
+                event.key === "Enter" &&
+                !event.shiftKey &&
+                !event.isComposing
+              ) {
                 event.preventDefault();
                 void save(true);
               }
@@ -899,7 +1043,8 @@ export function Comments(handle: Handle) {
                           : "Review refreshed. Press Enter to save your retained text.";
                     } catch {
                       if (active === draft)
-                        draft.error = "Refresh unavailable. Your text is kept here.";
+                        draft.error =
+                          "Refresh unavailable. Your text is kept here.";
                     }
                     update();
                   })();
@@ -996,14 +1141,18 @@ export function Comments(handle: Handle) {
         <ol>
           {unsent().map((comment) => (
             <li key={comment.evidence.id}>
-              {comment.current === false && <p>Article changed. Select the passage again.</p>}
+              {comment.current === false && (
+                <p>Article changed. Select the passage again.</p>
+              )}
               <small>
                 <a href={comment.evidence.articleUrl}>
                   {new URL(comment.evidence.articleUrl).pathname}
                 </a>
               </small>
               <blockquote>{comment.evidence.quote.exact}</blockquote>
-              <div className="atlas-comment-text">{comment.evidence.comment}</div>
+              <div className="atlas-comment-text">
+                {comment.evidence.comment}
+              </div>
               <div className="atlas-comment-actions">
                 <Button
                   variant="quiet"
@@ -1016,7 +1165,10 @@ export function Comments(handle: Handle) {
                   variant="quiet"
                   disabled={busy || !!unresolved()}
                   mix={on("click", () => {
-                    void operation(() => api.remove(comment.evidence.id, comment.revision), "");
+                    void operation(
+                      () => api.remove(comment.evidence.id, comment.revision),
+                      "",
+                    );
                   })}
                 >
                   Delete
@@ -1034,8 +1186,12 @@ export function Comments(handle: Handle) {
                 const batch = unresolved();
                 if (!batch) return;
                 void operation(async () => {
-                  const receipt = (await api.receipt(batch.batchId)) as { state?: string };
-                  return receipt.state === "admitted" ? receipt : api.retry(batch.batchId);
+                  const receipt = (await api.receipt(batch.batchId)) as {
+                    state?: string;
+                  };
+                  return receipt.state === "admitted"
+                    ? receipt
+                    : api.retry(batch.batchId);
                 }, "");
               })}
             >
@@ -1085,9 +1241,15 @@ export function Comments(handle: Handle) {
                 </option>
               ))}
               {catalog.unavailable?.map((target) => (
-                <option key={target.sessionId} disabled value={target.sessionId}>
+                <option
+                  key={target.sessionId}
+                  disabled
+                  value={target.sessionId}
+                >
                   {target.label} —{" "}
-                  {target.reason === "not-writable" ? "not writable" : "binding disabled"}
+                  {target.reason === "not-writable"
+                    ? "not writable"
+                    : "binding disabled"}
                 </option>
               ))}
             </select>
@@ -1107,7 +1269,11 @@ export function Comments(handle: Handle) {
                   revision: comment.revision,
                 }));
                 void operation(
-                  () => api.send(items, { key: target.key, revision: target.revision }),
+                  () =>
+                    api.send(items, {
+                      key: target.key,
+                      revision: target.revision,
+                    }),
                   "Sent",
                 );
               })}

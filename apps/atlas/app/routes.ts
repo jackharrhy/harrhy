@@ -1,7 +1,6 @@
 import { get, route } from "remix/routes";
 
 export const routes = route({
-  xeetWorker: get("/_atlas/xeet-worker.js"),
   image: get("/_atlas/images/:space/*asset"),
   navigation: get("/_atlas/navigation.js"),
   comments: "/_atlas/comments/:operation",

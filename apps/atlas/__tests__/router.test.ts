@@ -25,18 +25,33 @@ test("private SSR routes, aliases, authors, navigation and coherent updates", as
       ],
     }),
   );
-  const { router, catalog } = await createAtlas(root, path.join(root, "atlas.json"));
-  for (const route of ["/spaces/alpha/pi/", "/spaces/beta/", "/spaces/alpha/"]) {
+  const { router, catalog } = await createAtlas(
+    root,
+    path.join(root, "atlas.json"),
+  );
+  for (const route of [
+    "/spaces/alpha/pi/",
+    "/spaces/beta/",
+    "/spaces/alpha/",
+  ]) {
     const response = await router.fetch(`http://localhost${route}`);
     assert.equal(response.status, 200, route);
     assert.match(response.headers.get("cache-control")!, /no-store/);
-    assert.match(response.headers.get("content-security-policy")!, /script-src 'nonce-/);
+    assert.match(
+      response.headers.get("content-security-policy")!,
+      /script-src 'nonce-/,
+    );
     const html = await response.text();
     assert.match(html, /<h1/);
     assert.match(html, /src="\/_atlas\/navigation.js"/);
     assert.doesNotMatch(html, /\/assets\//);
   }
-  for (const home of ["/", "/spaces/", "/?space=unknown", "/?space=https://evil.invalid/"]) {
+  for (const home of [
+    "/",
+    "/spaces/",
+    "/?space=unknown",
+    "/?space=https://evil.invalid/",
+  ]) {
     const response = await router.fetch(`http://localhost${home}`);
     assert.equal(response.status, 307);
     assert.equal(response.headers.get("location"), "/spaces/alpha/");
@@ -67,13 +82,25 @@ test("private SSR routes, aliases, authors, navigation and coherent updates", as
   assert.equal(alias.status, 308);
   assert.match(alias.headers.get("location")!, /^\/spaces\/alpha\/pi\/?$/);
   assert.equal((await router.fetch("http://localhost/missing/")).status, 404);
-  assert.equal((await router.fetch("http://localhost/assets/app/content/catalog.ts")).status, 404);
-  await writeFile(file, "---\ntitle: Changed\npath: /pi/\n---\nNew generation.");
+  assert.equal(
+    (await router.fetch("http://localhost/assets/app/content/catalog.ts"))
+      .status,
+    404,
+  );
+  await writeFile(
+    file,
+    "---\ntitle: Changed\npath: /pi/\n---\nNew generation.",
+  );
   await catalog.refresh();
-  assert.match(await (await router.fetch("http://localhost/spaces/alpha/pi/")).text(), /Changed/);
+  assert.match(
+    await (await router.fetch("http://localhost/spaces/alpha/pi/")).text(),
+    /Changed/,
+  );
   await writeFile(file, "---\ntitle: Broken\npath: ../../private\n---\nNo.");
   await catalog.refresh();
-  const stale = await (await router.fetch("http://localhost/spaces/alpha/pi/")).text();
+  const stale = await (
+    await router.fetch("http://localhost/spaces/alpha/pi/")
+  ).text();
   assert.match(stale, /Changed/);
   assert.match(stale, /last validated version/);
   assert.equal((await router.fetch("http://localhost/healthz")).status, 503);

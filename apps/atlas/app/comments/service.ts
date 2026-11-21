@@ -13,7 +13,9 @@ export function createCommentService(options: {
   function current(evidence: QuoteEvidence): ArticleSnapshot {
     const snapshot = options.snapshot(evidence.articleUrl);
     if (!snapshot || !matchesEvidence(evidence, snapshot))
-      throw new Error("Article changed; review the original quote before sending");
+      throw new Error(
+        "Article changed; review the original quote before sending",
+      );
     return snapshot;
   }
   // Concurrent requests share the original operation, never create another batch.
@@ -36,33 +38,49 @@ export function createCommentService(options: {
     list: () =>
       store.list().map((comment) => {
         const snapshot = options.snapshot(comment.evidence.articleUrl);
-        return { ...comment, current: !!snapshot && matchesEvidence(comment.evidence, snapshot) };
+        return {
+          ...comment,
+          current: !!snapshot && matchesEvidence(comment.evidence, snapshot),
+        };
       }),
     batches: () => store.batches(),
     targets: () => bridge.targets(),
-    catalog: () => bridge.catalog?.() ?? bridge.targets().then((targets) => ({ targets })),
+    catalog: () =>
+      bridge.catalog?.() ?? bridge.targets().then((targets) => ({ targets })),
     save(evidence: QuoteEvidence, expectedRevision: number) {
       return store.save(evidence, expectedRevision, current(evidence));
     },
     remove: (id: string, revision: number) => store.remove(id, revision),
-    async send(items: readonly { id: string; revision: number }[], target: TargetBinding) {
+    async send(
+      items: readonly { id: string; revision: number }[],
+      target: TargetBinding,
+    ) {
       const eligible = await bridge.targets();
       if (
         !eligible.some(
-          (candidate) => candidate.key === target.key && candidate.revision === target.revision,
+          (candidate) =>
+            candidate.key === target.key &&
+            candidate.revision === target.revision,
         )
       )
-        throw new Error("Target is no longer available; choose a current target");
+        throw new Error(
+          "Target is no longer available; choose a current target",
+        );
       const saved = store.list();
       for (const item of items) {
-        const comment = saved.find((candidate) => candidate.evidence.id === item.id);
+        const comment = saved.find(
+          (candidate) => candidate.evidence.id === item.id,
+        );
         if (!comment || comment.revision !== item.revision)
           throw new Error("Comment revision conflict");
         current(comment.evidence);
       }
       // All checks after the network await are synchronous through durable freeze.
       const batch = store.freeze(items, target);
-      return { batchId: batch.body.batchId, receipt: await publish(batch.body.batchId) };
+      return {
+        batchId: batch.body.batchId,
+        receipt: await publish(batch.body.batchId),
+      };
     },
     // Only an explicit owner retry publishes, using exactly the stored identity/body.
     retry: publish,

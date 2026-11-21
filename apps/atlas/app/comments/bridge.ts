@@ -1,9 +1,11 @@
 import type { CommentBatch, TargetBinding } from "./contract.ts";
 
-export interface AgentTarget extends TargetBinding {
+interface AgentTarget extends TargetBinding {
   readonly sessionId?: string;
   readonly label: string;
-  readonly glyph: { readonly paths: readonly { readonly fill: string; readonly d: string }[] };
+  readonly glyph: {
+    readonly paths: readonly { readonly fill: string; readonly d: string }[];
+  };
 }
 export interface AgentCatalog {
   readonly targets: readonly AgentTarget[];
@@ -16,7 +18,7 @@ export interface AgentCatalog {
     reason: "not-writable" | "binding-disabled";
   }[];
 }
-export interface BridgeReceipt {
+interface BridgeReceipt {
   readonly batchId: string;
   readonly binding: TargetBinding;
   readonly payloadDigest?: string;
@@ -53,6 +55,24 @@ export function admittedChatUrl(value: unknown): string | undefined {
   }
 }
 
+function validateReceipt(value: unknown, batch: CommentBatch): BridgeReceipt {
+  const result = value as BridgeReceipt | null;
+  if (
+    !result ||
+    result.batchId !== batch.batchId ||
+    result.binding?.key !== batch.target.key ||
+    result.binding?.revision !== batch.target.revision ||
+    (result.payloadDigest !== undefined &&
+      result.payloadDigest !== batch.payloadDigest) ||
+    !Object.hasOwn(result, "receipt")
+  )
+    throw new Error("Comment bridge receipt identity mismatch");
+  return result;
+}
+
+const identifier = (value: unknown): value is string =>
+  typeof value === "string" && value.length > 0 && value.length <= 128;
+
 export function createCommentBridge(
   options: { readonly endpoint: string; readonly token: string },
   transport: typeof fetch = fetch,
@@ -78,7 +98,9 @@ export function createCommentBridge(
       method: body ? "POST" : "GET",
       redirect: "error",
       cache: "no-store",
-      signal: AbortSignal.timeout(path === "/atlas-feedback/targets" ? 120000 : 15000),
+      signal: AbortSignal.timeout(
+        path === "/atlas-feedback/targets" ? 120000 : 15000,
+      ),
       headers: {
         Authorization: `Bearer ${options.token}`,
         ...(body ? { "Content-Type": "application/json" } : {}),
@@ -98,7 +120,8 @@ export function createCommentBridge(
         const chunk = await reader.read();
         if (chunk.done) break;
         bytes += chunk.value.byteLength;
-        if (bytes > 262144) throw new Error("Comment bridge response exceeds limit");
+        if (bytes > 262144)
+          throw new Error("Comment bridge response exceeds limit");
         chunks.push(chunk.value);
       }
     } finally {
@@ -106,21 +129,10 @@ export function createCommentBridge(
     }
     return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
   }
-  function receipt(value: unknown, batch: CommentBatch): BridgeReceipt {
-    const result = value as BridgeReceipt | null;
-    if (
-      !result ||
-      result.batchId !== batch.batchId ||
-      result.binding?.key !== batch.target.key ||
-      result.binding?.revision !== batch.target.revision ||
-      (result.payloadDigest !== undefined && result.payloadDigest !== batch.payloadDigest) ||
-      !Object.hasOwn(result, "receipt")
-    )
-      throw new Error("Comment bridge receipt identity mismatch");
-    return result;
-  }
   async function catalog(): Promise<AgentCatalog> {
-    const result = (await request("/atlas-feedback/targets")) as Partial<AgentCatalog> | null;
+    const result = (await request(
+      "/atlas-feedback/targets",
+    )) as Partial<AgentCatalog> | null;
     if (!result || !Array.isArray(result.targets) || result.targets.length > 64)
       throw new Error("Invalid comment targets");
     const targets = result.targets.map((target: AgentTarget) => {
@@ -152,21 +164,29 @@ export function createCommentBridge(
         )
           throw new Error("Invalid comment target glyph");
       return {
-        ...(target.sessionId === undefined ? {} : { sessionId: target.sessionId }),
+        ...(target.sessionId === undefined
+          ? {}
+          : { sessionId: target.sessionId }),
         key: target.key,
         revision: target.revision,
         label: target.label,
-        glyph: { paths: target.glyph.paths.map(({ fill, d }) => ({ fill, d })) },
+        glyph: {
+          paths: target.glyph.paths.map(({ fill, d }) => ({ fill, d })),
+        },
       };
     });
-    const identifier = (value: unknown): value is string =>
-      typeof value === "string" && value.length > 0 && value.length <= 128;
-    if (result.defaultSessionId !== undefined && !identifier(result.defaultSessionId))
+    if (
+      result.defaultSessionId !== undefined &&
+      !identifier(result.defaultSessionId)
+    )
       throw new Error("Invalid default recipient");
     for (const count of [result.eligibleCount, result.omittedPrivacyCount])
       if (count !== undefined && (!Number.isSafeInteger(count) || count < 0))
         throw new Error("Invalid recipient count");
-    if (result.eligibleCount !== undefined && result.eligibleCount !== targets.length)
+    if (
+      result.eligibleCount !== undefined &&
+      result.eligibleCount !== targets.length
+    )
       throw new Error("Incomplete recipient catalog");
     if (
       result.unavailable !== undefined &&
@@ -183,16 +203,25 @@ export function createCommentBridge(
         !["not-writable", "binding-disabled"].includes(item.reason)
       )
         throw new Error("Invalid unavailable recipient");
-      return { sessionId: item.sessionId, label: item.label, reason: item.reason };
+      return {
+        sessionId: item.sessionId,
+        label: item.label,
+        reason: item.reason,
+      };
     });
-    if (new Set(targets.map((target) => target.sessionId ?? target.key)).size !== targets.length)
+    if (
+      new Set(targets.map((target) => target.sessionId ?? target.key)).size !==
+      targets.length
+    )
       throw new Error("Duplicate recipients");
     return {
       targets,
       ...(result.defaultSessionId === undefined
         ? {}
         : { defaultSessionId: result.defaultSessionId }),
-      ...(result.eligibleCount === undefined ? {} : { eligibleCount: result.eligibleCount }),
+      ...(result.eligibleCount === undefined
+        ? {}
+        : { eligibleCount: result.eligibleCount }),
       ...(result.omittedPrivacyCount === undefined
         ? {}
         : { omittedPrivacyCount: result.omittedPrivacyCount }),
@@ -202,14 +231,18 @@ export function createCommentBridge(
   return {
     catalog,
     targets: async () => (await catalog()).targets,
-    publish: async (batch) => receipt(await request("/atlas-feedback/batches", batch), batch),
+    publish: async (batch) =>
+      validateReceipt(await request("/atlas-feedback/batches", batch), batch),
     receipt: async (batch) => {
       const query = new URLSearchParams({
         key: batch.target.key,
         revision: String(batch.target.revision),
         batchId: batch.batchId,
       });
-      return receipt(await request(`/atlas-feedback/receipt?${query}`), batch);
+      return validateReceipt(
+        await request(`/atlas-feedback/receipt?${query}`),
+        batch,
+      );
     },
   };
 }

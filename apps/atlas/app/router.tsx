@@ -11,7 +11,6 @@ import { openCommentStore } from "./comments/store.ts";
 import { createCommentService } from "./comments/service.ts";
 import { createCommentHttp } from "./comments/http.ts";
 import { compileComments } from "./comments/asset.ts";
-import { compileXeetWorker, xeetWorkerPolicy } from "./xeet/asset.ts";
 import { serveImage } from "./images.ts";
 import { navigationScript } from "./navigation.ts";
 import { routes } from "./routes.ts";
@@ -29,9 +28,9 @@ export async function createAtlas(
     widgets: widgetManifest ? createWidgetLoader(widgetManifest) : undefined,
     authors: () => loadSpaces(manifestPath),
   });
-  const xeetWorker = await compileXeetWorker();
   const initial = await catalog.refresh();
-  if (!initial.generation) throw new Error("Atlas requires a valid curated catalog before startup");
+  if (!initial.generation)
+    throw new Error("Atlas requires a valid curated catalog before startup");
   const comments = commentConfiguration
     ? await loadCommentConfiguration(commentConfiguration)
     : undefined;
@@ -50,7 +49,9 @@ export async function createAtlas(
               if (state.status !== "ready") return;
               const url = new URL(articleUrl);
               if (url.origin !== comments.config.articleOrigin) return;
-              return state.generation?.pages[url.pathname.replace(/\/$/, "") || "/"];
+              return state.generation?.pages[
+                url.pathname.replace(/\/$/, "") || "/"
+              ];
             },
           }),
           comments.config.articleOrigin,
@@ -65,25 +66,7 @@ export async function createAtlas(
         policy: ({ nonce, context }) => {
           const snapshot = catalog.read();
           context.set(snapshotKey, snapshot);
-          const pathname = new URL(context.request.url).pathname.replace(/\/$/, "") || "/";
-          const generation = snapshot.generation;
-          const target = generation?.routes[pathname];
-          const canonical = target ? generation?.pages[target]?.path : undefined;
-          const xeet =
-            canonical &&
-            generation?.widgets.some(
-              (widget) => widget.page === canonical && widget.capabilities.includes("xeet"),
-            );
-          if (pathname === "/_atlas/xeet-worker.js")
-            return {
-              defaultSrc: ["'none'"],
-              scriptSrc: ["'wasm-unsafe-eval'"],
-              connectSrc: ["'self'"],
-              workerSrc: ["'none'"],
-              baseUri: ["'none'"],
-            };
           return {
-            ...(xeet ? { workerSrc: ["'self'"] } : {}),
             defaultSrc: ["'none'"],
             scriptSrc: [`'nonce-${nonce}'`],
             ...(comments ? { connectSrc: ["'self'"] } : {}),
@@ -104,18 +87,12 @@ export async function createAtlas(
   const controller = createController(routes, {
     middleware: [render()],
     actions: {
-      xeetWorker() {
-        return new Response(xeetWorker, {
-          headers: {
-            "Content-Type": "text/javascript; charset=utf-8",
-            "Cache-Control": "private, no-store",
-            "X-Content-Type-Options": "nosniff",
-            "Content-Security-Policy": xeetWorkerPolicy,
-          },
-        });
-      },
       image(context) {
-        return serveImage(context.request, root, context.get(snapshotKey)!.generation!.spaces);
+        return serveImage(
+          context.request,
+          root,
+          context.get(snapshotKey)!.generation!.spaces,
+        );
       },
       navigation() {
         return new Response(navigationScript, {
@@ -140,7 +117,10 @@ export async function createAtlas(
       comments(context) {
         return commentHttp
           ? commentHttp(context.request)
-          : new Response("Not Found", { status: 404, headers: { "Cache-Control": "no-store" } });
+          : new Response("Not Found", {
+              status: 404,
+              headers: { "Cache-Control": "no-store" },
+            });
       },
       widget(context) {
         const script = catalog.widgetScript(context.params.digest);
@@ -172,7 +152,10 @@ export async function createAtlas(
     },
   });
   type Context = Parameters<typeof getCspNonce>[0] & {
-    render(node: Parameters<typeof document>[1], init?: ResponseInit): Response | Promise<Response>;
+    render(
+      node: Parameters<typeof document>[1],
+      init?: ResponseInit,
+    ): Response | Promise<Response>;
   };
   async function show(context: Context) {
     const snapshot = context.get(snapshotKey)!;
@@ -188,7 +171,11 @@ export async function createAtlas(
       "X-Robots-Tag": "noindex, nofollow",
       ...(preference.cookie ? { "Set-Cookie": preference.cookie } : {}),
     };
-    const respond = (title: string, body: Parameters<typeof document>[1], status = 200) =>
+    const respond = (
+      title: string,
+      body: Parameters<typeof document>[1],
+      status = 200,
+    ) =>
       context.render(
         document(title, body, {
           stale: snapshot.status === "stale",
@@ -202,8 +189,9 @@ export async function createAtlas(
           pages: Object.values(generation.pages),
           available: spaces.map((space) => ({
             id: space.id,
-            count: Object.values(generation.pages).filter((page) => page.author === space.id)
-              .length,
+            count: Object.values(generation.pages).filter(
+              (page) => page.author === space.id,
+            ).length,
           })),
         }),
         {
@@ -218,7 +206,8 @@ export async function createAtlas(
       });
     if (pathname === "/" || pathname === "/spaces") {
       const selected =
-        spaces.find((space) => space.id === url.searchParams.get("space")) ?? spaces[0];
+        spaces.find((space) => space.id === url.searchParams.get("space")) ??
+        spaces[0];
       if (selected)
         return new Response(null, {
           status: 307,
@@ -239,15 +228,19 @@ export async function createAtlas(
     }
     const target = generation.routes[pathname];
     const note = target ? generation.pages[target] : undefined;
-    if (note && pathname !== note.path.replace(/\/$/, "")) return redirect(note.path);
+    if (note && pathname !== note.path.replace(/\/$/, ""))
+      return redirect(note.path);
     const owner = spaces.find(
-      (space) => pathname === spacePath(space.id) || pathname.startsWith(`${spacePath(space.id)}/`),
+      (space) =>
+        pathname === spacePath(space.id) ||
+        pathname.startsWith(`${spacePath(space.id)}/`),
     );
     if (!owner) {
       const legacy = spaces.find((space) => space.legacyRoutes);
       if (legacy && (pathname === "/days" || pathname === "/briefs"))
         return redirect(`${spacePath(legacy.id)}/days/`);
-      if (legacy && pathname === "/dossiers") return redirect(`${spacePath(legacy.id)}/`);
+      if (legacy && pathname === "/dossiers")
+        return redirect(`${spacePath(legacy.id)}/`);
       return respond(
         "Not found",
         <>

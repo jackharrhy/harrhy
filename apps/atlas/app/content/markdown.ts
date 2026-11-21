@@ -126,7 +126,9 @@ export async function renderMarkdown(
   visit(tree, "element", (node, index, parent) => {
     if (node.tagName !== "img" || !parent || index === undefined) return;
     const src =
-      typeof node.properties.src === "string" ? resolveImage(node.properties.src) : undefined;
+      typeof node.properties.src === "string"
+        ? resolveImage(node.properties.src)
+        : undefined;
     if (!src) {
       parent.children.splice(index, 1);
       return index;
@@ -134,7 +136,9 @@ export async function renderMarkdown(
     node.properties = {
       src,
       alt: typeof node.properties.alt === "string" ? node.properties.alt : "",
-      ...(typeof node.properties.title === "string" ? { title: node.properties.title } : {}),
+      ...(typeof node.properties.title === "string"
+        ? { title: node.properties.title }
+        : {}),
       loading: "lazy",
       decoding: "async",
     };
@@ -174,7 +178,8 @@ export async function renderMarkdown(
   const highlighted = await stringify.run(tree);
   const annotationWords: string[] = [];
   visit(highlighted, (node) => {
-    if (node.type === "element" && node.properties.dataAtlasDiagram) return "skip";
+    if (node.type === "element" && node.properties.dataAtlasDiagram)
+      return "skip";
     if (
       node.type === "element" &&
       node.tagName === "p" &&

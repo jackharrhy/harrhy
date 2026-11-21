@@ -8,17 +8,28 @@ export interface DirectoryEntry extends DirectoryPage {
 }
 
 /** Only published canonical pages participate; explicit metadata wins over URL ancestry. */
-export function pageDirectory(pages: readonly DirectoryPage[], home: string): DirectoryEntry[] {
+export function pageDirectory(
+  pages: readonly DirectoryPage[],
+  home: string,
+): DirectoryEntry[] {
   const entries = pages
     .filter((page) => page.path !== home)
-    .toSorted((a, b) => a.title.localeCompare(b.title, "en") || a.path.localeCompare(b.path, "en"));
+    .toSorted(
+      (a, b) =>
+        a.title.localeCompare(b.title, "en") ||
+        a.path.localeCompare(b.path, "en"),
+    );
   const byPath = new Map(entries.map((page) => [page.path, page]));
   const parents = new Map<string, string | undefined>();
   for (const page of entries) {
     const parent =
       page.parent ??
       entries
-        .filter((candidate) => candidate.path !== page.path && page.path.startsWith(candidate.path))
+        .filter(
+          (candidate) =>
+            candidate.path !== page.path &&
+            page.path.startsWith(candidate.path),
+        )
         .toSorted((a, b) => b.path.length - a.path.length)[0]?.path;
     parents.set(page.path, parent && byPath.has(parent) ? parent : undefined);
   }

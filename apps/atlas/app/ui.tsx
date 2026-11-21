@@ -1,4 +1,7 @@
-import { annotationTitle, ANNOTATION_PROJECTION_VERSION } from "./content/annotation.ts";
+import {
+  annotationTitle,
+  ANNOTATION_PROJECTION_VERSION,
+} from "./content/annotation.ts";
 import { css, unsafeHTML } from "remix/component";
 import type { RemixNode } from "remix/component";
 import { Button, Notice } from "@harrhy/ui/native";
@@ -8,7 +11,11 @@ import { themes, themeMixins, type ThemeId } from "./theme.ts";
 import { type DirectoryEntry, pageDirectory } from "./navigation.ts";
 import type { Widget } from "./widgets.ts";
 import { type Space, spacePath } from "./spaces.ts";
-import { annotationStyles, commentMount, type ArticleEvidence } from "./comments/client.tsx";
+import {
+  annotationStyles,
+  commentMount,
+  type ArticleEvidence,
+} from "./comments/client.tsx";
 
 const documentStyles = css({
   colorScheme: "light",
@@ -172,9 +179,10 @@ const headerStyles = css({
     fontWeight: "700",
     borderBottomColor: "var(--hui-ink)",
   },
-  "& nav a:hover, & nav a:visited, & nav a:focus-visible, & nav a[aria-current]": {
-    textDecoration: "none",
-  },
+  "& nav a:hover, & nav a:visited, & nav a:focus-visible, & nav a[aria-current]":
+    {
+      textDecoration: "none",
+    },
   "& .atlas-header-actions": {
     gridColumn: 3,
     gridRow: 1,
@@ -197,7 +205,11 @@ const headerStyles = css({
       gap: ".5rem",
       alignItems: "center",
     },
-    "& .atlas-space-picker select": { minWidth: 0, width: "100%", fontSize: "1rem" },
+    "& .atlas-space-picker select": {
+      minWidth: 0,
+      width: "100%",
+      fontSize: "1rem",
+    },
   },
 });
 const settingsStyles = css({
@@ -226,10 +238,11 @@ const layoutStyles = css({
     marginInlineStart: "calc(-1 * max(0px, (100cqw - 72ch) / 2))",
   },
   "@media (width > 1280px)": {
-    "&:has(> .atlas-desktop-directory[open]) [data-atlas-markdown] > .atlas-table": {
-      width: "calc(100% + max(0px, (100cqw - 72ch) / 2))",
-      marginInlineStart: 0,
-    },
+    "&:has(> .atlas-desktop-directory[open]) [data-atlas-markdown] > .atlas-table":
+      {
+        width: "calc(100% + max(0px, (100cqw - 72ch) / 2))",
+        marginInlineStart: 0,
+      },
   },
   "&.atlas-with-directory": {
     display: "grid",
@@ -252,7 +265,9 @@ const layoutStyles = css({
     padding: "0 .75rem 0 1rem",
     scrollbarWidth: "thin",
   },
-  "& .atlas-desktop-directory[open]": { borderInlineEnd: "1px solid var(--hui-border)" },
+  "& .atlas-desktop-directory[open]": {
+    borderInlineEnd: "1px solid var(--hui-border)",
+  },
   "& .atlas-desktop-directory > summary, & .atlas-mobile-directory > summary": {
     display: "grid",
     placeItems: "center",
@@ -272,12 +287,24 @@ const layoutStyles = css({
   },
   "& .atlas-desktop-directory > summary::-webkit-details-marker, & .atlas-mobile-directory > summary::-webkit-details-marker":
     { display: "none" },
-  "& details[open] > .atlas-directory-toggle svg": { fill: "var(--hui-selected-surface)" },
-  "& .atlas-directory-toggle:hover": { background: "var(--hui-selected-surface)" },
+  "& details[open] > .atlas-directory-toggle svg": {
+    fill: "var(--hui-selected-surface)",
+  },
+  "& .atlas-directory-toggle:hover": {
+    background: "var(--hui-selected-surface)",
+  },
   "& .atlas-directory-toggle:focus-visible": { outlineOffset: "-3px" },
   "& .atlas-mobile-directory": { display: "none" },
-  "& .atlas-directory": { fontSize: ".8rem", lineHeight: 1.45, overflowWrap: "anywhere" },
-  "& .atlas-directory ul": { listStyle: "none", margin: 0, paddingLeft: ".8rem" },
+  "& .atlas-directory": {
+    fontSize: ".8rem",
+    lineHeight: 1.45,
+    overflowWrap: "anywhere",
+  },
+  "& .atlas-directory ul": {
+    listStyle: "none",
+    margin: 0,
+    paddingLeft: ".8rem",
+  },
   "& .atlas-directory > ul": { paddingLeft: 0, marginTop: ".6rem" },
   "& .atlas-directory li": { margin: 0 },
   "& .atlas-directory a": {
@@ -302,9 +329,18 @@ const layoutStyles = css({
   },
   "& .atlas-directory summary::marker": { content: '""' },
   "& .atlas-directory summary::-webkit-details-marker": { display: "none" },
-  "& .atlas-directory summary a": { display: "block", minWidth: 0, maxWidth: "none" },
-  "& .atlas-directory summary > svg": { marginTop: "calc(.35rem + .37em)", justifySelf: "center" },
-  "& .atlas-directory details[open] > summary > svg": { transform: "rotate(90deg)" },
+  "& .atlas-directory summary a": {
+    display: "block",
+    minWidth: 0,
+    maxWidth: "none",
+  },
+  "& .atlas-directory summary > svg": {
+    marginTop: "calc(.35rem + .37em)",
+    justifySelf: "center",
+  },
+  "& .atlas-directory details[open] > summary > svg": {
+    transform: "rotate(90deg)",
+  },
   "& .atlas-directory li > a": { display: "block", paddingLeft: "1rem" },
   "& .atlas-directory ul ul ul ul": { paddingLeft: ".4rem" },
   "& .atlas-directory ul ul ul ul ul": { paddingLeft: 0 },
@@ -329,7 +365,11 @@ const layoutStyles = css({
 });
 function directoryToggle() {
   return (
-    <summary className="atlas-directory-toggle" aria-label="Documents" title="Documents">
+    <summary
+      className="atlas-directory-toggle"
+      aria-label="Documents"
+      title="Documents"
+    >
       <svg
         aria-hidden="true"
         width="20"
@@ -347,7 +387,10 @@ function directoryToggle() {
   );
 }
 
-function directoryEntries(entries: readonly DirectoryEntry[], current: string): RemixNode {
+function directoryEntries(
+  entries: readonly DirectoryEntry[],
+  current: string,
+): RemixNode {
   return (
     <ul>
       {entries.map((entry) => (
@@ -367,14 +410,20 @@ function directoryEntries(entries: readonly DirectoryEntry[], current: string): 
                 >
                   <path d="m8 4 8 8-8 8" />
                 </svg>
-                <a href={entry.path} aria-current={entry.path === current ? "page" : undefined}>
+                <a
+                  href={entry.path}
+                  aria-current={entry.path === current ? "page" : undefined}
+                >
                   {entry.title}
                 </a>
               </summary>
               {directoryEntries(entry.children, current)}
             </details>
           ) : (
-            <a href={entry.path} aria-current={entry.path === current ? "page" : undefined}>
+            <a
+              href={entry.path}
+              aria-current={entry.path === current ? "page" : undefined}
+            >
               {entry.title}
             </a>
           )}
@@ -392,7 +441,8 @@ function directory(
   return (
     <nav className="atlas-directory" aria-label={`${owner.name} documents`}>
       <a href={home} aria-current={current === home ? "page" : undefined}>
-        {pages.find((page) => page.path === home)?.title ?? `${owner.name} home`}
+        {pages.find((page) => page.path === home)?.title ??
+          `${owner.name} home`}
       </a>
       {directoryEntries(pageDirectory(pages, home), current)}
     </nav>
@@ -408,12 +458,18 @@ export interface DocumentOptions {
   url: URL;
   available: readonly { id: string; count: number }[];
 }
-export function document(title: string, body: RemixNode, options: DocumentOptions) {
+export function document(
+  title: string,
+  body: RemixNode,
+  options: DocumentOptions,
+) {
   const spaces = options.spaces;
   const current = options.url.pathname.endsWith("/")
     ? options.url.pathname
     : `${options.url.pathname}/`;
-  const active = spaces.find((space) => current.startsWith(`${spacePath(space.id)}/`));
+  const active = spaces.find((space) =>
+    current.startsWith(`${spacePath(space.id)}/`),
+  );
   const pages = options.pages.filter((page) => page.author === active?.id);
   return (
     <html
@@ -432,7 +488,9 @@ export function document(title: string, body: RemixNode, options: DocumentOption
         <meta name="robots" content="noindex, nofollow" />
         <title>{documentTitle(title)}</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        {options.theme === "brutalist" && <link rel="stylesheet" href="/fonts.css" />}
+        {options.theme === "brutalist" && (
+          <link rel="stylesheet" href="/fonts.css" />
+        )}
       </head>
       <body>
         <a mix={skipStyles} href="#main">
@@ -450,7 +508,12 @@ export function document(title: string, body: RemixNode, options: DocumentOption
               </a>
             ))}
           </nav>
-          <form className="atlas-space-picker" data-atlas-space-picker action="/" method="get">
+          <form
+            className="atlas-space-picker"
+            data-atlas-space-picker
+            action="/"
+            method="get"
+          >
             <select
               name="space"
               aria-label="Agent space"
@@ -490,7 +553,12 @@ export function document(title: string, body: RemixNode, options: DocumentOption
             >
               <span aria-hidden="true">⚙</span>
             </Button>
-            <div id="settings" popover="auto" aria-label="Settings" mix={settingsStyles}>
+            <div
+              id="settings"
+              popover="auto"
+              aria-label="Settings"
+              mix={settingsStyles}
+            >
               <form action={options.url.pathname} method="get">
                 {[...options.url.searchParams]
                   .filter(([key]) => key !== "theme")
@@ -508,7 +576,10 @@ export function document(title: string, body: RemixNode, options: DocumentOption
                   ]}
                 >
                   {themes.map((theme) => (
-                    <option value={theme.id} selected={theme.id === options.theme}>
+                    <option
+                      value={theme.id}
+                      selected={theme.id === options.theme}
+                    >
                       {theme.name}
                     </option>
                   ))}
@@ -518,7 +589,10 @@ export function document(title: string, body: RemixNode, options: DocumentOption
             </div>
           </div>
         </header>
-        <div className={active ? "atlas-with-directory" : undefined} mix={layoutStyles}>
+        <div
+          className={active ? "atlas-with-directory" : undefined}
+          mix={layoutStyles}
+        >
           {active && (
             <>
               <details open className="atlas-desktop-directory">
@@ -540,7 +614,11 @@ export function document(title: string, body: RemixNode, options: DocumentOption
             {body}
           </main>
         </div>
-        <script type="module" nonce={options.nonce} src="/_atlas/navigation.js" />
+        <script
+          type="module"
+          nonce={options.nonce}
+          src="/_atlas/navigation.js"
+        />
         {options.comments && (
           <script
             type="module"
@@ -553,7 +631,7 @@ export function document(title: string, body: RemixNode, options: DocumentOption
   );
 }
 
-export function documentTitle(title: string): string {
+function documentTitle(title: string): string {
   const page = title
     .replace(/^(?:🌎\s*)+/u, "")
     .replace(/(?:\s+-\s+Atlas)+$/u, "")
@@ -577,7 +655,10 @@ export function pageList(pages: readonly PageLink[]) {
     </ul>
   );
 }
-export function topicTree(pages: readonly PageLink[], parent?: string): RemixNode {
+export function topicTree(
+  pages: readonly PageLink[],
+  parent?: string,
+): RemixNode {
   const children = pages.filter((page) => page.parent === parent);
   return children.length ? (
     <ul>
@@ -609,7 +690,9 @@ export function article(
     <>
       <div
         data-atlas-article={evidence ? "" : undefined}
-        data-annotation-projection-version={evidence ? ANNOTATION_PROJECTION_VERSION : undefined}
+        data-annotation-projection-version={
+          evidence ? ANNOTATION_PROJECTION_VERSION : undefined
+        }
         data-article-url={evidence?.articleUrl}
         data-source-sha256={evidence?.sourceSha256}
         data-annotation-projection-sha256={evidence?.annotationProjectionSha256}
@@ -623,7 +706,11 @@ export function article(
         <div data-atlas-markdown innerHTML={unsafeHTML(enhanced)} />
       </div>
       {widgets.map((widget) => (
-        <script type="module" nonce={nonce} src={`/_atlas/widgets/${widget.digest}.js`} />
+        <script
+          type="module"
+          nonce={nonce}
+          src={`/_atlas/widgets/${widget.digest}.js`}
+        />
       ))}
     </>
   );

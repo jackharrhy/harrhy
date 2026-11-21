@@ -6,7 +6,10 @@ import { parseDocument } from "yaml";
 import { imageHref } from "../images.ts";
 import { spacePath } from "../spaces.ts";
 import type { Widget } from "../widgets.ts";
-import { articleAnnotationText, annotationProjectionInput } from "./annotation.ts";
+import {
+  articleAnnotationText,
+  annotationProjectionInput,
+} from "./annotation.ts";
 import { renderMarkdown } from "./markdown.ts";
 
 /** Explicit trusted registry entry. directory is relative to the external root. */
@@ -20,7 +23,9 @@ interface CatalogAuthor {
 export interface CatalogOptions {
   readonly widgets?: () => Promise<readonly Widget[]>;
   readonly root: string;
-  readonly authors: readonly CatalogAuthor[] | (() => Promise<readonly CatalogAuthor[]>);
+  readonly authors:
+    | readonly CatalogAuthor[]
+    | (() => Promise<readonly CatalogAuthor[]>);
 }
 interface CatalogPage {
   readonly title: string;
@@ -76,7 +81,10 @@ export interface Catalog {
 }
 
 function route(value: unknown): string {
-  if (typeof value !== "string" || !/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]*$/.test(value)) {
+  if (
+    typeof value !== "string" ||
+    !/^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]*$/.test(value)
+  ) {
     throw new Error(`Invalid catalog route: ${String(value)}`);
   }
   const normalized = value.length > 1 ? value.replace(/\/$/, "") : value;
@@ -99,7 +107,10 @@ function displayRoute(value: string): string {
 }
 function strings(value: unknown, field: string): string[] {
   if (value === undefined) return [];
-  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || !item.trim())) {
+  if (
+    !Array.isArray(value) ||
+    value.some((item) => typeof item !== "string" || !item.trim())
+  ) {
     throw new Error(`${field} must be an array of nonempty strings`);
   }
   return [...new Set(value as string[])];
@@ -120,7 +131,10 @@ function inside(root: string, relative: string): string {
 async function noSymlink(directory: string): Promise<void> {
   const absolute = path.resolve(directory);
   let current = path.parse(absolute).root;
-  for (const part of absolute.slice(current.length).split(path.sep).filter(Boolean)) {
+  for (const part of absolute
+    .slice(current.length)
+    .split(path.sep)
+    .filter(Boolean)) {
     current = path.join(current, part);
     const stat = await lstat(current);
     if (stat.isSymbolicLink() || !stat.isDirectory())
@@ -139,15 +153,23 @@ export function createCatalog(options: CatalogOptions): Catalog {
   let pending: Promise<CatalogRead> = Promise.resolve(state);
   let fingerprint: string | null = null;
   const assetGenerations: (readonly Widget[])[] = [];
-  let renderedCache = new Map<string, Awaited<ReturnType<typeof renderMarkdown>>>();
+  let renderedCache = new Map<
+    string,
+    Awaited<ReturnType<typeof renderMarkdown>>
+  >();
 
   async function build(): Promise<CatalogRead> {
     try {
       const authors =
-        typeof options.authors === "function" ? await options.authors() : options.authors;
+        typeof options.authors === "function"
+          ? await options.authors()
+          : options.authors;
       await noSymlink(root);
       const sourceDigests: string[] = [];
-      const nextCache = new Map<string, Awaited<ReturnType<typeof renderMarkdown>>>();
+      const nextCache = new Map<
+        string,
+        Awaited<ReturnType<typeof renderMarkdown>>
+      >();
       const pages: Record<string, CatalogPage> = Object.create(null);
       const routes: Record<string, string> = Object.create(null);
       const backlinks: Record<string, string[]> = Object.create(null);
@@ -172,37 +194,55 @@ export function createCatalog(options: CatalogOptions): Catalog {
         try {
           await noSymlink(directory);
         } catch (error) {
-          if (author.optional && (error as NodeJS.ErrnoException).code === "ENOENT") continue;
+          if (
+            author.optional &&
+            (error as NodeJS.ErrnoException).code === "ENOENT"
+          )
+            continue;
           throw error;
         }
-        const scoped = (address: string) => spacePath(author.id) + (address === "/" ? "" : address);
+        const scoped = (address: string) =>
+          spacePath(author.id) + (address === "/" ? "" : address);
         async function scan(folder: string): Promise<void> {
           await noSymlink(folder);
-          for (const entry of (await readdir(folder, { withFileTypes: true })).toSorted((a, b) =>
-            a.name.localeCompare(b.name),
-          )) {
+          for (const entry of (
+            await readdir(folder, { withFileTypes: true })
+          ).toSorted((a, b) => a.name.localeCompare(b.name))) {
             const filename = path.join(folder, entry.name);
-            if (entry.isSymbolicLink()) throw new Error(`Symlink forbidden: ${filename}`);
+            if (entry.isSymbolicLink())
+              throw new Error(`Symlink forbidden: ${filename}`);
             if (entry.isDirectory()) {
               await scan(filename);
               continue;
             }
             if (!entry.isFile() || !/\.md$/i.test(entry.name)) continue;
-            const file = await open(filename, constants.O_RDONLY | constants.O_NOFOLLOW);
+            const file = await open(
+              filename,
+              constants.O_RDONLY | constants.O_NOFOLLOW,
+            );
             let source: string;
             try {
               source = await file.readFile("utf8");
             } finally {
               await file.close();
             }
-            sourceDigests.push(`${filename}:${createHash("sha256").update(source).digest("hex")}`);
-            const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/.exec(source);
+            sourceDigests.push(
+              `${filename}:${createHash("sha256").update(source).digest("hex")}`,
+            );
+            const match =
+              /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)([\s\S]*)$/.exec(source);
             if (!match) throw new Error(`Missing frontmatter: ${filename}`);
             const document = parseDocument(match[1], { uniqueKeys: true });
             if (document.errors.length)
-              throw new Error(`Invalid YAML: ${filename}: ${document.errors[0]?.message}`);
+              throw new Error(
+                `Invalid YAML: ${filename}: ${document.errors[0]?.message}`,
+              );
             const metadata: unknown = document.toJS({ maxAliasCount: 0 });
-            if (!metadata || typeof metadata !== "object" || Array.isArray(metadata))
+            if (
+              !metadata ||
+              typeof metadata !== "object" ||
+              Array.isArray(metadata)
+            )
               throw new Error(`Invalid metadata: ${filename}`);
             const data = metadata as Record<string, unknown>;
             if (typeof data.title !== "string" || !data.title.trim())
@@ -212,15 +252,27 @@ export function createCatalog(options: CatalogOptions): Catalog {
             const localAliases = strings(data.aliases, "aliases").map(route);
             const aliases = localAliases.map(scoped);
             if (author.legacyRoutes)
-              aliases.push(...[localPath, ...localAliases].filter((address) => address !== "/"));
+              aliases.push(
+                ...[localPath, ...localAliases].filter(
+                  (address) => address !== "/",
+                ),
+              );
             const contributors = strings(data.contributors, "contributors");
             const optional: Record<string, string> = {};
-            for (const field of ["parent", "description", "kind", "date", "updated"]) {
+            for (const field of [
+              "parent",
+              "description",
+              "kind",
+              "date",
+              "updated",
+            ]) {
               if (data[field] === undefined) continue;
               if (typeof data[field] !== "string")
                 throw new Error(`${field} must be a string: ${filename}`);
               optional[field] =
-                field === "parent" ? displayRoute(scoped(route(data[field]))) : data[field];
+                field === "parent"
+                  ? displayRoute(scoped(route(data[field])))
+                  : data[field];
             }
             const sources: Readonly<{ label: string; url: string }>[] = [];
             if (data.sources !== undefined) {
@@ -237,7 +289,9 @@ export function createCatalog(options: CatalogOptions): Catalog {
                 const url = new URL(item.url);
                 if (url.protocol !== "https:" && url.protocol !== "http:")
                   throw new Error(`Unsafe source URL: ${filename}`);
-                sources.push(Object.freeze({ label: item.label, url: item.url }));
+                sources.push(
+                  Object.freeze({ label: item.label, url: item.url }),
+                );
               }
             }
             const digest =
@@ -255,14 +309,19 @@ export function createCatalog(options: CatalogOptions): Catalog {
                   if (/^[a-z][a-z0-9+.-]*:|^\/\//i.test(href)) return href;
                   let url: URL;
                   try {
-                    url = new URL(href, `http://atlas.local${displayRoute(localPath)}`);
+                    url = new URL(
+                      href,
+                      `http://atlas.local${displayRoute(localPath)}`,
+                    );
                   } catch {
                     return href;
                   }
                   if (url.origin !== "http://atlas.local") return href;
                   if (url.pathname.startsWith("/spaces/"))
                     return url.pathname + url.search + url.hash;
-                  return spacePath(author.id) + url.pathname + url.search + url.hash;
+                  return (
+                    spacePath(author.id) + url.pathname + url.search + url.hash
+                  );
                 },
                 (src) => imageHref(author.id, displayRoute(localPath), src),
               ));
@@ -283,7 +342,10 @@ export function createCatalog(options: CatalogOptions): Catalog {
               source: path.relative(root, filename),
               sourceDigest: createHash("sha256").update(source).digest("hex"),
               sourceContent: source,
-              annotationText: articleAnnotationText(data.title, rendered.annotationText),
+              annotationText: articleAnnotationText(
+                data.title,
+                rendered.annotationText,
+              ),
               annotationDigest: createHash("sha256")
                 .update(
                   annotationProjectionInput(
@@ -306,7 +368,8 @@ export function createCatalog(options: CatalogOptions): Catalog {
         while (parent) {
           const canonical = routes[key(parent)];
           if (!canonical) throw new Error(`Unknown parent: ${parent}`);
-          if (ancestors.has(canonical)) throw new Error(`Cyclic parent: ${page.path}`);
+          if (ancestors.has(canonical))
+            throw new Error(`Cyclic parent: ${page.path}`);
           ancestors.add(canonical);
           parent = pages[canonical]!.parent;
         }
@@ -325,16 +388,21 @@ export function createCatalog(options: CatalogOptions): Catalog {
           } catch {
             continue;
           }
-          const target = routes[address.length > 1 ? address.replace(/\/$/, "") : address];
-          if (target && !backlinks[target]!.includes(page.path)) backlinks[target]!.push(page.path);
+          const target =
+            routes[address.length > 1 ? address.replace(/\/$/, "") : address];
+          if (target && !backlinks[target]!.includes(page.path))
+            backlinks[target]!.push(page.path);
         }
       }
       const widgets = (await options.widgets?.()) ?? Object.freeze([]);
       const usedWidgets = new Set<string>();
       for (const page of Object.values(pages)) {
-        for (const match of page.html.matchAll(/<p>\[\[widget:([a-z][a-z0-9-]{0,63})\]\]<\/p>/g)) {
+        for (const match of page.html.matchAll(
+          /<p>\[\[widget:([a-z][a-z0-9-]{0,63})\]\]<\/p>/g,
+        )) {
           const widget = widgets.find(
-            (candidate) => candidate.id === match[1] && candidate.page === page.path,
+            (candidate) =>
+              candidate.id === match[1] && candidate.page === page.path,
           );
           if (!widget || usedWidgets.has(widget.id))
             throw new Error("Unregistered or duplicate page widget");
@@ -346,7 +414,11 @@ export function createCatalog(options: CatalogOptions): Catalog {
       const nextFingerprint = JSON.stringify([
         authors,
         sourceDigests,
-        widgets.map(({ id, page, digest, capabilities }) => ({ id, page, digest, capabilities })),
+        widgets.map(({ id, page, digest }) => ({
+          id,
+          page,
+          digest,
+        })),
       ]);
       renderedCache = nextCache;
       if (state.generation && nextFingerprint === fingerprint) {
@@ -365,7 +437,9 @@ export function createCatalog(options: CatalogOptions): Catalog {
       const generation: CatalogGeneration = Object.freeze({
         id: (state.generation?.id ?? 0) + 1,
         spaces: Object.freeze(
-          authors.map((author) => Object.freeze({ ...author, name: author.name ?? author.id })),
+          authors.map((author) =>
+            Object.freeze({ ...author, name: author.name ?? author.id }),
+          ),
         ),
         widgets,
         pages: Object.freeze(pages),
@@ -424,7 +498,10 @@ export function createCatalog(options: CatalogOptions): Catalog {
         if (author.optional && !existsSync(directory)) continue;
         watchers.push(
           watchDirectory(directory, { recursive: true }, (event, filename) => {
-            changed(event, filename ? path.join(author.directory, filename) : null);
+            changed(
+              event,
+              filename ? path.join(author.directory, filename) : null,
+            );
           }),
         );
       }
@@ -458,6 +535,7 @@ export function createCatalog(options: CatalogOptions): Catalog {
     refresh,
     watch,
     widgetScript: (digest) =>
-      assetGenerations.flat().find((widget) => widget.digest === digest)?.script,
+      assetGenerations.flat().find((widget) => widget.digest === digest)
+        ?.script,
   };
 }

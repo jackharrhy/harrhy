@@ -67,13 +67,23 @@ const svgProcessor = unified()
 const cache = new Map<string, Element | null>();
 let rendering = false;
 
-async function renderSvg(source: string, budget: number): Promise<string | null> {
+async function renderSvg(
+  source: string,
+  budget: number,
+): Promise<string | null> {
   return new Promise((resolve) => {
-    const worker = new Worker(new URL("./diagram-worker.mjs", import.meta.url), {
-      workerData: source,
-      execArgv: [],
-      resourceLimits: { maxOldGenerationSizeMb: 64, maxYoungGenerationSizeMb: 16, stackSizeMb: 2 },
-    });
+    const worker = new Worker(
+      new URL("./diagram-worker.mjs", import.meta.url),
+      {
+        workerData: source,
+        execArgv: [],
+        resourceLimits: {
+          maxOldGenerationSizeMb: 64,
+          maxYoungGenerationSizeMb: 16,
+          stackSizeMb: 2,
+        },
+      },
+    );
     let finished = false;
     const finish = (svg: string | null) => {
       if (finished) return;
@@ -98,7 +108,11 @@ async function renderSvg(source: string, budget: number): Promise<string | null>
         !("svg" in value)
       )
         return;
-      finish(typeof value.svg === "string" && value.svg.length <= 250000 ? value.svg : null);
+      finish(
+        typeof value.svg === "string" && value.svg.length <= 250000
+          ? value.svg
+          : null,
+      );
     });
     worker.once("error", (error) => {
       console.warn(
@@ -110,13 +124,19 @@ async function renderSvg(source: string, budget: number): Promise<string | null>
     });
     worker.once("exit", (code) => {
       if (!finished)
-        console.warn("Atlas diagram worker exited before result; using source fallback", code);
+        console.warn(
+          "Atlas diagram worker exited before result; using source fallback",
+          code,
+        );
       finish(null);
     });
   });
 }
 
-async function diagram(source: string, budget: number): Promise<Element | null> {
+async function diagram(
+  source: string,
+  budget: number,
+): Promise<Element | null> {
   if (source.length > 10000) return null;
   if (cache.has(source)) return structuredClone(cache.get(source)!);
   const svg = await renderSvg(source, budget);
@@ -127,7 +147,8 @@ async function diagram(source: string, budget: number): Promise<Element | null> 
       children: [{ type: "raw", value: svg }],
     } as Root);
     const root = tree.children.find(
-      (node): node is Element => node.type === "element" && node.tagName === "svg",
+      (node): node is Element =>
+        node.type === "element" && node.tagName === "svg",
     );
     if (root) {
       visit(root, "element", (node) => {
@@ -135,7 +156,9 @@ async function diagram(source: string, budget: number): Promise<Element | null> 
           const value = node.properties[name];
           if (
             typeof value === "string" &&
-            !/^(?:none|currentColor|transparent|#[a-fA-F0-9]{3,8}|var\(--_[a-z]+\))$/.test(value)
+            !/^(?:none|currentColor|transparent|#[a-fA-F0-9]{3,8}|var\(--_[a-z]+\))$/.test(
+              value,
+            )
           )
             delete node.properties[name];
         }
@@ -154,7 +177,9 @@ export async function prepareDiagrams(tree: Root): Promise<void> {
   const fences: { node: Element; source: string }[] = [];
   visit(tree, "element", (node) => {
     const code =
-      node.tagName === "pre" && node.children.length === 1 ? node.children[0] : undefined;
+      node.tagName === "pre" && node.children.length === 1
+        ? node.children[0]
+        : undefined;
     if (
       code &&
       code.type === "element" &&
@@ -166,7 +191,9 @@ export async function prepareDiagrams(tree: Root): Promise<void> {
       node.properties.dataAtlasDiagram = true;
       fences.push({
         node,
-        source: code.children.map((child) => (child.type === "text" ? child.value : "")).join(""),
+        source: code.children
+          .map((child) => (child.type === "text" ? child.value : ""))
+          .join(""),
       });
     }
   });

@@ -1,25 +1,40 @@
 import type { QuoteEvidence } from "./contract.ts";
 
-function object(value: unknown, keys: readonly string[]): Record<string, unknown> {
+function object(
+  value: unknown,
+  keys: readonly string[],
+): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("Invalid comment evidence");
   const record = value as Record<string, unknown>;
-  if (Object.keys(record).length !== keys.length || keys.some((key) => !Object.hasOwn(record, key)))
+  if (
+    Object.keys(record).length !== keys.length ||
+    keys.some((key) => !Object.hasOwn(record, key))
+  )
     throw new Error("Invalid comment fields");
   return record;
 }
 function string(value: unknown, min: number, max: number): string {
-  if (typeof value !== "string" || value.length < min || value.length > max || value.includes("\0"))
+  if (
+    typeof value !== "string" ||
+    value.length < min ||
+    value.length > max ||
+    value.includes("\0")
+  )
     throw new Error("Invalid comment text");
   return value;
 }
 function digest(value: unknown): string {
   const result = string(value, 64, 64);
-  if (!/^[0-9a-f]{64}$/.test(result)) throw new Error("Invalid source revision");
+  if (!/^[0-9a-f]{64}$/.test(result))
+    throw new Error("Invalid source revision");
   return result;
 }
 
-export function parseEvidence(value: unknown, articleOrigin: string): QuoteEvidence {
+export function parseEvidence(
+  value: unknown,
+  articleOrigin: string,
+): QuoteEvidence {
   const item = object(value, [
     "id",
     "articleUrl",
@@ -28,7 +43,13 @@ export function parseEvidence(value: unknown, articleOrigin: string): QuoteEvide
     "quote",
     "comment",
   ]);
-  const quote = object(item.quote, ["exact", "prefix", "suffix", "start", "end"]);
+  const quote = object(item.quote, [
+    "exact",
+    "prefix",
+    "suffix",
+    "start",
+    "end",
+  ]);
   const articleUrl = string(item.articleUrl, 1, 2048);
   const url = new URL(articleUrl);
   if (
@@ -81,8 +102,11 @@ export function matchesEvidence(
     evidence.sourceSha256 === page.sourceDigest &&
     evidence.annotationProjectionSha256 === page.annotationDigest &&
     page.annotationText.slice(quote.start, quote.end) === quote.exact &&
-    page.annotationText.slice(Math.max(0, quote.start - quote.prefix.length), quote.start) ===
-      quote.prefix &&
-    page.annotationText.slice(quote.end, quote.end + quote.suffix.length) === quote.suffix
+    page.annotationText.slice(
+      Math.max(0, quote.start - quote.prefix.length),
+      quote.start,
+    ) === quote.prefix &&
+    page.annotationText.slice(quote.end, quote.end + quote.suffix.length) ===
+      quote.suffix
   );
 }

@@ -1,18 +1,28 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { mkdtemp, mkdir, writeFile, rm, symlink, link, rename } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  rm,
+  symlink,
+  link,
+  rename,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { imageHref, serveImage } from "../app/images.ts";
 import { renderMarkdown } from "../app/content/markdown.ts";
-import { createAtlas } from "../app/router.tsx";
 const pixel = Buffer.from(
   "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jFioAAAAASUVORK5CYII=",
   "base64",
 );
 
 test("Markdown raster URLs resolve inside their own space; remote and unsafe images remain stripped", async () => {
-  assert.equal(imageHref("alpha", "/", "images/pixel.png"), "/_atlas/images/alpha/pixel.png");
+  assert.equal(
+    imageHref("alpha", "/", "images/pixel.png"),
+    "/_atlas/images/alpha/pixel.png",
+  );
   assert.equal(
     imageHref("alpha", "/guide/page/", "../../images/pixel.png"),
     "/_atlas/images/alpha/pixel.png",
@@ -46,7 +56,10 @@ test("Markdown raster URLs resolve inside their own space; remote and unsafe ima
   );
   assert.doesNotMatch(rendered.html, /tracker|onerror|srcset|style=|evil/);
   assert.match(rendered.annotationText, /^Before\.[\s]*After\.$/);
-  assert.doesNotMatch(rendered.annotationText, /Useful alt|relative|remote|Raw safe/);
+  assert.doesNotMatch(
+    rendered.annotationText,
+    /Useful alt|relative|remote|Raw safe/,
+  );
   assert.deepEqual(rendered.links, []);
 });
 
@@ -71,7 +84,10 @@ test("registered raster assets enforce type, file containment, bounded reads and
   assert.equal(response.headers.get("x-content-type-options"), "nosniff");
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), pixel);
   const etag = response.headers.get("etag")!;
-  assert.equal((await get("alpha/pixel.png", { "If-None-Match": etag })).status, 304);
+  assert.equal(
+    (await get("alpha/pixel.png", { "If-None-Match": etag })).status,
+    304,
+  );
   await writeFile(
     path.join(root, "alpha", "images", "pixel.png.tmp"),
     Buffer.concat([pixel, Buffer.from([0])]),
@@ -84,14 +100,23 @@ test("registered raster assets enforce type, file containment, bounded reads and
   assert.equal(changed.status, 200);
   assert.notEqual(changed.headers.get("etag"), etag);
   await writeFile(path.join(root, "alpha", "images", "wrong.jpg"), pixel);
-  await writeFile(path.join(root, "alpha", "images", "active.svg"), '<svg onload="evil()"/>');
+  await writeFile(
+    path.join(root, "alpha", "images", "active.svg"),
+    '<svg onload="evil()"/>',
+  );
   await writeFile(
     path.join(root, "alpha", "images", "too-big.png"),
     Buffer.alloc(8 * 1024 * 1024 + 1),
   );
   await writeFile(path.join(root, "outside.png"), pixel);
-  await symlink(path.join(root, "outside.png"), path.join(root, "alpha", "images", "linked.png"));
-  await link(path.join(root, "outside.png"), path.join(root, "alpha", "images", "hard.png"));
+  await symlink(
+    path.join(root, "outside.png"),
+    path.join(root, "alpha", "images", "linked.png"),
+  );
+  await link(
+    path.join(root, "outside.png"),
+    path.join(root, "alpha", "images", "hard.png"),
+  );
   for (const asset of [
     "beta/pixel.png",
     "unknown/pixel.png",
@@ -108,37 +133,17 @@ test("registered raster assets enforce type, file containment, bounded reads and
   ]) {
     assert.equal((await get(asset)).status, 404, asset);
   }
-  await rename(path.join(root, "alpha", "images"), path.join(root, "alpha", "original-images"));
-  await symlink(path.join(root, "beta", "images"), path.join(root, "alpha", "images"));
-  assert.equal((await get("alpha/pixel.png")).status, 404, "ancestor symlink rejected");
-});
-
-test("asset visibility and image rewriting follow the same dynamic registered generation", async (t) => {
-  const root = await mkdtemp(path.join(tmpdir(), "atlas-image-registry-"));
-  t.after(() => rm(root, { recursive: true, force: true }));
-  const manifest = path.join(root, "atlas.json");
-  for (const id of ["alpha", "beta"]) {
-    await mkdir(path.join(root, id, "images"), { recursive: true });
-    await writeFile(path.join(root, id, "images", "pixel.png"), pixel);
-    await writeFile(
-      path.join(root, id, "index.md"),
-      "---\ntitle: Image page\npath: /\n---\n![Useful alt](/images/pixel.png)",
-    );
-  }
-  const alpha = { id: "alpha", name: "Alpha", directory: "alpha" },
-    beta = { id: "beta", name: "Beta", directory: "beta" };
-  await writeFile(manifest, JSON.stringify({ spaces: [alpha] }));
-  const app = await createAtlas(root, manifest);
-  t.after(app.close);
-  const get = (p: string) => app.router.fetch(`http://atlas.example${p}`);
-  const page = await get("/spaces/alpha/");
-  assert.match(await page.text(), /<img src="\/_atlas\/images\/alpha\/pixel.png"/);
-  assert.match(page.headers.get("content-security-policy")!, /img-src 'self'/);
-  assert.equal((await get("/_atlas/images/beta/pixel.png")).status, 404);
-  await writeFile(manifest, JSON.stringify({ spaces: [alpha, beta] }));
-  await app.catalog.refresh();
-  assert.equal((await get("/_atlas/images/beta/pixel.png")).status, 200);
-  await writeFile(manifest, JSON.stringify({ spaces: [beta] }));
-  await app.catalog.refresh();
-  assert.equal((await get("/_atlas/images/alpha/pixel.png")).status, 404);
+  await rename(
+    path.join(root, "alpha", "images"),
+    path.join(root, "alpha", "original-images"),
+  );
+  await symlink(
+    path.join(root, "beta", "images"),
+    path.join(root, "alpha", "images"),
+  );
+  assert.equal(
+    (await get("alpha/pixel.png")).status,
+    404,
+    "ancestor symlink rejected",
+  );
 });

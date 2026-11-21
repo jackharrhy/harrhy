@@ -1,6 +1,0 @@
-[
-  {"kind":"chirp","family":"Noto Sans","weight":400,"subset":"latin","file":"NotoSans-Regular.ttf","ranges":[[0,1114111]]},
-  {"kind":"chirp","family":"Noto Sans","weight":500,"subset":"latin","file":"NotoSans-Regular.ttf","ranges":[[0,1114111]]},
-  {"kind":"chirp","family":"Noto Sans","weight":700,"subset":"latin","file":"NotoSans-Bold.ttf","ranges":[[0,1114111]]},
-  {"kind":"chirp","family":"Noto Sans","weight":800,"subset":"latin","file":"NotoSans-Bold.ttf","ranges":[[0,1114111]]}
-]

@@ -47,7 +47,9 @@ export function createCommentBrowserApi(transport: typeof fetch = fetch) {
     const data = await response.json();
     if (!response.ok) {
       if (response.status === 403) csrf = undefined;
-      throw new Error(typeof data?.error === "string" ? data.error : "Comments unavailable");
+      throw new Error(
+        typeof data?.error === "string" ? data.error : "Comments unavailable",
+      );
     }
     return data;
   }
@@ -63,22 +65,30 @@ export function createCommentBrowserApi(transport: typeof fetch = fetch) {
     },
     catalog: () => request("targets") as Promise<AgentCatalog>,
     async targets(): Promise<readonly ReviewTarget[]> {
-      return ((await request("targets")) as { targets: ReviewTarget[] }).targets;
+      return ((await request("targets")) as { targets: ReviewTarget[] })
+        .targets;
     },
     save: (evidence: QuoteEvidence, expectedRevision: number) =>
       mutate("save", { evidence, expectedRevision }) as Promise<ReviewComment>,
-    remove: (id: string, revision: number) => mutate("remove", { id, revision }),
-    send: (items: readonly { id: string; revision: number }[], target: TargetBinding) =>
-      mutate("send", { items, target }),
+    remove: (id: string, revision: number) =>
+      mutate("remove", { id, revision }),
+    send: (
+      items: readonly { id: string; revision: number }[],
+      target: TargetBinding,
+    ) => mutate("send", { items, target }),
     retry: (batchId: string) => mutate("retry", { batchId }),
     receipt: (batchId: string) => mutate("receipt", { batchId }),
   };
 }
 
-export function originalBatch(state: ReviewState, comment: ReviewComment): ReviewBatch | undefined {
+export function originalBatch(
+  state: ReviewState,
+  comment: ReviewComment,
+): ReviewBatch | undefined {
   return state.batches.find((batch) =>
     batch.items.some(
-      (item) => item.id === comment.evidence.id && item.revision === comment.revision,
+      (item) =>
+        item.id === comment.evidence.id && item.revision === comment.revision,
     ),
   );
 }

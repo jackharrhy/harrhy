@@ -5,12 +5,13 @@ export interface RecoverableDraft {
   readonly evidence: QuoteEvidence;
   readonly revision: number;
 }
+const key = (articleUrl: string) => `atlas-comment-draft:${articleUrl}`;
+
 /** Recovery text is not staged evidence and never triggers a server mutation. */
 export function createCommentDrafts(
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
   origin: string,
 ) {
-  const key = (articleUrl: string) => `atlas-comment-draft:${articleUrl}`;
   return {
     read(articleUrl: string): RecoverableDraft | undefined {
       const raw = storage.getItem(key(articleUrl));
@@ -19,7 +20,8 @@ export function createCommentDrafts(
       if (!Number.isSafeInteger(value.revision) || value.revision < 0)
         throw new Error("Invalid draft revision");
       const evidence = parseEvidence(value.evidence, origin);
-      if (evidence.articleUrl !== articleUrl) throw new Error("Draft belongs to another article");
+      if (evidence.articleUrl !== articleUrl)
+        throw new Error("Draft belongs to another article");
       return { evidence, revision: value.revision };
     },
     remember(evidence: QuoteEvidence, revision: number, text: string) {

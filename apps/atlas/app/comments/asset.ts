@@ -22,6 +22,7 @@ export async function compileComments() {
     logLevel: "silent",
   });
   const script = result.outputFiles[0].text;
-  if (Buffer.byteLength(script) > 1048576) throw new Error("Comments bundle exceeds limit");
+  if (Buffer.byteLength(script) > 1048576)
+    throw new Error("Comments bundle exceeds limit");
   return { script, digest: createHash("sha256").update(script).digest("hex") };
 }

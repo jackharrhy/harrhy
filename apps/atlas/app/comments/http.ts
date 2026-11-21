@@ -5,7 +5,10 @@ import { parseEvidence } from "./evidence.ts";
 import type { createCommentService } from "./service.ts";
 
 type Service = ReturnType<typeof createCommentService>;
-function object(value: unknown, keys: readonly string[]): Record<string, unknown> {
+function object(
+  value: unknown,
+  keys: readonly string[],
+): Record<string, unknown> {
   if (
     !value ||
     typeof value !== "object" ||
@@ -17,7 +20,8 @@ function object(value: unknown, keys: readonly string[]): Record<string, unknown
   return value as Record<string, unknown>;
 }
 function revision(value: unknown): number {
-  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new Error("Invalid revision");
+  if (!Number.isSafeInteger(value) || (value as number) < 0)
+    throw new Error("Invalid revision");
   return value as number;
 }
 function identity(value: unknown): string {
@@ -27,8 +31,10 @@ function identity(value: unknown): string {
 }
 // Keep native private envelopes server-side; the browser sees only factual state.
 function receiptState(value: unknown): string {
-  const state = (value as { receipt?: { state?: unknown } } | null)?.receipt?.state;
-  return typeof state === "string" && ["missing", "recorded", "unknown", "admitted"].includes(state)
+  const state = (value as { receipt?: { state?: unknown } } | null)?.receipt
+    ?.state;
+  return typeof state === "string" &&
+    ["missing", "recorded", "unknown", "admitted"].includes(state)
     ? state
     : "unknown";
 }
@@ -46,8 +52,12 @@ export function createCommentHttp(
     path: "/",
     maxAge: 86400,
   });
-  const headers = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff" };
-  const json = (value: unknown, status = 200) => Response.json(value, { status, headers });
+  const headers = {
+    "Cache-Control": "private, no-store",
+    "X-Content-Type-Options": "nosniff",
+  };
+  const json = (value: unknown, status = 200) =>
+    Response.json(value, { status, headers });
   return async function handle(request: Request): Promise<Response> {
     const pathname = new URL(request.url).pathname;
     const origin = request.headers.get("Origin");
@@ -78,7 +88,9 @@ export function createCommentHttp(
           items,
           comments: body.comments,
           state: receiptState(receipt),
-          ...(admittedChatUrl(receipt) ? { chatUrl: admittedChatUrl(receipt) } : {}),
+          ...(admittedChatUrl(receipt)
+            ? { chatUrl: admittedChatUrl(receipt) }
+            : {}),
         })),
       });
       response.headers.set("Set-Cookie", await cookie.serialize(csrf));
@@ -118,7 +130,9 @@ export function createCommentHttp(
       } finally {
         await reader.cancel();
       }
-      data = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)));
+      data = JSON.parse(
+        new TextDecoder("utf-8", { fatal: true }).decode(Buffer.concat(chunks)),
+      );
     } catch {
       return json({ error: "Invalid bounded JSON request" }, 400);
     }
@@ -158,10 +172,15 @@ export function createCommentHttp(
         return json({
           batchId: result.batchId,
           state: receiptState(result.receipt),
-          ...(admittedChatUrl(result.receipt) ? { chatUrl: admittedChatUrl(result.receipt) } : {}),
+          ...(admittedChatUrl(result.receipt)
+            ? { chatUrl: admittedChatUrl(result.receipt) }
+            : {}),
         });
       }
-      if (pathname === "/_atlas/comments/retry" || pathname === "/_atlas/comments/receipt") {
+      if (
+        pathname === "/_atlas/comments/retry" ||
+        pathname === "/_atlas/comments/receipt"
+      ) {
         const item = object(data, ["batchId"]);
         const id = identity(item.batchId);
         const receipt = pathname.endsWith("/retry")
@@ -170,7 +189,9 @@ export function createCommentHttp(
         return json({
           batchId: id,
           state: receiptState(receipt),
-          ...(admittedChatUrl(receipt) ? { chatUrl: admittedChatUrl(receipt) } : {}),
+          ...(admittedChatUrl(receipt)
+            ? { chatUrl: admittedChatUrl(receipt) }
+            : {}),
         });
       }
       return json({ error: "Not found" }, 404);

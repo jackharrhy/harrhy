@@ -19,20 +19,27 @@ export interface ArticleSnapshot {
   readonly annotationDigest: string;
 }
 
-export interface SavedComment {
+interface SavedComment {
   readonly revision: number;
   readonly evidence: QuoteEvidence;
 }
-export interface SavedBatch {
+interface SavedBatch {
   readonly body: CommentBatch;
   readonly items: readonly { id: string; revision: number }[];
   readonly receipt: unknown;
 }
 export interface CommentStore {
   list(): readonly SavedComment[];
-  save(evidence: QuoteEvidence, expectedRevision: number, snapshot: ArticleSnapshot): SavedComment;
+  save(
+    evidence: QuoteEvidence,
+    expectedRevision: number,
+    snapshot: ArticleSnapshot,
+  ): SavedComment;
   remove(id: string, expectedRevision: number): void;
-  freeze(items: readonly { id: string; revision: number }[], target: TargetBinding): SavedBatch;
+  freeze(
+    items: readonly { id: string; revision: number }[],
+    target: TargetBinding,
+  ): SavedBatch;
   batch(id: string): SavedBatch | undefined;
   batches(): readonly SavedBatch[];
   rememberReceipt(id: string, receipt: unknown): void;
@@ -40,18 +47,29 @@ export interface CommentStore {
 }
 
 // State is operator-controlled, outside published content and any symlink alias.
-export async function openCommentStore(directory: string): Promise<CommentStore> {
-  if (!path.isAbsolute(directory)) throw new Error("Comment state path must be absolute");
+export async function openCommentStore(
+  directory: string,
+): Promise<CommentStore> {
+  if (!path.isAbsolute(directory))
+    throw new Error("Comment state path must be absolute");
   let current = path.parse(directory).root;
-  for (const part of directory.slice(current.length).split(path.sep).filter(Boolean)) {
+  for (const part of directory
+    .slice(current.length)
+    .split(path.sep)
+    .filter(Boolean)) {
     current = path.join(current, part);
     const stat = await lstat(current);
     if (!stat.isDirectory() || stat.isSymbolicLink())
       throw new Error("Invalid comment state directory");
   }
   const directoryStat = await lstat(directory);
-  if ((directoryStat.mode & 0o077) !== 0 || directoryStat.uid !== process.getuid?.())
-    throw new Error("Comment state directory must be private and owned by the server user");
+  if (
+    (directoryStat.mode & 0o077) !== 0 ||
+    directoryStat.uid !== process.getuid?.()
+  )
+    throw new Error(
+      "Comment state directory must be private and owned by the server user",
+    );
   const filename = path.join(directory, "annotations.sqlite");
   const file = await open(
     filename,
@@ -70,7 +88,10 @@ export async function openCommentStore(directory: string): Promise<CommentStore>
   } finally {
     await file.close();
   }
-  const db = new DatabaseSync(filename, { timeout: 5000, allowExtension: false });
+  const db = new DatabaseSync(filename, {
+    timeout: 5000,
+    allowExtension: false,
+  });
   db.exec(`
     PRAGMA journal_mode = WAL;
     PRAGMA synchronous = FULL;
@@ -104,7 +125,9 @@ export async function openCommentStore(directory: string): Promise<CommentStore>
   }
   function comment(id: string): SavedComment | undefined {
     const row = db
-      .prepare("SELECT revision, evidence FROM comments WHERE id = ? AND deleted = 0")
+      .prepare(
+        "SELECT revision, evidence FROM comments WHERE id = ? AND deleted = 0",
+      )
       .get(id);
     return row
       ? {
@@ -122,18 +145,25 @@ export async function openCommentStore(directory: string): Promise<CommentStore>
           "SELECT comment_id, revision FROM batch_comments WHERE batch_id = ? ORDER BY rowid",
         )
         .all(body.batchId)
-        .map((item) => ({ id: String(item.comment_id), revision: Number(item.revision) })),
+        .map((item) => ({
+          id: String(item.comment_id),
+          revision: Number(item.revision),
+        })),
       receipt: JSON.parse(String(row.receipt)) as unknown,
     };
   }
   function batch(id: string): SavedBatch | undefined {
-    const row = db.prepare("SELECT body, receipt FROM batches WHERE id = ?").get(id);
+    const row = db
+      .prepare("SELECT body, receipt FROM batches WHERE id = ?")
+      .get(id);
     return row ? readBatch(row) : undefined;
   }
   return {
     list: () =>
       db
-        .prepare("SELECT revision, evidence FROM comments WHERE deleted = 0 ORDER BY rowid")
+        .prepare(
+          "SELECT revision, evidence FROM comments WHERE deleted = 0 ORDER BY rowid",
+        )
         .all()
         .map((row) => ({
           revision: Number(row.revision),
@@ -145,15 +175,17 @@ export async function openCommentStore(directory: string): Promise<CommentStore>
           !matchesEvidence(evidence, snapshot) ||
           createHash("sha256").update(snapshot.sourceContent).digest("hex") !==
             snapshot.sourceDigest ||
-          (createHash("sha256").update(snapshot.annotationText).digest("hex") !==
-            snapshot.annotationDigest &&
+          (createHash("sha256")
+            .update(snapshot.annotationText)
+            .digest("hex") !== snapshot.annotationDigest &&
             createHash("sha256")
               .update(annotationProjectionInput(snapshot.annotationText))
               .digest("hex") !== snapshot.annotationDigest)
         )
           throw new Error("Comment source revision no longer matches");
         if (
-          Buffer.byteLength(snapshot.sourceContent) + Buffer.byteLength(snapshot.annotationText) >
+          Buffer.byteLength(snapshot.sourceContent) +
+            Buffer.byteLength(snapshot.annotationText) >
           4 * 1024 * 1024
         )
           throw new Error("Comment source snapshot exceeds limit");
@@ -169,11 +201,20 @@ export async function openCommentStore(directory: string): Promise<CommentStore>
         if (
           !previous &&
           Number(
-            db.prepare("SELECT count(*) AS count FROM comments WHERE deleted = 0").get()!.count,
+            db
+              .prepare(
+                "SELECT count(*) AS count FROM comments WHERE deleted = 0",
+              )
+              .get()!.count,
           ) >= 512
         )
-          throw new Error("Saved comment limit reached; remove comments before staging more");
-        if (!previous && db.prepare("SELECT id FROM comments WHERE id = ?").get(evidence.id))
+          throw new Error(
+            "Saved comment limit reached; remove comments before staging more",
+          );
+        if (
+          !previous &&
+          db.prepare("SELECT id FROM comments WHERE id = ?").get(evidence.id)
+        )
           throw new Error("Removed comment identity cannot be reused");
         if ((previous?.revision ?? 0) !== expectedRevision)
           throw new Error("Comment revision conflict");
@@ -203,40 +244,57 @@ export async function openCommentStore(directory: string): Promise<CommentStore>
             throw new Error("Comment revision conflict");
           if (
             db
-              .prepare("SELECT batch_id FROM batch_comments WHERE comment_id = ? AND revision = ?")
+              .prepare(
+                "SELECT batch_id FROM batch_comments WHERE comment_id = ? AND revision = ?",
+              )
               .get(item.id, item.revision)
           )
-            throw new Error("Comment revision already submitted; use original batch receipt");
+            throw new Error(
+              "Comment revision already submitted; use original batch receipt",
+            );
           return saved.evidence;
         });
         const body: CommentBatch = {
           payloadVersion: 1,
           target: { ...target },
           batchId: randomUUID(),
-          payloadDigest: createHash("sha256").update(canonicalComments(comments)).digest("hex"),
+          payloadDigest: createHash("sha256")
+            .update(canonicalComments(comments))
+            .digest("hex"),
           comments,
         };
         const encoded = JSON.stringify(body);
         if (Buffer.byteLength(encoded) > 24576)
           throw new Error("Comment batch exceeds bridge limit");
-        db.prepare("INSERT INTO batches(id,body) VALUES (?,?)").run(body.batchId, encoded);
+        db.prepare("INSERT INTO batches(id,body) VALUES (?,?)").run(
+          body.batchId,
+          encoded,
+        );
         for (const item of items)
-          db.prepare("INSERT INTO batch_comments(comment_id,revision,batch_id) VALUES (?,?,?)").run(
-            item.id,
-            item.revision,
-            body.batchId,
-          );
-        return { body, items: items.map((item) => ({ ...item })), receipt: null };
+          db.prepare(
+            "INSERT INTO batch_comments(comment_id,revision,batch_id) VALUES (?,?,?)",
+          ).run(item.id, item.revision, body.batchId);
+        return {
+          body,
+          items: items.map((item) => ({ ...item })),
+          receipt: null,
+        };
       }),
     batch,
     batches: () =>
-      db.prepare("SELECT body, receipt FROM batches ORDER BY rowid").all().map(readBatch),
+      db
+        .prepare("SELECT body, receipt FROM batches ORDER BY rowid")
+        .all()
+        .map(readBatch),
     rememberReceipt: (id, receipt) => {
       const encoded = JSON.stringify(receipt);
       if (encoded === undefined || Buffer.byteLength(encoded) > 262144)
         throw new Error("Invalid receipt");
       if (!batch(id)) throw new Error("Unknown comment batch");
-      db.prepare("UPDATE batches SET receipt = ? WHERE id = ?").run(encoded, id);
+      db.prepare("UPDATE batches SET receipt = ? WHERE id = ?").run(
+        encoded,
+        id,
+      );
     },
     close: () => db.close(),
   };

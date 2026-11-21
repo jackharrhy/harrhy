@@ -15,7 +15,10 @@ export function clearCommentFragments(root: HTMLElement) {
 }
 
 /** Split text at range boundaries, never extract/recreate article elements or their children. */
-export function renderCommentFragments(root: HTMLElement, marks: readonly CommentMark[]) {
+export function renderCommentFragments(
+  root: HTMLElement,
+  marks: readonly CommentMark[],
+) {
   clearCommentFragments(root);
   const valid = marks.filter((mark) => restoreQuote(root, mark.quote));
   const { nodes } = projectArticle(root);
@@ -23,11 +26,15 @@ export function renderCommentFragments(root: HTMLElement, marks: readonly Commen
   for (const node of nodes) {
     const start = offset;
     offset += node.length;
-    const hits = valid.filter((mark) => mark.quote.start < offset && mark.quote.end > start);
+    const hits = valid.filter(
+      (mark) => mark.quote.start < offset && mark.quote.end > start,
+    );
     if (
       !hits.length ||
       (!node.data.trim() &&
-        /^(TABLE|THEAD|TBODY|TFOOT|TR|UL|OL|DL)$/.test(node.parentElement?.tagName ?? ""))
+        /^(TABLE|THEAD|TBODY|TFOOT|TR|UL|OL|DL)$/.test(
+          node.parentElement?.tagName ?? "",
+        ))
     )
       continue;
     const boundaries = [
@@ -39,15 +46,17 @@ export function renderCommentFragments(root: HTMLElement, marks: readonly Commen
           Math.min(node.length, mark.quote.end - start),
         ]),
       ]),
-    ].sort((a, b) => a - b);
+    ].toSorted((a, b) => a - b);
     let text = node;
     for (let i = 1; i < boundaries.length; i++) {
       const from = boundaries[i - 1],
         to = boundaries[i];
       // text is the unprocessed suffix; split only inside it, preserving all text verbatim.
-      const remainder = to - from < text.length ? text.splitText(to - from) : undefined;
+      const remainder =
+        to - from < text.length ? text.splitText(to - from) : undefined;
       const covering = hits.filter(
-        (mark) => mark.quote.start < start + to && mark.quote.end > start + from,
+        (mark) =>
+          mark.quote.start < start + to && mark.quote.end > start + from,
       );
       if (covering.length) {
         const fragment = root.ownerDocument.createElement("mark");
@@ -55,7 +64,8 @@ export function renderCommentFragments(root: HTMLElement, marks: readonly Commen
         fragment.dataset.atlasCommentIds = JSON.stringify([
           ...new Set(covering.map((mark) => mark.id)),
         ]);
-        if (covering.some((mark) => mark.active)) fragment.dataset.atlasActiveComment = "";
+        if (covering.some((mark) => mark.active))
+          fragment.dataset.atlasActiveComment = "";
         text.replaceWith(fragment);
         fragment.append(text);
       }
@@ -64,15 +74,28 @@ export function renderCommentFragments(root: HTMLElement, marks: readonly Commen
   }
 }
 
-export function commentIdsAtTarget(root: HTMLElement, target: EventTarget | null): string[] {
+export function commentIdsAtTarget(
+  root: HTMLElement,
+  target: EventTarget | null,
+): string[] {
   const element =
-    target instanceof Element ? target : target instanceof Node ? target.parentElement : null;
+    target instanceof Element
+      ? target
+      : target instanceof Node
+        ? target.parentElement
+        : null;
   if (
     !element ||
     !root.contains(element) ||
-    element.closest("a,button,input,textarea,select,summary,[data-atlas-widget],[data-atlas-diagram]")
+    element.closest(
+      "a,button,input,textarea,select,summary,[data-atlas-widget],[data-atlas-diagram]",
+    )
   )
     return [];
-  const fragment = element.closest<HTMLElement>("[data-atlas-comment-fragment]");
-  return fragment ? (JSON.parse(fragment.dataset.atlasCommentIds ?? "[]") as string[]) : [];
+  const fragment = element.closest<HTMLElement>(
+    "[data-atlas-comment-fragment]",
+  );
+  return fragment
+    ? (JSON.parse(fragment.dataset.atlasCommentIds ?? "[]") as string[])
+    : [];
 }
