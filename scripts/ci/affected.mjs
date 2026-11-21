@@ -163,7 +163,7 @@ if (
       process.env.DRAFT_PR === "true"
         ? paths.filter(
             (path) =>
-              path !== ".github/workflows/check.yml" &&
+              path !== ".github/workflows/ci.yml" &&
               path !== "scripts/ci/affected.mjs" &&
               path !== "compose.yml",
           )

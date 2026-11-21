@@ -1,0 +1,189 @@
+name: Publish images
+# Publish jobs serialize per image; workflow-level concurrency would couple unrelated images.
+on: # jactionlint ignore=concurrency-limits
+  push:
+    branches: [main]
+    paths:
+      - .dockerignore
+      - .nvmrc
+      - apps/8mb/**
+      - apps/artbin/**
+      - apps/auth/**
+      - apps/burger/**
+      - apps/cms/**
+      - apps/garden/**
+      - apps/gurgur/**
+      - apps/harry-sluggers/**
+      - apps/letters-to-steve/**
+      - apps/lists/**
+      - apps/maps-collaboration/**
+      - apps/maps-compiler/**
+      - apps/maps-service/**
+      - apps/marky/**
+      - apps/pool/**
+      - apps/radio/**
+      - apps/ref/**
+      - apps/rotund/**
+      - apps/worldview/**
+      - celld.json
+      - package.json
+      - packages/**
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+  workflow_dispatch:
+    inputs:
+      image:
+        description: Image to publish (by app directory)
+        required: true
+        type: choice
+        options:
+          - 8mb
+          - artbin
+          - auth
+          - burger
+          - cms
+          - garden
+          - gurgur
+          - harry-sluggers
+          - letters-to-steve
+          - lists
+          - maps-collaboration
+          - maps-compiler
+          - maps-service
+          - marky
+          - pool
+          - radio
+          - ref
+          - rotund
+          - worldview
+permissions: {}
+jobs:
+  select:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      images: ${{ steps.images.outputs.images }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - id: images
+        env:
+          BEFORE: ${{ github.event.before }}
+          EVENT: ${{ github.event_name }}
+          IMAGE: ${{ inputs.image }}
+        run: node scripts/ci/publish-images.mjs
+  publish:
+    needs: select
+    if: github.ref == 'refs/heads/main' && needs.select.outputs.images != '[]'
+    name: Publish ${{ matrix.app }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.select.outputs.images) }}
+    concurrency:
+      group: publish-${{ matrix.app }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: matrix.check
+        with:
+          node-version-file: .nvmrc
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: matrix.app == 'lists'
+        with:
+          bun-version: 1.4.4
+          no-cache: true
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        if: matrix.check
+      - if: matrix.check
+        run: pnpm install --frozen-lockfile
+      - if: matrix.app == '8mb'
+        run: pnpm run 8mb:check
+      - name: Ensure ImageMagick for Artbin checks
+        if: matrix.app == 'artbin'
+        timeout-minutes: 3
+        run: |
+          if ! command -v convert > /dev/null || ! command -v identify > /dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends imagemagick
+          fi
+          convert -version
+          identify -version
+      - name: Install Chromium for Artbin browser checks
+        if: matrix.app == 'artbin'
+        run: pnpm --filter @harrhy/artbin-app exec playwright install --with-deps --only-shell chromium
+      - if: matrix.app == 'artbin'
+        run: pnpm run artbin:check
+      - if: matrix.app == 'auth'
+        run: pnpm --filter @harrhy/auth exec playwright install --only-shell chromium
+      - if: matrix.app == 'auth'
+        run: pnpm --filter @harrhy/auth run check
+      - if: matrix.app == 'cms'
+        run: pnpm run cms:check
+      - if: matrix.app == 'garden'
+        run: pnpm run garden:check
+      - name: Build and smoke the real runtime before publication
+        if: matrix.app == 'garden'
+        run: |
+          docker build --tag garden-smoke --file apps/garden/Dockerfile .
+          node apps/garden/__tests__/image-smoke.mjs garden-smoke
+      - if: matrix.app == 'harry-sluggers'
+        run: pnpm --filter @harrhy/harry-sluggers run check
+      - if: matrix.app == 'letters-to-steve'
+        run: pnpm --filter @harrhy/letters-to-steve exec playwright install --only-shell chromium
+      - if: matrix.app == 'letters-to-steve'
+        run: pnpm run letters-to-steve:check
+      - if: matrix.app == 'lists'
+        run: pnpm --filter @harrhy/lists run check
+      - if: matrix.app == 'marky'
+        run: pnpm run marky:check
+      - if: matrix.app == 'radio'
+        run: pnpm --filter @harrhy/radio exec playwright install --only-shell chromium
+      - if: matrix.app == 'radio'
+        run: pnpm run radio:check
+      - if: matrix.app == 'ref'
+        run: pnpm --filter @harrhy/ref exec playwright install --with-deps --only-shell chromium
+      - if: matrix.app == 'ref'
+        run: pnpm run ref:check
+      - if: matrix.app == 'rotund'
+        run: pnpm run rotund:check
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          cache-binary: false
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: build
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: apps/${{ matrix.app }}/Dockerfile
+          push: true
+          build-args: ${{ matrix.build_args }}
+          tags: ${{ matrix.tags }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/jackharrhy/harrhy
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Show deployable image
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+          IMAGE: ${{ matrix.image }}
+        run: echo "$IMAGE@$DIGEST" >> "$GITHUB_STEP_SUMMARY"

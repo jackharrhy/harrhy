@@ -1,0 +1,369 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+  workflow_dispatch:
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  select:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    outputs:
+      selected: ${{ steps.affected.outputs.selected }}
+      any: ${{ steps.affected.outputs.any }}
+      browser: ${{ steps.affected.outputs.browser }}
+      cms: ${{ steps.affected.outputs.cms }}
+      ref: ${{ steps.affected.outputs.ref }}
+      radio: ${{ steps.affected.outputs.radio }}
+      pool: ${{ steps.affected.outputs.pool }}
+      burger: ${{ steps.affected.outputs.burger }}
+      gurgur: ${{ steps.affected.outputs.gurgur }}
+      maps_hosted: ${{ steps.affected.outputs.maps_hosted }}
+      node_apps: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.apps }}
+      runtime_images: ${{ steps.image_paths.outputs.runtime_images }}
+      garden: ${{ steps.image_paths.outputs.garden }}
+      harry_sluggers: ${{ steps.image_paths.outputs.harry_sluggers }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - run: node --test scripts/ci/__tests__/*.test.mjs
+      - id: affected
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.action == 'synchronize' && github.event.before || github.event.pull_request.base.sha || github.event.before }}
+          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.action == 'synchronize' && github.event.pull_request.head.sha || github.sha }}
+          DRAFT_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
+        run: node scripts/ci/affected.mjs
+      - id: node_images
+        if: github.event_name != 'push'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          EVENT: ${{ github.event_name }}
+        run: node scripts/ci/node-image-impact.mjs
+      - name: Select runtime image groups
+        id: image_paths
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          # Match the former PR path filters, running all groups on dispatch
+          # or when the three-dot comparison cannot be resolved.
+          select_group() {
+            local group=$1
+            shift
+            local selected=true
+            case "$GITHUB_EVENT_NAME" in
+              push) selected=false ;;
+              pull_request)
+                if [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ] &&
+                  git diff --quiet --no-renames "$BASE_SHA...$HEAD_SHA" -- .github/workflows/ci.yml "$@"; then
+                  selected=false
+                fi
+                ;;
+            esac
+            echo "$group=$selected" >> "$GITHUB_OUTPUT"
+          }
+          select_group runtime_images scripts/ci/selected-image-smoke.mjs celld.json .dockerignore .npmrc \
+            package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json \
+            apps/ref/ apps/radio/ apps/worldview/ apps/maps-collaboration/ \
+            apps/burger/ apps/gurgur/ apps/pool/ packages/
+          select_group garden .github/workflows/publish-garden.yml .github/workflows/publish-images.yml \
+            .dockerignore .nvmrc tsconfig.base.json package.json pnpm-lock.yaml \
+            pnpm-workspace.yaml apps/garden/ packages/ui/
+          select_group harry_sluggers .dockerignore .npmrc package.json pnpm-lock.yaml \
+            pnpm-workspace.yaml tsconfig.base.json apps/harry-sluggers/ packages/ui/
+  check:
+    needs: select
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    env:
+      RUN_INTEGRATION: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          package-manager-cache: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        if: needs.select.outputs.pool == 'true' || needs.select.outputs.burger == 'true' || needs.select.outputs.gurgur == 'true' || contains(fromJSON(needs.select.outputs.selected), '@harrhy/lists')
+        with:
+          bun-version: 1.4.4
+      - if: needs.select.outputs.any == 'true'
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        with:
+          cache: true
+      - if: needs.select.outputs.any == 'true'
+        run: pnpm install --frozen-lockfile
+      - name: Install Pi isolated browser prerequisites
+        if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/pi')
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends bubblewrap
+          pnpm --filter @harrhy/ui-app exec playwright install --with-deps chromium
+      - name: Install Img native build dependencies
+        if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/img')
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libx11-dev libxkbcommon-dev libwayland-dev libegl1-mesa-dev libvulkan1 mesa-vulkan-drivers
+      - name: Restore Img Cargo compilation cache
+        if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/img')
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            apps/img/target
+          key: img-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/img/rust-toolchain.toml', 'apps/img/Cargo.lock', 'apps/img/Cargo.toml') }}-${{ hashFiles('apps/img/**/*.rs', 'apps/img/assets/**') }}
+          restore-keys: |
+            img-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('apps/img/rust-toolchain.toml', 'apps/img/Cargo.lock', 'apps/img/Cargo.toml') }}-
+      - if: needs.select.outputs.any == 'true'
+        run: pnpm run tooling:check
+      - if: needs.select.outputs.any == 'true'
+        run: pnpm run knip:check
+      - name: Ensure ImageMagick for Artbin checks
+        if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app')
+        timeout-minutes: 3
+        run: |
+          if ! command -v convert > /dev/null || ! command -v identify > /dev/null; then
+            sudo apt-get update
+            sudo apt-get install --yes --no-install-recommends imagemagick
+          fi
+          convert -version
+          identify -version
+      - if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/ui-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/auth') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/letters-to-steve') || (needs.select.outputs.browser == 'true' && (env.RUN_INTEGRATION == 'true' || needs.select.outputs.radio == 'true'))
+        run: pnpm --filter @harrhy/ui-app exec playwright install --only-shell chromium
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.pool == 'true'
+        run: pnpm --filter @harrhy/pool-app exec playwright install --only-shell chromium
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+        run: pnpm --filter @harrhy/worldview exec playwright install --only-shell chromium
+      - if: needs.select.outputs.any == 'true'
+        env:
+          SELECTED_CHECKS: ${{ needs.select.outputs.selected }}
+        run: node scripts/ci/run-checks.mjs
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.cms == 'true'
+        run: pnpm --filter @harrhy/cms run test:browser
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.pool == 'true'
+        run: pnpm --filter @harrhy/pool-app run test:browser
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.burger == 'true'
+        run: pnpm --filter @harrhy/burger run test:browser
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.ref == 'true'
+        run: |
+          set -eu
+          ref_smoke_dir=$(mktemp -d "$RUNNER_TEMP/tea-ref-smoke.XXXXXX")
+          sed 's#127.0.0.1:8787#127.0.0.1:8788#g' apps/ref/.dev.vars.example > "$ref_smoke_dir/secrets.env"
+          HARRHY_DEV_AUTH_CALLBACK=http://127.0.0.1:8788/auth/callback node packages/dev-auth/server.mjs > "$ref_smoke_dir/auth.log" 2>&1 &
+          ref_auth_pid=$!
+          pnpm --filter @harrhy/ref exec wrangler dev --port 8788 --persist-to "$ref_smoke_dir/state" --env-file "$ref_smoke_dir/secrets.env" > "$ref_smoke_dir/wrangler.log" 2>&1 &
+          ref_server_pid=$!
+          trap 'kill "$ref_server_pid" "$ref_auth_pid" 2>/dev/null || true; wait "$ref_server_pid" "$ref_auth_pid" 2>/dev/null || true; rm -rf "$ref_smoke_dir"' EXIT
+          ref_ready=false
+          for ((attempt = 0; attempt < 60; attempt++)); do
+            if curl --fail --silent http://127.0.0.1:8788/health > /dev/null; then
+              ref_ready=true
+              break
+            fi
+            if ! kill -0 "$ref_server_pid" 2>/dev/null; then break; fi
+            sleep 1
+          done
+          if [ "$ref_ready" != true ]; then
+            cat "$ref_smoke_dir/wrangler.log"
+            exit 1
+          fi
+          REF_SMOKE_URL=http://127.0.0.1:8788 pnpm --filter @harrhy/ref run smoke || {
+            cat "$ref_smoke_dir/wrangler.log"
+            exit 1
+          }
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.radio == 'true'
+        run: |
+          set -eu
+          radio_celld_image=$(node scripts/celld-runtime.mjs image)
+          docker pull "$radio_celld_image"
+          radio_celld_container=$(docker create "$radio_celld_image" --version)
+          trap 'docker rm "$radio_celld_container" > /dev/null' EXIT
+          docker cp "$radio_celld_container:/usr/local/bin/celld" "$RUNNER_TEMP/celld"
+          chmod +x "$RUNNER_TEMP/celld"
+          node scripts/celld-runtime.mjs verify "$RUNNER_TEMP/celld"
+          CELLD_BIN="$RUNNER_TEMP/celld" pnpm --filter @harrhy/radio run test:celld --output "$RUNNER_TEMP/radio-celld-smoke.json"
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.ref == 'true'
+        run: |
+          set -eu
+          ref_celld_image=$(node scripts/celld-runtime.mjs image)
+          docker pull "$ref_celld_image"
+          ref_celld_container=$(docker create "$ref_celld_image" --version)
+          trap 'docker rm "$ref_celld_container" > /dev/null' EXIT
+          docker cp "$ref_celld_container:/usr/local/bin/celld" "$RUNNER_TEMP/ref-celld"
+          chmod +x "$RUNNER_TEMP/ref-celld"
+          node scripts/celld-runtime.mjs verify "$RUNNER_TEMP/ref-celld"
+          CELLD_BIN="$RUNNER_TEMP/ref-celld" pnpm --filter @harrhy/ref run test:celld --output "$RUNNER_TEMP/ref-celld-smoke.json"
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+        run: pnpm --filter @harrhy/worldview run test:hosted --output "$RUNNER_TEMP/maps-hosted-smoke.json"
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+        run: pnpm --filter @harrhy/worldview run test:gpu
+      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+        run: pnpm --filter @harrhy/worldview run test:embed
+  workflows:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+      - run: node --test scripts/ci/__tests__/publish-impact.test.mjs
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - run: |
+          shellcheck --version
+          uvx --from jactionlint==2.3.0 jactionlint --format github --strict-exit
+  node-images:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app:
+          [
+            cms,
+            auth,
+            artbin,
+            letters-to-steve,
+            marky,
+            maps-service,
+            maps-compiler,
+            rotund,
+            8mb,
+          ]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
+        with:
+          node-version-file: .nvmrc
+      - name: Build production image
+        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
+        env:
+          APP: ${{ matrix.app }}
+        run: docker build --tag tea-smoke --file "apps/$APP/Dockerfile" .
+      - name: Check runtime, native modules, migrations and requests
+        if: contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
+        env:
+          APP: ${{ matrix.app }}
+        run: node scripts/ci/node-image-smoke.mjs "$APP" tea-smoke
+      - name: Check Gower compiler configuration
+        if: matrix.app == 'maps-compiler' && contains(fromJSON(needs.select.outputs.node_apps), matrix.app)
+        run: node scripts/ci/node-image-smoke.mjs maps-compiler tea-smoke gower
+      - name: Report image selection
+        env:
+          APP: ${{ matrix.app }}
+          SELECTED: ${{ contains(fromJSON(needs.select.outputs.node_apps), matrix.app) }}
+        run: echo "$APP image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
+  selected-images:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [ref, radio, worldview, maps-collaboration, burger, gurgur, pool]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.select.outputs.runtime_images == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.select.outputs.runtime_images == 'true'
+        with:
+          node-version-file: .nvmrc
+      - name: Build production image
+        if: needs.select.outputs.runtime_images == 'true'
+        env:
+          APP: ${{ matrix.app }}
+        run: docker build --tag selected-smoke --file "apps/$APP/Dockerfile" .
+      - name: Check default CMD, assets, compiler, SQLite and restart
+        if: needs.select.outputs.runtime_images == 'true'
+        env:
+          APP: ${{ matrix.app }}
+        run: node scripts/ci/selected-image-smoke.mjs "$APP" selected-smoke
+      - name: Report image selection
+        env:
+          SELECTED: ${{ needs.select.outputs.runtime_images }}
+        run: echo "Image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
+  garden-image:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.select.outputs.garden == 'true'
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.select.outputs.garden == 'true'
+        with:
+          node-version-file: .nvmrc
+      - run: docker build --tag garden-smoke --file apps/garden/Dockerfile .
+        if: needs.select.outputs.garden == 'true'
+      - run: node apps/garden/__tests__/image-smoke.mjs garden-smoke
+        if: needs.select.outputs.garden == 'true'
+      - name: Report image selection
+        env:
+          SELECTED: ${{ needs.select.outputs.garden }}
+        run: echo "Image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
+  harry-sluggers-image:
+    needs: select
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.select.outputs.harry_sluggers == 'true'
+        with:
+          persist-credentials: false
+      - run: docker build -t harry-sluggers-check -f apps/harry-sluggers/Dockerfile .
+        if: needs.select.outputs.harry_sluggers == 'true'
+      - name: Missing database configuration fails closed
+        if: needs.select.outputs.harry_sluggers == 'true'
+        run: |
+          if docker run --rm harry-sluggers-check > startup.log 2>&1; then
+            echo "Unexpected startup without a database" >&2
+            exit 1
+          fi
+          grep -q 'HARRHY_SLUGGERS_DATABASE_URL is required' startup.log
+      - name: Report image selection
+        env:
+          SELECTED: ${{ needs.select.outputs.harry_sluggers }}
+        run: echo "Image selected=$SELECTED" >> "$GITHUB_STEP_SUMMARY"
+  gate:
+    name: CI gate
+    if: always()
+    needs: [select, check, workflows, node-images, selected-images, garden-image, harry-sluggers-image]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - name: Require every validation job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          jq -r 'to_entries[] | "\(.key): \(.value.result)"' <<< "$RESULTS"
+          jq -e 'all(.[]; .result == "success")' <<< "$RESULTS" > /dev/null

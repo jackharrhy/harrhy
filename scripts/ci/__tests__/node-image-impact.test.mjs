@@ -82,7 +82,7 @@ test("root runtime, bootstrap, configuration and unknown inputs check every imag
     "pnpm-workspace.yaml",
     "tsconfig.base.json",
     "scripts/tooling/ensure-worker-types.mjs",
-    ".github/workflows/node-images.yml",
+    ".github/workflows/ci.yml",
     "new-root-input",
     "apps/new-unknown/source.ts",
   ])
