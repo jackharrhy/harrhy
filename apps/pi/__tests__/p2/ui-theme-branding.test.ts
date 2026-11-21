@@ -85,6 +85,8 @@ test("owner sets a tint in both schemes and can replace or reset the sidebar log
  await browser.wait(`${preview}.querySelector('svg[aria-label="Pi"]')`);
  await clickText('Reset logo to Pi');
  await browser.wait(`!document.querySelector('.custom-logo') && document.querySelector('.drawer-header-row svg.pi-logo') && ${preview}.querySelector('svg[aria-label="Pi"]')`);
+ // Logo state may render before its save releases the shared busy flag.
+ await browser.wait("[...document.querySelectorAll('button')].some(b => b.textContent.trim() === 'Reset tint' && !b.disabled)");
  await clickText('Reset tint');
  await browser.wait(`!document.documentElement.dataset.piTint && !document.querySelector('[data-pi-theme-preview][data-pi-tint]')`);
  assert.deepEqual(await Promise.all(schemes.map(previewColors)), defaults);
