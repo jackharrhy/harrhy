@@ -53,7 +53,8 @@ const Saved = defineState("p2.local-inbox-grant", {
 });
 const eventSchema = compile(
   obj({
-    eventId: id,
+    eventId: opt(id),
+    from: opt(str({ pattern: "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$" })),
     session: opt(sessionId),
     text: str({ minLength: 1, maxLength: 32768 }),
   }),
@@ -162,14 +163,15 @@ export default defineFacet((host) => {
           }
           if (!eventSchema.check(event) || Buffer.byteLength(event.text) > 32768)
             return reply(400, {
-              error: "Expected eventId, optional session ID and text of 1–32768 bytes",
+              error: "Expected text of 1–32768 bytes, with optional from, session and eventId",
             });
           if (saved.value.active?.bearerHash !== expected)
             return reply(401, { error: "Credential changed" });
-          const result = await store.sendAddressed({ ...event, peer }, ctx);
+          const { from, eventId = randomUUID(), ...message } = event;
+          const result = await store.sendAddressed({ ...message, peer, eventId, ...(from ? { from } : {}) }, ctx);
           return reply(
             result.state === "recorded" || result.state === "unknown" ? 202 : 200,
-            result,
+            { eventId, ...result },
           );
         } catch (error) {
           if (isChordError(error, "forbidden"))

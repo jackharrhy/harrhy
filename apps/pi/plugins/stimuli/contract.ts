@@ -208,7 +208,7 @@ export const AddressedReadback = union([
 /** Server-local only; adapters bind peer to the authenticated identity. */
 const AddressedMethods = {
 		discover: obj({ peer: EventIdSchema }),
-		send: obj({ peer: EventIdSchema, eventId: EventIdSchema, session: Selector, text: str({ minLength: 1, maxLength: 32768 }) }),
+		send: obj({ peer: EventIdSchema, eventId: EventIdSchema, session: Selector, from: opt(str({ pattern: "^[A-Za-z0-9][A-Za-z0-9 ._-]{0,39}$" })), text: str({ minLength: 1, maxLength: 32768 }) }),
 		receipt: obj({ peer: EventIdSchema, eventId: EventIdSchema }),
 };
 

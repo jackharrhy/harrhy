@@ -132,7 +132,7 @@ it(
       }
       assert.equal((await send({ ...defaulted, session: other })).status, 409);
       const admitted = await receipt(explicit.eventId);
-      assert.equal((await send(explicit)).body, admitted.body);
+      assert.equal((await send(explicit)).body, admitted.body); // Legacy fixture uses the old POST response.
       await rotate("b".repeat(64));
       assert.equal((await receipt(explicit.eventId)).status, 401);
       await rotate(credential);
@@ -198,6 +198,13 @@ it(
         (await send({ eventId: "archived", session: hidden, text: "not allowed" })).status,
         403,
       );
+      const named = { session: future, text: "hello", from: "Hermes" };
+      const generated = await send(named);
+      assert.equal(generated.status, 202);
+      const { eventId } = JSON.parse(generated.body);
+      assert.match(eventId, /^[a-f0-9-]{36}$/);
+      assert.equal((await send({ ...named, eventId, from: "Not Hermes" })).status, 409);
+      await poll(async () => JSON.parse((await receipt(eventId)).body).state === "admitted", 12_000);
       assert.equal(
         (await send({ eventId: "future", session: future, text: "broad scope" })).status,
         202,

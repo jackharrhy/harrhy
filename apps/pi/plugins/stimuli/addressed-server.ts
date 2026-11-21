@@ -55,13 +55,14 @@ export function addressedMethods(
 			}
 			return policy?.revision === currentPolicy(policies.value.get(peer))?.revision ? rows : [];
 		},
-		sendAddressed: async ({ peer, eventId, session: selector, text }: { peer: string; eventId: string; session?: string; text: string }, ctx: Ctx) => {
+		sendAddressed: async ({ peer, eventId, session: selector, text, from }: { peer: string; eventId: string; session?: string; text: string; from?: string }, ctx: Ctx) => {
 			if (Buffer.byteLength(text) > 32768) throw new Error("Addressed stimulus exceeds 32768 bytes");
 			const id = key(peer, eventId);
 			const payloadHash = hash(text);
 			const recover = (row: AddressedIntent) => {
 				requireReceipt(peer);
-				if (row.selector !== selector || row.payloadHash !== payloadHash) throw new Error("Addressed stimulus conflict");
+				if (row.selector !== selector || row.payloadHash !== payloadHash ||
+					(from ? row.label !== `${from} via Pi Inbox` : row.label.endsWith(" via Pi Inbox"))) throw new Error("Addressed stimulus conflict");
 				return readback(row);
 			};
 			const existing = saved.value.addressed[id];
@@ -79,7 +80,7 @@ export function addressedMethods(
 				const intentHash = hash(JSON.stringify([id, selector ?? null, session, conversation, payloadHash, policy.revision]));
 				draft.addressed[id] = {
 					peer, eventId, ...(selector === undefined ? {} : { selector }), payloadHash,
-					label: policy.label, revision: policy.revision,
+					label: from ? `${from} via Pi Inbox` : policy.label, revision: policy.revision,
 					delivery: { id, session, conversation, text, intentHash, notBefore: Date.now() },
 					phase: { kind: "scheduled" },
 				};

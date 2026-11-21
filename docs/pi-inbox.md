@@ -51,8 +51,10 @@ The old `/api/local-inbox/v1` paths are not aliases. Update clients to `/api/inb
 | Method and path | Result |
 | --- | --- |
 | `GET /api/inbox/v1/targets` | `200 {"targets":[{"id":"…","title":"…"}]}` |
-| `POST /api/inbox/v1/events` | JSON `{"eventId":"…","session":"…","text":"…"}`; omit `session` only for the configured default |
+| `POST /api/inbox/v1/events` | JSON `{"text":"…","from":"Hermes"}`; `from`, `eventId` and `session` are optional. Returns `eventId`. |
 | `GET /api/inbox/v1/receipts/<eventId>` | State for that inbox and ID; `404` if missing |
+
+Omit `eventId` for a one-shot send. If the POST response is lost, do not resend blindly: the server may already have recorded it. Clients that need safe retries can still supply their own stable `eventId`. `from` is a display name, not authenticated identity or authority.
 
 Send and receipt responses use native states: `recorded` is saved but not yet admitted; `unknown` means admission isn't confirmed; `admitted` includes the native input receipt, not a model reply or task outcome; `blocked` is not admitted. Sends return `202` for recorded or unknown and `200` for admitted or blocked. A changed event selector or text for an existing ID gives `409` when receipt access is allowed. An identical send retry also requires receipt access. Keep the same ID, original selector (including omission) and identical text for retries. Text is limited to 32 KiB UTF-8 and a JSON request to 256 KiB. No cookies, browser requests, query credentials, or redirects.
 
