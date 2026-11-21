@@ -8,6 +8,7 @@
     "check:fixture": "node __tests__/live-fixture.mjs"
   },
   "dependencies": {
+    "@harrhy/board": "workspace:*",
     "@harrhy/ui": "workspace:*",
     "capnweb": "0.13.0",
     "remix": "3.2.0",

@@ -23,6 +23,7 @@
     "types:worker": "wrangler types worker-configuration.d.ts --env-file .dev.vars.example"
   },
   "dependencies": {
+    "@harrhy/board": "workspace:*",
     "@harrhy/identity": "0.1.0",
     "@harrhy/live-state": "0.1.0",
     "@harrhy/logger": "0.1.0",

@@ -10,6 +10,7 @@ WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/ref/package.json ./apps/ref/
+COPY packages/board/package.json ./packages/board/
 COPY packages/dev-auth/package.json ./packages/dev-auth/
 COPY packages/identity/package.json ./packages/identity/
 COPY packages/json-schema/package.json ./packages/json-schema/
@@ -23,6 +24,7 @@ COPY packages/webmcp/package.json ./packages/webmcp/
 RUN pnpm --filter @harrhy/ref... install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/ref ./apps/ref
+COPY packages/board ./packages/board
 COPY packages/dev-auth ./packages/dev-auth
 COPY packages/identity ./packages/identity
 COPY packages/json-schema ./packages/json-schema
@@ -54,6 +56,7 @@ COPY --from=celld /usr/local/bin/celld /usr/local/bin/celld
 COPY --from=build --chown=node:node /app/node_modules /app/node_modules
 COPY --from=build --chown=node:node /app/package.json /app/tsconfig.base.json /app/
 COPY --from=build --chown=node:node /app/apps/ref /app/apps/ref
+COPY --from=build --chown=node:node /app/packages/board /app/packages/board
 COPY --from=build --chown=node:node /app/packages/dev-auth /app/packages/dev-auth
 COPY --from=build --chown=node:node /app/packages/identity /app/packages/identity
 COPY --from=build --chown=node:node /app/packages/json-schema /app/packages/json-schema

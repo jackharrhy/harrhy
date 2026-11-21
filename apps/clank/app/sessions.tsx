@@ -12,6 +12,8 @@ import { clientEntry, css, on, type Handle } from "remix/component";
 import type { Row } from "./session-state.ts";
 import { ClankProvider } from "./clank-provider.tsx";
 
+import { Overview } from "./overview.tsx";
+
 function ConnectionPane(handle: Handle) {
   const { sessions } = handle.context.get(ClankProvider);
   const status = sessions.select((s) => s.status),
@@ -174,6 +176,28 @@ function CatalogPane(handle: Handle) {
     </>
   );
 }
+function CatalogViews(handle: Handle) {
+  let overview = false;
+  return () => (
+    <>
+      <Button
+        aria-expanded={overview}
+        mix={on("click", () => {
+          overview = !overview;
+          handle.update();
+        })}
+      >
+        {overview ? "Show session list" : "Show overview"}
+      </Button>
+      {overview && <Overview />}
+      <div hidden={overview}>
+        <Stack>
+          <CatalogPane />
+        </Stack>
+      </div>
+    </>
+  );
+}
 export const SessionList = clientEntry(
   "/sessions.js#SessionList",
   function SessionList() {
@@ -181,7 +205,7 @@ export const SessionList = clientEntry(
       <ClankProvider>
         <Stack>
           <ConnectionPane />
-          <CatalogPane />
+          <CatalogViews />
         </Stack>
       </ClankProvider>
     );

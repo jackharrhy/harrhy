@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { wheelNavigation } from "../board-navigation.ts";
+import { describe, it } from "node:test";
+import assert from "node:assert/strict";
+import { wheelNavigation } from "../wheel.ts";
 
 const viewport = { width: 800, height: 600 };
 const wheel = {
@@ -13,77 +14,83 @@ const wheel = {
 
 describe("board wheel navigation", () => {
   it("zooms ordinary wheel input by default", () => {
-    expect(wheelNavigation({ ...wheel, deltaY: 100 }, viewport)).toEqual({
+    assert.deepEqual(wheelNavigation({ ...wheel, deltaY: 100 }, viewport), {
       kind: "zoom",
       factor: Math.exp(-0.24),
     });
   });
 
   it("pans horizontal-only input even in zoom mode", () => {
-    expect(
+    assert.deepEqual(
       wheelNavigation({ ...wheel, deltaX: -6, deltaY: 0 }, viewport, "zoom"),
-    ).toEqual({ kind: "pan", x: -6, y: 0 });
+      { kind: "pan", x: -6, y: 0 },
+    );
   });
 
   it("preserves fractional two-axis trackpad movement", () => {
-    expect(
+    assert.deepEqual(
       wheelNavigation(
         { ...wheel, deltaX: 2.5, deltaY: -0.75 },
         viewport,
         "pan",
       ),
-    ).toEqual({
-      kind: "pan",
-      x: 2.5,
-      y: -0.75,
-    });
+      {
+        kind: "pan",
+        x: 2.5,
+        y: -0.75,
+      },
+    );
   });
 
   it("normalizes mouse wheel lines and pages in each viewport axis", () => {
-    expect(
+    assert.deepEqual(
       wheelNavigation({ ...wheel, deltaX: -2, deltaMode: 1 }, viewport, "pan"),
-    ).toEqual({
-      kind: "pan",
-      x: -32,
-      y: 48,
-    });
-    expect(
+      {
+        kind: "pan",
+        x: -32,
+        y: 48,
+      },
+    );
+    assert.deepEqual(
       wheelNavigation(
         { ...wheel, deltaX: -1, deltaY: 1, deltaMode: 2 },
         viewport,
         "pan",
       ),
-    ).toEqual({
-      kind: "pan",
-      x: -800,
-      y: 600,
-    });
+      {
+        kind: "pan",
+        x: -800,
+        y: 600,
+      },
+    );
   });
 
   it("pans horizontally with Shift without remapping native horizontal events", () => {
-    expect(wheelNavigation({ ...wheel, shiftKey: true }, viewport)).toEqual({
+    assert.deepEqual(wheelNavigation({ ...wheel, shiftKey: true }, viewport), {
       kind: "pan",
       x: 3,
       y: 0,
     });
-    expect(
+    assert.deepEqual(
       wheelNavigation({ ...wheel, shiftKey: true }, viewport, "pan"),
-    ).toEqual({
-      kind: "pan",
-      x: 3,
-      y: 0,
-    });
-    expect(
+      {
+        kind: "pan",
+        x: 3,
+        y: 0,
+      },
+    );
+    assert.deepEqual(
       wheelNavigation(
         { ...wheel, shiftKey: true, deltaX: 3, deltaY: 0 },
         viewport,
         "pan",
       ),
-    ).toEqual({
-      kind: "pan",
-      x: 3,
-      y: 0,
-    });
+      {
+        kind: "pan",
+        x: 3,
+        y: 0,
+      },
+    );
   });
 
   it("bounds coarse mouse notches and page zoom while preserving reciprocal direction", () => {
@@ -95,30 +102,30 @@ describe("board wheel navigation", () => {
       { ...wheel, ctrlKey: true, deltaY: -1, deltaMode: 2 },
       viewport,
     );
-    expect(out).toEqual({ kind: "zoom", factor: Math.exp(-0.24) });
-    expect(inward).toEqual({ kind: "zoom", factor: Math.exp(0.24) });
+    assert.deepEqual(out, { kind: "zoom", factor: Math.exp(-0.24) });
+    assert.deepEqual(inward, { kind: "zoom", factor: Math.exp(0.24) });
   });
 
-  it.each(["ctrlKey", "metaKey"] as const)(
-    "zooms with %s, including pinch, before applying Shift",
-    (modifier) => {
-      expect(
+  for (const modifier of ["ctrlKey", "metaKey"] as const)
+    it(`zooms with ${modifier} before applying Shift`, () => {
+      assert.deepEqual(
         wheelNavigation(
           { ...wheel, [modifier]: true, shiftKey: true },
           viewport,
           "pan",
         ),
-      ).toEqual({
-        kind: "zoom",
-        factor: Math.exp(-0.03),
-      });
-      expect(
+        {
+          kind: "zoom",
+          factor: Math.exp(-0.03),
+        },
+      );
+      assert.deepEqual(
         wheelNavigation(
           { ...wheel, [modifier]: true, deltaY: -3, deltaMode: 1 },
           viewport,
           "pan",
         ),
-      ).toEqual({ kind: "zoom", factor: Math.exp(0.24) });
-    },
-  );
+        { kind: "zoom", factor: Math.exp(0.24) },
+      );
+    });
 });

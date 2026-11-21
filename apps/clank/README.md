@@ -1,6 +1,8 @@
 # Clank
 
-Standalone Clank is a Remix 3 session list for a disposable Pi. Create a fixture session, rename it, or archive it in one tab and other tabs update over a persistent WebSocket. See [realtime sessions](../../docs/clank/realtime-sessions.md) for the authorization boundary, Chord watch lifecycle, wire model, limits and measured browser behavior.
+Standalone Clank is a Remix 3 session list and read-only Overview for a disposable Pi. Create a fixture session, rename it, or archive it in one tab and other tabs update over a persistent WebSocket. See [realtime sessions](../../docs/clank/realtime-sessions.md) for the authorization boundary, Chord watch lifecycle, wire model, limits and measured browser behavior.
+
+**Show overview** maps active sessions and their reported conversations. A session connects to branches without a reported parent; fork lines require both conversations in the same row. Selecting, fitting, panning and zooming are local; Overview reads the existing provider and does not issue commands. Use the list for text details and edits.
 
 ## Standalone fixture
 
