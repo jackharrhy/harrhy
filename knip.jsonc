@@ -17,7 +17,12 @@
   ],
   "workspaces": {
     "apps/clank": {
-      "entry": ["app/start.ts", "standalone.tsx", "bridge.ts", "__tests__/browser-probe.mjs"],
+      "entry": [
+        "app/start.ts",
+        "standalone.tsx",
+        "bridge.ts",
+        "__tests__/browser-probe.mjs",
+      ],
       "ignoreBinaries": ["ss"],
     },
     "apps/maps-collaboration": {

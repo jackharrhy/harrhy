@@ -12,5 +12,4 @@ Standalone Clank is a Remix 3 session list for a disposable Pi. Create a fixture
 
 ## Other preserved fixture work
 
-
 `preview/` is the existing, separate loopback Go color-demo service; it is not part of session synchronization. Test in that directory with `go test main.go main_test.go`.
