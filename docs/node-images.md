@@ -69,22 +69,16 @@ node scripts/ci/node-image-smoke.mjs maps-compiler tea-smoke gower
 
 The smoke starts the real image command with no host mounts, ports or network, then checks Node 26, pointer compression, UID, loader startup, HTTP/auth boundaries and applicable migrated databases/native bindings. Disposable container layers are removed even on assertion failure. Compiler checks deliberately assert unconfigured health/compile responses: they do not call production toolchains, OAuth, game launches or remote services.
 
-The CI Node image matrix selects from nine images on every PR,
-then builds affected images in parallel without publishing. All nine named matrix
-checks remain present; unselected rows skip Docker work. The selector includes
-before/after transitive workspace dependencies and explicit Docker context inputs.
-CMS, Maps service and Maps compiler now copy selected workspaces; unrelated app
-changes no longer select them once both compared revisions use selected inputs.
-Root/runtime inputs, unknown workspaces, comparison errors and manual dispatch
-select all nine. An empty diff selects none. Run
-`node --test scripts/ci/__tests__/*.test.mjs` for selector and Docker input regressions. The Rotund smoke reaches its actual compiled server over HTTP and checks the original face and favicon byte hashes. The 8mb smoke checks the editor and diagnostics request boundary. It never logs into a registry or publishes.
+PR CI runs workspace and workflow checks without building or pulling Docker images. On `main`, **Publish images** selects affected images using workspace dependencies and Docker build inputs. For each selected image, it builds once with the release arguments and labels, smokes the loaded image, and pushes that same image under the revision and `latest` tags only if smoke passes. A failure blocks both tags for that image; unrelated images can still publish.
 
-The selected runtime image matrix builds the four Celld and three bundled Bun
-images in parallel. Its network-isolated smoke runs each default CMD, checks HTTP and
+To verify images without pushing, manually run **CI**. Its two image matrices build and smoke all publishable images using the same smoke commands as publication. To publish a single image from `main`, manually run **Publish images** and choose the app; this still requires a successful smoke. Run `node --test scripts/ci/__tests__/*.test.mjs` for selector and Docker input regressions.
+
+The Rotund smoke reaches its actual compiled server over HTTP and checks the original face and favicon byte hashes. The 8mb smoke checks the editor and diagnostics request boundary.
+
+The Celld and Bun runtime smoke runs each default CMD without external network access, checks HTTP and
 exact emitted asset bodies, exercises startup esbuild and the Radio Azure import,
 checks SQLite write/reopen and restarts the same disposable container. Celld
 restarts wait 15 seconds for the stopped node's default 10-second lease to expire
 before startup diagnostics; this is not an immediate-restart recovery test. It does
 not replace browser, authenticated collaboration or live Azurite acceptance tests.
-Garden retains its real-CMD fixture and highlighting smoke. These checks
-do not publish images or change normal publishers/updaters.
+Garden retains its real-CMD fixture and highlighting smoke.

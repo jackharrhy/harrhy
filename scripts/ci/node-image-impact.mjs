@@ -31,6 +31,7 @@ export const runtimeApps = [
   "burger",
   "gurgur",
   "pool",
+  "lists",
 ];
 
 // Image checks intentionally have stricter root gates than publication. Root

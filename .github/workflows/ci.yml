@@ -56,7 +56,7 @@ jobs:
           DRAFT_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
         run: node scripts/ci/affected.mjs
       - id: node_images
-        if: github.event_name != 'push'
+        if: github.event_name == 'workflow_dispatch'
         env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.sha }}
@@ -65,8 +65,8 @@ jobs:
       - id: plan
         env:
           CHECK: ${{ steps.affected.outputs.any }}
-          NODE_APPS: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.apps }}
-          RUNTIME_IMAGES: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.runtime }}
+          NODE_APPS: ${{ steps.node_images.outputs.apps || '[]' }}
+          RUNTIME_IMAGES: ${{ steps.node_images.outputs.runtime || '[]' }}
         run: node scripts/ci/plan-jobs.mjs
   check:
     needs: select
@@ -166,7 +166,7 @@ jobs:
             cat "$ref_smoke_dir/wrangler.log"
             exit 1
           }
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.radio == 'true'
+      - if: github.event_name != 'pull_request' && needs.select.outputs.radio == 'true'
         run: |
           set -eu
           radio_celld_image=$(node scripts/celld-runtime.mjs image)
@@ -177,7 +177,7 @@ jobs:
           chmod +x "$RUNNER_TEMP/celld"
           node scripts/celld-runtime.mjs verify "$RUNNER_TEMP/celld"
           CELLD_BIN="$RUNNER_TEMP/celld" pnpm --filter @harrhy/radio run test:celld --output "$RUNNER_TEMP/radio-celld-smoke.json"
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.ref == 'true'
+      - if: github.event_name != 'pull_request' && needs.select.outputs.ref == 'true'
         run: |
           set -eu
           ref_celld_image=$(node scripts/celld-runtime.mjs image)
@@ -232,10 +232,7 @@ jobs:
       - name: Check runtime, native modules, migrations and requests
         env:
           APP: ${{ matrix.app }}
-        run: node scripts/ci/node-image-smoke.mjs "$APP" tea-smoke
-      - name: Check Gower compiler configuration
-        if: matrix.app == 'maps-compiler'
-        run: node scripts/ci/node-image-smoke.mjs maps-compiler tea-smoke gower
+        run: node scripts/ci/smoke-image.mjs "$APP" tea-smoke
   selected-images:
     needs: select
     if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['selected-images']
@@ -258,7 +255,7 @@ jobs:
       - name: Check app-specific production runtime
         env:
           APP: ${{ matrix.app }}
-        run: node scripts/ci/selected-image-smoke.mjs "$APP" selected-smoke
+        run: node scripts/ci/smoke-image.mjs "$APP" selected-smoke
   gate:
     name: CI gate
     if: always()

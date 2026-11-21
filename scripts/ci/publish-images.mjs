@@ -28,10 +28,12 @@ const worldview = [
 const groups = [...checkedApps.map((app) => [app]), games, worldview];
 const sharedPaths = new Set([
   ".dockerignore",
+  ".npmrc",
   ".nvmrc",
   "package.json",
   "pnpm-lock.yaml",
   "pnpm-workspace.yaml",
+  "tsconfig.base.json",
 ]);
 const revisionArgs = {
   "8mb": "VCS_REF",

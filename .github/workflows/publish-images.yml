@@ -105,7 +105,6 @@ jobs:
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: matrix.check
         with:
           node-version-file: .nvmrc
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
@@ -140,11 +139,6 @@ jobs:
         run: pnpm run cms:check
       - if: matrix.app == 'garden'
         run: pnpm run garden:check
-      - name: Build and smoke the real runtime before publication
-        if: matrix.app == 'garden'
-        run: |
-          docker build --tag garden-smoke --file apps/garden/Dockerfile .
-          node scripts/ci/selected-image-smoke.mjs garden garden-smoke
       - if: matrix.app == 'harry-sluggers'
         run: pnpm --filter @harrhy/harry-sluggers run check
       - if: matrix.app == 'letters-to-steve'
@@ -168,24 +162,41 @@ jobs:
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           cache-binary: false
-      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
       - id: build
         uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: .
           file: apps/${{ matrix.app }}/Dockerfile
-          push: true
+          load: true
+          push: false
           build-args: ${{ matrix.build_args }}
           tags: ${{ matrix.tags }}
           labels: |
             org.opencontainers.image.source=https://github.com/jackharrhy/harrhy
             org.opencontainers.image.revision=${{ github.sha }}
+      - name: Smoke the exact image before publication
+        env:
+          APP: ${{ matrix.app }}
+          IMAGE_ID: ${{ steps.build.outputs.imageid }}
+        run: node scripts/ci/smoke-image.mjs "$APP" "$IMAGE_ID"
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push verified image tags
+        env:
+          IMAGE_ID: ${{ steps.build.outputs.imageid }}
+          TAGS: ${{ matrix.tags }}
+        run: |
+          set -eu
+          while IFS= read -r tag; do
+            docker tag "$IMAGE_ID" "$tag"
+            docker push "$tag"
+          done < <(printf '%s\n' "$TAGS" | tr ',' '\n')
       - name: Show deployable image
         env:
-          DIGEST: ${{ steps.build.outputs.digest }}
           IMAGE: ${{ matrix.image }}
-        run: echo "$IMAGE@$DIGEST" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          digest=$(docker buildx imagetools inspect "$IMAGE:sha-$GITHUB_SHA" --format '{{.Manifest.Digest}}')
+          echo "$IMAGE@$digest" >> "$GITHUB_STEP_SUMMARY"

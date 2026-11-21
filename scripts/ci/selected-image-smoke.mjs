@@ -42,6 +42,19 @@ const configs = {
     ],
     bun: true,
   },
+  lists: {
+    port: 8080,
+    paths: [["/health", 200]],
+    bun: true,
+    assets: { directory: "/app/apps/lists/public", prefix: "/static" },
+    env: {
+      AUTH_INTROSPECTION_CLIENT_ID: "image-smoke",
+      AUTH_INTROSPECTION_SECRET: "disposable-image-smoke-secret",
+      BASE_URL: "https://image-smoke.example.test",
+      SQS_QUEUE_URL: "http://127.0.0.1:1/test-queue",
+      S3_BUCKET: "image-smoke",
+    },
+  },
   pool: { port: 3188, paths: [["/api/health", 200]], bun: true },
 };
 if (app === "garden" && image) {
@@ -66,6 +79,7 @@ async function smokeExistingRuntime() {
     AUTH_PUBLIC_ORIGIN: "https://image-smoke.example.test",
     RADIO_SESSION_SECRET: "disposable-image-smoke-session-secret",
     HARRHY_MAPS_REALTIME_TICKET_SECRET: "disposable-image-smoke-ticket-secret",
+    ...config.env,
   };
   const environment = Object.entries(variables).flatMap(([key, value]) => [
     "-e",
@@ -96,7 +110,7 @@ for (const [path, status] of ${JSON.stringify(config.paths)}) {
   console.log(path + ' ' + status);
 }
 assert.notEqual(process.getuid(), 0);
-const root = ${JSON.stringify(config.bun ? "/app/dist/client" : `/app/apps/${app}/dist/client`)};
+const root = ${JSON.stringify(config.assets?.directory ?? (config.bun ? "/app/dist/client" : `/app/apps/${app}/dist/client`))};
 let count = 0;
 async function assets(directory, prefix = '') {
   for(const entry of readdirSync(directory, {withFileTypes:true})) {
@@ -113,7 +127,7 @@ async function assets(directory, prefix = '') {
 }
 if(${JSON.stringify(app !== "maps-collaboration")}) {
   assert.ok(existsSync(root), 'built browser directory must be present');
-  await assets(root); assert.ok(count > 0, 'built assets must be present');
+  await assets(root, ${JSON.stringify(config.assets?.prefix ?? "")}); assert.ok(count > 0, 'built assets must be present');
 }
 console.log('exact built asset bodies: ' + count);
 ${
