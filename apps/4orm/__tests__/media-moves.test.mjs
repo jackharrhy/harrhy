@@ -20,8 +20,13 @@ function fixture(persistent = false) {
   const filename = directory
     ? join(directory, "authority.sqlite3")
     : ":memory:";
-  let sqlite = new DatabaseSync(filename);
-  sqlite.exec("PRAGMA foreign_keys=ON");
+  function openDatabase() {
+    const database = new DatabaseSync(filename);
+    // These fixtures verify clean close/reopen, not power-loss durability.
+    database.exec("PRAGMA foreign_keys=ON; PRAGMA synchronous=OFF");
+    return database;
+  }
+  let sqlite = openDatabase();
   function open() {
     return createCommunity({
       all(sql, ...values) {
@@ -166,8 +171,7 @@ function fixture(persistent = false) {
     reopen() {
       if (!directory) throw new Error("A persistent fixture is required");
       sqlite.close();
-      sqlite = new DatabaseSync(filename);
-      sqlite.exec("PRAGMA foreign_keys=ON");
+      sqlite = openDatabase();
       return open();
     },
     close() {

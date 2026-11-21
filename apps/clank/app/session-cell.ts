@@ -1,3 +1,4 @@
+import { deployment, type DeploymentBindings } from "./deployment.ts";
 import { newWebSocketRpcSession, RpcTarget, type RpcStub } from "capnweb";
 import type { ReceiveFrame, SessionApi } from "./session-api.ts";
 import {
@@ -12,10 +13,17 @@ import {
 export class SessionCell {
   #count = 0;
   #token: string;
-  constructor(_state: unknown, env: { HARRHY_CLANK_BRIDGE_TOKEN: string }) {
+  #config: ReturnType<typeof deployment>;
+  constructor(
+    _state: unknown,
+    env: DeploymentBindings & { HARRHY_CLANK_BRIDGE_TOKEN: string },
+  ) {
+    this.#config = deployment(env);
     this.#token = env.HARRHY_CLANK_BRIDGE_TOKEN;
   }
   fetch() {
+    if (!this.#config) return new Response(null, { status: 503 });
+    const { readOnly } = this.#config;
     if (this.#count >= 8) return new Response("Fixture full", { status: 503 });
     const pair = new WebSocketPair();
     const client = pair[1];
@@ -23,7 +31,7 @@ export class SessionCell {
     this.#count++;
     // Dial from the admitted upgrade event; do not depend on an RPC callback's event context.
     const upstream = new WebSocket(
-      "ws://127.0.0.1:18149/rpc",
+      `ws://127.0.0.1:${this.#config.sourcePort}/rpc`,
       `clank.${this.#token}`,
     );
     const watching = Promise.withResolvers<void>();
@@ -47,6 +55,7 @@ export class SessionCell {
     const bindDeadline = setTimeout(close, 8000);
     const expiry = setTimeout(close, 30 * 60_000);
     async function write(expected: string, command: Command) {
+      if (readOnly) throw Error("Read-only catalog");
       if (closed || !boundEpoch || boundEpoch !== expected) {
         close();
         throw Error("Binding ended");

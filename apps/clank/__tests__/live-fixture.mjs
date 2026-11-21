@@ -63,6 +63,10 @@ assert.equal(
 
 const heading = (page, name) =>
   page.getByRole("heading", { name, exact: true });
+const camera = (p) =>
+  p
+    .getByRole("region", { name: "Session map" })
+    .evaluate((el) => el.firstElementChild.style.transform);
 const browser = await chromium.launch();
 const receipt = { latenciesMs: {}, inboundBytes: {} };
 try {
@@ -177,10 +181,38 @@ try {
   assert.equal(renders.connection, 0);
   assert.deepEqual([sockets, watches], [1, 1]);
   receipt.readerRename = { mountedRows, sockets, watches, renders };
+  for (const p of [reader, editor])
+    await p.getByRole("button", { name: "Show overview" }).click();
+  const mapNode = reader.getByRole("button", {
+    name: `Session ${renamed}`,
+    exact: true,
+  });
+  await mapNode.click();
+  const original = await camera(reader),
+    other = await camera(editor),
+    beforePan = sent;
+  await reader.getByRole("button", { name: "Zoom out" }).click();
+  await reader.waitForFunction(
+    (before) =>
+      document.querySelector('[aria-label="Session map"]').firstElementChild
+        .style.transform !== before,
+    original,
+  );
+  const zoomed = await camera(reader);
+  assert.equal(await camera(editor), other);
+  assert.equal(sent, beforePan, "Local camera emits no RPC");
+  assert.deepEqual([sockets, watches], [1, 1]);
+  await editor.getByRole("button", { name: "Show session list" }).click();
   await measure("archive", async () => {
     await row(renamed).getByRole("button", { name: "Archive" }).click();
-    await heading(reader, renamed).waitFor({ state: "detached" });
+    await mapNode.waitFor({ state: "detached" });
   });
+  assert.equal(
+    await camera(reader),
+    zoomed,
+    "Live rows must not refit the map",
+  );
+  await reader.getByRole("button", { name: "Show session list" }).click();
   await reader.getByRole("button", { name: "Show archive" }).click();
   await heading(reader, renamed).waitFor();
   assert.equal(await held.evaluate(() => window.held.frames.length), 1);

@@ -21,6 +21,8 @@
         "app/start.ts",
         "standalone.tsx",
         "bridge.ts",
+        "read-only/source.ts",
+        "__tests__/read-only.mjs",
         "__tests__/browser-probe.mjs",
       ],
       "ignoreBinaries": ["ss"],

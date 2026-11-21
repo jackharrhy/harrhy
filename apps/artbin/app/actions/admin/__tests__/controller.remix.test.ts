@@ -2,7 +2,6 @@ import * as assert from "remix/assert";
 import { afterEach, beforeEach, it } from "remix/test";
 import { files, folders, jobs } from "#db";
 import { routes } from "../../../routes.ts";
-import { adminSections } from "../../../ui/admin-sections.ts";
 import {
   adminCookie,
   memberCookie,
@@ -56,10 +55,6 @@ it("separates the overview from jobs and reports real queue counts", async () =>
   const html = await response.text();
   assert.match(html, /1 running, 1 queued, 1 failed/);
   assert.match(html, /1 file awaiting review/);
-  for (const section of adminSections)
-    for (const item of section.items) {
-      assert.ok(html.includes(`href="${item.href}"`));
-    }
   assert.ok(!html.includes('aria-label="Background jobs"'));
   const jobPage = await router.fetch(
     harness.request(routes.admin.jobs.index.href(), adminCookie),

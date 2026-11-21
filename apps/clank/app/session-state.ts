@@ -16,11 +16,16 @@ export type Row = Pick<
   | "archivedAt"
   | "pinned"
 >;
+export type OverviewRow = Pick<
+  Row,
+  "id" | "title" | "createdAt" | "main" | "branches"
+>;
+export type CatalogRow = OverviewRow | Row;
 export const MAX_ROWS = 256;
 export const MAX_BYTES = 192 * 1024;
 export type Frame = { epoch: string; seq: number } & (
-  | { kind: "snapshot"; rows: Row[] }
-  | { kind: "change"; put: Row[]; remove: string[] }
+  | { kind: "snapshot"; rows: CatalogRow[] }
+  | { kind: "change"; put: CatalogRow[]; remove: string[] }
 );
 export interface Sink {
   deliver(frame: Frame): Promise<void>;
@@ -94,7 +99,7 @@ export function project(rows: readonly Session[]): Row[] {
   );
 }
 
-export function diff(previous: Row[], rows: Row[]) {
+export function diff<T extends OverviewRow>(previous: T[], rows: T[]) {
   const before = new Map(previous.map((row) => [row.id, row]));
   const put = rows.filter((row) => {
     const changed = JSON.stringify(before.get(row.id)) !== JSON.stringify(row);
@@ -107,9 +112,9 @@ export function diff(previous: Row[], rows: Row[]) {
 // Normalized browser view. A delta only replaces rows in its put set.
 // Keep the other list stable when only one list's summaries changed.
 export type SessionIndex = {
-  byId: Readonly<Record<string, Row>>;
-  activeRows: readonly Row[];
-  archivedRows: readonly Row[];
+  byId: Readonly<Record<string, CatalogRow>>;
+  activeRows: readonly CatalogRow[];
+  archivedRows: readonly CatalogRow[];
 };
 export const emptyIndex: SessionIndex = {
   byId: Object.create(null),
@@ -118,7 +123,10 @@ export const emptyIndex: SessionIndex = {
 };
 export type View = SessionIndex & { epoch: string; seq: number };
 
-function retainRows(before: readonly Row[], after: Row[]): readonly Row[] {
+function retainRows(
+  before: readonly CatalogRow[],
+  after: CatalogRow[],
+): readonly CatalogRow[] {
   return before.length === after.length &&
     before.every((row, i) => after[i] === row)
     ? before
@@ -126,7 +134,7 @@ function retainRows(before: readonly Row[], after: Row[]): readonly Row[] {
 }
 export function apply(view: View | undefined, frame: Frame): View {
   const previous = view ?? emptyIndex;
-  const byId: Record<string, Row> = Object.assign(
+  const byId: Record<string, CatalogRow> = Object.assign(
     Object.create(null),
     previous.byId,
   );
@@ -143,15 +151,19 @@ export function apply(view: View | undefined, frame: Frame): View {
   } else {
     throw Error("Session state out of sequence");
   }
-  const active: Row[] = [],
-    archived: Row[] = [];
+  const active: CatalogRow[] = [],
+    archived: CatalogRow[] = [];
   for (const row of Object.values(byId).toSorted(
     (a, b) =>
-      Number(b.pinned) - Number(a.pinned) ||
-      b.updatedAt - a.updatedAt ||
+      Number("pinned" in b && b.pinned) - Number("pinned" in a && a.pinned) ||
+      ("updatedAt" in b ? b.updatedAt : b.createdAt) -
+        ("updatedAt" in a ? a.updatedAt : a.createdAt) ||
       a.id.localeCompare(b.id),
   ))
-    (row.archivedAt === null ? active : archived).push(row);
+    (!("archivedAt" in row) || row.archivedAt === null
+      ? active
+      : archived
+    ).push(row);
   return {
     epoch: frame.epoch,
     seq: frame.seq,

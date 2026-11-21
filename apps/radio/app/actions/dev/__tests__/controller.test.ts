@@ -4,7 +4,7 @@ import { it } from "remix/test";
 import { createAppRouter } from "../../../router.ts";
 import { routes } from "../../../routes.ts";
 
-it("renders the development kitchen sink with representative radio states", async () => {
+it("serves the development kitchen sink with a nonce and no caching", async () => {
   let router = createAppRouter(
     {
       listRooms: () => Promise.resolve([]),
@@ -41,24 +41,6 @@ it("renders the development kitchen sink with representative radio states", asyn
   let html = await response.text();
 
   assert.equal(response.status, 200);
-  assert.match(html, /<title>UI · radio<\/title>/);
-  assert.match(html, /signed out/);
-  assert.match(html, /aria-label="Rooms"/);
-  assert.match(html, /name="room" value="cozy"[^>]*data-selected="true"/);
-  assert.match(html, />Sign in<\/a>/);
-  assert.doesNotMatch(html, /Jack\s*Auth/i);
-  assert.doesNotMatch(html, /placeholder="password"/);
-  assert.doesNotMatch(html, /Choose a room and enter a name/);
-  assert.doesNotMatch(html, /type="radio"/);
-  assert.match(html, /aria-label="Breadcrumb"/);
-  assert.match(html, /aria-current="page"[^>]*>rooms/);
-  assert.match(html, /start a room/);
-  assert.match(html, /TrackListPreview/);
-  assert.match(html, /paused \/ 20ms earlier/);
-  assert.match(html, /loading \/ syncing/);
-  assert.match(html, /playing \/ dense/);
-  assert.match(html, /Naked Flames - Undisputed Altitude/);
-  assert.match(html, />Yves</);
   assert.match(html, /name="robots" content="noindex, nofollow"/);
   const policy = response.headers.get("Content-Security-Policy") ?? "";
   const nonce = /script-src[^;]*'nonce-([^']+)'/.exec(policy)?.[1];

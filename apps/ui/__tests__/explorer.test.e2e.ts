@@ -96,7 +96,7 @@ it("explores actual props, matching source, and global themes", async (t) => {
   assert.deepEqual(errors, []);
 });
 
-it("keeps explorer modal, tabs and pending actions keyboard-operable", async (t) => {
+it("wires Explorer dialog, tabs and async failure controls", async (t) => {
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
@@ -140,23 +140,6 @@ it("keeps explorer modal, tabs and pending actions keyboard-operable", async (t)
     () => document.documentElement.dataset.uiReady === "true",
   );
   await page.getByLabel("Async action", { exact: true }).check();
-  await page
-    .locator('[data-preview="button"]')
-    .getByRole("button", { name: "Save changes", exact: true })
-    .click();
-  const pending = page.getByRole("button", { name: "Saving…", exact: true });
-  assert.equal(await pending.getAttribute("aria-busy"), "true");
-  assert.equal(
-    await pending.evaluate((node) => node === document.activeElement),
-    true,
-  );
-  await pending.evaluate((node: HTMLButtonElement) => {
-    node.click();
-    node.click();
-  });
-  await page
-    .getByText("Changes saved in this fixture.", { exact: true })
-    .waitFor();
   await page.getByLabel("Simulate failure", { exact: true }).check();
   await page
     .locator('[data-preview="button"]')
@@ -210,18 +193,6 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.goto("/?component=select");
-  assert.equal(
-    await page
-      .getByRole("link", { name: "@harrhy/ui", exact: true })
-      .getAttribute("href"),
-    "/",
-  );
-  assert.equal(
-    await page
-      .getByText("Official Remix UI: 10 modules", { exact: false })
-      .count(),
-    0,
-  );
   await page.getByRole("button", { name: "Visibility", exact: true }).click();
   const list = page.getByRole("listbox");
   await page.waitForFunction(

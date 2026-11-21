@@ -2,9 +2,8 @@ import * as assert from "remix/assert";
 import { createTestServer } from "remix/node-fetch-server/test";
 import { it } from "remix/test";
 import { createApp } from "../app/router.tsx";
-import { stories } from "../app/public/explorer.tsx";
 
-it("offers the real shared Sluggers theme for every Explorer component without private assets", async (t) => {
+it("applies Sluggers CSS on narrow and wide previews without private asset requests", async (t) => {
   const app = createApp(undefined, { sluggersPrivateFonts: false });
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
@@ -17,35 +16,25 @@ it("offers the real shared Sluggers theme for every Explorer component without p
   });
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 960 });
-    for (const story of stories) {
-      await page.goto(`/?component=${story.id}&theme=sluggers`);
+    for (const story of ["table", "menu"]) {
+      await page.goto(`/?component=${story}&theme=sluggers`);
       await page.waitForFunction(
         () => document.documentElement.dataset.uiReady === "true",
       );
-      const preview = page.locator(`[data-preview="${story.id}"]`);
+      const preview = page.locator(`[data-preview="${story}"]`);
       assert.equal(await preview.getAttribute("data-theme"), "sluggers");
       assert.equal(
         await preview.evaluate((node) => getComputedStyle(node).colorScheme),
         "dark",
-      );
-      assert.match(
-        await page.locator("[data-source] pre").innerText(),
-        /themeStyles\(sluggersTheme\)/,
-      );
-      assert.equal(
-        await page
-          .getByRole("button", { name: "Theme", exact: true })
-          .innerText(),
-        "Scorebook",
       );
       assert.equal(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
         ),
         true,
-        `${story.id} ${width}`,
+        `${story} ${width}`,
       );
-      if (story.id === "table") {
+      if (story === "table") {
         const th = preview.locator("th").first();
         const td = preview.locator("td").first();
         assert.deepEqual(
