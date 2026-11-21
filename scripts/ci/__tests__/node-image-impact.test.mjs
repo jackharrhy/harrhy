@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { loadWorkspaces } from "../affected.mjs";
 import {
   nodeImageApps,
+  runtimeApps,
   selectNodeImages,
   selectNodeImagesFromCommits,
 } from "../node-image-impact.mjs";
@@ -207,10 +208,20 @@ test("repository selected Dockerfiles check actual UI consumers without unrelate
     ]),
   ]);
   const dockerfiles = Object.fromEntries(
-    nodeImageApps.map((app) => [
+    [...nodeImageApps, ...runtimeApps].map((app) => [
       app,
       readFileSync(new URL(`apps/${app}/Dockerfile`, root), "utf8"),
     ]),
+  );
+  assert.deepEqual(
+    selectNodeImages({
+      apps: runtimeApps,
+      paths: ["packages/pool-protocol/src/index.ts"],
+      beforeManifests: manifests,
+      afterManifests: manifests,
+      dockerfiles,
+    }),
+    ["pool"],
   );
   assert.deepEqual(
     selectNodeImages({

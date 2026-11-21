@@ -21,9 +21,20 @@ export const nodeImageApps = [
   "8mb",
 ];
 
+export const runtimeApps = [
+  "ref",
+  "radio",
+  "worldview",
+  "maps-collaboration",
+  "burger",
+  "gurgur",
+  "pool",
+];
+
 // Image checks intentionally have stricter root gates than publication. Root
 // scripts/config can bootstrap builds without being manifest dependencies.
 export function selectNodeImages({
+  apps = nodeImageApps,
   paths,
   beforeManifests,
   afterManifests,
@@ -31,7 +42,7 @@ export function selectNodeImages({
 }) {
   if (!paths.length) return [];
   if (paths.some((path) => !/^(apps|packages)\/[^/]+\/.+/.test(path)))
-    return [...nodeImageApps];
+    return [...apps];
   const workspaces = paths.map((path) => path.split("/").slice(0, 2).join("/"));
   if (
     workspaces.some(
@@ -39,8 +50,8 @@ export function selectNodeImages({
         !beforeManifests.has(workspace) && !afterManifests.has(workspace),
     )
   )
-    return [...nodeImageApps];
-  return nodeImageApps.filter((app) => {
+    return [...apps];
+  return apps.filter((app) => {
     const dockerfile = dockerfiles[app];
     if (typeof dockerfile !== "string")
       throw new Error(`Missing Dockerfile for ${app}`);
@@ -64,6 +75,7 @@ function git(args) {
 
 // Comparison and parse failures must run checks, never omit them.
 export function selectNodeImagesFromCommits({
+  apps = nodeImageApps,
   before,
   head = "HEAD",
   event,
@@ -71,7 +83,7 @@ export function selectNodeImagesFromCommits({
   warn = console.warn,
 }) {
   if (event === "workflow_dispatch" || !before || /^0+$/.test(before))
-    return [...nodeImageApps];
+    return [...apps];
   try {
     const paths = read([
       "diff",
@@ -85,13 +97,14 @@ export function selectNodeImagesFromCommits({
       .filter(Boolean);
     if (!paths.length) return [];
     if (paths.some((path) => !/^(apps|packages)\/[^/]+\/.+/.test(path)))
-      return [...nodeImageApps];
+      return [...apps];
     return selectNodeImages({
+      apps,
       paths,
       beforeManifests: readManifests(before, read),
       afterManifests: readManifests(head, read),
       dockerfiles: Object.fromEntries(
-        nodeImageApps.map((app) => [
+        apps.map((app) => [
           app,
           [before, head]
             .map((commit) => read(["show", `${commit}:apps/${app}/Dockerfile`]))
@@ -103,7 +116,7 @@ export function selectNodeImagesFromCommits({
     warn(
       `Could not determine affected Node images; checking all: ${error.message}`,
     );
-    return [...nodeImageApps];
+    return [...apps];
   }
 }
 
@@ -112,11 +125,12 @@ if (
   import.meta.url === pathToFileURL(resolve(process.argv[1])).href
 ) {
   const selected = selectNodeImagesFromCommits({
+    apps: [...nodeImageApps, ...runtimeApps],
     before: process.env.BASE_SHA,
     head: process.env.HEAD_SHA || "HEAD",
     event: process.env.EVENT,
   });
-  const output = `apps=${JSON.stringify(selected)}\n`;
+  const output = `apps=${JSON.stringify(selected.filter((app) => nodeImageApps.includes(app)))}\nruntime=${JSON.stringify(selected.filter((app) => runtimeApps.includes(app)))}\n`;
   if (process.env.GITHUB_OUTPUT)
     appendFileSync(process.env.GITHUB_OUTPUT, output);
   else process.stdout.write(output);

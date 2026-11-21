@@ -81,6 +81,59 @@ test("Garden selects an npmrc-only merge diff and falls back safely", (t) => {
   assert.ok(select(base, head, "push").includes("garden=false"));
 });
 
+test("main push compares across failed and cancelled runs or has no baseline", (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), "ci-baseline-"));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  const git = (...args) =>
+    execFileSync(
+      "git",
+      ["-c", "user.name=CI", "-c", "user.email=ci@example.invalid", ...args],
+      { cwd, encoding: "utf8" },
+    ).trim();
+  git("init", "-qb", "main");
+  const commits = ["success", "failure", "cancelled", "current"].map(
+    (status) => {
+      writeFileSync(join(cwd, status), status);
+      git("add", status);
+      git("commit", "-qm", status);
+      return git("rev-parse", "HEAD");
+    },
+  );
+  const output = join(cwd, "output");
+  const script = new URL("../main-baseline.sh", import.meta.url).pathname;
+  function baseline(candidate, head = commits[3]) {
+    writeFileSync(output, "");
+    execFileSync(
+      "bash",
+      [
+        "-c",
+        `gh() { [[ "$2" == *'branch=main&event=push&status=success&per_page=1' ]] && echo "$CANDIDATE"; }; source "$1"`,
+        "test",
+        script,
+      ],
+      {
+        cwd,
+        env: {
+          ...process.env,
+          CANDIDATE: candidate,
+          GITHUB_SHA: head,
+          GITHUB_OUTPUT: output,
+          GITHUB_REPOSITORY: "example/repo",
+        },
+      },
+    );
+    return readFileSync(output, "utf8").trim();
+  }
+  const selected = baseline(commits[0]);
+  assert.equal(selected, "sha=" + commits[0]);
+  assert.deepEqual(
+    git("diff", "--name-only", selected.slice(4), commits[3]).split("\n"),
+    ["cancelled", "current", "failure"],
+  );
+  assert.equal(baseline(""), "");
+  assert.equal(baseline(commits[3], commits[1]), "");
+});
+
 test("job plan emits only nonempty matrices and rejects invalid selector output", (t) => {
   const cwd = mkdtempSync(join(tmpdir(), "ci-job-plan-"));
   t.after(() => rmSync(cwd, { recursive: true, force: true }));
@@ -97,7 +150,7 @@ test("job plan emits only nonempty matrices and rejects invalid selector output"
           ...process.env,
           CHECK: "false",
           NODE_APPS: "[]",
-          RUNTIME_IMAGES: "false",
+          RUNTIME_IMAGES: "[]",
           GARDEN: "false",
           HARRY_SLUGGERS: "false",
           GITHUB_OUTPUT: output,
@@ -136,7 +189,7 @@ test("job plan emits only nonempty matrices and rejects invalid selector output"
   const selected = plan({
     CHECK: "true",
     NODE_APPS: '["maps-compiler"]',
-    RUNTIME_IMAGES: "true",
+    RUNTIME_IMAGES: '["ref"]',
     GARDEN: "true",
   });
   assert.equal(selected.status, 0, selected.stderr);
@@ -150,15 +203,7 @@ test("job plan emits only nonempty matrices and rejects invalid selector output"
     },
     node_matrix: { app: ["maps-compiler"] },
     runtime_matrix: {
-      app: [
-        "ref",
-        "radio",
-        "worldview",
-        "maps-collaboration",
-        "burger",
-        "gurgur",
-        "pool",
-      ],
+      app: ["ref"],
     },
   });
   for (const invalid of [
