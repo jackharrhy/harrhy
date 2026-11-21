@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { createAtlas } from "../app/router.tsx";
 
-test("agent corpora own duplicate local paths, search, navigation and topic context", async (t) => {
+test("agent corpora own duplicate local paths, navigation and topic context", async (t) => {
   const root = await mkdtemp(path.join(tmpdir(), "atlas-spaces-"));
   t.after(() => rm(root, { recursive: true, force: true }));
   for (const id of ["alpha", "beta"]) {
@@ -30,43 +30,28 @@ test("agent corpora own duplicate local paths, search, navigation and topic cont
       ],
     }),
   );
-  const { router, catalog } = await createAtlas(
-    root,
-    path.join(root, "atlas.json"),
-  );
-  const html = async (address: string) =>
-    (await router.fetch(`http://localhost${address}`)).text();
-  const directory = await html("/");
-  assert.match(directory, /Agent spaces/);
-  assert.match(directory, /\/spaces\/gamma\//);
-  assert.doesNotMatch(directory, /alpha topic|beta topic/);
+  const { router, catalog } = await createAtlas(root, path.join(root, "atlas.json"));
+  const html = async (address: string) => (await router.fetch(`http://localhost${address}`)).text();
+  const rootResponse = await router.fetch("http://localhost/");
+  assert.equal(rootResponse.status, 307);
+  assert.equal(rootResponse.headers.get("location"), "/spaces/alpha/");
   const alpha = await html("/spaces/alpha/");
   assert.match(alpha, /alpha topic/);
   assert.doesNotMatch(alpha, /beta topic/);
   const topic = await html("/spaces/alpha/pi/");
   assert.match(topic, /href="\/spaces\/alpha\/pi\/tools\/"/);
-  assert.match(topic, /Search Alpha/);
+  assert.match(topic, /aria-label="Alpha documents"/);
+  assert.doesNotMatch(topic, /Search Alpha|href="[^"]*search/);
   assert.doesNotMatch(
     topic.match(/<section><h2>Pages<\/h2>(.*?)<\/section>/)?.[1] || "",
     /beta tools/,
   );
   assert.match(topic, /<h2>Linked from<\/h2>/);
   assert.match(topic, /href="\/spaces\/beta\/pi\/tools\/"/);
-  const results = await html("/spaces/alpha/search/?q=Shared");
-  assert.match(results, /alpha topic/);
-  assert.doesNotMatch(results, /beta topic/);
-  assert.doesNotMatch(
-    await html("/spaces/alpha/search/?q=Beta material"),
-    /beta tools/,
-  );
-  assert.match(
-    await html("/spaces/beta/search/?q=Beta material"),
-    /beta tools/,
-  );
-  assert.match(
-    await html("/spaces/beta/pi/tools/"),
-    /href="\/spaces\/alpha\/pi\/"/,
-  );
+  for (const removed of ["/search/", "/spaces/alpha/search/", "/spaces/beta/search/?q=Beta"]) {
+    assert.equal((await router.fetch(`http://localhost${removed}`)).status, 404);
+  }
+  assert.match(await html("/spaces/beta/pi/tools/"), /href="\/spaces\/alpha\/pi\/"/);
   for (const legacy of ["/pi/", "/old/", "/pi/tools/"]) {
     const response = await router.fetch(`http://localhost${legacy}?q=keep`);
     assert.equal(response.status, 308);
@@ -76,27 +61,16 @@ test("agent corpora own duplicate local paths, search, navigation and topic cont
     );
   }
   assert.equal(Object.keys(catalog.read().generation!.pages).length, 4);
-  assert.equal(
-    (await router.fetch("http://localhost/spaces/unknown/")).status,
-    404,
-  );
-  assert.equal(
-    (await router.fetch("http://localhost/spaces/delta/")).status,
-    200,
-  );
+  assert.equal((await router.fetch("http://localhost/spaces/unknown/")).status, 404);
+  assert.equal((await router.fetch("http://localhost/spaces/delta/")).status, 200);
   for (const id of ["alpha", "beta"]) {
     for (const [alias, destination] of [
       ["briefs", "days/"],
       ["dossiers", ""],
     ]) {
-      const response = await router.fetch(
-        `http://localhost/spaces/${id}/${alias}/`,
-      );
+      const response = await router.fetch(`http://localhost/spaces/${id}/${alias}/`);
       assert.equal(response.status, 308);
-      assert.equal(
-        response.headers.get("location"),
-        `/spaces/${id}/${destination}`,
-      );
+      assert.equal(response.headers.get("location"), `/spaces/${id}/${destination}`);
     }
   }
   const previous = catalog.read().generation;

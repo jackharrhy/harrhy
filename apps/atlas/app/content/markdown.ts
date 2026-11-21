@@ -1,4 +1,5 @@
 import { rehypeHighlight } from "@harrhy/ui/rehype-highlight";
+import { prepareDiagrams } from "./diagrams.ts";
 import type { Root } from "hast";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
@@ -52,6 +53,7 @@ const processor = unified()
       "h5",
       "h6",
       "hr",
+      "img",
       "i",
       "b",
       "kbd",
@@ -76,13 +78,14 @@ const processor = unified()
     ],
     attributes: {
       a: ["href", "title"],
+      img: ["src", "alt", "title"],
       code: [["className", /^language-[a-zA-Z0-9_+-]+$/]],
       details: ["open"],
       ol: ["start"],
       td: [["align", "left", "right", "center"]],
       th: [["align", "left", "right", "center"]],
     },
-    protocols: { href: ["http", "https", "mailto"] },
+    protocols: { href: ["http", "https", "mailto"], src: ["http", "https"] },
     strip: [
       "script",
       "style",
@@ -99,7 +102,6 @@ const processor = unified()
       "video",
       "audio",
       "picture",
-      "img",
     ],
   })
   .use(rehypeSlug, { prefix: "heading-" });
@@ -113,12 +115,30 @@ const stringify = unified()
 export async function renderMarkdown(
   source: string,
   resolveLink: (href: string) => string = (href) => href,
+  resolveImage: (source: string) => string | undefined = () => undefined,
 ): Promise<{
   html: string;
   links: string[];
   text: string;
+  annotationText: string;
 }> {
   const tree = (await processor.run(processor.parse(source))) as Root;
+  visit(tree, "element", (node, index, parent) => {
+    if (node.tagName !== "img" || !parent || index === undefined) return;
+    const src =
+      typeof node.properties.src === "string" ? resolveImage(node.properties.src) : undefined;
+    if (!src) {
+      parent.children.splice(index, 1);
+      return index;
+    }
+    node.properties = {
+      src,
+      alt: typeof node.properties.alt === "string" ? node.properties.alt : "",
+      ...(typeof node.properties.title === "string" ? { title: node.properties.title } : {}),
+      loading: "lazy",
+      decoding: "async",
+    };
+  });
   const links = new Set<string>();
   const words: string[] = [];
   visit(tree, (node) => {
@@ -150,10 +170,25 @@ export async function renderMarkdown(
       return "skip";
     }
   });
+  await prepareDiagrams(tree);
   const highlighted = await stringify.run(tree);
+  const annotationWords: string[] = [];
+  visit(highlighted, (node) => {
+    if (node.type === "element" && node.properties.dataAtlasDiagram) return "skip";
+    if (
+      node.type === "element" &&
+      node.tagName === "p" &&
+      node.children.length === 1 &&
+      node.children[0]?.type === "text" &&
+      /^\[\[widget:[a-z][a-z0-9-]*\]\]$/.test(node.children[0].value)
+    )
+      return "skip";
+    if (node.type === "text") annotationWords.push(node.value);
+  });
   return {
     html: stringify.stringify(highlighted),
     links: [...links],
     text: words.join(" ").replace(/\s+/g, " ").trim(),
+    annotationText: annotationWords.join(""),
   };
 }

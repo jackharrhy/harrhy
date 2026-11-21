@@ -13,7 +13,10 @@
     "skipLibCheck": true,
     "jsx": "react-jsx",
     "jsxImportSource": "remix/component",
-    "noEmit": true
+    "noEmit": true,
+    "paths": {
+      "@atlas/xeet": ["./app/xeet/client.ts"]
+    }
   },
   "exclude": ["dist"]
 }

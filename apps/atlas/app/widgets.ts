@@ -10,6 +10,7 @@ export interface Widget {
   readonly page: string;
   readonly digest: string;
   readonly script: string;
+  readonly capabilities: readonly "xeet"[];
 }
 const imports = new Set([
   "remix/component",
@@ -22,17 +23,12 @@ const imports = new Set([
 const project = path.resolve(import.meta.dirname, "..");
 
 async function readFile(filename: string, max: number) {
-  if (!path.isAbsolute(filename))
-    throw new Error("Expected absolute widget path");
+  if (!path.isAbsolute(filename)) throw new Error("Expected absolute widget path");
   let current = path.parse(filename).root;
-  for (const part of filename
-    .slice(current.length)
-    .split(path.sep)
-    .slice(0, -1)) {
+  for (const part of filename.slice(current.length).split(path.sep).slice(0, -1)) {
     current = path.join(current, part);
     const stat = await lstat(current);
-    if (!stat.isDirectory() || stat.isSymbolicLink())
-      throw new Error("Widget symlink forbidden");
+    if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error("Widget symlink forbidden");
   }
   const file = await open(
     filename,
@@ -40,8 +36,7 @@ async function readFile(filename: string, max: number) {
   );
   try {
     const stat = await file.stat();
-    if (!stat.isFile() || stat.size > max)
-      throw new Error("Widget source exceeds limit");
+    if (!stat.isFile() || stat.size > max) throw new Error("Widget source exceeds limit");
     const buffer = Buffer.alloc(max + 1);
     const { bytesRead } = await file.read(buffer, 0, buffer.length, 0);
     if (bytesRead > max) throw new Error("Widget source exceeds limit");
@@ -57,6 +52,24 @@ function object(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+function browserData(value: unknown, depth = 0): boolean {
+  if (depth > 8) return false;
+  if (value === null || typeof value === "string" || typeof value === "boolean") return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value))
+    return value.length <= 256 && value.every((item) => browserData(item, depth + 1));
+  return (
+    object(value) &&
+    Object.keys(value).length <= 256 &&
+    Object.entries(value).every(
+      ([key, item]) =>
+        key.length <= 128 &&
+        !["__proto__", "constructor", "prototype"].includes(key) &&
+        browserData(item, depth + 1),
+    )
+  );
+}
+
 /** Compiles browser code only. Authored modules are never imported by Node. */
 export function createWidgetLoader(manifest: string) {
   let cache = new Map<string, Widget>();
@@ -65,9 +78,7 @@ export function createWidgetLoader(manifest: string) {
       const config: unknown = JSON.parse(await readFile(manifest, 131072));
       if (
         !object(config) ||
-        Object.keys(config).some(
-          (key) => !["trust", "root", "widgets"].includes(key),
-        ) ||
+        Object.keys(config).some((key) => !["trust", "root", "widgets"].includes(key)) ||
         config.trust !== "tailnet-owner-temporary" ||
         typeof config.root !== "string" ||
         !path.isAbsolute(config.root) ||
@@ -83,7 +94,7 @@ export function createWidgetLoader(manifest: string) {
         if (
           !object(entry) ||
           Object.keys(entry).some(
-            (key) => !["id", "space", "page", "module"].includes(key),
+            (key) => !["id", "space", "page", "module", "data", "capabilities"].includes(key),
           ) ||
           typeof entry.id !== "string" ||
           !/^[a-z][a-z0-9-]{0,63}$/.test(entry.id) ||
@@ -96,13 +107,24 @@ export function createWidgetLoader(manifest: string) {
           !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}\.tsx$/.test(entry.module)
         )
           throw new Error("Invalid widget registration");
+        if (
+          Object.hasOwn(entry, "data") &&
+          (!object(entry.data) ||
+            !browserData(entry.data) ||
+            Buffer.byteLength(JSON.stringify(entry.data)) > 16384)
+        )
+          throw new Error("Invalid browser widget data");
+        if (
+          entry.capabilities !== undefined &&
+          (!Array.isArray(entry.capabilities) ||
+            entry.capabilities.length !== 1 ||
+            entry.capabilities[0] !== "xeet")
+        )
+          throw new Error("Invalid widget capabilities");
+        const capabilities: readonly "xeet"[] = Object.freeze(entry.capabilities ? ["xeet"] : []);
         ids.add(entry.id);
-        const source = await readFile(
-          path.join(config.root, entry.module),
-          131072,
-        );
-        const page =
-          spacePath(entry.space) + (entry.page === "/" ? "/" : entry.page);
+        const source = await readFile(path.join(config.root, entry.module), 131072);
+        const page = spacePath(entry.space) + (entry.page === "/" ? "/" : entry.page);
         const fingerprint = hash(JSON.stringify([entry, source]));
         let widget = cache.get(fingerprint);
         if (!widget) {
@@ -115,7 +137,7 @@ const notice=document.getElementById('atlas-widget-notice-${id}');
 let errored=false;
 function failed(){errored=true;if(notice){notice.hidden=false;notice.textContent='Interactive content failed. The article remains readable.';}}
 try {const module=await import('atlas:source'); if(typeof module.Widget!=='function')throw new Error('Missing Widget export');
-const root=createRoot(host);root.addEventListener('error',failed);root.render(createElement(module.Widget,{}));root.flush();if(!errored)notice.hidden=true;window.addEventListener('pagehide',()=>root.dispose(),{once:true});
+const root=createRoot(host);root.addEventListener('error',failed);root.render(createElement(module.Widget,${Object.hasOwn(entry, "data") ? `{data:JSON.parse(${JSON.stringify(JSON.stringify(entry.data))})}` : "{}"}));root.flush();if(!errored)notice.hidden=true;window.addEventListener('pagehide',()=>root.dispose(),{once:true});
 } catch {failed();}`,
               loader: "ts",
               resolveDir: project,
@@ -143,35 +165,28 @@ const root=createRoot(host);root.addEventListener('error',failed);root.render(cr
               {
                 name: "atlas-trusted-widget",
                 setup(plugin) {
-                  plugin.onResolve(
-                    { filter: /^atlas:source$/, namespace: "file" },
-                    () => ({
-                      path: "source.tsx",
-                      namespace: "atlas-author",
-                    }),
-                  );
-                  plugin.onLoad(
-                    { filter: /.*/, namespace: "atlas-author" },
-                    () => ({
-                      contents: source,
-                      loader: "tsx",
-                      resolveDir: project,
-                    }),
-                  );
-                  plugin.onResolve(
-                    { filter: /.*/, namespace: "atlas-author" },
-                    (args) => {
-                      if (!imports.has(args.path))
-                        return {
-                          errors: [
-                            {
-                              text: "Widget imports must use approved browser UI entry points",
-                            },
-                          ],
-                        };
-                      return undefined;
-                    },
-                  );
+                  plugin.onResolve({ filter: /^atlas:source$/, namespace: "file" }, () => ({
+                    path: "source.tsx",
+                    namespace: "atlas-author",
+                  }));
+                  plugin.onLoad({ filter: /.*/, namespace: "atlas-author" }, () => ({
+                    contents: source,
+                    loader: "tsx",
+                    resolveDir: project,
+                  }));
+                  plugin.onResolve({ filter: /.*/, namespace: "atlas-author" }, (args) => {
+                    if (args.path === "@atlas/xeet" && capabilities.includes("xeet"))
+                      return { path: path.resolve(import.meta.dirname, "xeet/client.ts") };
+                    if (!imports.has(args.path))
+                      return {
+                        errors: [
+                          {
+                            text: "Widget imports must use approved browser UI entry points",
+                          },
+                        ],
+                      };
+                    return undefined;
+                  });
                 },
               },
             ],
@@ -182,17 +197,15 @@ const root=createRoot(host);root.addEventListener('error',failed);root.render(cr
           let script: string | undefined;
           try {
             const result = await compiler.rebuild();
-            if (result.warnings.length)
-              throw new Error("Widget compilation warning");
+            if (result.warnings.length) throw new Error("Widget compilation warning");
             script = result.outputFiles?.[0]?.text;
           } finally {
             clearTimeout(timer);
             await compiler.dispose();
           }
           if (!script) throw new Error("Widget compilation returned no script");
-          if (Buffer.byteLength(script) > 1048576)
-            throw new Error("Widget bundle exceeds limit");
-          widget = Object.freeze({ id, page, script, digest: hash(script) });
+          if (Buffer.byteLength(script) > 1048576) throw new Error("Widget bundle exceeds limit");
+          widget = Object.freeze({ id, page, script, capabilities, digest: hash(script) });
         }
         total += Buffer.byteLength(widget.script);
         if (total > 8388608) throw new Error("Widget generation exceeds limit");

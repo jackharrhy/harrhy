@@ -1,0 +1,174 @@
+{
+  "source": {
+    "advertisedAppVersion": "see assets/upstream.lock.json",
+    "stylesheetSha256": "10898d069456c3d288cd6b2f8af34a02a9077cb393df4d6bd2ab5b264dbc302d"
+  },
+  "units": {
+    "spacing": 4,
+    "rootFontSize": 16,
+    "fontScale": 1,
+    "radiusMultiplier": 1,
+    "radiusMultiplierSquircle": 1.8
+  },
+  "supports": {
+    "applied": [
+      "@supports (((-webkit-hyphens:none)) and (not (margin-trim:inline))) or ((-moz-orient:inline) and (not (color:rgb(from red r g b))))",
+      "@supports (not ((-webkit-appearance:-apple-pay-button))) or (contain-intrinsic-size:1px)",
+      "@supports (color:color-mix(in lab, red, red))",
+      "@supports (corner-shape:squircle)",
+      "@supports (background-image:linear-gradient(in lab, red, red))",
+      "@supports (justify-content:safe flex-end)"
+    ],
+    "skippedSupports": [],
+    "skippedMedia": [
+      "@media (width>=512px)",
+      "@media (pointer:coarse)",
+      "@media (hover:hover)",
+      "@media (prefers-reduced-motion:reduce)",
+      "@media (width>=768px)",
+      "@media (width>=1024px)",
+      "@media (width>=1280px)",
+      "@media (width>=1536px)",
+      "@media (prefers-reduced-motion:no-preference)",
+      "@media (forced-colors:active)",
+      "@media not all and (pointer:coarse)",
+      "@media not all and (width>=1024px)",
+      "@media not all and (width>=768px)",
+      "@media not all and (width>=512px)",
+      "@media (width>=800px)",
+      "@media (pointer:fine)",
+      "@media (hover:none)",
+      "@media (height<=600px)",
+      "@media (width<=600px)",
+      "@media (prefers-reduced-transparency:reduce)",
+      "@media (hover:hover) and (any-pointer:coarse)"
+    ]
+  },
+  "type": {
+    "body": {
+      "size": 15,
+      "lineHeight": 20,
+      "scales": true
+    },
+    "lead": {
+      "size": 17,
+      "lineHeight": 24,
+      "scales": true
+    },
+    "subtext1": {
+      "size": 14,
+      "lineHeight": 16,
+      "scales": true
+    },
+    "subtext2": {
+      "size": 13,
+      "lineHeight": 16,
+      "scales": true
+    },
+    "headline1": {
+      "size": 20,
+      "lineHeight": 24,
+      "scales": true
+    },
+    "headline2": {
+      "size": 17,
+      "lineHeight": 20,
+      "scales": true
+    },
+    "title4": {
+      "size": 23,
+      "lineHeight": 28,
+      "scales": true
+    }
+  },
+  "weights": {
+    "normal": 400,
+    "medium": 500,
+    "semibold": 600,
+    "bold": 700,
+    "extrabold": 800
+  },
+  "wrap": {
+    "textWhiteSpace": "pre-wrap",
+    "textOverflowWrap": "anywhere",
+    "handleOverflowWrap": "break-word",
+    "nameWordBreak": "break-all",
+    "tabularNums": "tabular-nums"
+  },
+  "layout": {
+    "paddingX": 16,
+    "paddingY": 12,
+    "avatarSize": 40,
+    "avatarGap": 8,
+    "gapTight": 4,
+    "gapHalf": 2,
+    "gapRow": 8,
+    "gapBlock": 12,
+    "moreButtonSize": 32,
+    "moreIconSize": 16,
+    "moreMarginY": -8,
+    "moreMarginEndTimeline": -5,
+    "moreMarginEndDetail": -2,
+    "actionRowHeight": 20,
+    "actionRowBleed": 8,
+    "pillHeightTimeline": 36,
+    "pillPaddingXTimeline": 10,
+    "pillIconSizeTimeline": 18.75,
+    "pillHeightDetail": 40,
+    "pillPaddingXDetail": 12,
+    "pillIconSizeDetail": 20,
+    "countPaddingStart": 4,
+    "dotPadding": 4,
+    "badgeSize": 15,
+    "bookmarkHiddenBelowArticleWidth": 290
+  },
+  "radii": {
+    "xs": 7.2,
+    "sm": 14.4,
+    "md": 28.8,
+    "lg": 43.2,
+    "xl": 57.6,
+    "2xl": 16,
+    "full": 9999
+  },
+  "radiiRound": {
+    "xs": 4,
+    "sm": 8,
+    "md": 16,
+    "lg": 24,
+    "xl": 32,
+    "2xl": 16,
+    "full": 9999
+  },
+  "cornerShape": {
+    "xs": "squircle",
+    "sm": "squircle",
+    "md": "squircle",
+    "lg": "squircle",
+    "xl": "squircle",
+    "2xl": "round",
+    "full": "round"
+  },
+  "colors": {
+    "light": {
+      "bgPrimary": "#ffffff",
+      "bgSecondary": "#f2f2f2",
+      "fgPrimary": "#000000",
+      "fgSecondary": "#666666",
+      "fgTertiary": "#b2b2b2",
+      "fgBrand": "#1d9bf0",
+      "borderNormal": "#00000026",
+      "borderDivider": "#0000000f"
+    },
+    "dark": {
+      "bgPrimary": "#000000",
+      "bgSecondary": "#141414",
+      "fgPrimary": "#ffffff",
+      "fgSecondary": "#999999",
+      "fgTertiary": "#4d4d4d",
+      "fgBrand": "#1d9bf0",
+      "borderNormal": "#ffffff26",
+      "borderDivider": "#ffffff33"
+    }
+  }
+}

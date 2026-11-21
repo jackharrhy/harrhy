@@ -1,13 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  mkdtemp,
-  mkdir,
-  writeFile,
-  rm,
-  rename,
-  symlink,
-} from "node:fs/promises";
+import { mkdtemp, mkdir, writeFile, rm, rename, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createAtlas } from "../app/router.tsx";
@@ -49,11 +42,7 @@ test("registered external widgets compile only for browsers and publish coherent
     ],
   };
   await writeFile(manifest, JSON.stringify(config));
-  const { catalog, router } = await createAtlas(
-    root,
-    path.join(root, "atlas.json"),
-    manifest,
-  );
+  const { catalog, router } = await createAtlas(root, path.join(root, "atlas.json"), manifest);
   assert.equal(
     (globalThis as Record<string, unknown>).atlasWidgetRan,
     undefined,
@@ -68,26 +57,21 @@ test("registered external widgets compile only for browsers and publish coherent
   assert.match(html, /Interactive content requires JavaScript/);
   assert.match(
     html,
-    /<details open><summary>Nested widget<\/summary>[\s\S]*<section aria-label="Interactive content">[\s\S]*Nested fallback\.[\s\S]*<\/details>/,
+    /<details open><summary>Nested widget<\/summary>[\s\S]*<section data-atlas-widget aria-label="Interactive content">[\s\S]*Nested fallback\.[\s\S]*<\/details>/,
   );
   assert.match(
-    (await get("/spaces/alpha/example")).headers.get(
-      "content-security-policy",
-    )!,
+    (await get("/spaces/alpha/example")).headers.get("content-security-policy")!,
     /script-src 'nonce-/,
   );
   assert.ok(html.includes(`/_atlas/widgets/${first.digest}.js`));
-  assert.match(
-    response.headers.get("content-security-policy")!,
-    /script-src 'nonce-/,
-  );
+  assert.match(response.headers.get("content-security-policy")!, /script-src 'nonce-/);
   const script = await get(`/_atlas/widgets/${first.digest}.js`);
   assert.equal(script.status, 200);
   assert.match(script.headers.get("cache-control")!, /^private,.*immutable/);
   assert.match(await script.text(), /First/);
   assert.match(
-    (await get("/")).headers.get("content-security-policy")!,
-    /script-src 'none'/,
+    (await get("/spaces/alpha/")).headers.get("content-security-policy")!,
+    /script-src 'nonce-/,
   );
   for (const url of [
     "/code/example.tsx",
@@ -100,10 +84,7 @@ test("registered external widgets compile only for browsers and publish coherent
   await catalog.refresh();
   const second = catalog.read().generation!.widgets[0]!;
   assert.notEqual(second.digest, first.digest);
-  assert.match(
-    await (await get(`/_atlas/widgets/${second.digest}.js`)).text(),
-    /Second/,
-  );
+  assert.match(await (await get(`/_atlas/widgets/${second.digest}.js`)).text(), /Second/);
   assert.equal(
     await (await get(`/_atlas/widgets/${first.digest}.js`)).text(),
     first.script,
@@ -151,20 +132,14 @@ test("registered external widgets compile only for browsers and publish coherent
   await catalog.refresh();
   assert.equal(catalog.read().status, "stale");
   await writeFile(manifest, JSON.stringify({ ...config, widgets: [] }));
-  await writeFile(
-    content,
-    "---\ntitle: Plain article\npath: /example/\n---\nStill readable.",
-  );
+  await writeFile(content, "---\ntitle: Plain article\npath: /example/\n---\nStill readable.");
   await catalog.refresh();
   assert.equal(catalog.read().status, "ready");
   assert.doesNotMatch(
     await (await get("/spaces/alpha/example/")).text(),
-    /<script/,
+    /<script[^>]+src="\/_atlas\/widgets\//,
   );
-  await writeFile(
-    path.join(root, "code", "additional.tsx"),
-    source("Additional"),
-  );
+  await writeFile(path.join(root, "code", "additional.tsx"), source("Additional"));
   await writeFile(
     path.join(root, "alpha", "additional.md"),
     "---\ntitle: Additional page\npath: /additional/\n---\nNew external content.\n\n[[widget:additional]]\n",
@@ -185,10 +160,7 @@ test("registered external widgets compile only for browsers and publish coherent
   );
   await catalog.refresh();
   assert.equal(catalog.read().status, "ready");
-  assert.match(
-    await (await get("/spaces/alpha/additional/")).text(),
-    /atlas-widget-additional/,
-  );
+  assert.match(await (await get("/spaces/alpha/additional/")).text(), /atlas-widget-additional/);
   assert.match(catalog.read().generation!.widgets[0]!.script, /Additional/);
   assert.equal(
     (await get(`/_atlas/widgets/${first.digest}.js`)).status,
