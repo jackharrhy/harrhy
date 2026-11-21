@@ -1,5 +1,8 @@
 // Ask Pi to evaluate its own owner cookie; Clank never mints or interprets it.
-export function createOwnerGate(publicOrigin: URL, fetchPi: typeof fetch = fetch) {
+export function createOwnerGate(
+  publicOrigin: URL,
+  fetchPi: typeof fetch = fetch,
+) {
   const check = new URL("/owner/check", publicOrigin);
   return async (request: Request): Promise<200 | 401 | 503> => {
     if (new URL(request.url).origin !== publicOrigin.origin) return 401;

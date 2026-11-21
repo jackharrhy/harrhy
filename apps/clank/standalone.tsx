@@ -8,7 +8,9 @@ declare const BROWSER_MODULE: string;
 interface Env {
   HARRHY_CLANK_BRIDGE_TOKEN: string;
   HARRHY_CLANK_VIEW_PASSWORD: string;
-  SESSIONS: { getByName(name: string): { fetch(req: Request): Promise<Response> } };
+  SESSIONS: {
+    getByName(name: string): { fetch(req: Request): Promise<Response> };
+  };
 }
 const origin = "http://127.0.0.1:18148";
 const headers = {
@@ -52,7 +54,10 @@ export default {
     const url = new URL(request.url);
     if (url.origin !== origin || request.method !== "GET")
       return new Response(null, { status: 404, headers });
-    if (!env.HARRHY_CLANK_VIEW_PASSWORD || !/^[a-f0-9]{64}$/.test(env.HARRHY_CLANK_BRIDGE_TOKEN))
+    if (
+      !env.HARRHY_CLANK_VIEW_PASSWORD ||
+      !/^[a-f0-9]{64}$/.test(env.HARRHY_CLANK_BRIDGE_TOKEN)
+    )
       return new Response(null, { status: 503, headers });
     if (
       request.headers.get("Authorization") !==
@@ -60,7 +65,10 @@ export default {
     )
       return new Response("Clank fixture sign-in required", {
         status: 401,
-        headers: { ...headers, "WWW-Authenticate": 'Basic realm="Clank fixture"' },
+        headers: {
+          ...headers,
+          "WWW-Authenticate": 'Basic realm="Clank fixture"',
+        },
       });
     if (url.pathname === "/live") {
       if (request.headers.get("Origin") !== origin)

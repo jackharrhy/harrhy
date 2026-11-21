@@ -1,7 +1,14 @@
-import { newWebSocketRpcSession, RpcTarget } from "capnweb";
-import { MAX_BYTES, parseCommand, type Commands, type Frame } from "./session-state.ts";
+import { newWebSocketRpcSession, RpcTarget, type RpcStub } from "capnweb";
+import type { ReceiveFrame, SessionApi } from "./session-api.ts";
+import {
+  MAX_BYTES,
+  parseCommand,
+  type Command,
+  type Commands,
+  type Frame,
+} from "./session-state.ts";
 
-/** Standard (non-hibernating) sockets: one browser and one private RPC peer per binding. */
+/** A browser watch owns its callback and a separate, private upstream session. */
 export class SessionCell {
   #count = 0;
   #token: string;
@@ -13,70 +20,83 @@ export class SessionCell {
     const pair = new WebSocketPair();
     const client = pair[1];
     client.accept();
-    const upstream = new WebSocket("ws://127.0.0.1:18149/rpc", `clank.${this.#token}`);
     this.#count++;
+    // Dial from the admitted upgrade event; do not depend on an RPC callback's event context.
+    const upstream = new WebSocket(
+      "ws://127.0.0.1:18149/rpc",
+      `clank.${this.#token}`,
+    );
+    const watching = Promise.withResolvers<void>();
+    let receive: RpcStub<ReceiveFrame> | undefined;
+    let boundEpoch: string | undefined;
     let closed = false,
       writing = false;
-    let ack:
-      | { epoch: string; seq: number; resolve(): void; reject(error: Error): void }
-      | undefined;
-    let epoch: string | undefined;
     const close = () => {
       if (closed) return;
       closed = true;
       this.#count--;
-      ack?.reject(Error("Disconnected"));
-      ack = undefined;
+      clearTimeout(bindDeadline);
       clearTimeout(expiry);
       client.close(4001, "Fixture disconnected");
+      watching.resolve();
       upstream.close(4001, "Fixture disconnected");
+      receive?.[Symbol.dispose]();
       pi[Symbol.dispose]();
+      browser[Symbol.dispose]();
     };
+    const bindDeadline = setTimeout(close, 8000);
     const expiry = setTimeout(close, 30 * 60_000);
-    class BrowserSink extends RpcTarget {
-      async deliver(frame: Frame) {
-        if (closed || ack) throw Error("Subscription ended");
-        epoch = frame.epoch;
-        const done = Promise.withResolvers<void>();
-        ack = { epoch, seq: frame.seq, resolve: done.resolve, reject: done.reject };
-        client.send(JSON.stringify(frame));
-        await done.promise;
+    async function write(expected: string, command: Command) {
+      if (closed || !boundEpoch || boundEpoch !== expected) {
+        close();
+        throw Error("Binding ended");
+      }
+      if (writing) throw Error("Command in progress");
+      writing = true;
+      try {
+        await pi.execute(parseCommand(command));
+      } finally {
+        writing = false;
       }
     }
-    const pi = newWebSocketRpcSession<Commands>(upstream, new BrowserSink(), {
+    class Catalog extends RpcTarget implements SessionApi {
+      async watch(callback: RpcStub<ReceiveFrame>) {
+        if (closed || receive || typeof callback !== "function")
+          throw Error("Invalid watch");
+        receive = callback.dup(); // The argument itself is borrowed until watch returns.
+        watching.resolve();
+      }
+      create(epoch: string, title: string) {
+        return write(epoch, { kind: "create", title });
+      }
+      rename(epoch: string, id: string, title: string) {
+        return write(epoch, { kind: "rename", id, title });
+      }
+      archive(epoch: string, id: string) {
+        return write(epoch, { kind: "archive", id });
+      }
+    }
+    class StateSink extends RpcTarget {
+      async deliver(frame: Frame) {
+        await watching.promise;
+        if (closed || !receive) throw Error("Binding ended");
+        boundEpoch = frame.epoch;
+        clearTimeout(bindDeadline);
+        await receive(frame); // RPC completion, including the browser render, is the acknowledgement.
+      }
+    }
+    const pi = newWebSocketRpcSession<Commands>(upstream, new StateSink(), {
       limits: { maxMessageSize: MAX_BYTES * 2, maxDepth: 32 },
     });
-    for (const socket of [client, upstream]) {
-      socket.addEventListener("close", close);
-      socket.addEventListener("error", close);
-    }
-    client.addEventListener("message", async ({ data }) => {
-      if (closed) return;
-      try {
-        if (typeof data !== "string" || data.length > 1024) return close();
-        const input = JSON.parse(data);
-        if (!epoch || input.epoch !== epoch) return close();
-        if (input.kind === "ack") {
-          if (!ack || input.seq !== ack.seq) return close();
-          ack.resolve();
-          ack = undefined;
-          return;
-        }
-        if (writing) return close();
-        const command = parseCommand(input);
-        writing = true;
-        try {
-          await pi.execute(command);
-          if (!closed) client.send('{"kind":"result","ok":true}');
-        } catch {
-          if (!closed) client.send('{"kind":"result","ok":false}');
-        } finally {
-          writing = false;
-        }
-      } catch {
-        close();
-      }
+    upstream.addEventListener("error", close);
+    upstream.addEventListener("close", close);
+    const browser = newWebSocketRpcSession(client, new Catalog(), {
+      limits: { maxMessageSize: 4096, maxDepth: 16 },
+      onSendError: () => Error("Fixture request refused"),
     });
+    browser.onRpcBroken(close);
+    client.addEventListener("close", close);
+    client.addEventListener("error", close);
     return new Response(null, { status: 101, webSocket: pair[0] });
   }
 }

@@ -30,7 +30,10 @@ export default {
         "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'",
       "X-Content-Type-Options": "nosniff",
     };
-    if (request.method !== "GET" || (path !== "/clank" && path !== "/clank/assets/clank.js")) {
+    if (
+      request.method !== "GET" ||
+      (path !== "/clank" && path !== "/clank/assets/clank.js")
+    ) {
       return new Response("Not found", { status: 404, headers });
     }
     let status: 200 | 401 | 503 = 503;
@@ -40,16 +43,22 @@ export default {
       // Missing/invalid fixture configuration fails closed.
     }
     if (status !== 200)
-      return new Response(status === 401 ? "Owner sign-in required" : "Pi unavailable", {
-        status,
-        headers,
-      });
+      return new Response(
+        status === 401 ? "Owner sign-in required" : "Pi unavailable",
+        {
+          status,
+          headers,
+        },
+      );
     const response =
       path === "/clank"
         ? await router.fetch(request)
-        : await env.ASSETS.fetch(new Request(new URL("/clank.js", request.url)));
+        : await env.ASSETS.fetch(
+            new Request(new URL("/clank.js", request.url)),
+          );
     const result = new Response(response.body, response);
-    for (const [name, value] of Object.entries(headers)) result.headers.set(name, value);
+    for (const [name, value] of Object.entries(headers))
+      result.headers.set(name, value);
     return result;
   },
 };

@@ -15,7 +15,10 @@ const env = {
 
 test("anonymous requests cannot read the page or bundle", async () => {
   for (const path of ["/clank", "/clank/assets/clank.js"]) {
-    const response = await worker.fetch(new Request(new URL(path, origin)), env);
+    const response = await worker.fetch(
+      new Request(new URL(path, origin)),
+      env,
+    );
     assert.equal(response.status, 401);
     assert.equal(response.headers.get("Cache-Control"), "no-store");
     assert.equal(await response.text(), "Owner sign-in required");
@@ -37,7 +40,9 @@ test("Pi decides owner vs guest; invalid upstream response fails closed", async 
   ] as const) {
     assert.equal(
       await gate(
-        new Request(new URL("/clank", origin), { headers: { Cookie: `fixture=${role}` } }),
+        new Request(new URL("/clank", origin), {
+          headers: { Cookie: `fixture=${role}` },
+        }),
       ),
       expected,
     );
@@ -45,11 +50,16 @@ test("Pi decides owner vs guest; invalid upstream response fails closed", async 
 });
 
 test("foreign-origin requests never forward cookies", async () => {
-  const gate = createOwnerGate(origin, async () => assert.fail("unexpected upstream request"));
+  const gate = createOwnerGate(origin, async () =>
+    assert.fail("unexpected upstream request"),
+  );
   assert.equal(
     await gate(
       new Request(new URL("/clank", origin), {
-        headers: { Cookie: "fixture=owner", Origin: "https://other.example.test" },
+        headers: {
+          Cookie: "fixture=owner",
+          Origin: "https://other.example.test",
+        },
       }),
     ),
     401,

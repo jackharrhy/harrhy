@@ -19,9 +19,14 @@ import {
 export function startFixtureBridge(host: Host, cwd: string, token: string) {
   if (!/^[a-f0-9]{64}$/.test(token)) throw Error("Invalid bridge credential");
   const expected = Buffer.from(`clank.${token}`);
-  const ws = new WebSocketServer({ noServer: true, maxPayload: 4096, perMessageDeflate: false });
-  const http = createServer({ headersTimeout: 3000, requestTimeout: 5000 }, (_, response) =>
-    response.writeHead(404).end(),
+  const ws = new WebSocketServer({
+    noServer: true,
+    maxPayload: 4096,
+    perMessageDeflate: false,
+  });
+  const http = createServer(
+    { headersTimeout: 3000, requestTimeout: 5000 },
+    (_, response) => response.writeHead(404).end(),
   );
   http.on("upgrade", (req, socket, head) => {
     const protocol = Buffer.from(req.headers["sec-websocket-protocol"] ?? "");
@@ -50,7 +55,8 @@ export function startFixtureBridge(host: Host, cwd: string, token: string) {
     let writing = false;
     class Fixture extends RpcTarget {
       async execute(input: unknown) {
-        if (!execute || writing || lifetime.signal.aborted) throw Error("Command unavailable");
+        if (!execute || writing || lifetime.signal.aborted)
+          throw Error("Command unavailable");
         writing = true;
         const deadline = setTimeout(() => socket.terminate(), 8000);
         try {
@@ -61,10 +67,14 @@ export function startFixtureBridge(host: Host, cwd: string, token: string) {
         }
       }
     }
-    const sink = newWebSocketRpcSession<Sink>(socket as unknown as WebSocket, new Fixture(), {
-      limits: { maxMessageSize: 4096 },
-      onSendError: () => Error("Fixture command refused"),
-    });
+    const sink = newWebSocketRpcSession<Sink>(
+      socket as unknown as WebSocket,
+      new Fixture(),
+      {
+        limits: { maxMessageSize: 4096 },
+        onSendError: () => Error("Fixture command refused"),
+      },
+    );
     async function deliver(frame: Frame) {
       const timer = setTimeout(() => socket.terminate(), 8000);
       try {
@@ -78,7 +88,8 @@ export function startFixtureBridge(host: Host, cwd: string, token: string) {
       .root(
         async (ctx) => {
           const sessions = await ctx.get(Sessions, {});
-          if (sessions.variant !== "owner") throw Error("Expected fixture owner");
+          if (sessions.variant !== "owner")
+            throw Error("Expected fixture owner");
           const bound = await sessions.state.watch(ctx);
           const watch = await sessions.sessions.watch(ctx);
           try {
@@ -90,9 +101,11 @@ export function startFixtureBridge(host: Host, cwd: string, token: string) {
             let seq = 0;
             let previous = project(watch.value);
             execute = async (command) => {
-              if (sessions.state.value.kind !== "live") throw Error("Not bound");
+              if (sessions.state.value.kind !== "live")
+                throw Error("Not bound");
               if (command.kind === "create") {
-                if (sessions.sessions.value.length >= MAX_ROWS) throw Error("Fixture full");
+                if (sessions.sessions.value.length >= MAX_ROWS)
+                  throw Error("Fixture full");
                 await sessions.create(
                   {
                     title: command.title,
@@ -103,10 +116,16 @@ export function startFixtureBridge(host: Host, cwd: string, token: string) {
                   ctx,
                 );
               } else {
-                const row = sessions.sessions.value.find((row) => row.id === command.id);
-                if (!row || row.archivedAt !== null) throw Error("Unknown active session");
+                const row = sessions.sessions.value.find(
+                  (candidate) => candidate.id === command.id,
+                );
+                if (!row || row.archivedAt !== null)
+                  throw Error("Unknown active session");
                 if (command.kind === "rename")
-                  await sessions.rename({ id: row.id, title: command.title }, ctx);
+                  await sessions.rename(
+                    { id: row.id, title: command.title },
+                    ctx,
+                  );
                 else await sessions.archive({ id: row.id }, ctx);
               }
             };

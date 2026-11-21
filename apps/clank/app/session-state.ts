@@ -38,7 +38,8 @@ export function parseCommand(value: unknown): Command {
   const v = value as Record<string, unknown>;
   const title = typeof v.title === "string" ? v.title.trim() : "";
   const id =
-    typeof v.id === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(v.id)
+    typeof v.id === "string" &&
+    /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(v.id)
       ? v.id
       : "";
   if (v.kind === "archive" && id) return { kind: "archive", id };
@@ -106,8 +107,17 @@ export function diff(previous: Row[], rows: Row[]) {
 export type View = { epoch: string; seq: number; rows: Map<string, Row> };
 export function apply(view: View | undefined, frame: Frame): View {
   if (frame.kind === "snapshot" && frame.seq === 0 && !view)
-    return { epoch: frame.epoch, seq: 0, rows: new Map(frame.rows.map((row) => [row.id, row])) };
-  if (frame.kind !== "change" || !view || frame.epoch !== view.epoch || frame.seq !== view.seq + 1)
+    return {
+      epoch: frame.epoch,
+      seq: 0,
+      rows: new Map(frame.rows.map((row) => [row.id, row])),
+    };
+  if (
+    frame.kind !== "change" ||
+    !view ||
+    frame.epoch !== view.epoch ||
+    frame.seq !== view.seq + 1
+  )
     throw Error("Session state out of sequence");
   const rows = new Map(view.rows);
   for (const id of frame.remove) rows.delete(id);

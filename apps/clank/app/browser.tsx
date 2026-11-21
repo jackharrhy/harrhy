@@ -30,7 +30,8 @@ function connect() {
     void host
       .root(async (scope) => {
         const sessions = await scope.get(Sessions, {});
-        if (sessions.variant !== "owner") throw new Error("Owner access required");
+        if (sessions.variant !== "owner")
+          throw new Error("Owner access required");
         const watch = await sessions.sessions.watch(scope);
         try {
           const rows = watch.value.filter((row) => row.archivedAt === null);
@@ -54,7 +55,8 @@ function connect() {
         if (!stopped && socket.readyState === WebSocket.OPEN) {
           root.render(
             <p role="alert">
-              Pi session list unavailable. Check access and contract compatibility.
+              Pi session list unavailable. Check access and contract
+              compatibility.
             </p>,
           );
         }

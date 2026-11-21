@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { apply, diff, parseCommand, project, type Row } from "../app/session-state.ts";
+import {
+  apply,
+  diff,
+  parseCommand,
+  project,
+  type Row,
+} from "../app/session-state.ts";
 
 const row: Row = {
   id: "b39282b2-0938-4c7d-961a-a8a92dc85370",
@@ -25,13 +31,18 @@ test("the wire model only contains declared session, model and branch fields", (
     branches: [{ ...row.branches[0]!, transcript: "private" }],
   };
   assert.deepEqual(project([withExtras]), [row]);
-  assert.throws(() => project(Array(257).fill(row)));
+  assert.throws(() => project(Array.from({ length: 257 }, () => ({ ...row }))));
   assert.throws(() => project([{ ...row, cwd: "x".repeat(200 * 1024) }]));
 });
 
 test("apply changed and removed rows, reject gaps, duplicates and old epochs", () => {
   const removed = { ...row, id: "other" };
-  const view = apply(undefined, { kind: "snapshot", epoch: "one", seq: 0, rows: [row, removed] });
+  const view = apply(undefined, {
+    kind: "snapshot",
+    epoch: "one",
+    seq: 0,
+    rows: [row, removed],
+  });
   const renamed = { ...row, title: "Changed" };
   const change = {
     kind: "change" as const,
@@ -51,10 +62,13 @@ test("apply changed and removed rows, reject gaps, duplicates and old epochs", (
 });
 
 test("fixture commands cannot select a model, cwd, principal or arbitrary Chord method", () => {
-  assert.deepEqual(parseCommand({ kind: "create", title: " New ", cwd: "/elsewhere" }), {
-    kind: "create",
-    title: "New",
-  });
+  assert.deepEqual(
+    parseCommand({ kind: "create", title: " New ", cwd: "/elsewhere" }),
+    {
+      kind: "create",
+      title: "New",
+    },
+  );
   for (const v of [
     { kind: "rename", id: row.id, title: " " },
     { kind: "archive", id: "*" },
