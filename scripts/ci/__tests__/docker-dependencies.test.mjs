@@ -35,7 +35,7 @@ function selectedWorkspaces(workspace) {
     }
   };
   visit(workspace);
-  return [...selected].sort();
+  return [...selected].toSorted((a, b) => a.localeCompare(b));
 }
 
 const bundledApps = new Set(["burger", "gurgur", "pool"]);
@@ -63,16 +63,16 @@ const productionApps = new Set([
 ]);
 
 for (const [name, workspace] of workspaces) {
-  const { path } = workspace;
+  const { path: workspacePath } = workspace;
   if (
-    !path.startsWith("apps/") ||
-    !existsSync(new URL(`${path}/Dockerfile`, root))
+    !workspacePath.startsWith("apps/") ||
+    !existsSync(new URL(`${workspacePath}/Dockerfile`, root))
   ) {
     continue;
   }
-  const app = path.slice("apps/".length);
+  const app = workspacePath.slice("apps/".length);
   test(`${app}: frozen, selected install precedes source and revision`, () => {
-    const dockerfile = read(`${path}/Dockerfile`);
+    const dockerfile = read(`${workspacePath}/Dockerfile`);
     assert.doesNotMatch(dockerfile, /package-lock\.json|\bnpm (?:ci|prune)\b/);
     assert.doesNotMatch(dockerfile, /^COPY .*?\s\. \.\s*$/m);
     const install = [...dockerfile.matchAll(/^RUN pnpm (.+\binstall\b.*)$/gm)];
@@ -105,7 +105,7 @@ for (const [name, workspace] of workspaces) {
       ...prefix.matchAll(/^COPY ((?:apps|packages)\/[^/]+)\/package\.json /gm),
     ]
       .map((match) => match[1])
-      .sort();
+      .toSorted((a, b) => a.localeCompare(b));
     assert.deepEqual(manifests, selectedWorkspaces(workspace));
     assert.doesNotMatch(prefix, /^COPY (?:apps|packages)\/[^/\s]+ /m);
     assert.doesNotMatch(
