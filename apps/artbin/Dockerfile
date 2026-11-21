@@ -20,6 +20,7 @@ FROM manifests AS build
 RUN pnpm --filter @harrhy/artbin-app... --filter . install --frozen-lockfile --ignore-scripts
 # Build against the compression-enabled runtime, then transfer only the binding.
 RUN addon="$(realpath apps/artbin/node_modules/better-sqlite3)" \
+  && rm -rf "$addon/prebuilds" \
   && pnpm exec node-gyp rebuild --directory "$addon" --nodedir=/usr/local --jobs=2 \
   && cp "$addon/build/Release/better_sqlite3.node" /tmp/better_sqlite3.node
 COPY tsconfig.base.json ./

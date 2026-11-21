@@ -63,6 +63,8 @@ RUN mkdir -p /app/.celld \
   && chown -R node:node /app/.celld
 
 USER node
+# Celld resolves esbuild from this workspace at startup.
+RUN test -x "$(node -p 'require.resolve("esbuild/bin/esbuild")')"
 EXPOSE 44100
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

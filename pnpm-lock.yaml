@@ -623,7 +623,7 @@ importers:
         specifier: 0.1.0
         version: link:../../packages/request-body
       '@harrhy/rich-text':
-        specifier: '*'
+        specifier: workspace:*
         version: link:../../packages/rich-text
       '@harrhy/ui':
         specifier: 0.1.0
@@ -881,6 +881,9 @@ importers:
       '@tiptap/extensions':
         specifier: 3.33.1
         version: 3.33.1(@tiptap/core@3.33.1(@tiptap/pm@3.33.1))(@tiptap/pm@3.33.1)
+      '@tiptap/pm':
+        specifier: 3.33.1
+        version: 3.33.1
       remix:
         specifier: 3.2.0
         version: 3.2.0(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(pg@8.16.3)(playwright@1.65.0)

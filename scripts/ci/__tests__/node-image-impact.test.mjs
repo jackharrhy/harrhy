@@ -123,7 +123,7 @@ test("comparison reads both Dockerfile revisions and falls back on errors", () =
     if (args[0] === "ls-tree")
       return [...f.beforeManifests.keys()]
         .filter(Boolean)
-        .map((path) => path + "/package.json")
+        .map((workspacePath) => workspacePath + "/package.json")
         .join("\0");
     if (path.endsWith("package.json"))
       return JSON.stringify(

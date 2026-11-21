@@ -86,7 +86,9 @@ export function selectChecks(paths, workspaces) {
     changed = false;
     for (const { name, manifest } of workspaces) {
       if (affected.has(name)) continue;
-      if (dependencyNames(manifest).some((name) => affected.has(name))) {
+      if (
+        dependencyNames(manifest).some((dependency) => affected.has(dependency))
+      ) {
         affected.add(name);
         changed = true;
       }
