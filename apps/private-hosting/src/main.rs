@@ -3,7 +3,7 @@ mod supervisor;
 use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     env, fs,
     io::{BufRead, BufReader, Read, Write},
     os::unix::{
@@ -20,7 +20,7 @@ use std::{
 };
 use supervisor::Supervisor;
 
-const APPS: [&str; 3] = ["atlas", "go-demo", "slides"];
+const APPS: [&str; 5] = ["atlas", "go-demo", "slides", "world", "harrhy-ui"];
 
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -34,13 +34,35 @@ struct Config {
 #[serde(deny_unknown_fields)]
 struct Spec {
     host: String,
+    #[serde(default)]
     port: u16,
+    socket: Option<PathBuf>,
+    companion: Option<Companion>,
     #[serde(default)]
     argv: Vec<String>,
     #[serde(default)]
     cwd: PathBuf,
     #[serde(default)]
     env: BTreeMap<String, String>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Companion {
+    port: u16,
+    argv: Vec<String>,
+    cwd: PathBuf,
+    #[serde(default)]
+    env: BTreeMap<String, String>,
+}
+
+fn valid_launch(argv: &[String], cwd: &Path, env: &BTreeMap<String, String>) -> bool {
+    cwd.is_absolute()
+        && argv.first().is_some_and(|arg| Path::new(arg).is_absolute())
+        && argv.iter().all(|arg| !arg.contains('\0'))
+        && env.iter().all(|(key, value)| {
+            !key.is_empty() && key != "PORT" && !key.contains(['=', '\0']) && !value.contains('\0')
+        })
 }
 
 fn socket_path(path: &Path) -> Result<()> {
@@ -79,44 +101,67 @@ impl Config {
                 && config.apps.contains_key("atlas")
                 && config.apps.contains_key("go-demo")
                 && config.apps.keys().all(|name| APPS.contains(&name.as_str())),
-            "expected absolute Caddy executable, atlas and go-demo specs, and optional slides"
+            "expected absolute Caddy executable, atlas and go-demo specs, and optional slides/world/harrhy-ui"
         );
-        let atlas = &config.apps[APPS[0]];
-        let demo = &config.apps[APPS[1]];
-        ensure!(
-            atlas.port != demo.port && atlas.host != demo.host,
-            "duplicate app host or port"
-        );
+        let mut ports = BTreeSet::new();
+        let mut hosts = BTreeSet::new();
         for (name, spec) in &config.apps {
-            if name == "slides" {
+            ensure!(
+                valid_host(&spec.host) && hosts.insert(&spec.host),
+                "invalid or duplicate host for {name}"
+            );
+            if name == "harrhy-ui" {
+                let path = spec
+                    .socket
+                    .as_ref()
+                    .context("Harrhy UI requires a private upstream socket")?;
+                socket_path(path)?;
                 ensure!(
-                    valid_host(&spec.host)
-                        && spec.port == 21394
+                    path != &config.ingress
+                        && path.file_name().is_some()
+                        && spec.port == 0
                         && spec.argv.is_empty()
                         && spec.cwd.as_os_str().is_empty()
                         && spec.env.is_empty()
-                        && ![atlas.port, demo.port].contains(&spec.port)
-                        && spec.host != atlas.host
-                        && spec.host != demo.host,
-                    "slides requires a distinct host, port 21394, and no launch spec"
+                        && spec.companion.is_none(),
+                    "Harrhy UI is socket-only and has no launch spec"
                 );
                 continue;
             }
             ensure!(
-                valid_host(&spec.host)
-                    && spec.port >= 1024
-                    && spec.cwd.is_absolute()
-                    && spec
-                        .argv
-                        .first()
-                        .is_some_and(|arg| Path::new(arg).is_absolute())
-                    && spec.argv.iter().all(|arg| !arg.contains('\0'))
-                    && spec.env.iter().all(|(key, value)| !key.is_empty()
-                        && key != "PORT"
-                        && !key.contains(['=', '\0'])
-                        && !value.contains('\0')),
-                "invalid spec for {name}"
+                spec.socket.is_none() && spec.port >= 1024 && ports.insert(spec.port),
+                "invalid or duplicate port for {name}"
             );
+            if name == "slides" {
+                ensure!(
+                    spec.port == 21394
+                        && spec.argv.is_empty()
+                        && spec.cwd.as_os_str().is_empty()
+                        && spec.env.is_empty()
+                        && spec.companion.is_none(),
+                    "slides requires port 21394 and no launch spec"
+                );
+                continue;
+            }
+            ensure!(
+                valid_launch(&spec.argv, &spec.cwd, &spec.env),
+                "invalid launch spec for {name}"
+            );
+            match (&spec.companion, name.as_str()) {
+                (Some(companion), "world") => {
+                    ensure!(
+                        companion.port >= 1024 && ports.insert(companion.port),
+                        "invalid or duplicate World authority port"
+                    );
+                    ensure!(
+                        valid_launch(&companion.argv, &companion.cwd, &companion.env),
+                        "invalid World authority launch spec"
+                    );
+                }
+                (None, "world") => bail!("World requires an authority companion"),
+                (Some(_), _) => bail!("only World accepts a companion launch spec"),
+                _ => {}
+            }
         }
         Ok(config)
     }
@@ -162,6 +207,23 @@ fn serve(runtime: &Path, state: &Path, config: Config) -> Result<()> {
         ingress_dir != runtime.canonicalize()? && ingress_dir != state.canonicalize()?,
         "ingress requires its own directory"
     );
+    if let Some(socket) = config
+        .apps
+        .get("harrhy-ui")
+        .and_then(|spec| spec.socket.as_ref())
+    {
+        let parent = socket
+            .parent()
+            .unwrap()
+            .canonicalize()
+            .context("Harrhy UI socket parent must be provisioned")?;
+        ensure!(
+            parent != ingress_dir
+                && parent != runtime.canonicalize()?
+                && parent != state.canonicalize()?,
+            "Harrhy UI upstream requires a separate socket directory"
+        );
+    }
     let lock = fs::OpenOptions::new()
         .write(true)
         .create(true)
@@ -224,10 +286,8 @@ fn main() -> Result<()> {
             Config::read(Path::new(config))?,
         ),
         ["--runtime", runtime, command @ ..]
-            if matches!(
-                command,
-                ["status"] | ["start" | "stop", "atlas" | "go-demo" | "slides"]
-            ) =>
+            if matches!(command, ["status"])
+                || matches!(command, ["start" | "stop", app] if APPS.contains(app)) =>
         {
             let mut stream = UnixStream::connect(Path::new(runtime).join("control.sock"))?;
             stream.set_read_timeout(Some(Duration::from_secs(15)))?;
@@ -238,7 +298,7 @@ fn main() -> Result<()> {
             Ok(())
         }
         _ => bail!(
-            "usage: private-hosting --runtime DIR (run --state DIR --config FILE | status | (start|stop) (atlas|go-demo|slides))"
+            "usage: private-hosting --runtime DIR (run --state DIR --config FILE | status | (start|stop) (atlas|go-demo|slides|world|harrhy-ui))"
         ),
     }
 }

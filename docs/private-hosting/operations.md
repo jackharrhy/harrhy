@@ -1,6 +1,6 @@
 # Private Hosting: Infra run contract
 
-Private Hosting serves operator-registered `atlas` and `go-demo` apps and optionally adopts the existing Slides loopback listener. It does not read or migrate Clank state, manage DNS, issue certificates, authenticate users, or accept arbitrary commands or artifacts from clients.
+Private Hosting serves operator-registered `atlas` and `go-demo` apps and supports optional World, Harrhy UI and Slides registrations. It does not read or migrate Clank state, manage DNS, issue certificates, authenticate users, or accept arbitrary commands or artifacts from clients.
 
 ## Provisioning
 
@@ -11,6 +11,8 @@ Private Hosting serves operator-registered `atlas` and `go-demo` apps and option
 - Infra terminates HTTPS and authorizes the intended audience **for each exact hostname** before connecting to the ingress socket. Preserve the authorized external `Host`, reject unregistered hosts, and do not relay a user-supplied substitute Host or accept direct backend connections. Caddy's host match is routing, not authorization. Keep provider credentials at the gateway; Caddy and the daemon require none. Configure the gateway to reconnect to the Unix socket after replacement and avoid caching private responses.
 
 ## Registry and invocation
+
+See [World and Harrhy UI](world-and-ui.md) for the optional paired runtime and private Unix-socket adoption contracts.
 
 Provision an operator-owned immutable JSON registry outside the checkout. For example (fictional paths and hosts):
 
@@ -61,4 +63,4 @@ The daemon runs Caddy from an empty bootstrap with configuration persistence dis
 
 ## Acceptance before any cutover
 
-Use synthetic state and content first. Confirm gateway authorization for each exact host and a negative test for unknown/mismatched hosts, rejection of direct backend/admin access from outside the unit, socket permissions after replacement, and managed cleanup after daemon SIGKILL. Verify persistent Atlas stop and Go's boot-off policy. The application smoke exercises the real Caddy socket and Go binary with a synthetic Atlas stand-in; it does not validate the Infra gateway, unit, or actual Atlas installation.
+Use synthetic state and content first. Confirm gateway authorization for each exact host and a negative test for unknown/mismatched hosts, rejection of direct backend/admin access from outside the unit, socket permissions after replacement, and managed cleanup after daemon SIGKILL. Verify persistent Atlas stop and Go's boot-off policy. The application smoke exercises real Caddy and Go with synthetic Atlas, paired World processes, and a Unix-socket UI origin; it does not validate the Infra gateway, unit, or actual Atlas installation.

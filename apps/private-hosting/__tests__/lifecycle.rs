@@ -4,7 +4,10 @@ use std::{
     env, fs,
     io::{BufRead, BufReader, Read, Write},
     net::TcpListener,
-    os::unix::{fs::PermissionsExt, net::UnixStream},
+    os::unix::{
+        fs::PermissionsExt,
+        net::{UnixListener, UnixStream},
+    },
     path::Path,
     process::{Child, Command, Stdio},
     thread::sleep,
@@ -17,6 +20,7 @@ const BIN: &str = env!("CARGO_BIN_EXE_private-hosting");
 #[ignore = "launched by the lifecycle test"]
 fn atlas_fixture() -> Result<()> {
     let listener = TcpListener::bind(("127.0.0.1", env::var("PORT")?.parse::<u16>()?))?;
+    fs::write("pid", std::process::id().to_string())?;
     for conn in listener.incoming() {
         let mut conn = conn?;
         std::thread::spawn(move || -> Result<()> {
@@ -68,7 +72,7 @@ fn request(socket: &Path, host: &str, path: &str) -> Result<UnixStream> {
 }
 
 #[test]
-fn caddy_and_go_lifecycle() -> Result<()> {
+fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
     let Some(caddy) = env::var_os("HARRHY_PRIVATE_HOSTING_TEST_CADDY") else {
         eprintln!("Skipping real Caddy + Go smoke: HARRHY_PRIVATE_HOSTING_TEST_CADDY is not set");
         return Ok(());
@@ -93,11 +97,55 @@ fn caddy_and_go_lifecycle() -> Result<()> {
     let runtime = root.join("run");
     let state = root.join("state");
     let config = root.join("config.json");
-    fs::write(&config, json!({"caddy":Path::new(&caddy),"ingress":socket,"apps":{
+    let web_dir = root.join("world-web");
+    let authority_dir = root.join("world-authority");
+    let ui_dir = root.join("ui");
+    for dir in [&web_dir, &authority_dir, &ui_dir] {
+        fs::create_dir(dir)?;
+    }
+    fs::write(web_dir.join("ready"), "")?;
+    let web = TcpListener::bind(("127.0.0.1", 0))?;
+    let authority = TcpListener::bind(("127.0.0.1", 0))?;
+    let ui_socket = ui_dir.join("http.sock");
+    let ui = UnixListener::bind(&ui_socket)?;
+    std::thread::spawn(move || {
+        for conn in ui.incoming().flatten() {
+            let mut reader = BufReader::new(conn);
+            let mut request = String::new();
+            while let Ok(n) = reader.read_line(&mut request) {
+                if n == 0 || request.ends_with("\r\n\r\n") {
+                    break;
+                }
+            }
+            let code = if request
+                .to_ascii_lowercase()
+                .contains("\r\nhost: ui.test\r\n")
+            {
+                "200 OK"
+            } else {
+                "404 Not Found"
+            };
+            let _ = write!(
+                reader.get_mut(),
+                "HTTP/1.1 {code}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            );
+        }
+    });
+    let fixture = [
+        env::current_exe()?.to_string_lossy().into_owned(),
+        "--exact".into(),
+        "atlas_fixture".into(),
+        "--ignored".into(),
+    ];
+    fs::write(
+        &config, json!({"caddy":Path::new(&caddy),"ingress":socket,"apps":{
         "atlas":{"host":"atlas.test","port":first.local_addr()?.port(),"argv":[env::current_exe()?,"--exact","atlas_fixture","--ignored"],"cwd":root,"env":{}},
-        "go-demo":{"host":"demo.test","port":second.local_addr()?.port(),"argv":[demo],"cwd":root,"env":{}}
+        "go-demo":{"host":"demo.test","port":second.local_addr()?.port(),"argv":[demo],"cwd":root,"env":{}},
+        "world":{"host":"world.test","port":web.local_addr()?.port(),"argv":fixture,"cwd":web_dir,"companion":{
+            "port":authority.local_addr()?.port(),"argv":fixture,"cwd":authority_dir}},
+        "harrhy-ui":{"host":"ui.test","socket":ui_socket}
     }}).to_string())?;
-    drop((first, second));
+    drop((first, second, web, authority));
     let base = || {
         let mut cmd = Command::new(BIN);
         cmd.arg("--runtime").arg(&runtime);
@@ -142,6 +190,31 @@ fn caddy_and_go_lifecycle() -> Result<()> {
     assert!(fetch("demo.test", "404"));
     ctl(&["start", "go-demo"])?;
     until(|| fetch("demo.test", "200"))?;
+    ctl(&["start", "harrhy-ui"])?;
+    until(|| fetch("ui.test", "200"))?;
+    ctl(&["stop", "harrhy-ui"])?;
+    until(|| fetch("ui.test", "404"))?;
+    assert!(
+        UnixStream::connect(&ui_socket).is_ok(),
+        "adopted origin was closed"
+    );
+    ctl(&["start", "world"])?;
+    until(|| authority_dir.join("pid").is_file() && web_dir.join("pid").is_file())?;
+    assert!(fetch("world.test", "404"), "world routed before both ready");
+    fs::write(authority_dir.join("ready"), "")?;
+    until(|| fetch("world.test", "200"))?;
+    let old_web = fs::read_to_string(web_dir.join("pid"))?;
+    let authority_pid: i32 = fs::read_to_string(authority_dir.join("pid"))?.parse()?;
+    // SAFETY: the fixture reports the PID of the disposable authority.
+    assert_eq!(unsafe { libc::kill(authority_pid, libc::SIGKILL) }, 0);
+    until(|| fetch("world.test", "404"))?;
+    until(|| fetch("world.test", "200"))?;
+    let new_web = fs::read_to_string(web_dir.join("pid"))?;
+    assert_ne!(old_web, new_web);
+    assert!(!Path::new("/proc").join(old_web).exists());
+    ctl(&["stop", "world"])?;
+    until(|| fetch("world.test", "404"))?;
+    assert!(!Path::new("/proc").join(new_web).exists());
     let mut stream = BufReader::new(request(&socket, "atlas.test", "/stream")?);
     loop {
         let mut line = String::new();

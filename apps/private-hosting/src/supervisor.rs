@@ -40,6 +40,17 @@ fn healthy(port: u16, path: &str) -> Result<()> {
     http_ok(conn)
 }
 
+fn healthy_socket(socket: &Path, host: &str) -> Result<()> {
+    let mut conn = UnixStream::connect(socket)?;
+    conn.set_read_timeout(Some(HEALTH_TIMEOUT))?;
+    conn.set_write_timeout(Some(HEALTH_TIMEOUT))?;
+    write!(
+        conn,
+        "GET /healthz HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
+    )?;
+    http_ok(conn)
+}
+
 fn exited(child: &Child) -> io::Result<bool> {
     // WNOWAIT keeps the group's leader PID reserved until cleanup signals the group.
     let mut info = std::mem::MaybeUninit::<libc::siginfo_t>::zeroed();
@@ -92,27 +103,70 @@ fn stop(child: &mut Child, hard: bool) -> Result<()> {
     }
 }
 
-fn launch(spec: &Spec) -> Result<Child> {
+fn launch(port: u16, argv: &[String], cwd: &Path, env: &BTreeMap<String, String>) -> Result<Child> {
     let probe = Socket::new(Domain::IPV4, Type::STREAM, Some(Protocol::TCP))?;
     probe.set_reuse_address(true)?;
-    probe.bind(&SocketAddr::from(([127, 0, 0, 1], spec.port)).into())?;
+    probe.bind(&SocketAddr::from(([127, 0, 0, 1], port)).into())?;
     drop(probe);
-    Ok(Command::new(&spec.argv[0])
-        .args(&spec.argv[1..])
-        .current_dir(&spec.cwd)
+    Ok(Command::new(&argv[0])
+        .args(&argv[1..])
+        .current_dir(cwd)
         .env_clear()
         .env("PATH", "/usr/bin:/bin")
-        .envs(&spec.env)
-        .env("PORT", spec.port.to_string())
+        .envs(env)
+        .env("PORT", port.to_string())
         .stdin(Stdio::null())
         .process_group(0)
         .spawn()?)
 }
 
 struct Origin {
-    child: Child,
+    children: Vec<Child>,
     health_deadline: Instant,
 }
+impl Origin {
+    fn launch(spec: &Spec, now: Instant) -> Result<Self> {
+        let mut children = Vec::new();
+        if let Some(companion) = &spec.companion {
+            children.push(launch(
+                companion.port,
+                &companion.argv,
+                &companion.cwd,
+                &companion.env,
+            )?);
+        }
+        match launch(spec.port, &spec.argv, &spec.cwd, &spec.env) {
+            Ok(child) => children.push(child),
+            Err(error) => {
+                for child in &mut children {
+                    stop(child, true)?;
+                }
+                return Err(error);
+            }
+        }
+        Ok(Self {
+            children,
+            health_deadline: now + Duration::from_secs(20),
+        })
+    }
+
+    fn exited(&self) -> Result<bool> {
+        for child in &self.children {
+            if exited(child)? {
+                return Ok(true);
+            }
+        }
+        Ok(false)
+    }
+
+    fn stop(&mut self) -> Result<()> {
+        for child in self.children.iter_mut().rev() {
+            stop(child, false)?;
+        }
+        Ok(())
+    }
+}
+
 struct Proxy {
     child: Child,
     admin_deadline: Instant,
@@ -137,7 +191,7 @@ impl Supervisor {
         let base = json!({"admin": {"listen": format!("unix/{}", admin.display()), "config": {"persist": false}}});
         fs::write(runtime.join("bootstrap.json"), serde_json::to_vec(&base)?)?;
         let db = Connection::open(state.join("hosting.sqlite3"))?;
-        db.execute_batch("BEGIN; CREATE TABLE IF NOT EXISTS apps (name TEXT PRIMARY KEY, enabled INTEGER NOT NULL CHECK (enabled IN (0, 1))); INSERT OR IGNORE INTO apps VALUES ('atlas', 1), ('go-demo', 0), ('slides', 1); UPDATE apps SET enabled=0 WHERE name='go-demo'; COMMIT;")?;
+        db.execute_batch("BEGIN; CREATE TABLE IF NOT EXISTS apps (name TEXT PRIMARY KEY, enabled INTEGER NOT NULL CHECK (enabled IN (0, 1))); INSERT OR IGNORE INTO apps VALUES ('atlas', 1), ('go-demo', 0), ('slides', 1), ('world', 0), ('harrhy-ui', 0); UPDATE apps SET enabled=0 WHERE name='go-demo'; COMMIT;")?;
         Ok(Self {
             config,
             db,
@@ -152,9 +206,7 @@ impl Supervisor {
     }
 
     pub(super) fn wanted(&self) -> Result<Routes> {
-        let mut query = self.db.prepare(
-            "SELECT name FROM apps WHERE enabled=1 AND name IN ('atlas', 'go-demo', 'slides')",
-        )?;
+        let mut query = self.db.prepare("SELECT name FROM apps WHERE enabled=1")?;
         Ok(query
             .query_map([], |row| row.get(0))?
             .collect::<rusqlite::Result<Routes>>()?
@@ -164,17 +216,24 @@ impl Supervisor {
     }
 
     pub(super) fn caddy_config(&self, ready: &Routes) -> Value {
-        let mut routes: Vec<_> = ready.iter().map(|name| {
-            let spec = &self.config.apps[name];
-            let mut proxy = json!({"handler":"reverse_proxy", "upstreams":[{"dial":format!("127.0.0.1:{}", spec.port)}]});
-            if name == "slides" {
-                // The private gateway terminates TLS; Slides validates its native auth origin.
-                proxy["headers"] = json!({"request":{"set":{
-                    "X-Forwarded-Proto":["https"], "X-Forwarded-Host":[spec.host]
-                }}});
-            }
-            json!({"match":[{"host":[spec.host]}], "terminal":true, "handle":[proxy]})
-        }).collect();
+        let mut routes: Vec<_> = ready
+            .iter()
+            .map(|name| {
+                let spec = &self.config.apps[name];
+                let dial = match &spec.socket {
+                    Some(path) => format!("unix/{}", path.display()),
+                    None => format!("127.0.0.1:{}", spec.port),
+                };
+                let mut proxy = json!({"handler":"reverse_proxy", "upstreams":[{"dial":dial}]});
+                if name == "slides" {
+                    // The private gateway terminates TLS; Slides validates its native auth origin.
+                    proxy["headers"] = json!({"request":{"set":{
+                        "X-Forwarded-Proto":["https"], "X-Forwarded-Host":[spec.host]
+                    }}});
+                }
+                json!({"match":[{"host":[spec.host]}], "terminal":true, "handle":[proxy]})
+            })
+            .collect();
         routes.push(json!({"handle":[{"handler":"static_response", "status_code":404}]}));
         let mut config = self.base.clone();
         config["apps"] = json!({"http":{"servers":{"private":{"listen":[format!("unix/{}|0660", self.config.ingress.display())], "automatic_https":{"disable":true}, "routes":routes}}}});
@@ -261,6 +320,12 @@ impl Supervisor {
         let mut ready = Routes::new();
         for name in wanted {
             let spec = &self.config.apps[&name];
+            if let Some(socket) = &spec.socket {
+                if healthy_socket(socket, &spec.host).is_ok() {
+                    ready.insert(name);
+                }
+                continue;
+            }
             if name == "slides" {
                 if healthy(spec.port, "/").is_ok() {
                     ready.insert(name);
@@ -270,15 +335,9 @@ impl Supervisor {
             if !self.origins.contains_key(&name)
                 && self.retries.get(&name).is_none_or(|retry| now >= *retry)
             {
-                match launch(spec) {
-                    Ok(child) => {
-                        self.origins.insert(
-                            name.clone(),
-                            Origin {
-                                child,
-                                health_deadline: now + Duration::from_secs(20),
-                            },
-                        );
+                match Origin::launch(spec, now) {
+                    Ok(origin) => {
+                        self.origins.insert(name.clone(), origin);
                     }
                     Err(error) => {
                         eprintln!("{name}: launch failed: {error}");
@@ -288,13 +347,17 @@ impl Supervisor {
                 }
             }
             if let Some(origin) = self.origins.get_mut(&name) {
-                if !exited(&origin.child)?
+                if !origin.exited()?
                     && healthy(spec.port, "/healthz").is_ok()
-                    && !exited(&origin.child)?
+                    && spec
+                        .companion
+                        .as_ref()
+                        .is_none_or(|probe| healthy(probe.port, "/healthz").is_ok())
+                    && !origin.exited()?
                 {
                     origin.health_deadline = now + Duration::from_secs(20);
                     ready.insert(name);
-                } else if exited(&origin.child)? || now >= origin.health_deadline {
+                } else if origin.exited()? || now >= origin.health_deadline {
                     self.retries
                         .insert(name.clone(), now + Duration::from_secs(5));
                     retire.insert(name);
@@ -308,7 +371,7 @@ impl Supervisor {
             self.proxy_retry = Instant::now() + Duration::from_secs(2);
         }
         for name in retire {
-            stop(&mut self.origins.get_mut(&name).unwrap().child, false)?;
+            self.origins.get_mut(&name).unwrap().stop()?;
             self.origins.remove(&name);
         }
         Ok(())
@@ -332,14 +395,14 @@ impl Supervisor {
         }
         let wanted = self.wanted()?;
         let published = self.proxy.as_ref().and_then(|p| p.published.as_ref());
-        let apps: BTreeMap<_, _> = self.config.apps.keys().map(|name| (name, json!({"host":self.config.apps[name].host,"enabled":wanted.contains(name),"running":self.origins.contains_key(name),"adopted":name=="slides","published":published.is_some_and(|routes| routes.contains(name))}))).collect();
+        let apps: BTreeMap<_, _> = self.config.apps.keys().map(|name| (name, json!({"host":self.config.apps[name].host,"enabled":wanted.contains(name),"running":self.origins.contains_key(name),"adopted":name=="slides" || self.config.apps[name].socket.is_some(),"published":published.is_some_and(|routes| routes.contains(name))}))).collect();
         Ok(json!({"ingress_ready":published.is_some(),"apps":apps}))
     }
 
     pub(super) fn shutdown(&mut self) -> Result<()> {
         self.close_proxy()?;
         for origin in self.origins.values_mut() {
-            stop(&mut origin.child, false)?;
+            origin.stop()?;
         }
         Ok(())
     }
