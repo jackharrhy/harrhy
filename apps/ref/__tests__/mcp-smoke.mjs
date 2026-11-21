@@ -55,7 +55,7 @@ async function privateHeaders(path) {
   assert.equal((await stat(path)).mode & 0o077, 0, "Token must be private");
   return { Authorization: `Bearer ${(await readFile(path, "utf8")).trim()}` };
 }
-async function connect(C, T, authorization = headers, count = 11) {
+async function connect(C, T, authorization = headers, count = 13) {
   const client = new C({ name: "ref-isolated-smoke", version: "1.0.0" });
   clients.push(client);
   await client.connect(
@@ -127,7 +127,7 @@ try {
       Client,
       StreamableHTTPClientTransport,
       readHeaders,
-      3,
+      5,
     );
     const writer = await connect(
       Client,
@@ -135,6 +135,8 @@ try {
       writeHeaders,
       8,
     );
+    await call(writer, "export_start", {}, true);
+    await call(writer, "export_status", { id: randomUUID() }, true);
     const beforeDeniedCreate = await call(current, "boards_list");
     await call(reader, "board_create", { title: "Must not be created" }, true);
     assert.deepEqual(await call(current, "boards_list"), beforeDeniedCreate);

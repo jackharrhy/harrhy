@@ -34,6 +34,8 @@ npm run ref:dev
 
 Open <http://127.0.0.1:8787>. Select **Sign in**, then continue as the disposable local user. This runs authorization code with PKCE S256, signed ID-token verification, userinfo, and the ordinary Ref callback. The local issuer has its own test subject and grants; it cannot authenticate a production account. Create a board, then add images with the button, drag and drop, or paste. Add links with **Add link**, by pasting a URL, or by dropping one onto the board. Link cards show the complete preview image; select one for metadata and the original post. Drag a card to move it; select it to resize, rotate, or remove it. Scroll to zoom around the pointer by default. Toggle **Scroll: Zoom** to **Scroll: Pan** for two-finger trackpad panning; this preference is saved in this browser when storage is available. Hold Shift while scrolling vertically to pan horizontally in either mode. Ctrl/⌘-scroll and trackpad pinch always zoom. Drag the background or middle-drag to pan, or use the zoom buttons. With the canvas focused, Space-drag pans, Delete/Backspace removes the selection, and Escape clears it; these shortcuts do not apply in the inspector or form controls. Tab to **Choose card** and use the arrow keys or type a name to select a card. Tab into its details to open the original or remove it. On narrow screens, item details open below the board.
 
+To rename a board, edit its name in the header. Leaving the field or pressing Enter saves it without reloading the canvas. Escape discards the current edit.
+
 New cards can be selected immediately; moving or deleting one waits for its first confirmed revision. **Live** means the current socket has delivered a board snapshot. On a missed update Ref reconnects; valid queued edits stay in this tab and replay after the fresh snapshot. **Access ended** stops editing and retries. Use **Back to boards** to sign in again if needed.
 
 `.dev.vars` is ignored by Git. Wrangler stores local board and image data under `apps/ref/.wrangler/`. Newport's production data lives in a separate Celld store; local development does not share it. **Lock** ends the current Ref session. Stopping the local issuer invalidates its in-memory codes and tokens; Ref sessions expire within one hour.
@@ -90,6 +92,7 @@ members share the same boards; MCP does not introduce per-user ownership.
 <!-- prettier-ignore -->
 | Tools | Capability | Behavior |
 | --- | --- | --- |
+| `export_start`, `export_status` | `boards-read` | Export all shared boards and their referenced media; the download requires the job owner's current authorization |
 | `boards_list`, `board_get`, `asset_get` | `boards-read` | Read boards, current item revisions and asset metadata; image URLs require authenticated reads |
 | `board_create`, `board_rename` | `boards-write` | Create or rename shared boards; create retries can create another board |
 | `asset_upload` | `boards-write` | Upload standard base64 image bytes; returns an asset to place separately; retries create another asset |
@@ -188,6 +191,19 @@ cannot undo an edit: read the board before retrying and reuse an operation ID
 only for the same operation. Ordinary uploads and link creation remain human
 controls; no file access, arbitrary JavaScript, or general DOM automation is
 exposed.
+
+## Download a portable export
+
+From the boards page, choose **Export archive**. Supply a short-lived delegated admin/archive-read access token, start the export, then check its status and download it. The page does not store the token. On an existing `/mcp` connection, a human with `boards-read` can call `export_start` and `export_status` without another consent step. Fetch the ready URL with the same qualified bearer. Write-only access and an ordinary browser session do not authorize export. See [export consent and scopes](export-consent.md).
+
+Both interfaces return the same private tar file. One job runs at a time for the entire instance. Starting again as its owner returns the same job until it expires, including after a failure. The service discards partial data on failure, rechecks board records and snapshots after copying media, and expires the job and staged bytes 15 minutes after start. A build gets at most five minutes and three attempts. Limits: 32 boards, 4,000 items total (2,000 per board), 256 files including a 4 MiB manifest, and 512 MiB including tar padding. Media retain the existing per-file limits. The server streams the result; the browser may need space for the full file before saving.
+
+Extract a tar downloaded directly from Ref into a **new private directory**, then use the existing restore command with a separately authorized restore credential. For example:
+
+```sh
+(umask 077 && mkdir ref-backup && tar -xf ref-archive.tar -C ref-backup)
+REF_URL=https://new-ref.example.com npm run restore --workspace @harrhy/ref -- ./ref-backup
+```
 
 ## Back up and restore
 

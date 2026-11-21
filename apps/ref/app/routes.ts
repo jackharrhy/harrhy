@@ -2,6 +2,7 @@ import { get, post, route } from "remix/routes";
 
 export const routes = route({
   home: get("/"),
+  exportPage: get("/archive/exports"),
   logout: post("/logout"),
   auth: route("auth", {
     login: get("/login"),
@@ -25,6 +26,9 @@ export const routes = route({
     endpoint: post("/mcp"),
   },
   archive: {
+    startExport: post("/api/archive/exports"),
+    exportStatus: get("/api/archive/exports/:id"),
+    downloadExport: get("/api/archive/exports/:id/download"),
     boards: get("/api/archive/boards"),
     restoreBoard: post("/api/archive/boards"),
     restoreAsset: post("/api/archive/boards/:boardId/assets/:assetId"),

@@ -26,7 +26,6 @@ export const broadcastFloat: LabConcept = {
     headingImage: glassHeadingImage,
     cardRadius: "18px",
     surfaceTint: "#628ec7",
-    insetSurface: "#22569b",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },

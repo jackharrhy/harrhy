@@ -1,13 +1,16 @@
+import { randomUUID } from "node:crypto";
 // Transactional native follow-up admission; receipts remain owned by the session worker.
 import { type ConversationId, defineDoc, defineExtension, type SubmissionId } from "@earendil-works/pi-durable";
 import { obj, type Static, str } from "@earendil-works/pi-schema";
 import {
+	BACKGROUND_CONTEXT,
 	type Ctx,
 	defineFacet,
 	expectVariant,
 	forbidden,
 	local,
 	PEER_MESSAGE_ENTRY,
+	signalOf,
 	type PeerMessage,
 	senderText,
 } from "@p2/app/v1";
@@ -17,11 +20,13 @@ import {
 	harnessOf,
 	InputGates,
 	mainConversation,
+	MainDoc,
 	type P2Tool,
 	ReadOnlyConversations,
 	workerOf,
 } from "@p2/app/v1/worker";
 import {
+	AddressedFence, AddressedWorker,
 	Admission,
 	type DeliveryReceiptSchema,
 	type DeliverySchema,
@@ -152,6 +157,7 @@ export default defineFacet((host) => {
 				delivery: Static<typeof DeliverySchema>,
 				provenance: Static<typeof SourceDeliverySchema> | undefined,
 				ctx: Ctx,
+				addressed?: { peer: string; label: string },
 			) =>
 				worker().liveness.call(async () => {
 					if (delivery.session !== worker().init.values.session.id) throw forbidden("Wrong delivery target");
@@ -167,17 +173,19 @@ export default defineFacet((host) => {
 					// The schema-checked wire number is a Durable conversation identifier.
 					const conversation = await durable.conversation(delivery.conversation as ConversationId, ctx);
 					if (!conversation) throw new Error("No target conversation");
-					const conflict = await durable.commit(async (tx) => {
+					const commit = () => durable.commit(async (tx) => {
 						const doc = await tx.doc(Receipts);
 						const saved = doc.events[delivery.id];
 						if (saved) return saved.intentHash !== delivery.intentHash;
+						if (addressed && (await tx.doc(MainDoc)).conversation !== delivery.conversation)
+							throw forbidden("Addressed conversation is no longer current");
 						const submissionId = await conversation.submit(tx, {
 							type: "input",
 							requestId: `stimulus:${delivery.id}`,
 							whenBusy: "followUp",
 							...message(
-								provenance?.source.id ?? "scheduled-stimulus",
-								provenance?.source.label ?? "Scheduled wake",
+								addressed?.peer ?? provenance?.source.id ?? "scheduled-stimulus",
+								addressed?.label ?? provenance?.source.label ?? "Scheduled wake",
 								delivery.text,
 								provenance,
 							),
@@ -191,12 +199,29 @@ export default defineFacet((host) => {
 						};
 						return false;
 					}, ctx);
+					let conflict: boolean;
+					if (addressed) {
+						const token = randomUUID();
+						// Keep the reservation scope alive through native commit and release.
+						conflict = await worker().root(async (scope) => {
+							const fence = expectVariant(await scope.get(AddressedFence, {}), "worker");
+							try {
+								await fence.reserve({ id: delivery.id, intentHash: delivery.intentHash, token }, scope);
+								signalOf(ctx).throwIfAborted();
+								return await commit();
+							} finally {
+								await fence.releaseReservation({ token }, scope);
+							}
+						}, BACKGROUND_CONTEXT);
+					} else conflict = await commit();
 					if (conflict) return { state: "conflict" as const };
 					return (await durable.snapshot(Receipts, ctx))!.events[delivery.id]!;
 				});
 
 			return {
 				admit: (delivery, ctx) => admit(delivery, undefined, ctx),
+				admitAddressed: ({ delivery, ...peer }, ctx) => admit(delivery, undefined, ctx, peer),
+				main: (_args, ctx) => mainConversation(harness().durable, ctx),
 				admitSource: (envelope, ctx) => admit(envelope.delivery, envelope, ctx),
 				validateTarget: (args, ctx) =>
 					worker().liveness.call(async () => {
@@ -260,8 +285,16 @@ export default defineFacet((host) => {
 					}),
 			};
 		},
-		{ accepts: { 1: {} } },
+		{ accepts: { 1: {}, 2: {} } },
 	);
+	host.serve(AddressedWorker, (_params, principal, self) => {
+		if (principal.kind !== "server") throw forbidden("Server stimuli only");
+		const admission = self.get(Admission, {});
+		return { variant: "server", members: {
+			main: (args, ctx) => admission.main(args, ctx),
+			admit: (args, ctx) => admission.admitAddressed(args, ctx),
+		} };
+	});
 	host.serve(
 		StimulusWorker,
 		(_params, principal, self) => {

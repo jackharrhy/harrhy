@@ -10,7 +10,7 @@
 // - rename and pin (owner). Selecting a subagent opens its conversation: the (session, conversation) identity.
 // `+ New session` asks for a working directory, Tab choosing the environment; `/new [env:]path` creates one directly;
 // `/cd [env:]path` relocates the viewed session (the web's Relocate); `/name`, `/session` live here and in the status
-// plugin. With projects (`projects.json`, owner) and an empty search, the list is grouped: each project's row (its
+// plugin. With projects (owner) and an empty search, the list is grouped: each project's row (its
 // places probed in the background; Enter creates a session in the project at the first reachable place, or the one
 // picked with left/right) with its sessions below it, then "Other" ("+ New session" and the sessions of no project).
 // The grouped list shows every session; Tab's scope (current folder / all) applies to the flat lists. `/move` moves the
@@ -148,11 +148,10 @@ export class SessionsSurface implements TuiSurface {
 	private selectedIndex = 0;
 	private visible: Row[] = [];
 	private service: Held<typeof Sessions>;
-	/** The owner's projects (`projects.json`), why its last read failed, and this device's name in their rows. */
+	/** The owner's projects and this device's name in their rows. */
 	private projectList: readonly Project[] = [];
 	private label = "this device";
-	private projectsFailure: string | null = null;
-	/** The sessions' projects by session ID (`Projects.sessions`): a name may outlive its project in projects.json. */
+	/** The sessions' projects by session ID (`Projects.sessions`). */
 	private memberships: Readonly<Record<string, string>> = {};
 	private projectsRef: Held<typeof Projects> | undefined;
 	private readonly probes: PlaceProbes;
@@ -285,10 +284,6 @@ export class SessionsSurface implements TuiSurface {
 				if (this.shown) this.probes.probe(projects.flatMap((project) => project.places));
 				this.rebuild();
 			});
-			follow(ref.failure, (failure) => {
-				this.projectsFailure = failure;
-				this.rebuild();
-			});
 			follow(ref.local, (label) => {
 				this.label = label;
 				this.rebuild();
@@ -300,7 +295,7 @@ export class SessionsSurface implements TuiSurface {
 		});
 	}
 
-	/** The owner's projects, in projects.json's order (`/move` reads them too). */
+	/** The owner's projects, in the owner's order (`/move` reads them too). */
 	get projects(): readonly Project[] {
 		return this.projectList;
 	}
@@ -310,7 +305,7 @@ export class SessionsSurface implements TuiSurface {
 		return this.label;
 	}
 
-	/** The project session `id` belongs to, by name (perhaps no longer in projects.json). */
+	/** The project session `id` belongs to, by name. */
 	projectOf(id: string): string | undefined {
 		return this.memberships[id];
 	}
@@ -412,7 +407,6 @@ export class SessionsSurface implements TuiSurface {
 		const rows: Row[] = [];
 		const byRecent = (a: Session, b: Session) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt;
 		const creating = this.owner && !this.archived && !query;
-		if (creating && this.projectsFailure) rows.push({ kind: "heading", text: this.projectsFailure, error: true });
 		if (this.grouped) this.groupRows(rows, candidates.toSorted(byRecent));
 		else if (creating) {
 			rows.push({ kind: "new", prefix: "" });
@@ -434,8 +428,8 @@ export class SessionsSurface implements TuiSurface {
 	}
 
 	/**
-	 * The grouped list (empty search, owner): each project's row with its sessions below it, in projects.json's order,
-	 * then "Other": "+ New session" and the sessions of no project, or of one projects.json no longer has.
+	 * The grouped list (empty search, owner): each live project's row with its sessions below it, in the owner's order,
+	 * then "Other": "+ New session" and sessions without a live project.
 	 */
 	private groupRows(rows: Row[], sessions: readonly Session[]): void {
 		for (const project of this.projects) {
@@ -923,7 +917,7 @@ export class SessionsSurface implements TuiSurface {
 						: session.pinned
 							? "warning"
 							: undefined;
-			// A project projects.json no longer has: the session waits under "Other", dimmed, with the old name.
+			// A project not in the live list: the session waits under "Other", dimmed, with its project name.
 			const project = this.projectOf(session.id);
 			const gone = project !== undefined && !this.projects.some((each) => each.name === project);
 			const shown = gone ? theme.fg("dim", `${text} (${lineText(project)})`) : color ? theme.fg(color, text) : text;

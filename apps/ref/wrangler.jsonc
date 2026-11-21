@@ -13,10 +13,12 @@
     "bindings": [
       { "name": "DIRECTORY", "class_name": "DirectoryCell" },
       { "name": "BOARDS", "class_name": "BoardCell" },
+      { "name": "EXPORTS", "class_name": "ExportCell" },
     ],
   },
   "migrations": [
     { "tag": "v1", "new_sqlite_classes": ["DirectoryCell", "BoardCell"] },
+    { "tag": "v2", "new_sqlite_classes": ["ExportCell"] },
   ],
   "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "tea-ref-media" }],
 }

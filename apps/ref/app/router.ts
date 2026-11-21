@@ -15,6 +15,7 @@ import type { RefMcpAccess } from "./mcp/auth.ts";
 import {
   AppRuntime,
   AppIdentity,
+  ArchiveSubject,
   McpAccess,
   Authenticated,
   CurrentSessionToken,
@@ -42,6 +43,7 @@ export function createAppRouter(
   token: string | null,
   identity: { config: IdentityConfig; origin: string; onAlternate?: boolean },
   mcpAccess: RefMcpAccess | null = null,
+  archiveSubject: string | null = null,
 ) {
   const router = createRouter<AppContext>({
     middleware: [
@@ -53,6 +55,7 @@ export function createAppRouter(
         context.set(CurrentSessionToken, token);
         context.set(AppIdentity, identity);
         context.set(McpAccess, mcpAccess);
+        context.set(ArchiveSubject, archiveSubject);
         return next();
       },
       formData({

@@ -2,7 +2,11 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { dependencyClosure } from "./publish-impact.mjs";
+import {
+  copiesChangedInput,
+  dependencyClosure,
+  readManifests,
+} from "./publish-impact.mjs";
 
 const root = fileURLToPath(new URL("../..", import.meta.url));
 export const nodeImageApps = [
@@ -21,24 +25,18 @@ export const nodeImageApps = [
 // scripts/config can bootstrap builds without being manifest dependencies.
 export function selectNodeImages({
   paths,
-  beforeLock,
-  afterLock,
+  beforeManifests,
+  afterManifests,
   dockerfiles,
 }) {
   if (!paths.length) return [];
   if (paths.some((path) => !/^(apps|packages)\/[^/]+\/.+/.test(path)))
     return [...nodeImageApps];
-  for (const lock of [beforeLock, afterLock]) {
-    if (!lock?.packages?.[""]) throw new Error("Missing root lock entry");
-    for (const app of nodeImageApps)
-      if (!lock.packages[`apps/${app}`])
-        throw new Error(`Missing lock entry for ${app}`);
-  }
   const workspaces = paths.map((path) => path.split("/").slice(0, 2).join("/"));
   if (
     workspaces.some(
       (workspace) =>
-        !beforeLock.packages[workspace] && !afterLock.packages[workspace],
+        !beforeManifests.has(workspace) && !afterManifests.has(workspace),
     )
   )
     return [...nodeImageApps];
@@ -46,42 +44,11 @@ export function selectNodeImages({
     const dockerfile = dockerfiles[app];
     if (typeof dockerfile !== "string")
       throw new Error(`Missing Dockerfile for ${app}`);
-    // COPY inputs need not be dependencies. A whole-context COPY in either
-    // compared revision still makes every workspace file an image input.
-    // Unsupported COPY syntax conservatively selects the image.
-    for (const line of dockerfile.split("\n")) {
-      if (!/^\s*(?:COPY|ADD)\s/i.test(line) || /--from[=\s]/i.test(line))
-        continue;
-      const args = line
-        .trim()
-        .split(/\s+/)
-        .slice(1)
-        .filter((arg) => !arg.startsWith("--"));
-      const sources = args
-        .slice(0, -1)
-        .map((source) => source.replace(/^\.\//, ""));
-      if (sources.some((source) => source === "." || source === ""))
-        return true;
-      if (
-        !sources.length ||
-        sources.some((source) => /[[\]"'$*?\\]/.test(source))
-      )
-        return true;
-      if (
-        sources.some((source) =>
-          paths.some(
-            (path) =>
-              path === source ||
-              path.startsWith(`${source.replace(/\/$/, "")}/`),
-          ),
-        )
-      )
-        return true;
-    }
+    if (copiesChangedInput(dockerfile, paths)) return true;
     // The closure includes the app itself and app/package consumers. Both
     // revisions matter when a dependency is removed.
-    return [beforeLock, afterLock].some((lock) => {
-      const closure = dependencyClosure(lock, app);
+    return [beforeManifests, afterManifests].some((manifests) => {
+      const closure = dependencyClosure(manifests, app);
       return workspaces.some((workspace) => closure.has(workspace));
     });
   });
@@ -117,12 +84,12 @@ export function selectNodeImagesFromCommits({
       .split("\0")
       .filter(Boolean);
     if (!paths.length) return [];
-    const json = (commit) =>
-      JSON.parse(read(["show", `${commit}:package-lock.json`]));
+    if (paths.some((path) => !/^(apps|packages)\/[^/]+\/.+/.test(path)))
+      return [...nodeImageApps];
     return selectNodeImages({
       paths,
-      beforeLock: json(before),
-      afterLock: json(head),
+      beforeManifests: readManifests(before, read),
+      afterManifests: readManifests(head, read),
       dockerfiles: Object.fromEntries(
         nodeImageApps.map((app) => [
           app,

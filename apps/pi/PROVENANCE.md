@@ -11,19 +11,21 @@ App runtime, plugins, public assets, original scripts and voice sidecar live dir
 - `src/hosts/dev-modules.ts`: local compatibility package path.
 - `plugins/terminals/daemon.ts`: local native daemon package path.
 - `plugins/prompt/worker.ts`: agent guidance points to Harrhy's retained guides and preserves upstream-compatible editing.
-- `__tests__/p2/web-sources.test.ts`: path-mapped source-resolution comparison.
+- `__tests__/p2/web-sources.test.ts`: builds the base bundle and checks that no compatibility package resolves through `dist/`.
 
 Harrhy-only adapters live in `harrhy/`. Root/app TypeScript and npm manifests express the same source aliases and isolated dependency identities in the new topology. The nested lock is derived from the pinned source lock and reconciled for the moved workspaces; dependencies are installed without lifecycle scripts. TypeScript 5.9 checks the app; the retained compatibility build toolchain is separate. Root marked 18.0.11 and app-local marked 18.0.14 preserve the original type boundary.
 
 ## Included and excluded inputs
 
-App `src`, `plugins`, `public`, `scripts`, `voice-server` and non-private guides are retained. Compatibility packages include source, manifests, build configurations, native inputs and third-party notices, but omit their broad test/example/docs trees. App tests are a focused runtime/browser closure under `__tests__/p2` with required fixtures. Omitted upstream tests can be rehearsed separately during updates; they are not required runtime inputs. No runtime plugin facets or user-facing plugin document identities are removed or renamed.
+App `src`, `plugins`, `public`, `scripts`, `voice-server` and non-private guides are retained. Compatibility packages include source, manifests, build configurations, native inputs and third-party notices, but omit their broad test/example/docs trees. App tests are a focused runtime/browser closure under `__tests__/p2` with required fixtures. Omitted upstream tests can be rehearsed separately during updates; they are not required runtime inputs. Intentional removals, including the fork's custom session activity tool and projection, are listed in [LOCAL-CHANGES.md](LOCAL-CHANGES.md). Removing that feature does not delete its historical data.
 
 Private inventory exclusions remain upstream app `README.md`, `DEV.md`, `docs/{handoff,p2-notes,p3-handoff}.md`, `docs/research/chord-trace-history.md`, and package Chord `docs/{benchmarks,decisions}.md`. Unrelated upstream workspaces, dependency directories and generated build output are excluded. The additional generated AI provider catalog, including its public `.manifest.json`, was copied only after the existing catalog validator passed. No auth, keys, credentials, settings, sessions, private plugins or runtime configuration are imported.
 
 The original MIT license (copyright 2025 Mario Zechner) is retained at `LICENSE`. Embedded notices remain alongside their assets; registry dependencies retain their distribution licenses. No dependency or generated build directory is committed.
 
 The Harrhy Previews and optional integration changes are source-only ports on top of the pinned fork snapshot. The `integrations` digest covers the matching adapter code, not installed plugins or instance configuration.
+
+The project plugin uses the server-store implementation from fork commit `20901d66e4ca8b20751f31fc5755a452c04b3e32` (`apps/p2/plugins/projects` only). The existing import marker is authoritative even when the project tables are empty. This port does not change the pinned base. The newer upstream sidebar is a separate selective import, mapped from fork commit `20901d66e4ca8b20751f31fc5755a452c04b3e32` and reconciled with Harrhy branding and session navigation. See [UPSTREAM.md](UPSTREAM.md) for the mapping.
 
 ## Evidence boundary
 

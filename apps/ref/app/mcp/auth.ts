@@ -6,7 +6,6 @@ import {
   roleScope,
   type TokenPrincipal,
 } from "@harrhy/identity";
-
 export interface RefMcpAccess {
   subject: string;
   canRead: boolean;
@@ -72,14 +71,12 @@ export function mcpAuthError(
   status: number,
   message: string,
 ): Response {
-  return Response.json(
-    { error: message },
-    {
-      status,
-      headers: {
-        "Cache-Control": "no-store",
-        "WWW-Authenticate": `Bearer error="${status === 401 ? "invalid_token" : "insufficient_scope"}", resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp"`,
-      },
-    },
-  );
+  const headers = new Headers({ "Cache-Control": "no-store" });
+  if (status === 401 || status === 403) {
+    headers.set(
+      "WWW-Authenticate",
+      `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp", error="${status === 401 ? "invalid_token" : "insufficient_scope"}"`,
+    );
+  }
+  return Response.json({ error: message }, { status, headers });
 }

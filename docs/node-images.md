@@ -24,7 +24,7 @@ The table covers Node-hosted apps and the Celld Workers built with Node 26. Burg
 ## Image dependency policy
 
 Copy the lockfile, root manifest, `.npmrc`, required workspace manifests and any
-install-hook inputs before installing dependencies. Use selected `npm ci --workspace`
+install-hook inputs before installing dependencies. Use selected `pnpm --filter <workspace>... install --frozen-lockfile`
 installs; copy only that app and its workspace closure after the dependency layer.
 Keep revision build arguments after installation. Radio alone needs its icon-font
 postinstall script before installation. Update these inputs when dependencies or
@@ -69,8 +69,8 @@ node scripts/ci/node-image-smoke.mjs maps-compiler tea-smoke gower
 
 The smoke starts the real image command with no host mounts, ports or network, then checks Node 26, pointer compression, UID, loader startup, HTTP/auth boundaries and applicable migrated databases/native bindings. Disposable container layers are removed even on assertion failure. Compiler checks deliberately assert unconfigured health/compile responses: they do not call production toolchains, OAuth, game launches or remote services.
 
-The repository-owned Node images workflow selects from nine images on every PR,
-then builds affected images serially without publishing. All nine named matrix
+The CI Node image matrix selects from nine images on every PR,
+then builds affected images in parallel without publishing. All nine named matrix
 checks remain present; unselected rows skip Docker work. The selector includes
 before/after transitive workspace dependencies and explicit Docker context inputs.
 CMS, Maps service and Maps compiler now copy selected workspaces; unrelated app
@@ -79,12 +79,12 @@ Root/runtime inputs, unknown workspaces, comparison errors and manual dispatch
 select all nine. An empty diff selects none. Run
 `node --test scripts/ci/__tests__/*.test.mjs` for selector and Docker input regressions. The Rotund smoke reaches its actual compiled server over HTTP and checks the original face and favicon byte hashes. The 8mb smoke checks the editor and diagnostics request boundary. It never logs into a registry or publishes.
 
-The Selected runtime images workflow builds the four Celld and three bundled Bun
-images serially. Its network-isolated smoke runs each default CMD, checks HTTP and
+The selected runtime image matrix builds the four Celld and three bundled Bun
+images in parallel. Its network-isolated smoke runs each default CMD, checks HTTP and
 exact emitted asset bodies, exercises startup esbuild and the Radio Azure import,
 checks SQLite write/reopen and restarts the same disposable container. Celld
 restarts wait 15 seconds for the stopped node's default 10-second lease to expire
 before startup diagnostics; this is not an immediate-restart recovery test. It does
 not replace browser, authenticated collaboration or live Azurite acceptance tests.
-Garden retains its separate real-CMD fixture and highlighting smoke. These checks
+Garden retains its real-CMD fixture and highlighting smoke. These checks
 do not publish images or change normal publishers/updaters.

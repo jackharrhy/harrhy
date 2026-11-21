@@ -12,7 +12,6 @@ const workers = [
 
 for (const [workspace, tool, typesFile] of workers) {
   if (existsSync(join(workspace, typesFile))) continue;
-  const command = join("../../node_modules/.bin", tool);
   const args =
     tool === "cf"
       ? ["workers", "types"]
@@ -23,7 +22,7 @@ for (const [workspace, tool, typesFile] of workers) {
             ? ["--env-file", ".dev.vars.example"]
             : []),
         ];
-  const result = spawnSync(command, args, {
+  const result = spawnSync("pnpm", ["exec", tool, ...args], {
     cwd: workspace,
     stdio: "inherit",
   });

@@ -26,7 +26,6 @@ export const frostStudio: LabConcept = {
     headingImage: glassHeadingImage,
     cardRadius: "5px",
     surfaceTint: "#7386a2",
-    insetSurface: "#365681",
     matchColumns: "minmax(0,1fr)",
     contentColumns: "minmax(300px,0.8fr) minmax(0,1.6fr)",
   },

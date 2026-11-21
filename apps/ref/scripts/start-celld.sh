@@ -11,7 +11,7 @@ if [ -z "${CELLD_VARS_FILE:-}" ] && [ -z "${CELLD_VAR_AUTH_ISSUER:-}" ]; then
 fi
 
 mkdir -p /app/.celld/object-store /app/.celld/state
-export CELLD_ESBUILD=/app/node_modules/.bin/esbuild
+export CELLD_ESBUILD="${CELLD_ESBUILD:-$(node -p 'require.resolve("esbuild/bin/esbuild")')}"
 
 attempt=0
 until celld diagnose --bucket "$CELLD_BUCKET" --no-control-plane; do

@@ -1,7 +1,8 @@
+import { downloadExport } from "../../data/export-download.ts";
 import { isUuid } from "../../data/protocol.ts";
 import { currentLog } from "@harrhy/logger";
 import { createController } from "remix/router";
-import { AppRuntime, Authenticated } from "../../data/runtime.ts";
+import { AppRuntime, ArchiveSubject } from "../../data/runtime.ts";
 import {
   HASH_PATTERN,
   parseArchivedPreview,
@@ -17,9 +18,36 @@ import { routes } from "../../routes.ts";
 
 export default createController(routes.archive, {
   actions: {
+    async startExport(context) {
+      const subject = context.get(ArchiveSubject);
+      if (!subject) return new Response("Forbidden", { status: 403 });
+      const job = await context.get(AppRuntime)!.exports.start(subject);
+      return job
+        ? Response.json(job, { status: job.state === "building" ? 202 : 200 })
+        : new Response("Export unavailable. Try again later.", { status: 503 });
+    },
+    async exportStatus(context) {
+      const subject = context.get(ArchiveSubject);
+      if (!subject) return new Response("Forbidden", { status: 403 });
+      const job = await context
+        .get(AppRuntime)!
+        .exports.status(subject, context.params.id);
+      return job
+        ? Response.json(job)
+        : new Response("Export not found", { status: 404 });
+    },
+    async downloadExport(context) {
+      const subject = context.get(ArchiveSubject);
+      if (!subject) return new Response("Forbidden", { status: 403 });
+      return downloadExport(
+        context.get(AppRuntime)!.exports,
+        subject,
+        context.params.id,
+      );
+    },
     async boards(context) {
       const log = currentLog();
-      if (!context.get(Authenticated))
+      if (!context.get(ArchiveSubject))
         return new Response("Forbidden", { status: 403 });
       const boards = await context.get(AppRuntime)!.directory.listBoards();
       log?.set({ "boards.count": boards.length });
@@ -29,7 +57,7 @@ export default createController(routes.archive, {
     },
     async restoreBoard(context) {
       const log = currentLog();
-      if (!context.get(Authenticated))
+      if (!context.get(ArchiveSubject))
         return new Response("Forbidden", { status: 403 });
       const record = parseJsonField(context.get(FormData)!, "record", 4096);
       const board = parseBoardRecord(record);
@@ -135,7 +163,7 @@ function parseJsonField(form: FormData, key: string, limit: number): unknown {
 async function boardAccess(
   context: AppContext & { params: { boardId: string } },
 ) {
-  if (!context.get(Authenticated) || !isUuid(context.params.boardId))
+  if (!context.get(ArchiveSubject) || !isUuid(context.params.boardId))
     return null;
   return context.get(AppRuntime)!.directory.board(context.params.boardId);
 }

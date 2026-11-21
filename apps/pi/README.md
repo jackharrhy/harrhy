@@ -7,6 +7,7 @@
 App implementation lives directly in `src/`, `plugins/`, `public/`, `scripts/` and `voice-server/`, preserving upstream names and relative structure. Shared compatibility source lives in `compat/packages/`; it is checked in, not fetched or supplied as opaque archives. `harrhy/` contains the small install, qualification and sandbox adapters. Focused tests live in `__tests__/`. See [UPSTREAM.md](UPSTREAM.md) for the deterministic path map and reviewed update procedure, and [PROVENANCE.md](PROVENANCE.md) for the source baseline and exclusions. Preserve upstream formatting; do not mass-rename or reformat retained implementation.
 
 The host entry points remain `src/hosts/{server,tui}.ts`. `npm start` invokes only Harrhy's disposable fixture sandbox, not a production host.
+For a standalone supervised server, set an absolute `P2_DATA_DIR` and run `node --import ./src/source.ts ./harrhy/run-server.mjs` from `apps/pi`. It binds loopback, respects the retained host settings, and does not mint a sign-in token on boot.
 To open an existing local session directly, run `node --import ./src/source.ts ./src/hosts/tui.ts --session <p2-session-id>` from `apps/pi` after installing dependencies. This requires owner sign-in and rejects missing or archived sessions. Omit `--session` to open the picker. Automatic Rex mirroring is no longer included; standalone Rex and existing panes are unaffected by this source change.
 
 ## Setup and checks
@@ -25,7 +26,9 @@ Set `CHROMIUM_BIN` for separately installed Chromium. The check installs the iso
 
 ## Configuration
 
-Atlas feedback and Hermes ingress are optional host plugins, not built-ins. See [Optional integrations](integrations/README.md) for installation and cutover. A base start does not register either endpoint.
+Owners can use **Settings → Theme** to tint the web interface independently of light/dark mode or upload a sidebar logo (PNG, JPEG or WebP, up to 512 × 512 pixels and 500 kB). Reset either setting to restore the default Pi appearance.
+
+The [Pi Inbox](../../docs/pi-inbox.md) and Atlas feedback are optional host plugins. See [Optional integrations](integrations/README.md). A base start does not register their endpoints.
 
 The retained settings/model APIs use the selected instance's data directory, not Harrhy repository files. Read `plugins/models/model-config.ts` and `src/runtime/settings.ts` before changing settings. Never point a fixture or preview at live `P2_DATA_DIR`, copy production auth/configuration, or treat `P2_FAKE` alone as isolation. The preview and fixture wrappers must supply an explicit reviewed plugin selection and network/filesystem boundary.
 

@@ -1,21 +1,26 @@
-FROM platformatic/node-caged:26-slim AS build
+FROM platformatic/node-caged:26-slim AS manifests
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json package-lock.json ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/rotund/package.json apps/rotund/package.json
-RUN npm ci --workspace @harrhy/rotund --include-workspace-root=false
+
+FROM manifests AS production-dependencies
+RUN pnpm --filter @harrhy/rotund... install --frozen-lockfile --prod
+
+FROM manifests AS build
+RUN pnpm --filter @harrhy/rotund... install --frozen-lockfile
 COPY apps/rotund ./apps/rotund
-RUN npm run build --workspace @harrhy/rotund
-RUN npm prune --omit=dev --workspace @harrhy/rotund
+RUN pnpm --filter @harrhy/rotund run build
 
 FROM platformatic/node-caged:26-slim
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 ENV NODE_ENV=production PORT=80
 WORKDIR /app
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/apps/rotund/dist ./apps/rotund/dist
-COPY --chown=node:node apps/rotund/package.json ./apps/rotund/package.json
+COPY --from=production-dependencies --chown=node:node /app/apps/rotund ./apps/rotund
 WORKDIR /app/apps/rotund
 USER node
 EXPOSE 80

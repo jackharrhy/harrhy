@@ -15,7 +15,7 @@ import { MAX_PAINTS_PER_TICK, TILE_SIZE } from "@harrhy/burger-core";
 
 let db: Database;
 let world: ReturnType<typeof initWorld>;
-let app: ReturnType<typeof createServer>;
+let app: Awaited<ReturnType<typeof createServer>>;
 let port: number;
 
 const authConfig: AuthConfig = {
@@ -35,7 +35,7 @@ const setupSession = (database: Database, isAdmin: boolean): string => {
   return createSession(database, userId);
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   db = new Database(":memory:");
   runMigrations(db);
   // Pre-seed catalog with stable ids 1 (floor) and 2 (wall) so paints
@@ -48,7 +48,7 @@ beforeEach(() => {
   // ("wall") and 2 ("counter") are solid; id 3 ("floor") is not.
 
   port = 5800 + Math.floor(Math.random() * 200);
-  app = createServer({
+  app = await createServer({
     port,
     world,
     db,

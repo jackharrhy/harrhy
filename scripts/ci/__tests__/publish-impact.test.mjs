@@ -3,179 +3,195 @@ import test from "node:test";
 import { selectFromCommits, selectPublishedApps } from "../publish-impact.mjs";
 
 const apps = ["ref", "artbin"];
-const root = { name: "harrhy", scripts: { "ref:build": "npm run build" } };
-const base = {
-  packages: {
-    "": { devDependencies: { builder: "1" } },
-    "apps/ref": { dependencies: { "@harrhy/identity": "*" } },
-    "apps/artbin": { dependencies: { art: "1" } },
-    "packages/identity": { dependencies: { shared: "1" } },
-    "node_modules/@harrhy/identity": {
-      link: true,
-      resolved: "packages/identity",
+const beforeManifests = new Map([
+  [
+    "",
+    {
+      name: "harrhy",
+      scripts: { postinstall: "node old.mjs", "ref:build": "node old.mjs" },
     },
-    "node_modules/builder": { version: "1" },
-    "node_modules/art": { version: "1" },
-    "node_modules/shared": {
-      version: "1",
-      optionalDependencies: { native: "1" },
+  ],
+  [
+    "apps/ref",
+    { name: "@harrhy/ref", dependencies: { "@harrhy/bridge": "workspace:*" } },
+  ],
+  ["apps/artbin", { name: "@harrhy/artbin-app" }],
+  [
+    "packages/bridge",
+    {
+      name: "@harrhy/bridge",
+      peerDependencies: { "@harrhy/ui": "workspace:*" },
     },
-    "node_modules/native": { version: "1" },
-  },
-};
+  ],
+  ["packages/ui", { name: "@harrhy/ui" }],
+]);
 
-function select(paths, afterLock = base, afterRoot = root, dockerfiles = {}) {
+function select(paths, { afterManifests = beforeManifests, dockerfiles } = {}) {
   return selectPublishedApps({
     apps,
     paths,
-    beforeLock: base,
-    afterLock,
-    beforeRoot: root,
-    afterRoot,
+    beforeManifests,
+    afterManifests,
     dockerfiles,
   });
 }
 
-test("new unrelated workspace, tooling and root commands publish no existing image", () => {
-  const after = structuredClone(base);
-  after.packages["apps/auth"] = { devDependencies: { newtool: "1" } };
-  after.packages["node_modules/@harrhy/auth"] = {
-    link: true,
-    resolved: "apps/auth",
-  };
-  after.packages["node_modules/newtool"] = { version: "1" };
+function changeRoot(change) {
+  const after = structuredClone(beforeManifests);
+  Object.assign(after.get(""), change);
+  return after;
+}
+
+test("root lock and manager config changes select all without reading manifests", () => {
+  for (const path of [
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    ".npmrc",
+    ".pnpmfile.cjs",
+    ".nvmrc",
+  ]) {
+    assert.deepEqual(
+      selectFromCommits(
+        apps,
+        "base",
+        "head",
+        "push",
+        (args) => {
+          assert.equal(args[0], "diff");
+          return path + "\0";
+        },
+        assert.fail,
+      ),
+      apps,
+    );
+  }
   assert.deepEqual(
-    select(
-      ["package.json", "package-lock.json", "apps/auth/package.json"],
-      after,
-      { ...root, scripts: { ...root.scripts, "auth:dev": "node app.mjs" } },
-    ),
-    [],
+    select(["package.json"], {
+      afterManifests: changeRoot({ packageManager: "pnpm@10.0.0" }),
+    }),
+    apps,
   );
 });
 
-test("resolved shared and optional transitive changes publish their consumers", () => {
-  const changed = structuredClone(base);
-  changed.packages["node_modules/shared"].version = "2";
-  assert.deepEqual(select(["package-lock.json"], changed), ["ref"]);
-
-  const newlyResolvable = structuredClone(base);
-  delete newlyResolvable.packages["node_modules/native"];
+test("workspace source reaches transitive consumers from either revision", () => {
+  const afterManifests = structuredClone(beforeManifests);
+  afterManifests.delete("packages/bridge");
+  assert.deepEqual(select(["packages/ui/styles.ts"], { afterManifests }), [
+    "ref",
+  ]);
   assert.deepEqual(
     selectPublishedApps({
       apps,
-      paths: ["package-lock.json"],
-      beforeLock: newlyResolvable,
-      afterLock: base,
-      beforeRoot: root,
-      afterRoot: root,
+      paths: ["packages/ui/styles.ts"],
+      beforeManifests: afterManifests,
+      afterManifests: beforeManifests,
     }),
     ["ref"],
   );
+  assert.deepEqual(select(["apps/artbin/src/server.ts"]), ["artbin"]);
+  assert.deepEqual(select(["apps/auth/src/server.ts"]), []);
 });
 
-test("workspace source and root build inputs select only affected images", () => {
-  assert.deepEqual(select(["packages/identity/src/index.ts"]), ["ref"]);
-  assert.deepEqual(select([".nvmrc"]), apps);
+test("Docker context inputs include non-dependencies but not stage copies", () => {
   assert.deepEqual(
-    select(
-      ["package.json"],
-      base,
-      { ...root, scripts: { "ref:build": "npm run build:new" } },
-      { ref: "RUN npm run ref:build", artbin: "RUN npm run build" },
-    ),
-    ["ref"],
-  );
-  assert.deepEqual(
-    selectPublishedApps({
-      apps,
-      paths: ["package.json"],
-      beforeLock: base,
-      afterLock: base,
-      beforeRoot: root,
-      afterRoot: { ...root, scripts: { "ref:build": "npm run build:new" } },
-      dockerfiles: { ref: "RUN npm run build --workspace @harrhy/ref" },
-      workspaceScripts: { ref: '{"build":"npm run ref:build"}' },
-    }),
-    ["ref"],
-  );
-  assert.deepEqual(
-    select(["package-lock.json"], { ...base, lockfileVersion: 4 }),
-    apps,
-  );
-  assert.deepEqual(
-    select(["package.json"], base, { ...root, engines: { node: ">=27" } }),
-    apps,
-  );
-  assert.deepEqual(
-    selectFromCommits(apps, "", "HEAD", "workflow_dispatch"),
-    apps,
-  );
-});
-
-test("implicit root npm ci hooks publish images that install the root", () => {
-  const beforeRoot = {
-    ...root,
-    scripts: { ...root.scripts, postinstall: "node old.mjs" },
-  };
-  const afterRoot = {
-    ...beforeRoot,
-    scripts: { ...beforeRoot.scripts, postinstall: "node new.mjs" },
-  };
-  assert.deepEqual(
-    selectPublishedApps({
-      apps,
-      paths: ["package.json"],
-      beforeLock: base,
-      afterLock: base,
-      beforeRoot,
-      afterRoot,
+    select(["apps/auth/src/server.ts"], {
       dockerfiles: {
-        ref: "WORKDIR /app\nRUN npm ci\nRUN npm run build --workspace @harrhy/ref",
-        artbin:
-          "WORKDIR /app\nRUN npm ci --workspace @harrhy/artbin --include-workspace-root=false",
+        ref: "COPY apps/auth /auth",
+        artbin: "COPY --from=build apps/auth /auth",
       },
     }),
     ["ref"],
   );
   assert.deepEqual(
-    selectPublishedApps({
-      apps,
-      paths: ["package.json"],
-      beforeLock: base,
-      afterLock: base,
-      beforeRoot,
-      afterRoot,
-      dockerfiles: {
-        ref: "RUN npm ci --workspace @harrhy/ref --include-workspace-root=false",
-        artbin:
-          "RUN npm ci --workspace @harrhy/artbin --include-workspace-root=true",
-      },
+    select(["celld.json"], {
+      dockerfiles: { ref: "ARG CELLD_IMAGE=example" },
     }),
-    ["artbin"],
+    ["ref"],
   );
 });
 
-test("Auth publisher selects its app and UI package without unrelated apps", () => {
-  const lock = structuredClone(base);
-  lock.packages["apps/auth"] = {
-    dependencies: { "@harrhy/ui": "*" },
+test("changed root scripts match npm and pnpm calls in Dockerfiles or workspaces", () => {
+  const afterManifests = changeRoot({
+    scripts: {
+      ...beforeManifests.get("").scripts,
+      "ref:build": "node new.mjs",
+    },
+  });
+  for (const command of ["npm run ref:build", "pnpm -w run ref:build"]) {
+    assert.deepEqual(
+      select(["package.json"], {
+        afterManifests,
+        dockerfiles: {
+          ref: "RUN " + command,
+          artbin: "RUN pnpm run ref:build:other",
+        },
+      }),
+      ["ref"],
+    );
+  }
+  afterManifests.get("apps/ref").scripts = {
+    build: "pnpm --filter . run ref:build",
   };
-  lock.packages["packages/ui"] = {};
-  lock.packages["node_modules/@harrhy/ui"] = {
-    link: true,
-    resolved: "packages/ui",
-  };
-  const selectAuth = (paths) =>
-    selectPublishedApps({
-      apps: ["auth"],
-      paths,
-      beforeLock: lock,
-      afterLock: lock,
-      beforeRoot: root,
-      afterRoot: root,
-    });
-  assert.deepEqual(selectAuth(["apps/artbin/src/server.mjs"]), []);
-  assert.deepEqual(selectAuth(["apps/auth/src/server.mjs"]), ["auth"]);
-  assert.deepEqual(selectAuth(["packages/ui/styles.ts"]), ["auth"]);
+  assert.deepEqual(select(["package.json"], { afterManifests }), ["ref"]);
+});
+
+test("changed install hooks select root installs only, unless scripts are disabled", () => {
+  const afterManifests = changeRoot({
+    scripts: {
+      ...beforeManifests.get("").scripts,
+      postinstall: "node new.mjs",
+    },
+  });
+  for (const [rootInstall, filteredInstall] of [
+    [
+      "npm ci",
+      "npm ci --workspace @harrhy/artbin-app --include-workspace-root=false",
+    ],
+    [
+      "npm ci --workspace @harrhy/ref --include-workspace-root=true",
+      "npm ci --ignore-scripts",
+    ],
+    [
+      "pnpm --filter @harrhy/ref... --filter . install --frozen-lockfile",
+      "pnpm --filter @harrhy/artbin-app... install",
+    ],
+    [
+      "pnpm install --frozen-lockfile",
+      "pnpm --filter . install --ignore-scripts",
+    ],
+  ]) {
+    assert.deepEqual(
+      select(["package.json"], {
+        afterManifests,
+        dockerfiles: {
+          ref: "RUN " + rootInstall,
+          artbin: "RUN " + filteredInstall,
+        },
+      }),
+      ["ref"],
+    );
+  }
+});
+
+test("invalid comparisons select all with a warning; manual runs do not compare", () => {
+  assert.deepEqual(
+    selectFromCommits(apps, "base", "head", "workflow_dispatch", assert.fail),
+    apps,
+  );
+  const warnings = [];
+  assert.deepEqual(
+    selectFromCommits(
+      apps,
+      "base",
+      "head",
+      "push",
+      () => {
+        throw new Error("missing base");
+      },
+      (warning) => warnings.push(warning),
+    ),
+    apps,
+  );
+  assert.match(warnings[0], /missing base/);
 });

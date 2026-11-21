@@ -18,7 +18,8 @@
   },
   "dependencies": {
     "@harrhy/maps-editor": "0.1.0",
-    "zod": "^4.6.7"
+    "zod": "^4.6.7",
+    "@harrhy/worldview-renderer": "workspace:^"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",

@@ -1,10 +1,11 @@
-FROM platformatic/node-caged:26-slim AS build
+FROM platformatic/node-caged:26-slim AS manifests
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY package.json package-lock.json .npmrc ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/maps-service/package.json ./apps/maps-service/
 COPY packages/identity/package.json ./packages/identity/
 COPY packages/json-schema/package.json ./packages/json-schema/
@@ -14,7 +15,12 @@ COPY packages/maps-renderer/package.json ./packages/maps-renderer/
 COPY packages/mcp/package.json ./packages/mcp/
 COPY packages/request-body/package.json ./packages/request-body/
 COPY packages/result/package.json ./packages/result/
-RUN npm ci --workspace @harrhy/maps-service --include-workspace-root=true
+
+FROM manifests AS production-dependencies
+RUN pnpm --filter @harrhy/maps-service... install --frozen-lockfile --prod
+
+FROM manifests AS build
+RUN pnpm --filter @harrhy/maps-service... --filter . install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/maps-service ./apps/maps-service
 COPY packages/identity ./packages/identity
@@ -25,11 +31,13 @@ COPY packages/maps-renderer ./packages/maps-renderer
 COPY packages/mcp ./packages/mcp
 COPY packages/request-body ./packages/request-body
 COPY packages/result ./packages/result
-RUN npm run build --workspace @harrhy/worldview-renderer \
-  && npm run build --workspace @harrhy/maps-editor \
-  && npm run build --workspace @harrhy/maps-protocol \
-  && npm run build --workspace @harrhy/maps-service \
-  && npm prune --omit=dev --workspace @harrhy/maps-service --include-workspace-root=true
+RUN pnpm --filter @harrhy/worldview-renderer run build \
+  && pnpm --filter @harrhy/maps-editor run build \
+  && pnpm --filter @harrhy/maps-protocol run build \
+  && pnpm --filter @harrhy/maps-service run build
+
+# Overlay built sources without replacing the production workspace links.
+RUN find apps packages -type d -name node_modules -prune -exec rm -rf {} +
 
 FROM platformatic/node-caged:26-slim
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
@@ -41,16 +49,25 @@ ENV PORT=8792
 ENV HARRHY_MAPS_DATA_ROOT=/app/data
 
 WORKDIR /app/apps/maps-service
-COPY --from=build --chown=node:node /app/node_modules /app/node_modules
+COPY --from=production-dependencies --chown=node:node /app/node_modules /app/node_modules
 COPY --from=build --chown=node:node /app/package.json /app/tsconfig.base.json /app/
+COPY --from=production-dependencies --chown=node:node /app/apps/maps-service /app/apps/maps-service
 COPY --from=build --chown=node:node /app/apps/maps-service /app/apps/maps-service
+COPY --from=production-dependencies --chown=node:node /app/packages/identity /app/packages/identity
 COPY --from=build --chown=node:node /app/packages/identity /app/packages/identity
+COPY --from=production-dependencies --chown=node:node /app/packages/json-schema /app/packages/json-schema
 COPY --from=build --chown=node:node /app/packages/json-schema /app/packages/json-schema
+COPY --from=production-dependencies --chown=node:node /app/packages/maps-editor /app/packages/maps-editor
 COPY --from=build --chown=node:node /app/packages/maps-editor /app/packages/maps-editor
+COPY --from=production-dependencies --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=build --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
+COPY --from=production-dependencies --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
 COPY --from=build --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=production-dependencies --chown=node:node /app/packages/mcp /app/packages/mcp
 COPY --from=build --chown=node:node /app/packages/mcp /app/packages/mcp
+COPY --from=production-dependencies --chown=node:node /app/packages/request-body /app/packages/request-body
 COPY --from=build --chown=node:node /app/packages/request-body /app/packages/request-body
+COPY --from=production-dependencies --chown=node:node /app/packages/result /app/packages/result
 COPY --from=build --chown=node:node /app/packages/result /app/packages/result
 RUN mkdir -p /app/data && chown node:node /app/data
 

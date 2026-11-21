@@ -28,7 +28,6 @@ export const pennantBroadcast: LabConcept = {
       "linear-gradient(180deg, rgb(255 255 255 / .04), transparent 48%)",
     cardRadius: "6px",
     surfaceTint: "#457dc8",
-    insetSurface: "#214984",
     contentColumns: "minmax(0,1.8fr) minmax(340px,1fr)",
   },
   recipe: css({

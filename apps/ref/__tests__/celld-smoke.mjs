@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -8,6 +9,11 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { chromium } from "@playwright/test";
+import {
+  Client,
+  StreamableHTTPClientTransport,
+} from "@modelcontextprotocol/client";
+import { checkBrowserExport } from "./export-browser.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -52,7 +58,7 @@ const environment = {
   CELLD_VAR_AUTH_PUBLIC_ORIGIN: origin,
   CELLD_VAR_AUTH_INTROSPECTION_CLIENT_ID: "ref-local-resource",
   CELLD_VAR_AUTH_INTROSPECTION_SECRET: "ref-local-resource-secret",
-  CELLD_ESBUILD: join(root, "..", "..", "node_modules", ".bin", "esbuild"),
+  CELLD_ESBUILD: createRequire(import.meta.url).resolve("esbuild/bin/esbuild"),
 };
 const result = { status: "running", state, checks: [] };
 let runtime;
@@ -156,6 +162,7 @@ const readTokenFile = join(state, "mcp-read-token");
 const writeTokenFile = join(state, "mcp-write-token");
 const mixedTokenFile = join(state, "mcp-mixed-token");
 const archiveTokenFile = join(state, "archive-token");
+const exportTokenFile = join(state, "export-token");
 const mcpResultFile = join(state, "mcp-result.json");
 const authConfigFile = join(state, "dev-auth.json");
 const mcpEnvironment = {
@@ -173,6 +180,12 @@ try {
   );
   authConfig.applications[0].callback = `${origin}/auth/callback`;
   authConfig.applications[0].roles.push("boards-read", "boards-write");
+  const delegated = {
+    ...authConfig.applications[0],
+    clientId: "ref-test-archive-client",
+    callback: "http://127.0.0.1:48888/auth/callback",
+  };
+  authConfig.applications.push(delegated);
   await writeFile(authConfigFile, JSON.stringify(authConfig), { mode: 0o600 });
   auth = spawn(process.execPath, ["../../packages/dev-auth/server.mjs"], {
     cwd: root,
@@ -199,12 +212,20 @@ try {
     [writeTokenFile, "admin,boards-write"],
     [mixedTokenFile, "admin,boards-read,archive-read"],
     [archiveTokenFile, "admin,archive-read,archive-restore"],
+    [exportTokenFile, "admin,archive-read"],
   ]) {
     await command(
       [process.execPath, "../../packages/dev-auth/token.mjs", file],
       {
         HARRHY_DEV_AUTH_ORIGIN: authOrigin,
-        HARRHY_DEV_AUTH_CALLBACK: `${origin}/auth/callback`,
+        HARRHY_DEV_AUTH_CALLBACK:
+          file === exportTokenFile
+            ? delegated.callback
+            : `${origin}/auth/callback`,
+        HARRHY_DEV_AUTH_CLIENT_ID:
+          file === exportTokenFile
+            ? delegated.clientId
+            : authConfig.applications[0].clientId,
         HARRHY_DEV_AUTH_ROLES: roles,
       },
     );
@@ -438,6 +459,82 @@ try {
       z: 0,
     },
   });
+  await page.goto(origin);
+  const exportToken = (await readFile(exportTokenFile, "utf8")).trim();
+  const browserTar = await checkBrowserExport(page, exportToken);
+  const exportedPath = join(state, "downloaded-archive");
+  for (const [method, path] of [
+    ["POST", "/mcp/archive"],
+    ["GET", "/.well-known/oauth-protected-resource/mcp/archive"],
+  ]) {
+    assert.equal((await fetch(new URL(path, origin), { method })).status, 404);
+  }
+  {
+    const headers = {
+      Authorization: `Bearer ${(await readFile(readTokenFile, "utf8")).trim()}`,
+    };
+    const client = new Client({ name: "export-smoke", version: "1" });
+    const endpoint = new URL("/mcp", origin);
+    const challenge = await fetch(endpoint, { method: "POST" });
+    assert.equal(challenge.status, 401);
+    assert.ok(
+      !challenge.headers.get("WWW-Authenticate").includes("archive-read"),
+    );
+    const discovery = await fetch(
+      new URL("/.well-known/oauth-protected-resource/mcp", origin),
+    );
+    const { scopes_supported } = await discovery.json();
+    assert.ok(scopes_supported.some((scope) => scope.endsWith(":boards-read")));
+    assert.ok(!scopes_supported.some((scope) => scope.includes("archive-")));
+    for (const route of ["/api/archive/boards", "/api/archive/exports"]) {
+      assert.equal(
+        (await fetch(new URL(route, origin), { method: "POST", headers }))
+          .status,
+        403,
+      );
+    }
+
+    try {
+      await client.connect(
+        new StreamableHTTPClientTransport(endpoint, {
+          requestInit: { headers },
+        }),
+      );
+      const names = (await client.listTools()).tools
+        .map((t) => t.name)
+        .toSorted();
+      assert.deepEqual(names, [
+        "asset_get",
+        "board_get",
+        "boards_list",
+        "export_start",
+        "export_status",
+      ]);
+      async function tool(name, args) {
+        const reply = await client.callTool({ name, arguments: args });
+        assert.ok(!reply.isError, `Failed ${name}`);
+        return reply.structuredContent ?? JSON.parse(reply.content[0].text);
+      }
+      const { id } = await tool("export_start", {});
+      const { downloadUrl, state: phase } = await tool("export_status", { id });
+      assert.equal(phase, "ready");
+      assert.equal(downloadUrl, `${origin}/api/archive/exports/${id}/download`);
+      assert.equal((await fetch(downloadUrl)).status, 401);
+      const download = await fetch(downloadUrl, { headers });
+      assert.equal(download.status, 200);
+      const bytes = Buffer.from(await download.arrayBuffer());
+      assert.deepEqual(bytes, await readFile(browserTar));
+      const tarPath = join(state, "mcp.tar");
+      await writeFile(tarPath, bytes, { mode: 0o600 });
+      await mkdir(exportedPath, { mode: 0o700 });
+      await command(["tar", "-xf", tarPath, "-C", exportedPath]);
+    } finally {
+      await client.close();
+    }
+  }
+  result.checks.push(
+    "browser archive export: delegated read, fresh download authorization, native file",
+  );
   const archivePath = join(state, "archive");
   const archiveEnvironment = {
     REF_URL: origin,
@@ -465,11 +562,16 @@ try {
   await start();
   for (let attempt = 0; attempt < 2; attempt++)
     await command(
-      [process.execPath, "scripts/archive.mjs", "restore", archivePath],
+      [
+        process.execPath,
+        "scripts/archive.mjs",
+        "restore",
+        attempt ? archivePath : exportedPath,
+      ],
       archiveEnvironment,
     );
   result.checks.push(
-    "archive backup and repeated restore into an empty native store preserve media and preview IDs/bytes",
+    "MCP and browser downloads match; native cold restore and repeated CLI restore preserve media and preview IDs/bytes",
   );
   result.status = "passed";
 } catch (error) {
@@ -487,6 +589,7 @@ try {
       writeTokenFile,
       mixedTokenFile,
       archiveTokenFile,
+      exportTokenFile,
     ].map((file) => rm(file, { force: true })),
   );
   try {

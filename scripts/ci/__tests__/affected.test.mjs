@@ -87,7 +87,7 @@ test("edge and documentation changes do not start CMS checks", () => {
         "scripts/ci/__tests__/affected.test.mjs",
         "scripts/ci/publish-impact.mjs",
         "scripts/ci/__tests__/publish-impact.test.mjs",
-        ".github/workflows/publish-ref.yml",
+        ".github/workflows/publish-images.yml",
       ],
       workspaces,
     ),
@@ -165,7 +165,10 @@ test("shared configuration and unrecognized files run all checks", () => {
   );
   for (const path of [
     "package-lock.json",
-    ".github/workflows/check.yml",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    ".npmrc",
+    ".github/workflows/ci.yml",
     "compose.yml",
     "unexpected/config.ts",
   ])

@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
@@ -46,7 +47,9 @@ function environment(name, port) {
     CELLD_ADDR: `127.0.0.1:${port}`,
     CELLD_INTERNAL_ADDR: "127.0.0.1:0",
     CELLD_DURABILITY: "bucket",
-    CELLD_ESBUILD: join(teaRoot, "../../node_modules/.bin/esbuild"),
+    CELLD_ESBUILD: createRequire(import.meta.url).resolve(
+      "esbuild/bin/esbuild",
+    ),
   };
   return name === "source"
     ? { ...base, CELLD_VAR_REF_PASSWORD: password }

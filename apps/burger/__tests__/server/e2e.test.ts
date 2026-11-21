@@ -60,7 +60,7 @@ const tick = (world: TestWorld) => {
   broadcastGameState({ playerStates: states });
 };
 
-let app: ReturnType<typeof createServer>;
+let app: Awaited<ReturnType<typeof createServer>>;
 let world: TestWorld;
 let port: number;
 let db: Database;
@@ -74,7 +74,7 @@ const authConfig: AuthConfig = {
   isProduction: false,
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   port = 5500 + Math.floor(Math.random() * 500);
 
   db = new Database(":memory:");
@@ -89,7 +89,7 @@ beforeEach(() => {
 
   world = initWorld(db);
 
-  app = createServer({
+  app = await createServer({
     port,
     world,
     db,

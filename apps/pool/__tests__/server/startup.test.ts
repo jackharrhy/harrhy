@@ -9,7 +9,12 @@ test("server creates a WAL database and restarts without losing match records", 
   try {
     for (let boot = 0; boot < 2; boot++) {
       const child = Bun.spawn(
-        [process.execPath, join(import.meta.dir, "../../server/index.ts")],
+        [
+          process.execPath,
+          "--tsconfig-override",
+          join(import.meta.dir, "../../tsconfig.json"),
+          join(import.meta.dir, "../../server/index.ts"),
+        ],
         {
           cwd: directory,
           env: { ...process.env, API_PORT: "0" },
@@ -76,7 +81,12 @@ test("server creates a WAL database and restarts without losing match records", 
 test("oversized websocket frames require joining and are throttled before parsing", async () => {
   const directory = mkdtempSync(join(tmpdir(), "8ball-trace-socket-"));
   const child = Bun.spawn(
-    [process.execPath, join(import.meta.dir, "../../server/index.ts")],
+    [
+      process.execPath,
+      "--tsconfig-override",
+      join(import.meta.dir, "../../tsconfig.json"),
+      join(import.meta.dir, "../../server/index.ts"),
+    ],
     {
       cwd: directory,
       env: { ...process.env, API_PORT: "0", DATA_DIR: directory },

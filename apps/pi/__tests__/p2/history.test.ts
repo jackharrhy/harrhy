@@ -27,45 +27,28 @@ const shown = (store: TranscriptStore): (number | string)[] =>
 
 /**
  * A view watchable whose values the test sends, as Chord delivers them: `snapshot` as a whole value (a reconnect's
- * `r`), `ops` as a change of the last one. Values sent before the store's watch started wait for it.
+ * `r`), `ops` as a change of the last one. Wait for the subscription, then await delivery.
  */
 function liveView() {
 	type Call = { kind: "value"; value: ConversationView; ops: unknown[]; retired: boolean };
-	let listener: ((call: Call) => Promise<void>) | undefined;
-	const waiting: Call[] = [];
-	const send = (call: Call) => {
-		if (listener) void listener(call);
-		else waiting.push(call);
+	const ready = Promise.withResolvers<(call: Call) => Promise<void>>();
+	const send = async (value: ConversationView, ops: unknown[]) => {
+		const listener = await ready.promise;
+		await listener({ kind: "value", value, ops, retired: false });
 	};
 	const readable = {
 		value: undefined,
 		watch: async () => ({
 			value: undefined,
-			start: (next: typeof listener) => {
-				listener = next;
-				for (const call of waiting.splice(0)) void next?.(call);
-			},
-			stop: async () => {
-				listener = undefined;
-				return { kind: "stopped" };
-			},
+			start: ready.resolve,
+			stop: async () => ({ kind: "stopped" }),
 			closed: new Promise(() => {}),
 		}),
 	} as unknown as Watchable<ConversationView | null | undefined>;
-	/** Resolves once the store applied the call (its watch starts asynchronously). */
-	const settle = () => new Promise((resolve) => setTimeout(resolve, 5));
 	return {
 		readable,
-		snapshot: async (value: ConversationView) => {
-			await settle();
-			send({ kind: "value", value, ops: [["r", value]], retired: false });
-			await settle();
-		},
-		ops: async (value: ConversationView) => {
-			await settle();
-			send({ kind: "value", value, ops: [], retired: false });
-			await settle();
-		},
+		snapshot: (value: ConversationView) => send(value, [["r", value]]),
+		ops: (value: ConversationView) => send(value, []),
 	};
 }
 

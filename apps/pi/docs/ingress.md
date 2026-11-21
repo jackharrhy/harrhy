@@ -1,7 +1,9 @@
-# External peer ingress v1
+# Legacy external peer ingress v1
+
+For new local sends, use the [optional Pi Inbox](../../../docs/pi-inbox.md). This page describes legacy compatibility only; preserve existing receipts on their original path.
 
 Install the optional [`ingress` package](../integrations/ingress/) explicitly as a real directory in
-`<P2_DATA_DIR>/plugins/`, using the matching base p2 build and the [operator cutover](../integrations/README.md).
+`<P2_DATA_DIR>/plugins/`, using the matching base p2 build if preserving an existing legacy deployment.
 The package supplies both the HTTP server facet and the worker facet. Without installation or
 `<P2_DATA_DIR>/ingress.json`, the endpoints return 404.
 Initial deployment is local-only: no relay, proxy or browser requests. No new listener or owner principal.

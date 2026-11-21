@@ -97,11 +97,11 @@ function page(nonce: string, base: string, assets: PageAssets, viewer: Viewer, t
 		<style>
 			:root {
 				color-scheme: light;
-				background: #fbfaf8;
+				background: var(--bg, #fbfaf8);
 			}
 			:root[data-theme="dark"] {
 				color-scheme: dark;
-				background: #151413;
+				background: var(--bg, #151413);
 			}
 		</style>
 		<script nonce="${nonce}">

@@ -37,6 +37,8 @@ test("human member and admin board capabilities are separate from archive grants
     const write = authorizeRefMcp(principal(role, ["boards-write"]), project);
     expect(write).toMatchObject({ canRead: false, canWrite: true });
     expect(toolsFor(read).map((t) => t.name)).toEqual([
+      "export_start",
+      "export_status",
       "boards_list",
       "board_get",
       "asset_get",
@@ -49,7 +51,7 @@ test("human member and admin board capabilities are separate from archive grants
           project,
         ),
       ),
-    ).toHaveLength(11);
+    ).toHaveLength(13);
   }
   const owner = principal("admin", ["boards-read"]);
   const ownerWithArchiveGrants = {
@@ -90,6 +92,81 @@ test("machines, wrong audiences, ambiguous admission, missing real grants and un
     principal("admin", []),
   ])
     expect(() => authorizeRefMcp(invalid, project)).toThrow();
+});
+
+test("export RPCs take the verified subject; only ready jobs expose a nonsecret download URL", async () => {
+  const origin = "https://ref.test";
+  const reader = authorizeRefMcp(principal(), project);
+  const boards = authorizeRefMcp(principal("admin", ["boards-write"]), project);
+  const calls: string[][] = [];
+  const job = {
+    id: "export-1",
+    state: "building",
+    expiresAt: 1234,
+    internal: "must-not-leak",
+  };
+  const runtime = {
+    exports: {
+      start: async (subject: string) => {
+        calls.push([subject]);
+        return job;
+      },
+      status: async (subject: string, id: string) => {
+        calls.push([subject, id]);
+        return id === job.id ? job : null;
+      },
+    },
+  } as unknown as AppRuntimeService;
+  for (const [access, name, args] of [
+    [boards, "export_start", {}],
+    [boards, "export_status", { id: job.id }],
+    [reader, "export_start", { subject: "other" }],
+    [reader, "export_status", {}],
+    [reader, "export_status", { id: 123 }],
+  ] as const) {
+    const result = await callRefTool(runtime, access, name, args, origin);
+    expect(result).toHaveProperty("isError", true);
+  }
+  expect(calls).toEqual([]);
+  const start = await callRefTool(runtime, reader, "export_start", {}, origin);
+  expect(start).toHaveProperty("structuredContent", {
+    id: job.id,
+    state: "building",
+    expiresAt: job.expiresAt,
+  });
+  for (const state of ["ready", "failed"]) {
+    job.state = state;
+    const status = await callRefTool(
+      runtime,
+      reader,
+      "export_status",
+      { id: job.id },
+      origin,
+    );
+    expect(status).toHaveProperty("structuredContent", {
+      id: job.id,
+      state,
+      expiresAt: job.expiresAt,
+      ...(state === "ready"
+        ? { downloadUrl: `${origin}/api/archive/exports/${job.id}/download` }
+        : {}),
+    });
+    expect(JSON.stringify(status)).not.toContain(job.internal);
+  }
+  const missing = await callRefTool(
+    runtime,
+    reader,
+    "export_status",
+    { id: "missing" },
+    origin,
+  );
+  expect(missing).toHaveProperty("isError", true);
+  expect(calls).toEqual([
+    [reader.subject],
+    [reader.subject, job.id],
+    [reader.subject, job.id],
+    [reader.subject, "missing"],
+  ]);
 });
 
 test("tool filtering is enforced at execution and destructive actions are explicit", async () => {

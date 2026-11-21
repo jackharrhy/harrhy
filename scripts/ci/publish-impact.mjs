@@ -1,16 +1,20 @@
 import { spawnSync } from "node:child_process";
-import { appendFileSync, readFileSync } from "node:fs";
-import { join, posix, resolve } from "node:path";
+import { appendFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+import { dependencyNames } from "./affected.mjs";
+
 const root = fileURLToPath(new URL("../..", import.meta.url));
-const dependencyFields = [
-  "dependencies",
-  "devDependencies",
-  "optionalDependencies",
-  "peerDependencies",
-];
-const globalInputs = new Set([".dockerignore", ".nvmrc"]);
+const globalInputs = new Set([
+  ".dockerignore",
+  ".nvmrc",
+  ".npmrc",
+  ".pnpmfile.cjs",
+  "package-lock.json",
+  "pnpm-lock.yaml",
+  "pnpm-workspace.yaml",
+]);
 const npmInstallHooks = new Set([
   "preinstall",
   "install",
@@ -21,17 +25,32 @@ const npmInstallHooks = new Set([
   "postprepare",
 ]);
 
-function installsRoot(dockerfile = "") {
+function installsRoot(dockerfile, rootName) {
   return dockerfile
     .replace(/\\\r?\n/g, " ")
     .split(/\bRUN\b|\n|&&|;/)
-    .some(
-      (command) =>
+    .some((command) => {
+      if (/--ignore-scripts\b/.test(command)) return false;
+      if (/\bpnpm\s+(?:.*\s)?install\b/.test(command)) {
+        const filters = [
+          ...command.matchAll(/(?:--filter|-F)(?:\s+|=)["']?([^\s"']+)/g),
+        ];
+        return (
+          !filters.length ||
+          filters.some(([, filter]) =>
+            [".", "./", "{.}", rootName].includes(
+              filter.replace(/\.\.\.$/, ""),
+            ),
+          )
+        );
+      }
+      return (
         /\bnpm\s+(?:ci|install)\b/.test(command) &&
         !/--include-workspace-root=false\b/.test(command) &&
         (!/--workspace(?:\s|=)|\s-w(?:\s|=)/.test(command) ||
-          /--include-workspace-root=true\b/.test(command)),
-    );
+          /--include-workspace-root=true\b/.test(command))
+      );
+    });
 }
 
 function stable(value) {
@@ -49,41 +68,55 @@ function equal(a, b) {
   return JSON.stringify(stable(a)) === JSON.stringify(stable(b));
 }
 
-function dependencies(entry) {
-  return dependencyFields.flatMap((field) => Object.keys(entry?.[field] ?? {}));
-}
-
-function resolveDependency(packages, from, name) {
-  let directory = from;
-  for (;;) {
-    const candidate = posix.join(directory, "node_modules", name);
-    if (packages[candidate]) return candidate;
-    if (!directory || directory === ".") return undefined;
-    directory = posix.dirname(directory);
-  }
-}
-
-export function dependencyClosure(lock, app) {
-  const packages = lock.packages ?? {};
-  const visited = new Map();
-  const pending = ["", `apps/${app}`];
+export function dependencyClosure(manifests, app) {
+  const byName = new Map(
+    [...manifests].map(([path, manifest]) => [manifest.name, path]),
+  );
+  const visited = new Set();
+  const pending = ["", "apps/" + app];
   while (pending.length) {
     const path = pending.pop();
     if (visited.has(path)) continue;
-    const entry = packages[path];
-    if (!entry) {
-      visited.set(path, null);
-      continue;
-    }
-    visited.set(path, entry);
-    if (entry.link && entry.resolved) pending.push(entry.resolved);
-    for (const name of dependencies(entry)) {
-      const target = resolveDependency(packages, path, name);
-      if (target) pending.push(target);
-      else visited.set(`missing:${path}:${name}`, null);
+    const manifest = manifests.get(path);
+    if (!manifest)
+      throw new Error("Missing manifest: " + (path || "package.json"));
+    visited.add(path);
+    for (const name of dependencyNames(manifest)) {
+      if (byName.has(name)) pending.push(byName.get(name));
     }
   }
   return visited;
+}
+
+export function copiesChangedInput(dockerfile, paths) {
+  for (const line of dockerfile.replace(/\\\r?\n/g, " ").split("\n")) {
+    if (!/^\s*(?:COPY|ADD)\s/i.test(line) || /--from[=\s]/i.test(line))
+      continue;
+    const args = line
+      .trim()
+      .split(/\s+/)
+      .slice(1)
+      .filter((arg) => !arg.startsWith("--"));
+    const sources = args
+      .slice(0, -1)
+      .map((source) => source.replace(/^\.\//, ""));
+    if (sources.some((source) => source === "." || source === "")) return true;
+    if (
+      !sources.length ||
+      sources.some((source) => /[[\]"'$*?\\]/.test(source))
+    )
+      return true;
+    if (
+      sources.some((source) =>
+        paths.some(
+          (path) =>
+            path === source || path.startsWith(`${source.replace(/\/$/, "")}/`),
+        ),
+      )
+    )
+      return true;
+  }
+  return false;
 }
 
 function changedRootScripts(before, after) {
@@ -104,60 +137,60 @@ function rootWithoutScripts(manifest) {
 export function selectPublishedApps({
   apps,
   paths,
-  beforeLock,
-  afterLock,
-  beforeRoot,
-  afterRoot,
+  beforeManifests,
+  afterManifests,
   dockerfiles = {},
-  workspaceScripts = {},
 }) {
   if (paths.some((path) => globalInputs.has(path))) return apps;
-  const rootManifestChanged = paths.includes("package.json");
+  if (!paths.length) return [];
+  const beforeRoot = beforeManifests.get("");
+  const afterRoot = afterManifests.get("");
+  const rootChanged = paths.includes("package.json");
   if (
-    rootManifestChanged &&
+    rootChanged &&
     !equal(rootWithoutScripts(beforeRoot), rootWithoutScripts(afterRoot))
   )
     return apps;
 
-  const scripts = rootManifestChanged
-    ? changedRootScripts(beforeRoot, afterRoot)
-    : [];
-  const lockChanged = paths.includes("package-lock.json");
-  if (lockChanged) {
-    const { packages: _beforePackages, ...beforeHeader } = beforeLock;
-    const { packages: _afterPackages, ...afterHeader } = afterLock;
-    if (!equal(beforeHeader, afterHeader)) return apps;
-  }
+  const scripts = rootChanged ? changedRootScripts(beforeRoot, afterRoot) : [];
+  const inputs = paths.filter((path) => path !== "package.json");
   return apps.filter((app) => {
-    if (
-      paths.includes("celld.json") &&
-      /ARG CELLD_IMAGE=/.test(dockerfiles[app] ?? "")
-    )
+    const dockerfile = dockerfiles[app] ?? "";
+    if (paths.includes("celld.json") && /ARG CELLD_IMAGE=/.test(dockerfile))
       return true;
-    if (paths.some((path) => path.startsWith(`apps/${app}/`))) return true;
-    const before = dependencyClosure(beforeLock, app);
-    const after = dependencyClosure(afterLock, app);
-    for (const path of paths) {
-      if (!path.startsWith("packages/")) continue;
-      const workspace = path.split("/").slice(0, 2).join("/");
-      if (before.has(workspace) || after.has(workspace)) return true;
+    if (inputs.length && copiesChangedInput(dockerfile, inputs)) return true;
+
+    const workspaceScripts = [];
+    for (const manifests of [beforeManifests, afterManifests]) {
+      for (const path of dependencyClosure(manifests, app)) {
+        if (!path) continue;
+        if (inputs.some((input) => input.startsWith(path + "/"))) return true;
+        if (scripts.length)
+          workspaceScripts.push(
+            ...Object.values(manifests.get(path).scripts ?? {}),
+          );
+      }
     }
     if (
-      scripts.some((name) =>
-        new RegExp(
-          `\\b(?:npm|bun) run ${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`,
-        ).test(`${dockerfiles[app] ?? ""}\n${workspaceScripts[app] ?? ""}`),
-      )
+      scripts.some((name) => {
+        const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        const call = new RegExp(
+          "\\b(?:npm|pnpm|bun)\\s+(?:[^\\n;&|]*?\\s+)?run\\s+" +
+            escaped +
+            "(?=$|[\\s;&|])",
+        );
+        return [dockerfile, ...workspaceScripts].some((source) =>
+          call.test(source),
+        );
+      })
     )
       return true;
-    if (
+    return (
       scripts.some((name) => npmInstallHooks.has(name)) &&
-      installsRoot(dockerfiles[app])
-    )
-      return true;
-    if (!lockChanged) return false;
-    const keys = new Set([...before.keys(), ...after.keys()]);
-    return [...keys].some((key) => !equal(before.get(key), after.get(key)));
+      [beforeRoot.name, afterRoot.name].some((name) =>
+        installsRoot(dockerfile, name),
+      )
+    );
   });
 }
 
@@ -168,55 +201,75 @@ function git(args) {
   return result.stdout;
 }
 
-function commitJson(commit, path) {
-  return JSON.parse(git(["show", `${commit}:${path}`]));
-}
-
-export function selectFromCommits(apps, before, head, event) {
-  if (event === "workflow_dispatch" || !before || /^0+$/.test(before))
-    return apps;
-  const paths = git(["diff", "--name-only", "--no-renames", before, head])
-    .split("\n")
-    .filter(Boolean);
-  if (!paths.length) return [];
-  const beforeLock = commitJson(before, "package-lock.json");
-  const afterLock = commitJson(head, "package-lock.json");
-  const beforeRoot = commitJson(before, "package.json");
-  const afterRoot = commitJson(head, "package.json");
-  const dockerfiles = Object.fromEntries(
-    apps.map((app) => [
-      app,
-      readFileSync(join(root, "apps", app, "Dockerfile"), "utf8"),
-    ]),
-  );
-  const workspaceScripts = Object.fromEntries(
-    apps.map((app) => {
-      const workspaces = [...dependencyClosure(afterLock, app).keys()].filter(
-        (path) => path.startsWith("apps/") || path.startsWith("packages/"),
-      );
-      const scripts = workspaces.map((path) => {
-        try {
-          return JSON.parse(
-            readFileSync(join(root, path, "package.json"), "utf8"),
-          ).scripts;
-        } catch (error) {
-          if (error.code === "ENOENT") return undefined;
-          throw error;
-        }
-      });
-      return [app, JSON.stringify(scripts)];
+export function readManifests(commit, read) {
+  const paths = read([
+    "ls-tree",
+    "-r",
+    "--name-only",
+    "-z",
+    commit,
+    "--",
+    "apps",
+    "packages",
+  ])
+    .split("\0")
+    .filter((path) => /^(apps|packages)\/[^/]+\/package\.json$/.test(path));
+  return new Map(
+    ["package.json", ...paths].map((path) => {
+      const manifest = JSON.parse(read(["show", commit + ":" + path]));
+      if (!manifest || typeof manifest.name !== "string" || !manifest.name)
+        throw new Error("Invalid manifest: " + commit + ":" + path);
+      return [path.slice(0, -"/package.json".length), manifest];
     }),
   );
-  return selectPublishedApps({
-    apps,
-    paths,
-    beforeLock,
-    afterLock,
-    beforeRoot,
-    afterRoot,
-    dockerfiles,
-    workspaceScripts,
-  });
+}
+
+export function selectFromCommits(
+  apps,
+  before,
+  head,
+  event,
+  read = git,
+  warn = console.warn,
+) {
+  if (event === "workflow_dispatch" || !before || /^0+$/.test(before))
+    return apps;
+  try {
+    const paths = read([
+      "diff",
+      "--name-only",
+      "--no-renames",
+      "-z",
+      before,
+      head,
+    ])
+      .split("\0")
+      .filter(Boolean);
+    if (!paths.length) return [];
+    if (paths.some((path) => globalInputs.has(path))) return apps;
+    return selectPublishedApps({
+      apps,
+      paths,
+      beforeManifests: readManifests(before, read),
+      afterManifests: readManifests(head, read),
+      dockerfiles: Object.fromEntries(
+        apps.map((app) => [
+          app,
+          [before, head]
+            .map((commit) =>
+              read(["show", commit + ":apps/" + app + "/Dockerfile"]),
+            )
+            .join("\n"),
+        ]),
+      ),
+    });
+  } catch (error) {
+    warn(
+      "Could not determine affected publications; selecting all: " +
+        error.message,
+    );
+    return apps;
+  }
 }
 
 if (

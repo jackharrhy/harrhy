@@ -13,7 +13,7 @@ import type { AuthConfig } from "../../server/auth/config";
 
 let db: Database;
 let world: ReturnType<typeof initWorld>;
-let app: ReturnType<typeof createServer>;
+let app: Awaited<ReturnType<typeof createServer>>;
 let port: number;
 
 const authConfig: AuthConfig = {
@@ -37,12 +37,12 @@ const setupSession = (
   return createSession(database, userId);
 };
 
-beforeEach(() => {
+beforeEach(async () => {
   db = new Database(":memory:");
   runMigrations(db);
   world = initWorld(db);
   port = 6200 + Math.floor(Math.random() * 100);
-  app = createServer({
+  app = await createServer({
     port,
     world,
     db,

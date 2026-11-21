@@ -7,7 +7,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY package.json package-lock.json .npmrc ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/ref/package.json ./apps/ref/
 COPY packages/dev-auth/package.json ./packages/dev-auth/
 COPY packages/identity/package.json ./packages/identity/
@@ -18,7 +19,7 @@ COPY packages/request-body/package.json ./packages/request-body/
 COPY packages/result/package.json ./packages/result/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/webmcp/package.json ./packages/webmcp/
-RUN npm ci --workspace @harrhy/ref --include-workspace-root=false
+RUN pnpm --filter @harrhy/ref... install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/ref ./apps/ref
 COPY packages/dev-auth ./packages/dev-auth
@@ -31,7 +32,7 @@ COPY packages/result ./packages/result
 COPY packages/ui ./packages/ui
 COPY packages/webmcp ./packages/webmcp
 ARG HARRHY_REF_VERSION=development
-RUN HARRHY_REF_VERSION=$HARRHY_REF_VERSION NODE_ENV=production npm run build --workspace @harrhy/ref
+RUN HARRHY_REF_VERSION=$HARRHY_REF_VERSION NODE_ENV=production pnpm --filter @harrhy/ref run build
 
 FROM node:26-bookworm-slim@sha256:add5c17c14752c54d2f3d519ec46a3815684d41c33f198bcb09fb998f7dcbf68 AS runtime
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
