@@ -8,12 +8,12 @@
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "a6aab181e95253b5303868de43409683362d6161d3e5a720772c9d307bcfd9e7",
     "voice-server": "e0c3f77d1d60027ec7d223573312ece6dee7652cb1f4e2927941e7414e9dffa8",
-    "docs": "e9472fcb9abd07e5a8ab763d88ff84f176861121c32fffce9c8851c5d76bc143",
-    "__tests__/p2": "fae7b41b32d5aa73fef7cdaca17b160179df5f7ce2b0d61a05b8dffb0a9e0a43",
+    "docs": "ad1cf864d01a0e594f7527c51d69732d972e3d3aa7589bb762880c2489cfaf9c",
+    "__tests__/p2": "846c3c86ffe3df23276ee36d43562ac8e3ae9e9048ee0ce82b012c2d71fd06a7",
     "__tests__/fixtures": "9595899de74130ceda1e08f526715f43eece49d2dc05e7113023198bcf813a0f",
     "compat/packages": "03c4f5f9eb6c068805148c1f1e1efbc58317b684eec47a291e855fc239246c36",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "d3effbe58cdb71862756a589b66c1c7640b4f7986abd1e69c23aa8076c6e5e67"
+    "integrations": "370ed5928b443a0416c6da7ec0f65f59ac3703671113bf96ea8a4ecfe111a7f0"
   },
   "adaptations": [
     {

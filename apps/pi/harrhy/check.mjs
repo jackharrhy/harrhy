@@ -44,6 +44,7 @@ sandbox([
   "__tests__/p2/work-context-previews.test.ts",
   "__tests__/p2/stimuli-lifecycle.test.ts",
   "__tests__/p2/addressed-stimuli.test.ts",
+  "__tests__/p2/local-inbox.test.ts",
   "__tests__/p2/schedules-recovery.test.ts",
 ]);
 const cache = resolve(homedir(), ".cache/ms-playwright");
