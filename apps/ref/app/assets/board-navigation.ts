@@ -18,7 +18,10 @@ export function wheelNavigation(
     event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? viewport.height : 1;
   const x = event.deltaX * xUnit;
   const y = event.deltaY * yUnit;
-  if (event.ctrlKey || event.metaKey || (mode === "zoom" && !event.shiftKey)) {
+  if (
+    y !== 0 &&
+    (event.ctrlKey || event.metaKey || (mode === "zoom" && !event.shiftKey))
+  ) {
     // Preserve small pinch deltas, but limit coarse wheel notches to a 27% step.
     const delta = Math.max(-24, Math.min(24, y));
     return { kind: "zoom", factor: Math.exp(-delta * 0.01) };

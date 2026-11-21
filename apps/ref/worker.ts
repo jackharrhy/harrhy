@@ -23,6 +23,7 @@ import {
   roleScope,
 } from "@harrhy/identity";
 
+export { CursorRoom } from "./app/cursors/room.ts";
 export { BoardCell, DirectoryCell, ExportCell };
 
 type RefEnv = Env & { HARRHY_REF_ALTERNATE_BROWSER_ORIGIN?: string };

@@ -4,8 +4,10 @@ import assert from "node:assert/strict";
 import {
   installFrameGate,
   checkUnconfirmedCard,
+  checkBoardLoading,
   checkQueuedMove,
   checkInlineRename,
+  checkMacCanvas,
   removeImageByKeyboard,
 } from "../__tests__/editor-browser.mjs";
 import { chromium, expect } from "@playwright/test";
@@ -31,6 +33,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { value: "Win32" });
     document.addEventListener("securitypolicyviolation", (event) => {
       window.refCspViolations ??= [];
       window.refCspViolations.push(
@@ -95,6 +98,7 @@ try {
   await page.waitForURL(/\/boards\/[0-9a-f-]+/);
   const boardId = page.url().split("/").at(-1);
   await page.locator("#connection.online").waitFor();
+  await checkMacCanvas(context, page.url());
   const addImages = page.getByRole("button", { name: "Add images" });
   const addLink = page.locator("#link-menu summary");
   assert.ok((await addImages.boundingBox()).height >= 40);
@@ -125,8 +129,12 @@ try {
   await second.goto(`${base}/boards/${boardId}`);
   await second.waitForFunction(() => !!window.refReleaseFrame);
   await expect(second.locator(".connection-text")).toHaveText("Connecting");
+  await expect(second.locator("#board-loading")).toBeVisible();
+  await expect(second.locator("#empty-state")).toBeHidden();
   await second.evaluate(() => window.refReleaseFrame());
   await second.locator("#connection.online").waitFor();
+  await expect(second.locator("#empty-state")).toBeVisible();
+  await expect(second.locator("#board-loading")).toBeHidden();
 
   const image = Buffer.from(
     "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLttAAAAABJRU5ErkJggg==",
@@ -148,6 +156,7 @@ try {
     itemId,
   );
   await checkUnconfirmedCard(page);
+  await checkBoardLoading(context, page.url());
   await checkWebMcpBrowser(page, second, itemId);
   await page.locator(".board-item img[src]").waitFor();
   const mediaPath = await page

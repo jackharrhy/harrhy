@@ -1286,6 +1286,9 @@ importers:
       '@harrhy/identity':
         specifier: 0.1.0
         version: link:../../packages/identity
+      '@harrhy/live-state':
+        specifier: 0.1.0
+        version: link:../../packages/live-state
       '@harrhy/logger':
         specifier: 0.1.0
         version: link:../../packages/logger
@@ -1298,6 +1301,9 @@ importers:
       '@harrhy/webmcp':
         specifier: 0.1.0
         version: link:../../packages/webmcp
+      capnweb:
+        specifier: 0.13.0
+        version: 0.13.0
       remix:
         specifier: 3.2.0
         version: 3.2.0(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(pg@8.16.3)(playwright@1.65.0)
@@ -1532,6 +1538,16 @@ importers:
       remix:
         specifier: 3.2.0
         version: 3.2.0(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(pg@8.16.3)(playwright@1.65.0)
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+
+  packages/live-state:
+    dependencies:
+      capnweb:
+        specifier: 0.13.0
+        version: 0.13.0
     devDependencies:
       '@types/node':
         specifier: 26.6.6
@@ -5928,6 +5944,9 @@ packages:
 
   caniuse-lite@1.0.30001823:
     resolution: {integrity: sha512-TQ5s/djDjNk1axreUW+4rULH+BmdCMLiJkhaXnO5wqivG7tITkSUj4ItIdzqdZHKaXcHAV8dhH3JxOM7/7bwqw==}
+
+  capnweb@0.13.0:
+    resolution: {integrity: sha512-1EQfVyJpML4tXemyKx5ne15kVG/3oFKpBDpZwrhSu6ZmG7akkLGtWj7nYNFzz8uhT2F7WI6+QKzm3BXY0TMqtA==}
 
   ccount@2.0.1:
     resolution: {integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==}
@@ -12962,6 +12981,8 @@ snapshots:
       lodash.uniq: 4.5.0
 
   caniuse-lite@1.0.30001823: {}
+
+  capnweb@0.13.0: {}
 
   ccount@2.0.1: {}
 

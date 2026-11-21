@@ -1,5 +1,6 @@
 import { createController } from "remix/router";
 import {
+  AppIdentity,
   AppRuntime,
   Authenticated,
   CurrentSessionToken,
@@ -22,6 +23,29 @@ export default createController(routes.resources, {
       return Response.json(snapshot, {
         headers: { "Cache-Control": "private, no-store" },
       });
+    },
+    async cursors(context) {
+      const liveBoard = context.get(AppRuntime)!.liveBoard;
+      if (!liveBoard) return new Response("Not found", { status: 404 });
+      const { request } = context;
+      const token = context.get(CurrentSessionToken);
+      if (
+        !token ||
+        request.headers.get("Origin") !== context.get(AppIdentity)?.origin ||
+        !(await boardAccess(context))
+      )
+        return new Response("Forbidden", { status: 403 });
+      if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
+        return new Response("Upgrade required", { status: 426 });
+      const id = context.params.boardId;
+      const headers = {
+        Upgrade: "websocket",
+        "x-ref-board": id,
+        "x-ref-session-hash": await tokenHash(token),
+      };
+      return liveBoard
+        .getByName(`canvas:${id}`)
+        .fetch(new Request(request.url, { headers }));
     },
     async websocket(context) {
       const access = await boardAccess(context);

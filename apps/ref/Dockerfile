@@ -13,6 +13,7 @@ COPY apps/ref/package.json ./apps/ref/
 COPY packages/dev-auth/package.json ./packages/dev-auth/
 COPY packages/identity/package.json ./packages/identity/
 COPY packages/json-schema/package.json ./packages/json-schema/
+COPY packages/live-state/package.json ./packages/live-state/
 COPY packages/logger/package.json ./packages/logger/
 COPY packages/mcp/package.json ./packages/mcp/
 COPY packages/request-body/package.json ./packages/request-body/
@@ -25,6 +26,7 @@ COPY apps/ref ./apps/ref
 COPY packages/dev-auth ./packages/dev-auth
 COPY packages/identity ./packages/identity
 COPY packages/json-schema ./packages/json-schema
+COPY packages/live-state ./packages/live-state
 COPY packages/logger ./packages/logger
 COPY packages/mcp ./packages/mcp
 COPY packages/request-body ./packages/request-body
@@ -55,6 +57,7 @@ COPY --from=build --chown=node:node /app/apps/ref /app/apps/ref
 COPY --from=build --chown=node:node /app/packages/dev-auth /app/packages/dev-auth
 COPY --from=build --chown=node:node /app/packages/identity /app/packages/identity
 COPY --from=build --chown=node:node /app/packages/json-schema /app/packages/json-schema
+COPY --from=build --chown=node:node /app/packages/live-state /app/packages/live-state
 COPY --from=build --chown=node:node /app/packages/logger /app/packages/logger
 COPY --from=build --chown=node:node /app/packages/mcp /app/packages/mcp
 COPY --from=build --chown=node:node /app/packages/request-body /app/packages/request-body

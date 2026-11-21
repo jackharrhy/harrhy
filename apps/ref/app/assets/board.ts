@@ -26,6 +26,8 @@ const pickerElement = document.querySelector("select#card-picker");
 if (!(pickerElement instanceof HTMLSelectElement))
   throw new Error("Card picker is missing");
 const picker = pickerElement;
+const loading = required<HTMLElement>("#board-loading");
+let hasSnapshot = false;
 const empty = required<HTMLElement>("#empty-state");
 const fileInput = required<HTMLInputElement>("#file-input");
 const inspector = required<HTMLElement>("#inspector-content");
@@ -40,6 +42,20 @@ const linkInput = required<HTMLInputElement>("#link-url");
 const titleForm = required<HTMLFormElement>("#board-title-form");
 const titleInput = required<HTMLInputElement>("#board-title");
 let savedTitle = titleInput.value;
+const liveEnabled = app.dataset.liveBoard === "1";
+async function renameForm(): Promise<string | null> {
+  const response = await fetch(titleForm.action, {
+    method: "POST",
+    body: new FormData(titleForm),
+    headers: { Accept: "application/json" },
+    redirect: "error",
+    keepalive: true,
+    signal: AbortSignal.timeout(10000),
+  });
+  if (response.status === 400) return null;
+  if (!response.ok) throw new Error("Rename not confirmed");
+  return ((await response.json()) as { title: string }).title;
+}
 async function saveTitle() {
   if (
     titleInput.readOnly ||
@@ -49,20 +65,14 @@ async function saveTitle() {
     return;
   titleInput.readOnly = true;
   try {
-    const response = await fetch(titleForm.action, {
-      method: "POST",
-      body: new FormData(titleForm),
-      headers: { Accept: "application/json" },
-      redirect: "error",
-      keepalive: true,
-      signal: AbortSignal.timeout(10000),
-    });
-    if (response.status === 400) {
+    // Choose before dispatch. Never replay an unconfirmed mutation over HTTP.
+    const title = liveBoard?.connected
+      ? await liveBoard.rename(titleInput.value)
+      : await renameForm();
+    if (title === null) {
       toast("Name not saved. Enter a board name of 1–100 characters.");
       return;
     }
-    if (!response.ok) throw new Error("Rename not confirmed");
-    const { title } = (await response.json()) as { title: string };
     savedTitle = title;
     document.title = `${title} · ref`;
   } catch {
@@ -118,9 +128,13 @@ let heartbeatTimer = 0;
 let lastHeard = 0;
 let selectedId: string | null = null;
 let spaceHeld = false;
-let scrollMode: "zoom" | "pan" = "zoom";
+// A platform convention, not a guess about the attached pointing device.
+let scrollMode: "zoom" | "pan" = navigator.platform.startsWith("Mac")
+  ? "pan"
+  : "zoom";
 try {
-  if (localStorage.getItem("ref-scroll-mode") === "pan") scrollMode = "pan";
+  const saved = localStorage.getItem("ref-scroll-mode");
+  if (saved === "pan" || saved === "zoom") scrollMode = saved;
 } catch {
   // Restricted browsers may disable storage.
 }
@@ -304,7 +318,25 @@ function required<T extends Element>(selector: string): T {
   return element;
 }
 
+let liveBoard:
+  | ReturnType<typeof import("../cursors/browser.ts").openLiveBoard>
+  | undefined;
+let cursorEpoch = 0;
 function setConnection(value: Connection) {
+  if (liveEnabled && value !== connectionState) {
+    const epoch = ++cursorEpoch;
+    liveBoard?.stop();
+    liveBoard = undefined;
+    if (value === "online")
+      void import("../cursors/browser.ts")
+        .then(({ openLiveBoard }) => {
+          if (epoch === cursorEpoch)
+            liveBoard = openLiveBoard(boardId, viewport, world, (event) =>
+              worldPoint(screenPoint(event)),
+            );
+        })
+        .catch(() => console.warn("Board cursors unavailable"));
+  }
   connectionState = value;
   connection.className = `connection ${value}`;
   required<HTMLElement>(".connection-text").textContent = {
@@ -385,7 +417,6 @@ function endAccess() {
   selectedId = null;
   items.clear();
   renderItems();
-  empty.hidden = true;
   required<HTMLButtonElement>("#tool-add").disabled = true;
   for (const selector of [".board-layout", "#board-title-form", "#link-menu"])
     required<HTMLElement>(selector).inert = true;
@@ -463,7 +494,7 @@ function receive(frame: BoardServerFrame) {
       removeElement(frame.itemId);
       if (selectedId === frame.itemId) selectedId = null;
     }
-    empty.hidden = items.size > 0;
+    renderBoardStatus();
     if (selectedId === frame.itemId || !frame.item) renderInspector();
     return;
   }
@@ -493,6 +524,7 @@ async function refreshSnapshot() {
 }
 
 function loadSnapshot(snapshot: BoardSnapshot) {
+  hasSnapshot = true;
   sequence = snapshot.sequence;
   items.clear();
   for (const item of snapshot.items) items.set(item.id, item);
@@ -534,10 +566,17 @@ function positionElement(element: HTMLElement, item: BoardItem) {
   element.style.transform = `rotate(${item.rotation}deg)`;
 }
 
+function renderBoardStatus() {
+  const ended = connectionState === "ended";
+  loading.hidden = hasSnapshot || ended;
+  world.setAttribute("aria-busy", String(!loading.hidden));
+  empty.hidden = !hasSnapshot || ended || items.size > 0;
+}
+
 function renderItems() {
   for (const item of items.values()) renderItem(item);
   for (const id of elements.keys()) if (!items.has(id)) removeElement(id);
-  empty.hidden = items.size > 0;
+  renderBoardStatus();
   renderInspector();
   scheduleImageDetail();
 }
@@ -559,16 +598,20 @@ function renderItem(item: BoardItem) {
       element.appendChild(linkCard(item.id, item.link));
     } else {
       const image = document.createElement("img");
+      image.dataset.imageState = "loading";
       image.dataset.src = `/media/${boardId}/${item.assetId}`;
       image.alt = displayFilename(item.filename);
       image.loading = "lazy";
       image.decoding = "async";
       image.draggable = false;
       image.addEventListener("error", () => {
-        if (image.src.startsWith("blob:") && image.dataset.original)
-          image.src = image.dataset.original;
+        image.dataset.imageState = "failed";
       });
+      const failure = document.createElement("span");
+      failure.className = "image-failure";
+      failure.textContent = "Image unavailable";
       element.appendChild(image);
+      element.appendChild(failure);
     }
     const resize = document.createElement("span");
     resize.className = "resize-handle";
@@ -657,6 +700,7 @@ function linkCard(itemId: string, link: LinkPreview): HTMLElement {
       const current = items.get(itemId);
       if (element && current) positionElement(element, current);
     });
+    image.dataset.imageState = "loading";
     image.dataset.src = link.imageUrl;
     card.appendChild(image);
   } else {
@@ -1199,17 +1243,57 @@ viewport.addEventListener("pointerdown", handlePointerDown);
 viewport.addEventListener("pointermove", handlePointerMove);
 viewport.addEventListener("pointerup", handlePointerUp);
 viewport.addEventListener("pointercancel", handlePointerUp);
+function overCanvasControl(event: Event) {
+  return (
+    event.target instanceof Element &&
+    !!event.target.closest(
+      "a, button, input, textarea, select, summary, video, [contenteditable]",
+    )
+  );
+}
+// Safari can send a cumulative GestureEvent.scale instead of Ctrl+wheel.
+let gestureStartScale: number | null = null;
+viewport.addEventListener(
+  "gesturestart",
+  (event) => {
+    if (overCanvasControl(event)) return;
+    event.preventDefault();
+    gestureStartScale = scale;
+  },
+  { passive: false },
+);
+viewport.addEventListener(
+  "gesturechange",
+  (event) => {
+    if (gestureStartScale === null) return;
+    event.preventDefault();
+    const gesture = event as MouseEvent & { scale: number };
+    if (!Number.isFinite(gesture.scale) || gesture.scale <= 0) return;
+    const anchor =
+      Number.isFinite(gesture.clientX) && Number.isFinite(gesture.clientY)
+        ? screenPoint(gesture)
+        : { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+    zoomAt((gestureStartScale * gesture.scale) / scale, anchor);
+  },
+  { passive: false },
+);
+viewport.addEventListener(
+  "gestureend",
+  (event) => {
+    if (gestureStartScale !== null) event.preventDefault();
+    gestureStartScale = null;
+  },
+  { passive: false },
+);
+window.addEventListener("blur", () => {
+  gestureStartScale = null;
+});
 viewport.addEventListener(
   "wheel",
   (event) => {
-    if (
-      event.target instanceof Element &&
-      event.target.closest(
-        "a, button, input, textarea, select, summary, video, [contenteditable]",
-      )
-    )
-      return;
+    if (overCanvasControl(event)) return;
     event.preventDefault();
+    if (gestureStartScale !== null) return;
     const navigation = wheelNavigation(
       event,
       {
@@ -1293,6 +1377,18 @@ required("#zoom-out").addEventListener("click", () =>
     y: viewport.clientHeight / 2,
   }),
 );
+// After choosing a card, Tab skips the unrelated canvas tools to its details.
+picker.addEventListener("keydown", (event) => {
+  if (
+    event.key === "Tab" &&
+    !event.shiftKey &&
+    selectedId &&
+    !inspectorPanel.hidden
+  ) {
+    event.preventDefault();
+    required<HTMLButtonElement>("#inspector-close").focus();
+  }
+});
 picker.addEventListener("change", () => select(picker.value || null));
 required("#inspector-close").addEventListener("click", () => select(null));
 window.addEventListener("resize", revealSelected);
