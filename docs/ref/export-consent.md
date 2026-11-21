@@ -1,6 +1,10 @@
 # Ref export authorization
 
-Configure a separate MCP connection to the **canonical Ref origin** at `/mcp/archive`. Start with no saved board token or configured board scopes. Its RFC 9728 metadata at `/.well-known/oauth-protected-resource/mcp/archive` and its bearer challenge both name one requestable scope set:
+On the existing `/mcp` connection, a human with the granted and requested `boards-read` capability can export all shared boards and their referenced media in bulk. There is no new scope or consent prompt. `boards-write` alone does not allow export. Board tokens cannot use the admin archive listing, HTTP start/status or restore routes; only the owner-bound GET download accepts either authorized token family.
+
+## Dedicated archive connection
+
+For export without granting other board tools, configure a separate MCP connection to the **canonical Ref origin** at `/mcp/archive`. Start with no saved board token or configured board scopes. Its RFC 9728 metadata at `/.well-known/oauth-protected-resource/mcp/archive` and its bearer challenge both name one requestable scope set:
 
 ```
 openid urn:zitadel:iam:org:project:id:<Ref project ID>:aud urn:zitadel:iam:org:projects:roles urn:zitadel:iam:org:project:role:admin urn:zitadel:iam:org:project:role:archive-read
@@ -14,4 +18,4 @@ Jack Auth resolves a client ID found in its effective application registry as **
 
 This is approval of the client's **archive-read capability**, which includes reading all shared boards and media. It is not approval of an individual export, download, destination or assistant action. Ref introspects the bearer and enforces the subject, audience, role grants and scopes; it rejects Ref's own configured browser client. Introspection does not contain a signed consent receipt or the Auth registry. Ref cannot attest that an arbitrary bearer from another client traversed the delegated UI. A native or fixture token, or a tool confirmation in an MCP host, is not evidence of such a click.
 
-`export_start {}` starts a job. `export_status {id}` checks a job for the authorized subject. A ready result contains `downloadUrl`, never archive bytes. The URL has no token and grants no authority: fetch it with an `Authorization: Bearer` header and fresh archive authorization for the same subject. Do not put the token in a URL or tool argument. A browser session alone does not authorize a download.
+`export_start {}` starts a job. `export_status {id}` checks a job for the authorized subject. A ready result contains `downloadUrl`, never archive bytes. The URL has no token and grants no authority: fetch it with an `Authorization: Bearer` header and current board-read or dedicated archive authorization for the same subject. Do not put the token in a URL or tool argument. A browser session alone does not authorize a download.

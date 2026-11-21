@@ -461,43 +461,87 @@ try {
   await page.goto(origin);
   const exportToken = (await readFile(exportTokenFile, "utf8")).trim();
   const browserTar = await checkBrowserExport(page, exportToken);
-  const headers = { Authorization: `Bearer ${exportToken}` };
-  const archiveClient = new Client({ name: "archive-smoke", version: "1" });
-  const archiveEndpoint = new URL("/mcp/archive", origin);
-  const challenge = await fetch(archiveEndpoint, { method: "POST" });
-  assert.equal(challenge.status, 401);
-  assert.ok(challenge.headers.get("WWW-Authenticate").includes("archive-read"));
   const exportedPath = join(state, "downloaded-archive");
-  try {
-    await archiveClient.connect(
-      new StreamableHTTPClientTransport(archiveEndpoint, {
-        requestInit: { headers },
-      }),
-    );
-    assert.deepEqual(
-      (await archiveClient.listTools()).tools.map((t) => t.name).toSorted(),
-      ["export_start", "export_status"],
-    );
-    async function tool(name, args) {
-      const reply = await archiveClient.callTool({ name, arguments: args });
-      assert.ok(!reply.isError, `Failed ${name}`);
-      return reply.structuredContent ?? JSON.parse(reply.content[0].text);
+  // Both MCP resources use the same captured bytes. The board connection
+  // sends its ordinary read token throughout; it cannot start via the admin API.
+  for (const [path, file] of [
+    ["/mcp/archive", exportTokenFile],
+    ["/mcp", readTokenFile],
+  ]) {
+    const headers = {
+      Authorization: `Bearer ${(await readFile(file, "utf8")).trim()}`,
+    };
+    const client = new Client({ name: "export-smoke", version: "1" });
+    const endpoint = new URL(path, origin);
+    const challenge = await fetch(endpoint, { method: "POST" });
+    assert.equal(challenge.status, 401);
+    if (path === "/mcp") {
+      assert.ok(
+        !challenge.headers.get("WWW-Authenticate").includes("archive-read"),
+      );
+      const discovery = await fetch(
+        new URL("/.well-known/oauth-protected-resource/mcp", origin),
+      );
+      const { scopes_supported } = await discovery.json();
+      assert.ok(
+        scopes_supported.some((scope) => scope.endsWith(":boards-read")),
+      );
+      assert.ok(!scopes_supported.some((scope) => scope.includes("archive-")));
+      for (const route of ["/api/archive/boards", "/api/archive/exports"]) {
+        assert.equal(
+          (await fetch(new URL(route, origin), { method: "POST", headers }))
+            .status,
+          403,
+        );
+      }
+    } else
+      assert.ok(
+        challenge.headers.get("WWW-Authenticate").includes("archive-read"),
+      );
+    try {
+      await client.connect(
+        new StreamableHTTPClientTransport(endpoint, {
+          requestInit: { headers },
+        }),
+      );
+      const names = (await client.listTools()).tools
+        .map((t) => t.name)
+        .toSorted();
+      assert.deepEqual(
+        names,
+        path === "/mcp"
+          ? [
+              "asset_get",
+              "board_get",
+              "boards_list",
+              "export_start",
+              "export_status",
+            ]
+          : ["export_start", "export_status"],
+      );
+      async function tool(name, args) {
+        const reply = await client.callTool({ name, arguments: args });
+        assert.ok(!reply.isError, `Failed ${name}`);
+        return reply.structuredContent ?? JSON.parse(reply.content[0].text);
+      }
+      const { id } = await tool("export_start", {});
+      const { downloadUrl, state: phase } = await tool("export_status", { id });
+      assert.equal(phase, "ready");
+      assert.equal(downloadUrl, `${origin}/api/archive/exports/${id}/download`);
+      assert.equal((await fetch(downloadUrl)).status, 401);
+      const download = await fetch(downloadUrl, { headers });
+      assert.equal(download.status, 200);
+      const bytes = Buffer.from(await download.arrayBuffer());
+      assert.deepEqual(bytes, await readFile(browserTar));
+      if (path === "/mcp") {
+        const tarPath = join(state, "mcp.tar");
+        await writeFile(tarPath, bytes, { mode: 0o600 });
+        await mkdir(exportedPath, { mode: 0o700 });
+        await command(["tar", "-xf", tarPath, "-C", exportedPath]);
+      }
+    } finally {
+      await client.close();
     }
-    const { id } = await tool("export_start", {});
-    const { downloadUrl, state: phase } = await tool("export_status", { id });
-    assert.equal(phase, "ready");
-    assert.equal(downloadUrl, `${origin}/api/archive/exports/${id}/download`);
-    assert.equal((await fetch(downloadUrl)).status, 401);
-    const download = await fetch(downloadUrl, { headers });
-    assert.equal(download.status, 200);
-    const file = join(state, "mcp.tar");
-    const bytes = Buffer.from(await download.arrayBuffer());
-    assert.deepEqual(bytes, await readFile(browserTar));
-    await writeFile(file, bytes, { mode: 0o600 });
-    await mkdir(exportedPath, { mode: 0o700 });
-    await command(["tar", "-xf", file, "-C", exportedPath]);
-  } finally {
-    await archiveClient.close();
   }
   result.checks.push(
     "browser archive export: delegated read, fresh download authorization, native file",

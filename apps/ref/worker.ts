@@ -221,12 +221,16 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
         const boardGrant =
           principal.scopes.has(roleScope("boards-read")) ||
           principal.scopes.has(roleScope("boards-write"));
-        if (!archive && boardGrant) {
+        const exportDownload =
+          request.method === "GET" &&
+          /^\/api\/archive\/exports\/[^/]+\/download$/.test(url.pathname);
+        if (boardGrant && (!archive || exportDownload)) {
           if (!authorizeRefMcp(principal, env.AUTH_PROJECT_ID).canRead)
             throw new IdentityError(
               "Ref board read authorization is required",
               403,
             );
+          if (exportDownload) archiveSubject = principal.subject;
         } else {
           if (url.pathname.startsWith("/api/archive/exports"))
             authorizeArchiveMcp(
@@ -264,7 +268,7 @@ async function handleRequest(request: Request, env: RefEnv): Promise<Response> {
       token,
       {
         config,
-        origin: onAlternate ? url.origin : publicOrigin.origin,
+        origin: onAlternate && !mcpAccess ? url.origin : publicOrigin.origin,
         onAlternate,
       },
       mcpAccess,

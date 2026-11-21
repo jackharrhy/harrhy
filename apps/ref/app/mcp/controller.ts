@@ -24,7 +24,7 @@ const actions = {
     const identity = context.get(AppIdentity)!;
     const archive = new URL(context.request.url).pathname === archiveMcpPath;
     if (
-      archive !== (access.canExport === true) ||
+      archive !== (access.archiveOnly === true) ||
       (archive && identity.onAlternate)
     )
       return new Response("Forbidden", { status: 403 });

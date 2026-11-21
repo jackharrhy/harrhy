@@ -59,7 +59,7 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
     ),
     tool(
       "export_status",
-      "Check your export. When ready, fetch downloadUrl with the same fresh archive bearer. The URL alone grants no access.",
+      "Check your export. When ready, fetch downloadUrl with the same authorized bearer. The URL alone grants no access.",
       { id: { type: "string", pattern: exportId.source } },
       { readOnlyHint: true },
     ),
@@ -158,7 +158,7 @@ const readTools = new Set(["boards_list", "board_get", "asset_get"]);
 export function toolsFor(access: RefMcpAccess) {
   return refTools.filter((t) => {
     if (t.name === "export_start" || t.name === "export_status")
-      return access.canExport === true;
+      return access.archiveOnly === true || access.canRead;
     return readTools.has(t.name) ? access.canRead : access.canWrite;
   });
 }

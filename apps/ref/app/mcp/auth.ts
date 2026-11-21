@@ -9,8 +9,13 @@ import {
 import { authorizeArchive } from "../middleware/archive-auth.ts";
 
 export type RefMcpAccess =
-  | { subject: string; canRead: boolean; canWrite: boolean; canExport?: false }
-  | { subject: string; canRead: false; canWrite: false; canExport: true };
+  | {
+      subject: string;
+      canRead: boolean;
+      canWrite: boolean;
+      archiveOnly?: false;
+    }
+  | { subject: string; canRead: false; canWrite: false; archiveOnly: true };
 
 export const archiveMcpPath = "/mcp/archive";
 export const archiveMcpMetadataPath = `/.well-known/oauth-protected-resource${archiveMcpPath}`;
@@ -73,7 +78,7 @@ export function authorizeArchiveMcp(
     subject: principal.subject,
     canRead: false,
     canWrite: false,
-    canExport: true,
+    archiveOnly: true,
   };
 }
 

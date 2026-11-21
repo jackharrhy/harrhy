@@ -90,6 +90,7 @@ members share the same boards; MCP does not introduce per-user ownership.
 <!-- prettier-ignore -->
 | Tools | Capability | Behavior |
 | --- | --- | --- |
+| `export_start`, `export_status` | `boards-read` | Export all shared boards and their referenced media; the download requires the job owner's current authorization |
 | `boards_list`, `board_get`, `asset_get` | `boards-read` | Read boards, current item revisions and asset metadata; image URLs require authenticated reads |
 | `board_create`, `board_rename` | `boards-write` | Create or rename shared boards; create retries can create another board |
 | `asset_upload` | `boards-write` | Upload standard base64 image bytes; returns an asset to place separately; retries create another asset |
@@ -191,7 +192,7 @@ exposed.
 
 ## Download a portable export
 
-From the boards page, choose **Export archive**. Supply a short-lived delegated admin/archive-read access token, start the export, then check its status and download it. The page does not store the token. For MCP, connect separately to `/mcp/archive`, call `export_start` and `export_status`, and fetch the ready URL with the authorized bearer's header. See [export consent and scopes](export-consent.md). Board read/write access and an ordinary browser session do not authorize exports.
+From the boards page, choose **Export archive**. Supply a short-lived delegated admin/archive-read access token, start the export, then check its status and download it. The page does not store the token. On an existing `/mcp` connection, a human with `boards-read` can call `export_start` and `export_status` without another consent step. Fetch the ready URL with the same qualified bearer. Write-only access and an ordinary browser session do not authorize export. The separate admin `/mcp/archive` connection still works. See [export consent and scopes](export-consent.md).
 
 Both interfaces return the same private tar file. One job runs at a time for the entire instance. Starting again as its owner returns the same job until it expires, including after a failure. The service discards partial data on failure, rechecks board records and snapshots after copying media, and expires the job and staged bytes 15 minutes after start. A build gets at most five minutes and three attempts. Limits: 32 boards, 4,000 items total (2,000 per board), 256 files including a 4 MiB manifest, and 512 MiB including tar padding. Media retain the existing per-file limits. The server streams the result; the browser may need space for the full file before saving.
 

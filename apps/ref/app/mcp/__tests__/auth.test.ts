@@ -42,6 +42,8 @@ test("human member and admin board capabilities are separate from archive grants
     const write = authorizeRefMcp(principal(role, ["boards-write"]), project);
     expect(write).toMatchObject({ canRead: false, canWrite: true });
     expect(toolsFor(read).map((t) => t.name)).toEqual([
+      "export_start",
+      "export_status",
       "boards_list",
       "board_get",
       "asset_get",
@@ -54,7 +56,7 @@ test("human member and admin board capabilities are separate from archive grants
           project,
         ),
       ),
-    ).toHaveLength(11);
+    ).toHaveLength(13);
   }
   const owner = principal("admin", ["boards-read"]);
   const ownerWithArchiveGrants = {
@@ -142,7 +144,7 @@ test("archive authorization requires the scoped human admin, actual grants and a
     subject: valid.subject,
     canRead: false,
     canWrite: false,
-    canExport: true,
+    archiveOnly: true,
   });
   expect(() => authorizeRefMcp(valid, project)).toThrow();
   for (const invalid of [
