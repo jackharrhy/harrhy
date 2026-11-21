@@ -83,7 +83,7 @@ it("addresses one native admission per peer event across competing selectors and
 			}));
 		`);
 		server = await start();
-		assert.deepEqual(await send(winner), before);
+		await assert.rejects(send(winner), /not authorized/);
 		assert.deepEqual(await receipt(), before);
 		await assert.rejects(send(undefined, "new-event"), /not authorized/);
 		assert.deepEqual(await discover(), []);

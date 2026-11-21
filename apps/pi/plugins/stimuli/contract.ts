@@ -212,21 +212,23 @@ const AddressedMethods = {
 		receipt: obj({ peer: EventIdSchema, eventId: EventIdSchema }),
 };
 
-/** Additive methods preserve released one-shot callers and their contract identity. */
-export const WakeStore = evolve(WakeStoreV1, (e) =>
+export const WakeStoreV2 = evolve(WakeStoreV1, (e) =>
 	e
 		.addMethod("createSubscription", CreateSubscription, SubscriptionSchema)
 		.addMethod("reviseSubscription", ReviseSubscription, SubscriptionSchema)
 		.addMethod("enableSubscription", EnableSubscription, SubscriptionSchema)
 		.addMethod("subscriptions", obj({ session: opt(str()) }), arr(SubscriptionSchema))
 		.addMethod("publish", obj({ ...Binding, event: StimulusJsonSchema }), EventReadbackSchema)
-		.addMethod("receipt", obj(Binding), EventReadbackSchema)
+		.addMethod("receipt", obj(Binding), EventReadbackSchema),
+);
+
+export const WakeStore = evolve(WakeStoreV2, (e) =>
+	e
 		.addMethod("discoverAddressed", AddressedMethods.discover, arr(obj({ id: str(), title: str() })))
 		.addMethod("sendAddressed", AddressedMethods.send, AddressedReadback)
 		.addMethod("receiptAddressed", AddressedMethods.receipt, AddressedReadback)
 		.addMethod("addressedRow", obj({ id: str() }), union([AddressedIntent, nul()])),
 );
-
 
 /** Only authorized registrations are remote; source publication is a trusted server capability. */
 export const Subscriptions = remote("p2.stimulus-subscriptions", {
@@ -265,13 +267,13 @@ export const Subscriptions = remote("p2.stimulus-subscriptions", {
 });
 
 const AddressedDelivery = obj({ delivery: DeliverySchema, peer: EventIdSchema, label: str() });
-/** Native source admission shares the existing receipt transaction and status authority. */
-export const Admission = evolve(AdmissionV1, (e) =>
+export const AdmissionV2 = evolve(AdmissionV1, (e) =>
 	e
 		.addMethod("admitSource", SourceDeliverySchema, DeliveryResult)
-		.addMethod("admitAddressed", AddressedDelivery, DeliveryResult)
-		.addMethod("main", obj({}), int())
 		.addMethod("validateTarget", obj({ conversation: int() }), nul()),
+);
+export const Admission = evolve(AdmissionV2, (e) =>
+	e.addMethod("admitAddressed", AddressedDelivery, DeliveryResult).addMethod("main", obj({}), int()),
 );
 export const StimulusWorker = evolve(StimulusWorkerV1, (e) =>
 	e

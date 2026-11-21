@@ -17,6 +17,7 @@ import {
 	defineState,
 	deriveTyped,
 	forbidden,
+	PluginError,
 	query,
 	isGuest,
 	isOwner,
@@ -307,7 +308,7 @@ export default defineFacet((host) => {
 			const toSession = mapShared(sessionOf);
 			const read = async (id: string, ctx: Ctx): Promise<Session> => {
 				const row = await table.get({ session: SessionHost({ id }) }, ctx);
-				if (row === undefined) throw new Error("Session not found");
+				if (row === undefined) throw new PluginError("session_not_found", "Session not found");
 				return sessionOf(row);
 			};
 			return {

@@ -11,7 +11,7 @@ From an authenticated **owner Chord client**, hold the installed plugin's `Local
 - `status({})` to check whether the inbox is enabled and inspect its scopes and revision. It never returns the digest.
 - `provision({ grant, bearerHash })` to enable or replace the grant at a fresh revision. All omitted scopes are off.
 - `rotate({ bearerHash })` to invalidate the old credential while keeping the active policy revision and peer.
-- `revoke({})` to remove the credential and deny new admission under the grant. Previously admitted work is not undone. Re-enabling cannot revive an old delivery under a prior revision.
+- `revoke({})` to remove the credential and stop new admission reservations. The grant is checked inside the reservation: an attempt that passed that check before revocation (or replacement) may still commit its input afterward. Previously admitted work is not undone. Re-enabling cannot revive an old delivery under a prior revision.
 
 An explicitly broad grant (use only for an agent trusted to invoke any eligible session):
 
@@ -56,7 +56,7 @@ The old `/api/local-inbox/v1` paths are not aliases. Update clients to `/api/inb
 
 Omit `eventId` for a one-shot send. If the POST response is lost, do not resend blindly: the server may already have recorded it. Clients that need safe retries can still supply their own stable `eventId`. `from` is a display name, not authenticated identity or authority.
 
-Send and receipt responses use native states: `recorded` is saved but not yet admitted; `unknown` means admission isn't confirmed; `admitted` includes the native input receipt, not a model reply or task outcome; `blocked` is not admitted. Sends return `202` for recorded or unknown and `200` for admitted or blocked. A changed event selector or text for an existing ID gives `409` when receipt access is allowed. An identical send retry also requires receipt access. Keep the same ID, original selector (including omission) and identical text for retries. Text is limited to 32 KiB UTF-8 and a JSON request to 256 KiB. No cookies, browser requests, query credentials, or redirects.
+Send and receipt responses use native states: `recorded` is saved but not yet admitted; `unknown` means admission isn't confirmed; `admitted` includes the native input receipt, not a model reply or task outcome; `blocked` is not admitted. Sends return `202` for recorded or unknown and `200` for admitted or blocked. POST requires current send permission for the supplied selector, even for a retry. With receipt access too, an identical retry returns its saved state; a changed selector, text or display name conflicts (`409`). Receipt-only grants use GET, without resubmitting or comparing a payload. Keep the same ID, original selector (including omission) and identical text and display name for retries. Text is limited to 32 KiB UTF-8 and a JSON request to 256 KiB. No cookies, browser requests, query credentials, or redirects.
 
 Legacy ingress is unchanged. Preserve its readback and data on the original path. Never copy a legacy event or retry into this namespace because a receipt was missing or a request timed out.
 

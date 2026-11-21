@@ -4,16 +4,16 @@
   "digestFormat": "SHA256 of sorted relative UTF-8 path + NUL + raw SHA256(file), excluding node_modules and dist",
   "trees": {
     "src": "3fe74fc8c510c4dbb13338d6b49e0e6d08bc91fd5c92615c5100c1c058645440",
-    "plugins": "bc6c4a007bf7d0673b2c172715958e960fa05f18b77ea3fda426c87aa2887036",
+    "plugins": "8d30e0b7d37e339e4f6c15c01a7168a4758a4ba906f6c63a677ad52f9647d492",
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "da07cb55dc73f0b2d9ddb8e69268b1b4b1a7ea50bbd7f3d31617ca0d14f666be",
     "voice-server": "e0c3f77d1d60027ec7d223573312ece6dee7652cb1f4e2927941e7414e9dffa8",
     "docs": "0ca42c85678ead6babb5e95e77af98a7a9712e464001f9965d7675eca836cbba",
-    "__tests__/p2": "7ccc86c9f02f4b61d68e86790e9e5c45ef889b67b9765c7879eebb49850ca782",
+    "__tests__/p2": "f3ddadf58542ff40f2d918fbf91acf7437d762f5e5009965a792ab7886d7f72d",
     "__tests__/fixtures": "ba94c6380dea738948af632378387cd30b9b6ec485e99ba78c9b656e21444b67",
     "compat/packages": "03c4f5f9eb6c068805148c1f1e1efbc58317b684eec47a291e855fc239246c36",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "f1e53bee70acacdeda3ba608b3a108fdde8719d465677689283bc28529467ac0"
+    "integrations": "96c43df9b57c807f8c6042b07b9a8c8f002817cce11db0d83baa861659f8c51c"
   },
   "adaptations": [
     {

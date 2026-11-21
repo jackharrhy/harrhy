@@ -18,7 +18,7 @@ import { processLogs } from "@p2/app/v1/node";
 import { Hosts, serverOf, WorkerInitValues } from "@p2/app/v1/server";
 import { Catalog } from "../sessions/contract.ts";
 import { Shares } from "../sharing/contract.ts";
-import { addressedMethods, currentPolicy, serveAddressed, mayDeliver } from "./addressed-server.ts";
+import { addressedMethods, findTarget, serveAddressed, mayDeliver } from "./addressed-server.ts";
 import { Saved } from "./saved.ts";
 import { StimulusSources, sourceKey } from "./contract.server.ts";
 import {
@@ -160,15 +160,13 @@ export default defineFacet((host) => {
 				let row = rowFor(id);
 				const session = row.delivery.session;
 				const addressed = saved.value.addressed[id];
-				if ((await catalog.get({ id: session }, ctx).catch((error) => {
-					if (addressed) return undefined;
-					throw error;
-				}))?.archivedAt !== null) {
+				const target = addressed ? await findTarget(catalog, session, ctx) : await catalog.get({ id: session }, ctx);
+				if (target?.archivedAt !== null) {
 					if (addressed && row.phase.kind === "scheduled") await phase(id, { kind: "closed", reason: "blocked" }, ctx);
 					return;
 				}
 				const unavailable = async () => addressed
-					? !mayDeliver(addressed, currentPolicy(policies.value.get(addressed.peer))) || await shares.isShared({ session }, ctx)
+					? !mayDeliver(addressed, policies.value.get(addressed.peer)) || await shares.isShared({ session }, ctx)
 					: shared(session);
 				if (row.phase.kind === "scheduled" && await unavailable()) {
 					await phase(id, { kind: "closed", reason: "blocked" }, ctx);
@@ -185,7 +183,7 @@ export default defineFacet((host) => {
 				if (status.state !== "missing") {
 					await phase(
 						id,
-						status.state === "done" || status.state === "unanswered"
+						!addressed && (status.state === "done" || status.state === "unanswered")
 							? { kind: "settled", receipt: status.receipt, outcome: status.state }
 							: { kind: "admitted", receipt: status.receipt },
 						ctx,
@@ -269,6 +267,7 @@ export default defineFacet((host) => {
 							if (row.phase.kind === "closed" || row.phase.kind === "settled" || occupied.has(session)) continue;
 							const source = saved.value.events[id];
 							const addressed = saved.value.addressed[id];
+							if (addressed && row.phase.kind === "admitted") continue;
 							if (row.phase.kind === "scheduled" && addressed && !policies.value.has(addressed.peer)) continue;
 							if (
 								row.phase.kind === "scheduled" &&
@@ -483,7 +482,7 @@ export default defineFacet((host) => {
 				},
 			};
 		},
-		{ accepts: { 1: {} } },
+		{ accepts: { 1: {}, 2: {} } },
 	);
 	host.serve(Subscriptions, (_params, principal, self) => {
 		const store = self.get(WakeStore, {});

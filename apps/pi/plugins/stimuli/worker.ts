@@ -54,7 +54,6 @@ const Receipts = defineDoc<{ events: Record<string, Receipt> }>({
 	checkpointWhen: (_value, _ops, info) => info.deltasSinceBase >= 100,
 });
 
-
 const WakeTools = local("p2.wake-tools", { version: 1, params: {}, members: {} });
 
 export default defineFacet((host) => {
@@ -286,7 +285,7 @@ export default defineFacet((host) => {
 					}),
 			};
 		},
-		{ accepts: { 1: {} } },
+		{ accepts: { 1: {}, 2: {} } },
 	);
 	host.serve(AddressedWorker, (_params, principal, self) => {
 		if (principal.kind !== "server") throw forbidden("Server stimuli only");

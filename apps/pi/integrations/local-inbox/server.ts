@@ -7,6 +7,7 @@ import {
   forbidden,
   isChordError,
   isOwner,
+  PluginError,
   local,
   type Ctx,
 } from "@p2/app/v1";
@@ -62,11 +63,10 @@ const eventSchema = compile(
 const idSchema = compile(id);
 
 export default defineFacet((host) => {
-  const disabledPolicy = { label: "Pi Inbox", revision: "disabled" };
   host.serve(Inbox, (_params, self) => {
     const saved = self.state(Saved);
     self.contribute(AddressedPolicies, {
-      [peer]: () => saved.value.active?.policy ?? disabledPolicy,
+      [peer]: () => saved.value.active?.policy,
     });
     const status = (): Status => {
       const policy = saved.value.active?.policy;
@@ -167,8 +167,8 @@ export default defineFacet((host) => {
             });
           if (saved.value.active?.bearerHash !== expected)
             return reply(401, { error: "Credential changed" });
-          const { from, eventId = randomUUID(), ...message } = event;
-          const result = await store.sendAddressed({ ...message, peer, eventId, ...(from ? { from } : {}) }, ctx);
+          const eventId = event.eventId ?? randomUUID();
+          const result = await store.sendAddressed({ ...event, peer, eventId }, ctx);
           return reply(
             result.state === "recorded" || result.state === "unknown" ? 202 : 200,
             { eventId, ...result },
@@ -176,7 +176,7 @@ export default defineFacet((host) => {
         } catch (error) {
           if (isChordError(error, "forbidden"))
             return reply(403, { error: "Operation or target not permitted" });
-          if (error instanceof Error && error.message.includes("Addressed stimulus conflict"))
+          if (error instanceof PluginError && error.code === "addressed_conflict")
             return reply(409, { error: "Event ID already has a different selector or payload" });
           return reply(503, {
             error: "Outcome unavailable; keep the original event ID, selector and payload",

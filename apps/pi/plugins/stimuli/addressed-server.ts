@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { type Static } from "@earendil-works/pi-schema";
-import { awaitWithContext, type FacetHost, forbidden, isWorker, serveKeyed, type Self, type Ctx } from "@p2/app/v1";
+import { awaitWithContext, type FacetHost, forbidden, isWorker, serveKeyed, PluginError, type Ref, type Self, type Ctx } from "@p2/app/v1";
 import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { FamiliarStore } from "../familiar/contract.ts";
 import { Catalog } from "../sessions/contract.ts";
@@ -12,12 +12,26 @@ import {
 
 const hash = (value: string) => createHash("sha256").update(value).digest("hex");
 const key = (peer: string, eventId: string) => `addressed:${JSON.stringify([peer, eventId])}`;
-export const currentPolicy = (entry: AddressedPolicy | (() => AddressedPolicy | undefined) | undefined) =>
+type PolicyEntry = AddressedPolicy | (() => AddressedPolicy | undefined) | undefined;
+const currentPolicy = (entry: PolicyEntry) =>
 	typeof entry === "function" ? entry() : entry;
 const allowed = (policy: AddressedPolicy | undefined, selector: string | undefined) =>
 	selector === undefined ? policy?.send?.familiar === true : (policy?.send?.sessions === "all-private" || policy?.send?.sessions.includes(selector) === true);
-export const mayDeliver = (row: AddressedIntent, policy: AddressedPolicy | undefined) =>
-	row.revision === policy?.revision && allowed(policy, row.selector);
+export function mayDeliver(row: AddressedIntent, entry: PolicyEntry) {
+	// A provider may not yet have registered after restart. Only a loaded provider can withdraw an intent.
+	if (!entry) throw new Error("Addressed policy provider unavailable");
+	const policy = currentPolicy(entry);
+	return row.revision === policy?.revision && allowed(policy, row.selector);
+}
+
+export async function findTarget(catalog: Ref<typeof Catalog>, id: string, ctx: Ctx) {
+	try {
+		return await catalog.get({ id }, ctx);
+	} catch (error) {
+		if (error instanceof PluginError && error.code === "session_not_found") return undefined;
+		throw error;
+	}
+}
 
 function readback(row: AddressedIntent): Static<typeof AddressedReadback> {
 	switch (row.phase.kind) {
@@ -48,9 +62,9 @@ export function addressedMethods(
 				? await catalog.openIds({}, ctx)
 				: new Set(policy?.discover ?? []);
 			for (const id of ids) {
-				const row = await catalog.get({ id }, ctx).catch(() => undefined);
+				const row = await findTarget(catalog, id, ctx);
 				if (row?.archivedAt === null && !(await shares.isShared({ session: id }, ctx)) &&
-					(await catalog.get({ id }, ctx).catch(() => undefined))?.archivedAt === null)
+					(await findTarget(catalog, id, ctx))?.archivedAt === null)
 					rows.push({ id, title: row.title });
 			}
 			return policy?.revision === currentPolicy(policies.value.get(peer))?.revision ? rows : [];
@@ -58,19 +72,23 @@ export function addressedMethods(
 		sendAddressed: async ({ peer, eventId, session: selector, text, from }: { peer: string; eventId: string; session?: string; text: string; from?: string }, ctx: Ctx) => {
 			if (Buffer.byteLength(text) > 32768) throw new Error("Addressed stimulus exceeds 32768 bytes");
 			const id = key(peer, eventId);
+			const requireSend = () => {
+				const policy = currentPolicy(policies.value.get(peer));
+				if (!policy || !allowed(policy, selector)) throw forbidden("Addressed send not authorized");
+				return policy;
+			};
+			const policy = requireSend();
 			const payloadHash = hash(text);
 			const recover = (row: AddressedIntent) => {
 				requireReceipt(peer);
 				if (row.selector !== selector || row.payloadHash !== payloadHash ||
-					(from ? row.label !== `${from} via Pi Inbox` : row.label.endsWith(" via Pi Inbox"))) throw new Error("Addressed stimulus conflict");
+					(from ? row.label !== `${from} via Pi Inbox` : row.label.endsWith(" via Pi Inbox"))) throw new PluginError("addressed_conflict", "Addressed stimulus conflict");
 				return readback(row);
 			};
 			const existing = saved.value.addressed[id];
 			if (existing) return recover(existing);
-			const policy = currentPolicy(policies.value.get(peer));
-			if (!policy || !allowed(policy, selector)) throw forbidden("Addressed send not authorized");
 			const session = selector ?? (await ctx.get(FamiliarStore, {})).session.value;
-			if (!session || (await catalog.get({ id: session }, ctx).catch(() => undefined))?.archivedAt !== null ||
+			if (!session || (await findTarget(catalog, session, ctx))?.archivedAt !== null ||
 				await shares.isShared({ session }, ctx)) throw forbidden("Addressed target unavailable");
 			const conversation = await (await awaitWithContext(ctx.get(AddressedWorker, { session }), ctx)).main({}, ctx);
 			let inserted = false;
@@ -86,7 +104,9 @@ export function addressedMethods(
 				};
 				inserted = true;
 			}, ctx);
-			return inserted ? { state: "recorded" as const } : recover(saved.value.addressed[id]!);
+			if (inserted) return { state: "recorded" as const };
+			requireSend();
+			return recover(saved.value.addressed[id]!);
 		},
 		receiptAddressed: async ({ peer, eventId }: { peer: string; eventId: string }) => {
 			requireReceipt(peer);
@@ -115,7 +135,7 @@ export function serveAddressed(host: FacetHost) {
 					const row = await rows.addressedRow({ id }, ctx);
 					if (!row || row.delivery.session !== session || row.delivery.intentHash !== intentHash ||
 						row.phase.kind !== "pending" || (await catalog.get({ id: session }, ctx)).archivedAt !== null ||
-						await shares.isShared({ session }, ctx) || !mayDeliver(row, currentPolicy(policies.value.get(row.peer))))
+						await shares.isShared({ session }, ctx) || !mayDeliver(row, policies.value.get(row.peer)))
 						throw forbidden("Addressed admission withdrawn");
 					return true;
 				}, ctx);

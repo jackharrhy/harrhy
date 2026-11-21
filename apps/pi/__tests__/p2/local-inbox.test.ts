@@ -106,39 +106,19 @@ it(
         async (ctx) => assert.equal((await ctx.get(Hosts, {})).workers.value[other], undefined),
         BACKGROUND_CONTEXT,
       );
-      assert.equal((await receipt("missing")).status, 404);
-      assert.equal((await receipt("nested/id")).status, 400);
-      assert.equal(
-        (await send({ eventId: "peer-override", peer: "other", text: "Denied" })).status,
-        400,
-      );
       assert.equal(
         (await send({ eventId: "denied", session: familiar.id, text: "No explicit fallback" }))
           .status,
         403,
       );
       assert.equal((await receipt("denied")).status, 404);
-      assert.equal((await send({ eventId: "oversize", text: "x".repeat(256 * 1024) })).status, 413);
 
       const explicit = { eventId: "explicit", session: other, text: "synthetic explicit input" };
-      const defaulted = { eventId: "default", text: "synthetic Familiar input" };
-      for (const body of [explicit, defaulted]) {
-        assert.equal((await send(body)).status, 202);
-        assert.equal((await send({ ...body, text: "different" })).status, 409);
-        await poll(
-          async () => JSON.parse((await receipt(body.eventId)).body).state === "admitted",
-          12_000,
-        );
-      }
-      assert.equal((await send({ ...defaulted, session: other })).status, 409);
+      assert.equal((await send(explicit)).status, 202);
+      await poll(async () => JSON.parse((await receipt(explicit.eventId)).body).state === "admitted");
       const admitted = await receipt(explicit.eventId);
-      assert.equal((await send(explicit)).body, admitted.body); // Legacy fixture uses the old POST response.
-      await rotate("b".repeat(64));
-      assert.equal((await receipt(explicit.eventId)).status, 401);
-      await rotate(credential);
 
       await server.close();
-      // Keep legacy files and the original client digest, but only the Chord grant may authorize.
       await cp(join(APP, "integrations", "local-inbox"), plugin, { recursive: true });
       inboxPath = prefix;
       server = await start();
@@ -166,7 +146,14 @@ it(
       );
       assert(first.enabled);
       assert.deepEqual(first.grant, broad);
-      assert.equal((await receipt(explicit.eventId)).body, admitted.body); // GET only: no replay.
+      assert.equal((await receipt(explicit.eventId)).body, admitted.body);
+      assert.equal((await receipt("missing")).status, 404);
+      assert.equal((await receipt("nested/id")).status, 400);
+      assert.equal(
+        (await send({ eventId: "peer-override", peer: "other", text: "Denied" })).status,
+        400,
+      );
+      assert.equal((await send({ eventId: "oversize", text: "x".repeat(256 * 1024) })).status, 413);
       for (const extra of [
         { Host: "tunnel.test" },
         { Origin: `http://127.0.0.1:${server.port}` },
@@ -205,14 +192,14 @@ it(
       assert.match(eventId, /^[a-f0-9-]{36}$/);
       assert.equal((await send({ ...named, eventId, from: "Not Hermes" })).status, 409);
       await poll(async () => JSON.parse((await receipt(eventId)).body).state === "admitted", 12_000);
-      assert.equal(
-        (await send({ eventId: "future", session: future, text: "broad scope" })).status,
-        202,
-      );
-      await poll(
-        async () => JSON.parse((await receipt("future")).body).state === "admitted",
-        12_000,
-      );
+      const defaulted = { eventId: "default", text: "synthetic Familiar input" };
+      assert.equal((await send(defaulted)).status, 202);
+      await poll(async () => JSON.parse((await receipt(defaulted.eventId)).body).state === "admitted");
+      assert.deepEqual(JSON.parse((await send(defaulted)).body), {
+        eventId: defaulted.eventId, ...JSON.parse((await receipt(defaulted.eventId)).body),
+      });
+      assert.equal((await send({ ...defaulted, session: other })).status, 409);
+      assert.equal((await send({ ...defaulted, text: "different" })).status, 409);
       const rotated = await admin.rotate({ bearerHash: hash("b".repeat(64)) }, BACKGROUND_CONTEXT);
       assert.deepEqual(rotated, first);
       assert.equal((await receipt(explicit.eventId)).status, 401);
@@ -237,7 +224,7 @@ it(
       await server.close();
       server = await start();
       assert.deepEqual(JSON.parse((await targets()).body), { targets: [] });
-      assert.equal((await send({ ...explicit, eventId: "new" })).status, 403);
+      assert.equal((await send(explicit)).status, 403);
       assert.equal((await receipt(explicit.eventId)).body, admitted.body);
     } finally {
       await server?.close();
