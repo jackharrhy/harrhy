@@ -462,42 +462,37 @@ try {
   const exportToken = (await readFile(exportTokenFile, "utf8")).trim();
   const browserTar = await checkBrowserExport(page, exportToken);
   const exportedPath = join(state, "downloaded-archive");
-  // Both MCP resources use the same captured bytes. The board connection
-  // sends its ordinary read token throughout; it cannot start via the admin API.
-  for (const [path, file] of [
-    ["/mcp/archive", exportTokenFile],
-    ["/mcp", readTokenFile],
+  for (const [method, path] of [
+    ["POST", "/mcp/archive"],
+    ["GET", "/.well-known/oauth-protected-resource/mcp/archive"],
   ]) {
+    assert.equal((await fetch(new URL(path, origin), { method })).status, 404);
+  }
+  {
     const headers = {
-      Authorization: `Bearer ${(await readFile(file, "utf8")).trim()}`,
+      Authorization: `Bearer ${(await readFile(readTokenFile, "utf8")).trim()}`,
     };
     const client = new Client({ name: "export-smoke", version: "1" });
-    const endpoint = new URL(path, origin);
+    const endpoint = new URL("/mcp", origin);
     const challenge = await fetch(endpoint, { method: "POST" });
     assert.equal(challenge.status, 401);
-    if (path === "/mcp") {
-      assert.ok(
-        !challenge.headers.get("WWW-Authenticate").includes("archive-read"),
+    assert.ok(
+      !challenge.headers.get("WWW-Authenticate").includes("archive-read"),
+    );
+    const discovery = await fetch(
+      new URL("/.well-known/oauth-protected-resource/mcp", origin),
+    );
+    const { scopes_supported } = await discovery.json();
+    assert.ok(scopes_supported.some((scope) => scope.endsWith(":boards-read")));
+    assert.ok(!scopes_supported.some((scope) => scope.includes("archive-")));
+    for (const route of ["/api/archive/boards", "/api/archive/exports"]) {
+      assert.equal(
+        (await fetch(new URL(route, origin), { method: "POST", headers }))
+          .status,
+        403,
       );
-      const discovery = await fetch(
-        new URL("/.well-known/oauth-protected-resource/mcp", origin),
-      );
-      const { scopes_supported } = await discovery.json();
-      assert.ok(
-        scopes_supported.some((scope) => scope.endsWith(":boards-read")),
-      );
-      assert.ok(!scopes_supported.some((scope) => scope.includes("archive-")));
-      for (const route of ["/api/archive/boards", "/api/archive/exports"]) {
-        assert.equal(
-          (await fetch(new URL(route, origin), { method: "POST", headers }))
-            .status,
-          403,
-        );
-      }
-    } else
-      assert.ok(
-        challenge.headers.get("WWW-Authenticate").includes("archive-read"),
-      );
+    }
+
     try {
       await client.connect(
         new StreamableHTTPClientTransport(endpoint, {
@@ -507,18 +502,13 @@ try {
       const names = (await client.listTools()).tools
         .map((t) => t.name)
         .toSorted();
-      assert.deepEqual(
-        names,
-        path === "/mcp"
-          ? [
-              "asset_get",
-              "board_get",
-              "boards_list",
-              "export_start",
-              "export_status",
-            ]
-          : ["export_start", "export_status"],
-      );
+      assert.deepEqual(names, [
+        "asset_get",
+        "board_get",
+        "boards_list",
+        "export_start",
+        "export_status",
+      ]);
       async function tool(name, args) {
         const reply = await client.callTool({ name, arguments: args });
         assert.ok(!reply.isError, `Failed ${name}`);
@@ -533,12 +523,10 @@ try {
       assert.equal(download.status, 200);
       const bytes = Buffer.from(await download.arrayBuffer());
       assert.deepEqual(bytes, await readFile(browserTar));
-      if (path === "/mcp") {
-        const tarPath = join(state, "mcp.tar");
-        await writeFile(tarPath, bytes, { mode: 0o600 });
-        await mkdir(exportedPath, { mode: 0o700 });
-        await command(["tar", "-xf", tarPath, "-C", exportedPath]);
-      }
+      const tarPath = join(state, "mcp.tar");
+      await writeFile(tarPath, bytes, { mode: 0o600 });
+      await mkdir(exportedPath, { mode: 0o700 });
+      await command(["tar", "-xf", tarPath, "-C", exportedPath]);
     } finally {
       await client.close();
     }

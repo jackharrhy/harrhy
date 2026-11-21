@@ -1,5 +1,7 @@
 import {
   IdentityError,
+  PROJECT_ROLES_SCOPE,
+  projectAudienceScope,
   requireTokenRole,
   roleScope,
   type TokenPrincipal,
@@ -41,4 +43,44 @@ export function authorizeArchive(
         `Archive ${operation} permission is missing`,
         403,
       );
+}
+
+export function archiveExportScopes(projectId: string) {
+  return [
+    "openid",
+    projectAudienceScope(projectId),
+    PROJECT_ROLES_SCOPE,
+    roleScope("admin"),
+    roleScope("archive-read"),
+  ];
+}
+
+export function authorizeArchiveExport(
+  principal: TokenPrincipal,
+  projectId: string,
+  browserClientId: string,
+): void {
+  if (
+    !principal.subject ||
+    !principal.clientId ||
+    !browserClientId ||
+    principal.clientId === browserClientId
+  )
+    throw new IdentityError("Archive export requires a delegated client", 403);
+  authorizeArchive(principal, projectId, "read");
+  const scopes = new Set([
+    ...archiveExportScopes(projectId),
+    "profile",
+    "email",
+    "offline_access",
+  ]);
+  if (!principal.scopes.has("openid"))
+    throw new IdentityError("Archive export requires an identity scope", 403);
+  for (const scope of principal.scopes) {
+    if (!scopes.has(scope))
+      throw new IdentityError(
+        "Request only the Ref archive-read permission",
+        403,
+      );
+  }
 }

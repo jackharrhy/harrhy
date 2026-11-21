@@ -5,7 +5,7 @@ import {
   roleScope,
   type TokenPrincipal,
 } from "@harrhy/identity";
-import { authorizeArchive } from "../archive-auth.ts";
+import { authorizeArchive, authorizeArchiveExport } from "../archive-auth.ts";
 
 const project = "ref-project";
 function token(
@@ -20,6 +20,7 @@ function token(
     audiences: new Set([project]),
     roles: new Set([membership, ...permissions]),
     scopes: new Set([
+      "openid",
       projectAudienceScope(project),
       PROJECT_ROLES_SCOPE,
       roleScope(membership),
@@ -93,4 +94,36 @@ describe("Ref delegated archive authorization", () => {
       ),
     ).toThrow();
   });
+});
+
+it("archive export authorization requires the scoped human admin, actual grants and a separate client", () => {
+  const valid = token("admin", ["archive-read"]);
+  const archiveAccess = (p: TokenPrincipal) =>
+    authorizeArchiveExport(p, project, "ref-browser");
+  expect(() =>
+    archiveAccess({
+      ...valid,
+      roles: new Set([...valid.roles, "boards-write", "archive-restore"]),
+    }),
+  ).not.toThrow();
+  for (const invalid of [
+    token("member", ["boards-read"]),
+    token("member", ["archive-read"]),
+    token("admin", ["archive-read", "boards-read"]),
+    token("admin", ["archive-read", "archive-restore"]),
+    token("admin", ["archive-read", "unknown"]),
+    { ...valid, principalType: "service" as const },
+    { ...valid, clientId: "ref-browser" },
+    { ...valid, subject: "" },
+    { ...valid, audiences: new Set(["other"]) },
+    { ...valid, scopes: new Set([...valid.scopes, roleScope("member")]) },
+  ])
+    expect(() => archiveAccess(invalid)).toThrow();
+  for (const field of ["roles", "scopes"] as const) {
+    for (const omitted of valid[field]) {
+      const remaining = new Set(valid[field]);
+      remaining.delete(omitted);
+      expect(() => archiveAccess({ ...valid, [field]: remaining })).toThrow();
+    }
+  }
 });
