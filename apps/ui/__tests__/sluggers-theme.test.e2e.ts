@@ -115,7 +115,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
     assert.equal(fontRequests, 0);
   }
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Sluggers", exact: true }).click();
+  await page.getByRole("option", { name: "Scorebook", exact: true }).click();
   await page.waitForFunction(
     () =>
       document
@@ -132,7 +132,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
     /SluggersCezanne/,
   );
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Clean", exact: true }).click();
+  await page.getByRole("option", { name: "Basic", exact: true }).click();
   await page.waitForFunction(
     () =>
       document

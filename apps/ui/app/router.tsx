@@ -5,6 +5,7 @@ import { routes } from "./routes.ts";
 import { createAssets } from "./assets.ts";
 import { createSluggersLabRoutes } from "./public/sluggers/lab.server.tsx";
 import { Scenes } from "./public/scenes.tsx";
+import { Cookoff } from "./public/clank/scene.tsx";
 import { themes, type ThemeName } from "./public/themes.ts";
 import { Explorer, stories } from "./public/explorer.tsx";
 
@@ -32,6 +33,9 @@ export function createApp(
   router.get("/healthz", () => new Response("ok"));
   router.get(routes.home, async ({ request }) => {
     const url = new URL(request.url);
+    const cookoff =
+      url.searchParams.get("view") === "scenes" &&
+      url.searchParams.get("scene") === "clank";
     const candidate = url.searchParams.get("theme");
     const theme: ThemeName =
       candidate && Object.hasOwn(themes, candidate)
@@ -44,6 +48,7 @@ export function createApp(
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="robots" content="noindex, nofollow" />
+          <link rel="stylesheet" href="/assets/ui/clank/fonts.css" />
           <title>@harrhy/ui workbench</title>
           <link rel="stylesheet" href="/assets/hui/fonts.css" />
           {theme === "brutalist" && (
@@ -68,7 +73,15 @@ export function createApp(
           <script type="module" src={entry.href} />
         </head>
         <body mix={css({ margin: 0 })}>
-          {url.searchParams.get("view") === "scenes" ? (
+          {cookoff ? (
+            <Cookoff
+              initial={
+                candidate === "clean" || candidate === "brutalist"
+                  ? candidate
+                  : "graphite"
+              }
+            />
+          ) : url.searchParams.get("view") === "scenes" ? (
             <Scenes
               theme={theme}
               scene={

@@ -87,6 +87,7 @@ export const Scenes = clientEntry(
             })}
           >
             <Inline>
+              <a href="/?view=scenes&scene=clank">Clank cook-off</a>
               <a
                 href={`/?view=scenes&scene=radio&theme=${theme}`}
                 aria-current={

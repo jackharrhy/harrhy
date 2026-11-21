@@ -45,7 +45,7 @@ it("explores actual props, matching source, and global themes", async (t) => {
   await page.waitForFunction(
     () => document.activeElement?.getAttribute("role") === "listbox",
   );
-  await page.getByRole("option", { name: "Artbin", exact: true }).click();
+  await page.getByRole("option", { name: "Newspaper", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
   assert.equal(new URL(page.url()).searchParams.get("theme"), "brutalist");
   const button = preview.getByRole("button", {
@@ -235,7 +235,7 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   await page.keyboard.press("Escape");
   assert.equal(await list.isVisible(), false);
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Artbin", exact: true }).click();
+  await page.getByRole("option", { name: "Newspaper", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
   await page.getByRole("link", { name: "Scenes", exact: true }).click();
   await page.getByRole("link", { name: "Radio", exact: true }).click();
@@ -250,12 +250,12 @@ it("separates selected, highlighted and disabled options and keeps global theme 
     true,
   );
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Radio", exact: true }).click();
+  await page.getByRole("option", { name: "Ledger", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("theme") === "tactile");
   await page.reload();
   assert.match(
     await page.getByRole("button", { name: "Theme", exact: true }).innerText(),
-    /Radio/,
+    /Ledger/,
   );
 });
 
@@ -283,11 +283,11 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
     assert.equal(popup.width >= 160, true);
     assert.equal(
       await page
-        .getByRole("option", { name: "Artbin", exact: true })
+        .getByRole("option", { name: "Newspaper", exact: true })
         .evaluate((node) => node.getBoundingClientRect().height >= 40),
       true,
     );
-    await page.getByRole("option", { name: "Artbin", exact: true }).click();
+    await page.getByRole("option", { name: "Newspaper", exact: true }).click();
     await page.waitForURL(
       (url) => url.searchParams.get("theme") === "brutalist",
     );

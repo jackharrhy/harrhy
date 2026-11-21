@@ -8,9 +8,9 @@ import {
 } from "@harrhy/ui/theme";
 
 export const themes = [
-  { id: "clean", name: "Clean", tokens: cleanTheme },
-  { id: "tactile", name: "Radio", tokens: tactileTheme },
-  { id: "brutalist", name: "Artbin", tokens: brutalistTheme },
+  { id: "clean", name: "Basic", tokens: cleanTheme },
+  { id: "tactile", name: "Ledger", tokens: tactileTheme },
+  { id: "brutalist", name: "Newspaper", tokens: brutalistTheme },
 ] as const;
 export type ThemeId = (typeof themes)[number]["id"];
 export const themeMixins = Object.fromEntries(
