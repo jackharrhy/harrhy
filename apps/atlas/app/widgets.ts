@@ -19,7 +19,7 @@ const imports = new Set([
   "@harrhy/ui/theme",
   "@harrhy/ui/recipes",
 ]);
-const project = path.resolve(import.meta.dirname, "../../..");
+const project = path.resolve(import.meta.dirname, "..");
 
 async function readFile(filename: string, max: number) {
   if (!path.isAbsolute(filename))
