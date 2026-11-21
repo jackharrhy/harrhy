@@ -1,0 +1,20 @@
+{
+  "name": "clank-standalone",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-08-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSIONS",
+        "class_name": "SessionCell",
+      },
+    ],
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["SessionCell"],
+    },
+  ],
+}
