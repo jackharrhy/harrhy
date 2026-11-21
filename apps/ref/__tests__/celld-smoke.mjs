@@ -1,3 +1,4 @@
+import { createRequire } from "node:module";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -57,7 +58,7 @@ const environment = {
   CELLD_VAR_AUTH_PUBLIC_ORIGIN: origin,
   CELLD_VAR_AUTH_INTROSPECTION_CLIENT_ID: "ref-local-resource",
   CELLD_VAR_AUTH_INTROSPECTION_SECRET: "ref-local-resource-secret",
-  CELLD_ESBUILD: join(root, "..", "..", "node_modules", ".bin", "esbuild"),
+  CELLD_ESBUILD: createRequire(import.meta.url).resolve("esbuild/bin/esbuild"),
 };
 const result = { status: "running", state, checks: [] };
 let runtime;
