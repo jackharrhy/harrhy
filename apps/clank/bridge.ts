@@ -1,6 +1,5 @@
-import { randomUUID, timingSafeEqual } from "node:crypto";
-import { createServer } from "node:http";
-import { WebSocketServer } from "ws";
+import { randomUUID } from "node:crypto";
+import { listenRpc } from "./private-rpc.ts";
 import { newWebSocketRpcSession, RpcTarget } from "capnweb";
 import { BACKGROUND_CONTEXT, withAbortSignal } from "../pi/src/api/v1/index.ts";
 import type { Host } from "../pi/src/runtime/chord.ts";
@@ -17,32 +16,7 @@ import {
 
 /** Install only alongside the fake Pi host with its own data directory. */
 export function startFixtureBridge(host: Host, cwd: string, token: string) {
-  if (!/^[a-f0-9]{64}$/.test(token)) throw Error("Invalid bridge credential");
-  const expected = Buffer.from(`clank.${token}`);
-  const ws = new WebSocketServer({
-    noServer: true,
-    maxPayload: 4096,
-    perMessageDeflate: false,
-  });
-  const http = createServer(
-    { headersTimeout: 3000, requestTimeout: 5000 },
-    (_, response) => response.writeHead(404).end(),
-  );
-  http.on("upgrade", (req, socket, head) => {
-    const protocol = Buffer.from(req.headers["sec-websocket-protocol"] ?? "");
-    if (
-      req.url !== "/rpc" ||
-      req.headers.origin !== undefined ||
-      protocol.length !== expected.length ||
-      !timingSafeEqual(protocol, expected) ||
-      ws.clients.size >= 8
-    ) {
-      socket.end("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
-      return;
-    }
-    ws.handleUpgrade(req, socket, head, (peer) => ws.emit("connection", peer));
-  });
-  ws.on("connection", (socket) => {
+  return listenRpc(18149, token, (socket) => {
     const lifetime = new AbortController();
     const close = () => {
       lifetime.abort();
@@ -158,10 +132,4 @@ export function startFixtureBridge(host: Host, cwd: string, token: string) {
         sink[Symbol.dispose]();
       });
   });
-  http.listen(18149, "127.0.0.1");
-  return () => {
-    for (const socket of ws.clients) socket.terminate();
-    ws.close();
-    http.close();
-  };
 }

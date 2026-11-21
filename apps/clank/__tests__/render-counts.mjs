@@ -22,7 +22,7 @@ export async function measureRenders(page) {
     const labels = {
       row: "Untitled session",
       list: "Sessions in activity order",
-      connection: "Fixture connection",
+      connection: "Catalog connection",
     };
     const offsets = {};
     for (const [name, label] of Object.entries(labels)) {

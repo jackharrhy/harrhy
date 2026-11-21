@@ -1,0 +1,16 @@
+{
+  "name": "@harrhy/board",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./viewport": "./viewport.ts",
+    "./geometry": "./geometry.ts"
+  },
+  "scripts": {
+    "check": "tsrs --noEmit && node --test __tests__/*.test.ts"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6"
+  }
+}

@@ -5,6 +5,7 @@ import { apply, emptyIndex, MAX_BYTES, type View } from "./session-state.ts";
 import { createSessionStore } from "./session-store.ts";
 
 type App = {
+  readOnly: boolean;
   sessions: Pick<ReturnType<typeof createSessionStore>, "select"> & {
     create(title: string): Promise<void>;
     rename(id: string, title: string): Promise<void>;
@@ -13,7 +14,9 @@ type App = {
 };
 
 /** One page-local binding. Consumers never own an RPC stub or a retry timer. */
-export function ClankProvider(handle: Handle<{ children?: RemixNode }, App>) {
+export function ClankProvider(
+  handle: Handle<{ readOnly: boolean; children?: RemixNode }, App>,
+) {
   const sessions = createSessionStore();
   const pending = sessions.select((s) => s.pending);
   let view: View | undefined,
@@ -114,6 +117,7 @@ export function ClankProvider(handle: Handle<{ children?: RemixNode }, App>) {
       await sessions.publish({ pending: false, notice });
   }
   handle.context.set({
+    readOnly: handle.props.readOnly,
     sessions: {
       select: sessions.select,
       create: (title) => send((api, epoch) => api.create(epoch, title)),

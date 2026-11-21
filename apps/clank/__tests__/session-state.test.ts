@@ -1,3 +1,4 @@
+import { layoutOverview } from "../app/overview-layout.ts";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createSessionStore } from "../app/session-store.ts";
@@ -125,4 +126,27 @@ test("a local title selection notifies on change, awaits the render, and stops o
   await store.publish(first);
   assert.deepEqual(updates, ["changed"]);
   assert.equal(title.current, row.title);
+});
+
+test("Overview connects only conversations in the same projected session", () => {
+  const { edges } = layoutOverview([
+    row,
+    {
+      ...row,
+      id: "other",
+      branches: [
+        { conversation: 1, label: null },
+        { conversation: 2, parent: 1, label: "Fork" },
+        { conversation: 3, parent: 9, label: "Unknown source" },
+      ],
+    },
+  ]);
+  assert.deepEqual(
+    edges.map((e) => [e.from.id, e.to.id]),
+    [
+      [row.id, `${row.id}:1`],
+      ["other", "other:1"],
+      ["other:1", "other:2"],
+    ],
+  );
 });

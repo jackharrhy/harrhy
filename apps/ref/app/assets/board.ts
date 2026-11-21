@@ -12,7 +12,8 @@ import {
   renderItemInspector,
 } from "./inspector.ts";
 import { boardImages } from "./board-images.ts";
-import { wheelNavigation } from "./board-navigation.ts";
+import { attachViewport } from "@harrhy/board/viewport";
+import { nodeStyle, type Point } from "@harrhy/board/geometry";
 import { registerWebMcpTools } from "@harrhy/webmcp";
 import type { WebMcpRegistration } from "@harrhy/webmcp";
 import { boardWebMcpTools } from "./board-webmcp.ts";
@@ -94,9 +95,8 @@ titleInput.addEventListener("keydown", (event) => {
   }
 });
 
-type Point = { x: number; y: number };
 type Drag =
-  | { kind: "pan"; start: Point; startOffset: Point; moved: boolean }
+  | { kind: "pan"; move(event: PointerEvent): void }
   | {
       kind: "move" | "resize" | "rotate";
       start: Point;
@@ -152,13 +152,17 @@ scrollModeButton.addEventListener("click", () => {
   } catch {}
 });
 let drag: Drag | null = null;
-let offsetX = 0;
-let offsetY = 0;
-let scale = 1;
+const view = attachViewport(viewport, world, {
+  wheelMode: () => scrollMode,
+  onView() {
+    scheduleZoomLabel();
+    scheduleImageDetail();
+  },
+});
+const { screenPoint, worldPoint, zoomAt } = view;
 let didInitialFit = false;
 let sequence = 0;
 let toastTimer = 0;
-let viewFrame = 0;
 let zoomLabelTimer = 0;
 let lastZoomLabelAt = -Infinity;
 let imageDetailTimer = 0;
@@ -203,9 +207,7 @@ const browserToolCatalog = boardWebMcpTools({
     interaction: drag?.kind ?? null,
     selectedItemId: selectedId,
     camera: {
-      offsetX,
-      offsetY,
-      scale,
+      ...view.camera,
       width: viewport.clientWidth,
       height: viewport.clientHeight,
     },
@@ -229,7 +231,7 @@ const browserToolCatalog = boardWebMcpTools({
     const height =
       Math.abs(item.width * Math.sin(radians)) +
       Math.abs(item.height * Math.cos(radians));
-    scale = Math.max(
+    const scale = Math.max(
       0.1,
       Math.min(
         5,
@@ -237,9 +239,11 @@ const browserToolCatalog = boardWebMcpTools({
         (viewport.clientHeight - 64) / height,
       ),
     );
-    offsetX = viewport.clientWidth / 2 - (item.x + item.width / 2) * scale;
-    offsetY = viewport.clientHeight / 2 - (item.y + item.height / 2) * scale;
-    applyView();
+    view.set({
+      scale,
+      offsetX: viewport.clientWidth / 2 - (item.x + item.width / 2) * scale,
+      offsetY: viewport.clientHeight / 2 - (item.y + item.height / 2) * scale,
+    });
   },
   fit() {
     requireToolBoard();
@@ -459,8 +463,8 @@ function receive(frame: BoardServerFrame) {
     if (!didInitialFit) {
       didInitialFit = true;
       fitBoard();
-      if (items.size > 12 && scale < 0.65)
-        zoomAt(0.65 / scale, {
+      if (items.size > 12 && view.camera.scale < 0.65)
+        zoomAt(0.65 / view.camera.scale, {
           x: viewport.clientWidth / 2,
           y: viewport.clientHeight / 2,
         });
@@ -558,10 +562,15 @@ function positionElement(element: HTMLElement, item: BoardItem) {
     width = image.naturalWidth * fit;
     height = image.naturalHeight * fit;
   }
-  element.style.left = `${item.x + (item.width - width) / 2}px`;
-  element.style.top = `${item.y + (item.height - height) / 2}px`;
-  element.style.width = `${width}px`;
-  element.style.height = `${height}px`;
+  Object.assign(
+    element.style,
+    nodeStyle({
+      x: item.x + (item.width - width) / 2,
+      y: item.y + (item.height - height) / 2,
+      width,
+      height,
+    }),
+  );
   element.style.zIndex = String(item.z);
   element.style.transform = `rotate(${item.rotation}deg)`;
 }
@@ -777,17 +786,10 @@ function select(id: string | null) {
   renderInspector();
 }
 
-function screenPoint(event: MouseEvent): Point {
-  const rect = viewport.getBoundingClientRect();
-  return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-}
-function worldPoint(point: Point): Point {
-  return { x: (point.x - offsetX) / scale, y: (point.y - offsetY) / scale };
-}
 function updateZoomLabel() {
   zoomLabelTimer = 0;
   lastZoomLabelAt = performance.now();
-  const value = `${Math.round(scale * 100)}%`;
+  const value = `${Math.round(view.camera.scale * 100)}%`;
   if (zoomLabel.textContent !== value) zoomLabel.textContent = value;
 }
 function scheduleZoomLabel() {
@@ -803,6 +805,7 @@ function scheduleImageDetail() {
   clearTimeout(imageDetailTimer);
   imageDetailTimer = window.setTimeout(() => {
     const rect = viewport.getBoundingClientRect();
+    const { scale, offsetX, offsetY } = view.camera;
     const left = (-offsetX - 160) / scale;
     const top = (-offsetY - 160) / scale;
     const right = (rect.width - offsetX + 160) / scale;
@@ -822,15 +825,6 @@ function scheduleImageDetail() {
       boardImages.setDetail(image, scale > 1.35 && visible);
     }
   }, 160);
-}
-function applyView() {
-  if (viewFrame) return;
-  viewFrame = requestAnimationFrame(() => {
-    viewFrame = 0;
-    world.style.transform = `translate(${offsetX}px,${offsetY}px) scale(${scale})`;
-    scheduleZoomLabel();
-    scheduleImageDetail();
-  });
 }
 function shift(start: number, end: number, min: number, max: number): number {
   if (end - start > max - min) return (min + max - start - end) / 2;
@@ -861,45 +855,15 @@ function revealSelected() {
       board.bottom - 16,
     );
     if (!nextX && !nextY) return;
-    offsetX += nextX;
-    offsetY += nextY;
-    applyView();
+    view.set({
+      ...view.camera,
+      offsetX: view.camera.offsetX + nextX,
+      offsetY: view.camera.offsetY + nextY,
+    });
   });
 }
-function zoomAt(factor: number, point: Point) {
-  const at = worldPoint(point);
-  scale = Math.max(0.1, Math.min(5, scale * factor));
-  offsetX = point.x - at.x * scale;
-  offsetY = point.y - at.y * scale;
-  applyView();
-}
 function fitBoard() {
-  const rect = viewport.getBoundingClientRect();
-  if (!items.size) {
-    scale = 1;
-    offsetX = rect.width / 2;
-    offsetY = rect.height / 2;
-    applyView();
-    return;
-  }
-  const all = [...items.values()];
-  const left = Math.min(...all.map((item) => item.x));
-  const top = Math.min(...all.map((item) => item.y));
-  const right = Math.max(...all.map((item) => item.x + item.width));
-  const bottom = Math.max(...all.map((item) => item.y + item.height));
-  scale = Math.max(
-    0.1,
-    Math.min(
-      1.5,
-      Math.min(
-        (rect.width - 130) / Math.max(1, right - left),
-        (rect.height - 130) / Math.max(1, bottom - top),
-      ),
-    ),
-  );
-  offsetX = rect.width / 2 - ((left + right) / 2) * scale;
-  offsetY = rect.height / 2 - ((top + bottom) / 2) * scale;
-  applyView();
+  view.fit(items.values(), 65);
 }
 
 function placeItem(width: number, height: number, point?: Point): Point {
@@ -956,12 +920,7 @@ function handlePointerDown(event: PointerEvent) {
   const start = screenPoint(event);
   if (event.button === 1 || spaceHeld || !item) {
     if (!item && !spaceHeld) select(null);
-    drag = {
-      kind: "pan",
-      start,
-      startOffset: { x: offsetX, y: offsetY },
-      moved: false,
-    };
+    drag = { kind: "pan", move: view.startPan(event) };
     viewport.classList.add("panning");
   } else {
     if (!canEditItem(item)) {
@@ -989,15 +948,14 @@ function handlePointerDown(event: PointerEvent) {
 function handlePointerMove(event: PointerEvent) {
   const point = screenPoint(event);
   if (!drag) return;
+  if (drag.kind === "pan") {
+    drag.move(event);
+    return;
+  }
+  const { scale, offsetX, offsetY } = view.camera;
   const dx = point.x - drag.start.x;
   const dy = point.y - drag.start.y;
   if (Math.abs(dx) + Math.abs(dy) > 2) drag.moved = true;
-  if (drag.kind === "pan") {
-    offsetX = drag.startOffset.x + dx;
-    offsetY = drag.startOffset.y + dy;
-    applyView();
-    return;
-  }
   const original = drag.original;
   const item = items.get(original.id);
   if (!item) return;
@@ -1243,75 +1201,6 @@ viewport.addEventListener("pointerdown", handlePointerDown);
 viewport.addEventListener("pointermove", handlePointerMove);
 viewport.addEventListener("pointerup", handlePointerUp);
 viewport.addEventListener("pointercancel", handlePointerUp);
-function overCanvasControl(event: Event) {
-  return (
-    event.target instanceof Element &&
-    !!event.target.closest(
-      "a, button, input, textarea, select, summary, video, [contenteditable]",
-    )
-  );
-}
-// Safari can send a cumulative GestureEvent.scale instead of Ctrl+wheel.
-let gestureStartScale: number | null = null;
-viewport.addEventListener(
-  "gesturestart",
-  (event) => {
-    if (overCanvasControl(event)) return;
-    event.preventDefault();
-    gestureStartScale = scale;
-  },
-  { passive: false },
-);
-viewport.addEventListener(
-  "gesturechange",
-  (event) => {
-    if (gestureStartScale === null) return;
-    event.preventDefault();
-    const gesture = event as MouseEvent & { scale: number };
-    if (!Number.isFinite(gesture.scale) || gesture.scale <= 0) return;
-    const anchor =
-      Number.isFinite(gesture.clientX) && Number.isFinite(gesture.clientY)
-        ? screenPoint(gesture)
-        : { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
-    zoomAt((gestureStartScale * gesture.scale) / scale, anchor);
-  },
-  { passive: false },
-);
-viewport.addEventListener(
-  "gestureend",
-  (event) => {
-    if (gestureStartScale !== null) event.preventDefault();
-    gestureStartScale = null;
-  },
-  { passive: false },
-);
-window.addEventListener("blur", () => {
-  gestureStartScale = null;
-});
-viewport.addEventListener(
-  "wheel",
-  (event) => {
-    if (overCanvasControl(event)) return;
-    event.preventDefault();
-    if (gestureStartScale !== null) return;
-    const navigation = wheelNavigation(
-      event,
-      {
-        width: viewport.clientWidth,
-        height: viewport.clientHeight,
-      },
-      scrollMode,
-    );
-    if (navigation.kind === "zoom") {
-      zoomAt(navigation.factor, screenPoint(event));
-    } else {
-      offsetX -= navigation.x;
-      offsetY -= navigation.y;
-      applyView();
-    }
-  },
-  { passive: false },
-);
 viewport.addEventListener("dragover", (event) => {
   event.preventDefault();
   viewport.classList.add("drag-over");
