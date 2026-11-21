@@ -29,6 +29,8 @@ it("exports a read-only source copy and restores numeric ownership without legac
       new Date("2020-01-01T00:00:00Z"),
     );
     const source = new DatabaseSync(file);
+    // The disposable source is closed before export; crash durability is not under test.
+    source.exec("PRAGMA synchronous=OFF");
     source.exec(schema);
     source.exec(
       "PRAGMA foreign_keys=ON;INSERT INTO users(id,username,display_name,password_hash,is_admin) VALUES(41,'jane','Jane','fixture-credential-must-not-transfer',1);INSERT INTO external_identities VALUES('https://fixture.example','exact-source-subject',41);INSERT INTO pages(id,user_id,slug,title,content,is_public) VALUES(19,41,'hello.world','Hello','Original content',0);CREATE TABLE oauth2_tokens(access_token TEXT);INSERT INTO oauth2_tokens VALUES('fixture-bearer-must-not-transfer');",
