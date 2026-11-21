@@ -16,6 +16,10 @@
     "apps/pi/__tests__/fixtures/**",
   ],
   "workspaces": {
+    "apps/atlas": {
+      // The example widget is loaded from a registration.
+      "entry": ["examples/tweet-card.tsx"],
+    },
     "apps/review": {
       "entry": ["worker.ts", "browser.ts"],
     },

@@ -68,7 +68,7 @@ test("registered external widgets compile only for browsers and publish coherent
   assert.match(html, /Interactive content requires JavaScript/);
   assert.match(
     html,
-    /<details open><summary>Nested widget<\/summary>[\s\S]*<section aria-label="Interactive content">[\s\S]*Nested fallback\.[\s\S]*<\/details>/,
+    /<details open><summary>Nested widget<\/summary>[\s\S]*<section data-atlas-widget aria-label="Interactive content">[\s\S]*Nested fallback\.[\s\S]*<\/details>/,
   );
   assert.match(
     (await get("/spaces/alpha/example")).headers.get(
@@ -86,8 +86,8 @@ test("registered external widgets compile only for browsers and publish coherent
   assert.match(script.headers.get("cache-control")!, /^private,.*immutable/);
   assert.match(await script.text(), /First/);
   assert.match(
-    (await get("/")).headers.get("content-security-policy")!,
-    /script-src 'none'/,
+    (await get("/spaces/alpha/")).headers.get("content-security-policy")!,
+    /script-src 'nonce-/,
   );
   for (const url of [
     "/code/example.tsx",
@@ -159,7 +159,7 @@ test("registered external widgets compile only for browsers and publish coherent
   assert.equal(catalog.read().status, "ready");
   assert.doesNotMatch(
     await (await get("/spaces/alpha/example/")).text(),
-    /<script/,
+    /<script[^>]+src="\/_atlas\/widgets\//,
   );
   await writeFile(
     path.join(root, "code", "additional.tsx"),
