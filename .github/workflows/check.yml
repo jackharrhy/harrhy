@@ -36,15 +36,9 @@ jobs:
         with:
           bun-version: 1.4.4
       - if: steps.select.outputs.any == 'true'
-        run: npm install --global --ignore-scripts pnpm@12.21.0
-      - id: pnpm-store
-        if: steps.select.outputs.any == 'true'
-        run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
-      - if: steps.select.outputs.any == 'true'
-        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+        uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
-          path: ${{ steps.pnpm-store.outputs.path }}
-          key: pnpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.nvmrc', 'pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+          cache: true
       - if: steps.select.outputs.any == 'true'
         run: pnpm install --frozen-lockfile
       - name: Install Pi isolated browser prerequisites

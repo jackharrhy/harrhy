@@ -57,7 +57,7 @@ jobs:
         with:
           bun-version: 1.4.4
           no-cache: true
-      - run: npm install --global --ignore-scripts pnpm@12.21.0
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
       - run: pnpm install --frozen-lockfile
       - run: pnpm --filter @harrhy/lists run check
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
