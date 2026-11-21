@@ -7,6 +7,12 @@
     ".": "./src/index.ts",
     "./engine": "./src/engine.ts",
     "./table": "./src/physical-table.ts",
+    "./bot": "./src/bot.ts",
+    "./cue-drag": "./src/cue-drag.ts",
+    "./session": "./src/session.ts",
+    "./assets/walnut.webp": "./assets/walnut.webp",
+    "./audio": "./src/audio/index.ts",
+    "./presentation": "./src/presentation/index.ts",
     "./recording": "./src/recording.ts"
   },
   "scripts": {
@@ -17,10 +23,12 @@
   "dependencies": {
     "box3d.js": "0.1.1",
     "delaunator": "5.1.0",
+    "three": "0.187.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@types/node": "^26.6.6",
+    "@types/three": "0.187.0",
     "vitest": "^5.1.0"
   }
 }

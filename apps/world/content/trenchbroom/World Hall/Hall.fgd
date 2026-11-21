@@ -1,0 +1,37 @@
+@SolidClass = worldspawn : "Hall envelope and static geometry"
+[
+  message(string) : "Map title" : "Hall"
+  mapversion(integer) : "Valve map version" : 220
+  wad(string) : "Material WADs" : "hall.wad"
+  _minlight(integer) : "Minimum light" : 35
+]
+
+@PointClass color(80 180 255) size(-16 -16 -36, 16 16 36) = info_player_start : "Default spawn"
+[
+  angle(angle) : "Yaw" : 0
+  house_bot(choices) : "House bot" : 0 = [ 0 : "None" 1 : "Moss" ]
+]
+
+@PointClass color(255 215 150) size(-8 -8 -8, 8 8 8) = light : "Baked point light"
+[
+  _light(color255) : "RGB and intensity" : "255 225 195 370"
+  delay(choices) : "Falloff" : 2 = [
+    0 : "Linear"
+    1 : "Inverse distance"
+    2 : "Inverse square"
+  ]
+]
+
+@PointClass color(80 180 125) size(-84 -47 0, 84 47 50) = world_pool_table : "Pool table (floor-center origin)"
+[
+  id(string) : "Stable table ID"
+  angle(angle) : "Yaw" : 0
+  house_bot(choices) : "House bot" : 0 = [ 0 : "None" 1 : "Moss" ]
+]
+
+@PointClass color(184 136 78) size(-42 -42 0, 42 42 52) = world_chess_table : "Chess table (floor-center origin)"
+[
+  id(string) : "Stable table ID"
+  angle(angle) : "Yaw" : 0
+  house_bot(choices) : "Opponent" : 0 = [ 0 : "Human" 1 : "Random bot" ]
+]

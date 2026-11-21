@@ -1,0 +1,4 @@
+Gurgur's first-party player billboard atlas and camera metadata, copied unchanged
+from apps/gurgur/content/generated/player-billboard/ (revision bc06ea85).
+The source Blender harness and generation instructions are in
+apps/gurgur/content/characters/player-billboard/README.md.

@@ -1,0 +1,48 @@
+/* Client-owned mode and pointer-lock state are reflected on #hall. */
+#hall:not([data-mode="fps"]) #enter,
+#hall[data-looking] #enter,
+#hall:not([data-mode="fps"]) .reticle {
+  display: none;
+}
+
+.reticle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--hui-ink);
+  box-shadow: 0 0 0 1px #21160d;
+  pointer-events: none;
+}
+
+:is(#pool-controls, #chess-controls) [hidden] {
+  display: none;
+}
+#hall[data-pool] #enter,
+#hall[data-pool] .reticle {
+  display: none;
+}
+
+#hall > .world-pool-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#hall[data-pool] :is(#status, #controls, #pool-shot-controls) {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+#hall[data-pool] #pool-shot-controls:focus-within {
+  position: static;
+  width: auto;
+  height: auto;
+  overflow: visible;
+  clip-path: none;
+}

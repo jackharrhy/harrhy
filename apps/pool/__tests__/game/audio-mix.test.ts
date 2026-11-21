@@ -4,13 +4,15 @@ import { FELT_Y, MESH_REST_OFFSET, FELT_LIP_DROP } from "@harrhy/pool/table";
 import {
   AudioEventGate,
   consumeHeard,
+  type HeardSound,
+  type SoundEvent,
+} from "../../app/game/audio-mix";
+import {
   impactMix,
   isFeltLanding,
   rollingMix,
   spatialMix,
-  type HeardSound,
-  type SoundEvent,
-} from "../../app/game/audio-mix";
+} from "@harrhy/pool/audio";
 
 const sound: PoolSound = {
   kind: "ball",
@@ -223,7 +225,7 @@ test("separate rolling beds follow velocity and stage with faint felt and strong
     revision: 0,
   };
   const felt = rollingMix(ball);
-  const cabinet = rollingMix({ ...ball, stage: "return", pocketed: true });
+  const cabinet = rollingMix({ ...ball, stage: "return" });
   expect(felt.sample).toBe("felt");
   expect(cabinet.sample).toBe("cabinet");
   expect(felt.gain).toBeGreaterThan(0);

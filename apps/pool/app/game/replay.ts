@@ -1,8 +1,12 @@
 import * as THREE from "three/webgpu";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import { parseRecording, type GameRecording } from "@harrhy/pool/recording";
-import { createTable, FELT_Y } from "./scene/table";
-import { createBallMaterials } from "./scene/textures";
+import {
+  createTable,
+  FELT_Y,
+  createBallMaterials,
+  walnutUrl,
+} from "@harrhy/pool/presentation";
 import { sampleShot, shotDuration } from "./replay-playback";
 
 if (!import.meta.env.DEV)
@@ -39,7 +43,7 @@ scene.add(new THREE.HemisphereLight(0xffefcf, 0x263529, 0.8));
 const fill = new THREE.DirectionalLight(0xffe7c2, 1.2);
 fill.position.set(2, 5, 1);
 scene.add(fill);
-const table = createTable(createBallMaterials());
+const table = createTable(createBallMaterials(), { walnutUrl });
 table.rig.visible = false;
 scene.add(table.group);
 for (const ball of table.balls) ball.visible = false;
