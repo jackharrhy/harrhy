@@ -126,9 +126,13 @@ let heartbeatTimer = 0;
 let lastHeard = 0;
 let selectedId: string | null = null;
 let spaceHeld = false;
-let scrollMode: "zoom" | "pan" = "zoom";
+// A platform convention, not a guess about the attached pointing device.
+let scrollMode: "zoom" | "pan" = navigator.platform.startsWith("Mac")
+  ? "pan"
+  : "zoom";
 try {
-  if (localStorage.getItem("ref-scroll-mode") === "pan") scrollMode = "pan";
+  const saved = localStorage.getItem("ref-scroll-mode");
+  if (saved === "pan" || saved === "zoom") scrollMode = saved;
 } catch {
   // Restricted browsers may disable storage.
 }
@@ -1225,17 +1229,57 @@ viewport.addEventListener("pointerdown", handlePointerDown);
 viewport.addEventListener("pointermove", handlePointerMove);
 viewport.addEventListener("pointerup", handlePointerUp);
 viewport.addEventListener("pointercancel", handlePointerUp);
+function overCanvasControl(event: Event) {
+  return (
+    event.target instanceof Element &&
+    !!event.target.closest(
+      "a, button, input, textarea, select, summary, video, [contenteditable]",
+    )
+  );
+}
+// Safari can send a cumulative GestureEvent.scale instead of Ctrl+wheel.
+let gestureStartScale: number | null = null;
+viewport.addEventListener(
+  "gesturestart",
+  (event) => {
+    if (overCanvasControl(event)) return;
+    event.preventDefault();
+    gestureStartScale = scale;
+  },
+  { passive: false },
+);
+viewport.addEventListener(
+  "gesturechange",
+  (event) => {
+    if (gestureStartScale === null) return;
+    event.preventDefault();
+    const gesture = event as MouseEvent & { scale: number };
+    if (!Number.isFinite(gesture.scale) || gesture.scale <= 0) return;
+    const anchor =
+      Number.isFinite(gesture.clientX) && Number.isFinite(gesture.clientY)
+        ? screenPoint(gesture)
+        : { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 };
+    zoomAt((gestureStartScale * gesture.scale) / scale, anchor);
+  },
+  { passive: false },
+);
+viewport.addEventListener(
+  "gestureend",
+  (event) => {
+    if (gestureStartScale !== null) event.preventDefault();
+    gestureStartScale = null;
+  },
+  { passive: false },
+);
+window.addEventListener("blur", () => {
+  gestureStartScale = null;
+});
 viewport.addEventListener(
   "wheel",
   (event) => {
-    if (
-      event.target instanceof Element &&
-      event.target.closest(
-        "a, button, input, textarea, select, summary, video, [contenteditable]",
-      )
-    )
-      return;
+    if (overCanvasControl(event)) return;
     event.preventDefault();
+    if (gestureStartScale !== null) return;
     const navigation = wheelNavigation(
       event,
       {

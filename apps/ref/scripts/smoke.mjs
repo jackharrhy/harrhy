@@ -6,6 +6,7 @@ import {
   checkUnconfirmedCard,
   checkQueuedMove,
   checkInlineRename,
+  checkMacCanvas,
   removeImageByKeyboard,
 } from "../__tests__/editor-browser.mjs";
 import { chromium, expect } from "@playwright/test";
@@ -31,6 +32,7 @@ try {
   const errors = [];
   page.on("pageerror", (error) => errors.push(error.message));
   await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { value: "Win32" });
     document.addEventListener("securitypolicyviolation", (event) => {
       window.refCspViolations ??= [];
       window.refCspViolations.push(
@@ -95,6 +97,7 @@ try {
   await page.waitForURL(/\/boards\/[0-9a-f-]+/);
   const boardId = page.url().split("/").at(-1);
   await page.locator("#connection.online").waitFor();
+  await checkMacCanvas(context, page.url());
   const addImages = page.getByRole("button", { name: "Add images" });
   const addLink = page.locator("#link-menu summary");
   assert.ok((await addImages.boundingBox()).height >= 40);

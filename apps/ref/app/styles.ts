@@ -213,6 +213,9 @@ export const refStyles = css({
     "max-width": "min(14em, 80%)",
     "min-height": "28px",
   },
+  "& #card-picker:not(:focus)": {
+    "clip-path": "inset(50%)",
+  },
   "& .viewport:focus-visible, & #card-picker:focus-visible": {
     outline: "3px solid #3767d6",
     "outline-offset": "-3px",

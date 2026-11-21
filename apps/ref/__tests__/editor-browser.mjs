@@ -45,11 +45,75 @@ export async function checkUnconfirmedCard(page) {
   await page.evaluate(() => window.refReleaseFrame());
 }
 
+// Exercise the platform default without claiming to emulate trackpad hardware.
+export async function checkMacCanvas(context, url) {
+  const page = await context.newPage();
+  try {
+    await page.addInitScript(() =>
+      Object.defineProperty(navigator, "platform", { value: "MacIntel" }),
+    );
+    await page.goto(url);
+    await page.locator("#connection.online").waitFor();
+    const mode = page.locator("#scroll-mode");
+    await expect(mode).toHaveText("Scroll: Pan");
+    const camera = () =>
+      page.locator("#world").evaluate((el) => {
+        const { a, e, f } = new DOMMatrix(getComputedStyle(el).transform);
+        return { scale: a, x: e, y: f };
+      });
+    const before = await camera();
+    await page.mouse.move(600, 450);
+    await page.mouse.wheel(0, 100);
+    await expect.poll(camera).toEqual({ ...before, y: before.y - 100 });
+    const canvas = page.locator("#viewport");
+    await canvas.dispatchEvent("wheel", {
+      ctrlKey: true,
+      deltaY: -3,
+      clientX: 600,
+      clientY: 450,
+    });
+    await expect
+      .poll(async () => (await camera()).scale)
+      .toBeGreaterThan(before.scale);
+    // WebKit reports scale relative to gesturestart, not to the last change.
+    const pinchStart = (await camera()).scale;
+    await canvas.evaluate((el) => {
+      for (const [type, scale] of [
+        ["gesturestart", 1],
+        ["gesturechange", 1.1],
+        ["gesturechange", 1.2],
+        ["gestureend", 1.2],
+      ]) {
+        const event = Object.assign(
+          new MouseEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            clientX: 600,
+            clientY: 450,
+          }),
+          { scale },
+        );
+        el.dispatchEvent(event);
+      }
+    });
+    await expect
+      .poll(async () => (await camera()).scale)
+      .toBeCloseTo(pinchStart * 1.2, 4);
+    await mode.click();
+    await page.reload();
+    await expect(mode).toHaveText("Scroll: Zoom");
+  } finally {
+    await page.close();
+  }
+}
+
 export async function removeImageByKeyboard(page) {
   const picker = page.getByRole("combobox", { name: "Choose card" });
+  await expect(picker).toHaveCSS("clip-path", "inset(50%)");
   await page.getByRole("button", { name: "Zoom in" }).focus();
   await page.keyboard.press("Tab");
   await expect(picker).toBeFocused();
+  await expect(picker).toHaveCSS("clip-path", "none");
   expect(
     await picker.evaluate((el) => getComputedStyle(el).outlineStyle),
   ).not.toBe("none");

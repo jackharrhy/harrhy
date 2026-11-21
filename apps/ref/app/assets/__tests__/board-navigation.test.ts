@@ -19,6 +19,12 @@ describe("board wheel navigation", () => {
     });
   });
 
+  it("pans horizontal-only input even in zoom mode", () => {
+    expect(
+      wheelNavigation({ ...wheel, deltaX: -6, deltaY: 0 }, viewport, "zoom"),
+    ).toEqual({ kind: "pan", x: -6, y: 0 });
+  });
+
   it("preserves fractional two-axis trackpad movement", () => {
     expect(
       wheelNavigation(

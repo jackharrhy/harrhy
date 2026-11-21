@@ -352,7 +352,7 @@ export function BoardPage(
                 type="button"
                 aria-label="Scroll mode: Pan"
                 aria-pressed="false"
-                title="Scroll zooms. Enable Pan for two-finger scrolling; Ctrl/⌘ or pinch always zooms. Shift-scroll pans horizontally."
+                title="Switch between scroll to zoom and scroll to pan. Ctrl/⌘ or pinch zooms. Shift-scroll pans horizontally."
               >
                 Scroll: Zoom
               </button>
