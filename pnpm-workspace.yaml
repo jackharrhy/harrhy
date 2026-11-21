@@ -10,7 +10,8 @@ allowBuilds:
   workerd@1.20261110.1: true
 overrides:
   "remark-parse@11.0.0>mdast-util-from-markdown": "2.0.3"
-  "mdast-util-from-markdown@2.0.3>micromark": "4.0.0"
+  "mdast-util-from-markdown@2.0.3>micromark": "4.0.2"
+  "micromark@4.0.2>micromark-core-commonmark": "2.0.3"
 packageExtensions:
   better-sqlite3@13.1.1:
     dependencies:
