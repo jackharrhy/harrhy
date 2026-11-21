@@ -3,15 +3,33 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    types:
+      [
+        opened,
+        synchronize,
+        reopened,
+        ready_for_review,
+        converted_to_draft,
+        closed,
+      ]
   workflow_dispatch:
 concurrency:
-  group: ci-${{ github.ref }}
+  # Keep the existing PR merge-ref key even when a merged close uses the base ref.
+  group: ci-${{ github.event_name == 'pull_request' && format('refs/pull/{0}/merge', github.event.number) || github.ref }}
   cancel-in-progress: true
 permissions:
   contents: read
 jobs:
+  # Give close events runnable work; GitHub does not document cancellation for all-skipped runs.
+  close-pr:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    permissions: {}
+    steps:
+      - run: echo "PR closed; no validation scheduled"
   select:
+    if: ${{ !(github.event_name == 'pull_request' && github.event.action == 'closed') }}
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
@@ -217,6 +235,7 @@ jobs:
       - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
         run: pnpm --filter @harrhy/worldview run test:embed
   workflows:
+    if: ${{ !(github.event_name == 'pull_request' && github.event.action == 'closed') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
@@ -314,7 +333,7 @@ jobs:
           grep -q 'HARRHY_SLUGGERS_DATABASE_URL is required' startup.log
   gate:
     name: CI gate
-    if: always()
+    if: always() && !cancelled() && !(github.event_name == 'pull_request' && github.event.action == 'closed')
     needs:
       [
         select,

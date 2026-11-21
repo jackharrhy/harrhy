@@ -12,6 +12,44 @@ const readWorkflow = (name) =>
   );
 const ci = readWorkflow("ci");
 
+test("PR close reuses the PR concurrency key and schedules no validation", () => {
+  const trigger = ci.split("\nconcurrency:")[0];
+  assert.match(trigger, /pull_request:\n    types:\s*\[[^\]]*\bclosed\b/);
+  assert.ok(
+    ci.includes(
+      "group: ci-${{ github.event_name == 'pull_request' && format('refs/pull/{0}/merge', github.event.number) || github.ref }}",
+    ),
+  );
+  assert.match(ci, /\n  cancel-in-progress: true\n/);
+
+  const closed =
+    "github.event_name == 'pull_request' && github.event.action == 'closed'";
+  const job = (name) => ci.split(`\n  ${name}:\n`)[1].split(/\n  \S/)[0];
+  assert.ok(job("close-pr").includes(`if: ${closed}`));
+  assert.match(
+    job("close-pr"),
+    /permissions: \{\}\n    steps:\n      - run: echo [^\n]+\n?$/,
+  );
+  for (const name of ["select", "workflows"]) {
+    assert.ok(job(name).includes(`if: \${{ !(${closed}) }}`), name);
+  }
+  for (const name of [
+    "check",
+    "node-images",
+    "selected-images",
+    "garden-image",
+    "harry-sluggers-image",
+  ]) {
+    assert.match(
+      job(name),
+      /^    needs: select\n    if: needs\.select\.outputs\.jobs != '' && fromJSON/,
+    );
+  }
+  assert.ok(
+    job("gate").includes(`if: always() && !cancelled() && !(${closed})`),
+  );
+});
+
 test("publication triggers on shared inputs copied by Garden", () => {
   const pushPaths = readWorkflow("publish-images").split(
     "  workflow_dispatch:",
