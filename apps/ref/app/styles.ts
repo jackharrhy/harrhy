@@ -228,6 +228,21 @@ export const refStyles = css({
     inset: "0",
     "transform-origin": "0 0",
   },
+  "& .remote-cursors": {
+    position: "absolute",
+    inset: "0",
+    pointerEvents: "none",
+    zIndex: "2147483647",
+  },
+  "& .remote-cursors i": {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    width: "14px",
+    height: "18px",
+    background: "currentColor",
+    clipPath: "polygon(0 0, 100% 64%, 48% 67%, 25% 100%)",
+  },
   "& .empty-state": {
     position: "absolute",
     top: "50%",

@@ -38,6 +38,7 @@ export default createController(routes.boards, {
       return context.render(
         <BoardPage
           board={board}
+          liveBoard={!!context.get(AppRuntime)!.liveBoard}
           moved={!!moved}
           error={
             new URL(context.request.url).searchParams.get("error") ?? undefined

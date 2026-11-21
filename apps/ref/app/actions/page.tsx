@@ -8,7 +8,6 @@ import {
 import { archiveExportScopes } from "../middleware/archive-auth.ts";
 import { routes } from "../routes.ts";
 import type { BoardRecord } from "../data/directory-cell.ts";
-import { routes } from "../routes.ts";
 import { browserAssets } from "../assets/build-manifest.ts";
 import { refStyles, refThemeStyles } from "../styles.ts";
 
@@ -266,12 +265,21 @@ export function ExportPage(handle: Handle<{ projectId: string }>) {
 }
 
 export function BoardPage(
-  handle: Handle<{ board: BoardRecord; error?: string; moved?: boolean }>,
+  handle: Handle<{
+    board: BoardRecord;
+    liveBoard?: boolean;
+    error?: string;
+    moved?: boolean;
+  }>,
 ) {
   const board = handle.props.board;
   return () => (
     <Document title={board.title} moved={handle.props.moved}>
-      <main id="board-app" data-board-id={board.id}>
+      <main
+        id="board-app"
+        data-board-id={board.id}
+        data-live-board={handle.props.liveBoard ? "1" : undefined}
+      >
         <header class="board-header">
           <a class="back-link" href="/" aria-label="Back to boards">
             ←

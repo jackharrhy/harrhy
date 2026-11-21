@@ -1,3 +1,4 @@
+import type { CursorRoom } from "../cursors/room.ts";
 import { createContextKey } from "remix/router";
 import type { IdentityConfig } from "@harrhy/identity";
 import type { RefMcpAccess } from "../mcp/auth.ts";
@@ -9,6 +10,7 @@ export interface AppRuntimeService {
   exports: DurableObjectStub<ExportCell>;
   directory: DurableObjectStub<DirectoryCell>;
   board(id: string): DurableObjectStub<BoardCell>;
+  liveBoard?: DurableObjectNamespace<CursorRoom>;
   media: R2Bucket;
 }
 
@@ -23,7 +25,12 @@ export const AppIdentity = createContextKey<{
   onAlternate?: boolean;
 } | null>();
 
-export function createRuntime(env: Env): AppRuntimeService {
+export function createRuntime(
+  env: Env & {
+    HARRHY_REF_LIVE_BOARD?: string;
+    CURSORS?: DurableObjectNamespace<CursorRoom>;
+  },
+): AppRuntimeService {
   return {
     get exports() {
       return env.EXPORTS.getByName("main");
@@ -32,6 +39,7 @@ export function createRuntime(env: Env): AppRuntimeService {
     board(id: string) {
       return env.BOARDS.getByName(id);
     },
+    liveBoard: env.HARRHY_REF_LIVE_BOARD === "1" ? env.CURSORS : undefined,
     media: env.MEDIA,
   };
 }

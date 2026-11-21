@@ -40,6 +40,20 @@ const linkInput = required<HTMLInputElement>("#link-url");
 const titleForm = required<HTMLFormElement>("#board-title-form");
 const titleInput = required<HTMLInputElement>("#board-title");
 let savedTitle = titleInput.value;
+const liveEnabled = app.dataset.liveBoard === "1";
+async function renameForm(): Promise<string | null> {
+  const response = await fetch(titleForm.action, {
+    method: "POST",
+    body: new FormData(titleForm),
+    headers: { Accept: "application/json" },
+    redirect: "error",
+    keepalive: true,
+    signal: AbortSignal.timeout(10000),
+  });
+  if (response.status === 400) return null;
+  if (!response.ok) throw new Error("Rename not confirmed");
+  return ((await response.json()) as { title: string }).title;
+}
 async function saveTitle() {
   if (
     titleInput.readOnly ||
@@ -49,20 +63,14 @@ async function saveTitle() {
     return;
   titleInput.readOnly = true;
   try {
-    const response = await fetch(titleForm.action, {
-      method: "POST",
-      body: new FormData(titleForm),
-      headers: { Accept: "application/json" },
-      redirect: "error",
-      keepalive: true,
-      signal: AbortSignal.timeout(10000),
-    });
-    if (response.status === 400) {
+    // Choose before dispatch. Never replay an unconfirmed mutation over HTTP.
+    const title = liveBoard?.connected
+      ? await liveBoard.rename(titleInput.value)
+      : await renameForm();
+    if (title === null) {
       toast("Name not saved. Enter a board name of 1–100 characters.");
       return;
     }
-    if (!response.ok) throw new Error("Rename not confirmed");
-    const { title } = (await response.json()) as { title: string };
     savedTitle = title;
     document.title = `${title} · ref`;
   } catch {
@@ -304,7 +312,25 @@ function required<T extends Element>(selector: string): T {
   return element;
 }
 
+let liveBoard:
+  | ReturnType<typeof import("../cursors/browser.ts").openLiveBoard>
+  | undefined;
+let cursorEpoch = 0;
 function setConnection(value: Connection) {
+  if (liveEnabled && value !== connectionState) {
+    const epoch = ++cursorEpoch;
+    liveBoard?.stop();
+    liveBoard = undefined;
+    if (value === "online")
+      void import("../cursors/browser.ts")
+        .then(({ openLiveBoard }) => {
+          if (epoch === cursorEpoch)
+            liveBoard = openLiveBoard(boardId, viewport, world, (event) =>
+              worldPoint(screenPoint(event)),
+            );
+        })
+        .catch(() => console.warn("Board cursors unavailable"));
+  }
   connectionState = value;
   connection.className = `connection ${value}`;
   required<HTMLElement>(".connection-text").textContent = {

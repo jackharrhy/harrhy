@@ -70,7 +70,7 @@ export class DirectoryCell extends DurableObject<Env> {
 
   async session(token: string): Promise<boolean> {
     if (!/^[0-9a-f]{64}$/.test(token)) return false;
-    return (await this.sessionExpiry(await tokenHash(token))) !== null;
+    return this.sessionAccess(await tokenHash(token)) !== null;
   }
 
   async endSession(token: string): Promise<void> {
@@ -135,14 +135,25 @@ export class DirectoryCell extends DurableObject<Env> {
 
   renameBoard(id: string, title: string): BoardRecord | null {
     const normalized = normalizeTitle(title);
-    if (!normalized || !this.board(id)) return null;
-    this.ctx.storage.sql.exec(
-      "UPDATE solo_boards SET title = ?, updated_at = ? WHERE id = ?",
-      normalized,
-      Date.now(),
-      id,
-    );
-    return this.board(id);
+    if (!normalized) return null;
+    const updated = this.ctx.storage.sql
+      .exec<BoardRow>(
+        "UPDATE solo_boards SET title = ?, updated_at = ? WHERE id = ? RETURNING *",
+        normalized,
+        Date.now(),
+        id,
+      )
+      .toArray()[0];
+    return updated ? toBoard(updated) : null;
+  }
+
+  renameForSession(
+    id: string,
+    title: string,
+    sessionHash: string,
+  ): string | null {
+    if (!this.sessionAccess(sessionHash)) throw Error("Board access ended");
+    return this.renameBoard(id, title)?.title ?? null;
   }
 
   async socketAccess(
@@ -153,13 +164,9 @@ export class DirectoryCell extends DurableObject<Env> {
     return this.sessionAccess(sessionHash);
   }
 
-  private async sessionExpiry(sessionHash: string): Promise<number | null> {
-    return (await this.sessionAccess(sessionHash))?.expiresAt ?? null;
-  }
-
-  private async sessionAccess(
+  private sessionAccess(
     sessionHash: string,
-  ): Promise<{ expiresAt: number; subject: string } | null> {
+  ): { expiresAt: number; subject: string } | null {
     const row = this.ctx.storage.sql
       .exec<{ expires_at: number; auth_subject: string }>(
         "SELECT expires_at, auth_subject FROM solo_sessions WHERE token_hash = ? AND expires_at > ? AND auth_subject <> ''",

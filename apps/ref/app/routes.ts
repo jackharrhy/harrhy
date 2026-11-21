@@ -15,6 +15,7 @@ export const routes = route({
   },
   resources: {
     snapshot: get("/api/boards/:boardId/snapshot"),
+    cursors: get("/api/boards/:boardId/canvas/live"),
     websocket: get("/api/boards/:boardId/ws"),
     upload: post("/api/boards/:boardId/assets"),
     link: post("/api/boards/:boardId/links"),
