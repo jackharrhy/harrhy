@@ -34,6 +34,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/maps-compiler`](apps/maps-compiler/) | Local native map compiler helper | [README](apps/maps-compiler/README.md) |
 | [`@harrhy/maps-service`](apps/maps-service/) | Hosted map projects and API | [README](apps/maps-service/README.md) |
 | [`@harrhy/ref`](apps/ref/) | Private image and link boards on a Worker and Celld | [README](apps/ref/README.md) |
+| [`@harrhy/review`](apps/review/) | Loopback Git diff inbox with durable inline comments | [README](apps/review/README.md) |
 | [`@harrhy/rotund`](apps/rotund/) | Personal service directory with Jack Auth entitlements | [README](apps/rotund/README.md) |
 | [`@harrhy/radio`](apps/radio/) | Synchronized listening rooms on a Worker and Celld | [README](apps/radio/README.md) |
 
