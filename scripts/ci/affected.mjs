@@ -62,10 +62,13 @@ export function selectChecks(paths, workspaces) {
       path.startsWith(".github/workflows/publish-") ||
       path === ".github/dependabot.yml" ||
       path === ".github/dependabot.yaml" ||
-      path === "scripts/ci/affected.mjs" ||
-      path === "scripts/ci/__tests__/affected.test.mjs" ||
+      // The select job runs these tests; image jobs own the image scripts.
+      /^scripts\/ci\/__tests__\/[^/]+\.test\.mjs$/.test(path) ||
+      path === "scripts/ci/node-image-impact.mjs" ||
+      path === "scripts/ci/node-image-smoke.mjs" ||
+      path === "scripts/ci/selected-image-smoke.mjs" ||
+      path === "scripts/ci/publish-images.mjs" ||
       path === "scripts/ci/publish-impact.mjs" ||
-      path === "scripts/ci/__tests__/publish-impact.test.mjs" ||
       path.endsWith("/Dockerfile") ||
       path.startsWith("docs/")
     )
@@ -159,17 +162,7 @@ if (
       process.env.BASE_SHA,
       process.env.HEAD_SHA || "HEAD",
     );
-    checks = selectChecks(
-      process.env.DRAFT_PR === "true"
-        ? paths.filter(
-            (path) =>
-              path !== ".github/workflows/ci.yml" &&
-              path !== "scripts/ci/affected.mjs" &&
-              path !== "compose.yml",
-          )
-        : paths,
-      loadWorkspaces(),
-    );
+    checks = selectChecks(paths, loadWorkspaces());
   } catch (error) {
     console.warn(`Could not determine affected workspaces: ${error.message}`);
     checks = selectChecks(["pnpm-lock.yaml"], loadWorkspaces());

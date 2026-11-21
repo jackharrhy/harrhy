@@ -83,7 +83,6 @@ test("edge and documentation changes do not start CMS checks", () => {
       [
         ".dockerignore",
         "apps/cms/Dockerfile",
-        "scripts/ci/affected.mjs",
         "scripts/ci/__tests__/affected.test.mjs",
         "scripts/ci/publish-impact.mjs",
         "scripts/ci/__tests__/publish-impact.test.mjs",
@@ -157,6 +156,27 @@ test("workflow lint and dependency-update metadata do not run app checks", () =>
   );
 });
 
+test("image CI and CI unit tests do not broaden workspace checks", () => {
+  const ciOnly = [
+    "scripts/ci/node-image-impact.mjs",
+    "scripts/ci/node-image-smoke.mjs",
+    "scripts/ci/selected-image-smoke.mjs",
+    "scripts/ci/publish-images.mjs",
+    "scripts/ci/__tests__/image-workflows.test.mjs",
+  ];
+  for (const path of ciOnly)
+    assert.deepEqual(selectChecks([path], workspaces), [], path);
+  assert.deepEqual(
+    selectChecks([...ciOnly, "packages/result/src/index.ts"], workspaces),
+    checks(
+      "@harrhy/cms",
+      "@harrhy/mcp",
+      "@harrhy/json-schema",
+      "@harrhy/result",
+    ),
+  );
+});
+
 test("shared configuration and unrecognized files run all checks", () => {
   const all = checks(
     ...workspaces
@@ -170,6 +190,11 @@ test("shared configuration and unrecognized files run all checks", () => {
     ".npmrc",
     ".github/workflows/ci.yml",
     "compose.yml",
+    "scripts/ci/affected.mjs",
+    "scripts/ci/run-checks.mjs",
+    "scripts/ci/plan-jobs.mjs",
+    "scripts/ci/main-baseline.sh",
+    "scripts/ci/new-helper.mjs",
     "unexpected/config.ts",
   ])
     assert.deepEqual(selectChecks([path], workspaces), all);
