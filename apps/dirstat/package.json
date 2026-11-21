@@ -1,0 +1,16 @@
+{
+  "name": "@harrhy/dirstat",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "check": "node --test __tests__/layout.test.mjs && node --check preview/worker.js && node --check preview/record.mjs && node --check preview/synthetic-host.mjs && node --check __tests__/preview.mjs && esbuild preview/viewer.jsx --bundle --jsx=automatic --jsx-import-source=remix/component > /dev/null"
+  },
+  "dependencies": {
+    "pixi.js": "8.23.0",
+    "remix": "3.2.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "playwright": "1.65.0"
+  }
+}
