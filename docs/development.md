@@ -1,14 +1,18 @@
 # Developing Harrhy
 
-Use Node.js 26 LTS (26.13.0 or later) and run `npm ci` from the repository root. The published Artbin CLI supports Node 20+ for consumers. [Img](../apps/img/README.md) also needs Rust and platform build dependencies.
+Use Node.js 26 LTS (26.13.0 or later) and run `pnpm install --frozen-lockfile` from the repository root. The published Artbin CLI supports Node 20+ for consumers. [Img](../apps/img/README.md) also needs Rust and platform build dependencies.
 
-The [workspace index](../README.md) links to each app and package. Use `npm run <script> --workspace <name>` to run a workspace script; for example, `npm run dev --workspace @harrhy/cms` starts CMS. Run `npm run` to list root shortcuts. Follow the [contributor guidance](../AGENTS.md) for worktrees and PR checks, and see [agent skills](agent-skills.md) for restoring managed guidance. Ref’s [logging guide](ref/guide.md#logging) links to the logging skill.
+The [workspace index](../README.md) links to each app and package. Use `pnpm --filter <name> run <script>` to run a workspace script; for example, `pnpm --filter @harrhy/cms run dev` starts CMS. Run `pnpm run` to list root shortcuts. Follow the [contributor guidance](../AGENTS.md) for worktrees and PR checks, and see [agent skills](agent-skills.md) for restoring managed guidance. Ref’s [logging guide](ref/guide.md#logging) links to the logging skill.
+
+## Worktree installs
+
+Use the pnpm version pinned in `packageManager` and `mise.toml`. For disposable development worktrees on the same host, use `pnpm install --frozen-lockfile --config.enable-global-virtual-store=true` to reuse installed packages across checkouts. Do not point production or container builds at a host store: their dependency trees must be self-contained. Pi’s nested `apps/pi/compat` install remains on npm.
 
 ## Checks
 
-- `npm run tooling:check` builds the shared Maps packages, generates missing Worker types, and runs repository formatting and typed lint checks. `npm run format` applies formatting; `npm run lint` runs typed lint.
-- `npm run typecheck:tsrs` checks all workspaces after Worker types have been generated.
-- `npm run knip:check` finds unused code. Review findings before removing code; browser, Worker and public-package entry points are configured in [Knip](../knip.jsonc).
+- `pnpm run tooling:check` builds the shared Maps packages, generates missing Worker types, and runs repository formatting and typed lint checks. `pnpm run format` applies formatting; `pnpm run lint` runs typed lint.
+- `pnpm run typecheck:tsrs` checks all workspaces after Worker types have been generated.
+- `pnpm run knip:check` finds unused code. Review findings before removing code; browser, Worker and public-package entry points are configured in [Knip](../knip.jsonc).
 
 [CI’s workspace selector](../scripts/ci/affected.mjs) checks changed workspaces and their consumers; shared or unknown inputs can trigger a full check. Ready PRs run the full comparison and eligible browser and Celld integration tests. See [container checks](node-images.md) for image validation and publication, and [the common Celld runtime](celld-runtime.md) for the qualified artifact.
 

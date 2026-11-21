@@ -17,7 +17,10 @@ test("canonical runtime changes check Celld consumers without unrelated Node app
 
 test("canonical artifact changes publish only Dockerfiles consuming Celld", () => {
   const apps = [...fleet, "maps-service", "maps-compiler", "auth"];
-  const manifests = new Map([["", { name: "root" }], ...apps.map((app) => [`apps/${app}`, { name: app }])]);
+  const manifests = new Map([
+    ["", { name: "root" }],
+    ...apps.map((app) => [`apps/${app}`, { name: app }]),
+  ]);
   assert.deepEqual(
     selectPublishedApps({
       apps,

@@ -92,10 +92,14 @@ for (const [name, workspace] of workspaces) {
 
     const prefix = dockerfile.slice(0, install.at(-1).index);
     assert.ok(
-      prefix.includes(`RUN npm install --global --ignore-scripts ${packageManager}\n`),
+      prefix.includes(
+        `RUN npm install --global --ignore-scripts ${packageManager}\n`,
+      ),
     );
     assert.ok(
-      prefix.includes("COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc "),
+      prefix.includes(
+        "COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ",
+      ),
     );
     const manifests = [
       ...prefix.matchAll(/^COPY ((?:apps|packages)\/[^/]+)\/package\.json /gm),
@@ -104,7 +108,10 @@ for (const [name, workspace] of workspaces) {
       .sort();
     assert.deepEqual(manifests, selectedWorkspaces(workspace));
     assert.doesNotMatch(prefix, /^COPY (?:apps|packages)\/[^/\s]+ /m);
-    assert.doesNotMatch(prefix, /^ARG (?:APP_REVISION|VCS_REF|HARRHY_\w+_VERSION)\b/m);
+    assert.doesNotMatch(
+      prefix,
+      /^ARG (?:APP_REVISION|VCS_REF|HARRHY_\w+_VERSION)\b/m,
+    );
     if (app === "radio") {
       assert.ok(
         prefix.includes(
@@ -120,7 +127,10 @@ for (const [name, workspace] of workspaces) {
     if (!bundledApps.has(app)) {
       assert.ok(runtime.includes("/app/node_modules "), "virtual store");
       for (const path of manifests) {
-        assert.ok(runtime.includes(`/app/${path} `), `runtime importer: ${path}`);
+        assert.ok(
+          runtime.includes(`/app/${path} `),
+          `runtime importer: ${path}`,
+        );
       }
     }
     if (celldApps.has(app)) {
