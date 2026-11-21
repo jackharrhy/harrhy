@@ -165,6 +165,9 @@ test("shared configuration and unrecognized files run all checks", () => {
   );
   for (const path of [
     "package-lock.json",
+    "pnpm-lock.yaml",
+    "pnpm-workspace.yaml",
+    ".npmrc",
     ".github/workflows/check.yml",
     "compose.yml",
     "unexpected/config.ts",

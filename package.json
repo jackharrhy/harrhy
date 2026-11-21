@@ -1,14 +1,10 @@
 {
   "name": "harrhy",
   "private": true,
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ],
   "type": "module",
   "scripts": {
-    "atlas:check": "npm run tooling:check && npm run check --workspace @harrhy/atlas",
-    "atlas:dev": "npm run dev --workspace @harrhy/atlas",
+    "atlas:check": "pnpm run tooling:check && pnpm --filter @harrhy/atlas run check",
+    "atlas:dev": "pnpm --filter @harrhy/atlas run dev",
     "auth:real:init": "node apps/auth/local-real/init.mjs",
     "auth:real:up": "docker compose --env-file apps/auth/.local-real/compose.env -f apps/auth/local-real/compose.yml up -d --wait",
     "auth:real:seed": "node apps/auth/local-real/seed.mjs",
@@ -16,70 +12,58 @@
     "auth:real:artbin": "node apps/auth/local-real/run.mjs artbin",
     "auth:real:smoke": "node apps/auth/local-real/smoke.mjs",
     "auth:real:down": "docker compose --env-file apps/auth/.local-real/compose.env -f apps/auth/local-real/compose.yml down",
-    "auth:check": "npm run tooling:check && npm run check --workspace @harrhy/auth",
-    "auth:dev": "npm run dev --workspace @harrhy/auth",
-    "garden:dev": "npm run dev --workspace @harrhy/garden",
-    "8mb:check": "npm run tooling:check && npm run check --workspace @harrhy/8mb",
-    "8mb:dev": "npm run dev --workspace @harrhy/8mb",
-    "garden:check": "npm run tooling:check && npm run check --workspace @harrhy/garden",
-    "cms:check": "npm run tooling:check && npm run check --workspace @harrhy/cms",
-    "cms:dev": "npm run dev --workspace @harrhy/cms",
-    "cms:test": "npm run test --workspace @harrhy/cms",
-    "cms-edge:check": "npm run tooling:check && npm run check --workspace @harrhy/cms-edge",
-    "cms-edge:dev": "npm run dev --workspace @harrhy/cms-edge",
+    "auth:check": "pnpm run tooling:check && pnpm --filter @harrhy/auth run check",
+    "auth:dev": "pnpm --filter @harrhy/auth run dev",
+    "garden:dev": "pnpm --filter @harrhy/garden run dev",
+    "8mb:check": "pnpm run tooling:check && pnpm --filter @harrhy/8mb run check",
+    "8mb:dev": "pnpm --filter @harrhy/8mb run dev",
+    "garden:check": "pnpm run tooling:check && pnpm --filter @harrhy/garden run check",
+    "cms:check": "pnpm run tooling:check && pnpm --filter @harrhy/cms run check",
+    "cms:dev": "pnpm --filter @harrhy/cms run dev",
+    "cms:test": "pnpm --filter @harrhy/cms run test",
+    "cms-edge:check": "pnpm run tooling:check && pnpm --filter @harrhy/cms-edge run check",
+    "cms-edge:dev": "pnpm --filter @harrhy/cms-edge run dev",
     "format": "vp fmt",
     "format:check": "vp fmt --check",
-    "json-schema:check": "npm run tooling:check && npm run check --workspace @harrhy/json-schema",
+    "json-schema:check": "pnpm run tooling:check && pnpm --filter @harrhy/json-schema run check",
     "knip": "knip",
     "knip:check": "knip",
     "typecheck:tsrs": "node scripts/tooling/tsrs-check.mjs",
-    "letters-to-steve:check": "npm run tooling:check && npm run check --workspace @harrhy/letters-to-steve",
-    "letters-to-steve:dev": "npm run dev --workspace @harrhy/letters-to-steve",
+    "letters-to-steve:check": "pnpm run tooling:check && pnpm --filter @harrhy/letters-to-steve run check",
+    "letters-to-steve:dev": "pnpm --filter @harrhy/letters-to-steve run dev",
     "lint": "node scripts/tooling/tsrslint.mjs lint",
-    "logger:check": "npm run tooling:check && npm run check --workspace @harrhy/logger",
-    "marky:check": "npm run tooling:check && npm run check --workspace @harrhy/marky",
-    "marky:dev": "npm run dev --workspace @harrhy/marky",
-    "worldview:check": "npm run tooling:check && npm run check --workspace @harrhy/worldview-renderer && npm run check --workspace @harrhy/maps-editor && npm run check --workspace @harrhy/maps-protocol && npm run check --workspace @harrhy/worldview && npm run check --workspace @harrhy/maps-collaboration && npm run check --workspace @harrhy/maps-compiler && npm run check --workspace @harrhy/maps-service",
-    "worldview:dev": "npm run dev --workspace @harrhy/worldview",
-    "mcp:check": "npm run tooling:check && npm run check --workspace @harrhy/mcp",
-    "radio:check": "npm run tooling:check && npm run check --workspace @harrhy/radio",
-    "radio:dev": "npm run dev --workspace @harrhy/radio",
-    "request-body:check": "npm run tooling:check && npm run check --workspace @harrhy/request-body",
-    "ref:check": "npm run tooling:check && npm run check --workspace @harrhy/ref",
-    "ref:dev": "npm run dev --workspace @harrhy/ref",
-    "rotund:check": "npm run tooling:check && npm run check --workspace @harrhy/rotund",
-    "rotund:dev": "npm run dev --workspace @harrhy/rotund",
-    "result:check": "npm run tooling:check && npm run check --workspace @harrhy/result",
-    "tooling:build": "npm run build --workspace @harrhy/worldview-renderer && npm run build --workspace @harrhy/maps-editor && npm run build --workspace @harrhy/maps-protocol",
-    "tooling:check": "npm run tooling:build && node scripts/tooling/ensure-worker-types.mjs && node scripts/tooling/tsrslint.mjs check",
-    "artbin:check": "npm run tooling:check && npm run check --workspace @harrhy/artbin-core && npm run check --workspace @harrhy/artbin-ui && npm run build --workspace @harrhy/worldview-renderer && npm run check --workspace @harrhy/artbin-app && npm run check --workspace @harrhy/artbin",
-    "artbin:dev": "npm run dev --workspace @harrhy/artbin-app",
-    "artbin-cli:release-check": "npm run artbin:check && npm run build --workspace @harrhy/artbin",
-    "img:dev": "npm run dev --workspace @harrhy/img --",
-    "img:check": "npm run check --workspace @harrhy/img"
+    "logger:check": "pnpm run tooling:check && pnpm --filter @harrhy/logger run check",
+    "marky:check": "pnpm run tooling:check && pnpm --filter @harrhy/marky run check",
+    "marky:dev": "pnpm --filter @harrhy/marky run dev",
+    "worldview:check": "pnpm run tooling:check && pnpm --filter @harrhy/worldview-renderer run check && pnpm --filter @harrhy/maps-editor run check && pnpm --filter @harrhy/maps-protocol run check && pnpm --filter @harrhy/worldview run check && pnpm --filter @harrhy/maps-collaboration run check && pnpm --filter @harrhy/maps-compiler run check && pnpm --filter @harrhy/maps-service run check",
+    "worldview:dev": "pnpm --filter @harrhy/worldview run dev",
+    "mcp:check": "pnpm run tooling:check && pnpm --filter @harrhy/mcp run check",
+    "radio:check": "pnpm run tooling:check && pnpm --filter @harrhy/radio run check",
+    "radio:dev": "pnpm --filter @harrhy/radio run dev",
+    "request-body:check": "pnpm run tooling:check && pnpm --filter @harrhy/request-body run check",
+    "ref:check": "pnpm run tooling:check && pnpm --filter @harrhy/ref run check",
+    "ref:dev": "pnpm --filter @harrhy/ref run dev",
+    "rotund:check": "pnpm run tooling:check && pnpm --filter @harrhy/rotund run check",
+    "rotund:dev": "pnpm --filter @harrhy/rotund run dev",
+    "result:check": "pnpm run tooling:check && pnpm --filter @harrhy/result run check",
+    "tooling:build": "pnpm --filter @harrhy/worldview-renderer run build && pnpm --filter @harrhy/maps-editor run build && pnpm --filter @harrhy/maps-protocol run build",
+    "tooling:check": "pnpm run tooling:build && node scripts/tooling/ensure-worker-types.mjs && node scripts/tooling/tsrslint.mjs check",
+    "artbin:check": "pnpm run tooling:check && pnpm --filter @harrhy/artbin-core run check && pnpm --filter @harrhy/artbin-ui run check && pnpm --filter @harrhy/worldview-renderer run build && pnpm --filter @harrhy/artbin-app run check && pnpm --filter @harrhy/artbin run check",
+    "artbin:dev": "pnpm --filter @harrhy/artbin-app run dev",
+    "artbin-cli:release-check": "pnpm run artbin:check && pnpm --filter @harrhy/artbin run build",
+    "img:dev": "pnpm --filter @harrhy/img run dev --",
+    "img:check": "pnpm --filter @harrhy/img run check"
   },
   "devDependencies": {
     "@maschwenk/tsrslint": "0.1.6",
     "knip": "6.45.1",
     "remix": "3.2.0",
     "tsrs": "0.25.0-ts7.1.0-beta",
-    "vite-plus": "1.6.0"
-  },
-  "overrides": {
-    "remark-parse@11.0.0": {
-      "mdast-util-from-markdown": {
-        ".": "2.0.3",
-        "micromark": {
-          ".": "4.0.2",
-          "micromark-core-commonmark": "2.0.3"
-        }
-      }
-    }
+    "vite-plus": "1.6.0",
+    "node-gyp": "12.3.0"
   },
   "engines": {
     "node": ">=26.13.0 <27"
   },
-  "allowScripts": {
-    "better-sqlite3@13.1.1": true
-  }
+  "packageManager": "pnpm@12.21.0"
 }

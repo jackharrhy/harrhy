@@ -1,0 +1,15 @@
+packages:
+  - apps/*
+  - packages/*
+linkWorkspacePackages: true
+preferWorkspacePackages: true
+packageImportMethod: hardlink
+onlyBuiltDependencies:
+  - better-sqlite3
+overrides:
+  "remark-parse@11.0.0>mdast-util-from-markdown": "2.0.3"
+  "mdast-util-from-markdown@2.0.3>micromark": "4.0.0"
+packageExtensions:
+  better-sqlite3@13.1.1:
+    dependencies:
+      node-gyp: 12.3.0

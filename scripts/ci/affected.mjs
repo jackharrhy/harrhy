@@ -24,6 +24,15 @@ export function loadWorkspaces(directory = root) {
   );
 }
 
+export function dependencyNames(manifest) {
+  return [
+    "dependencies",
+    "devDependencies",
+    "optionalDependencies",
+    "peerDependencies",
+  ].flatMap((field) => Object.keys(manifest[field] ?? {}));
+}
+
 export function selectChecks(paths, workspaces) {
   const all = workspaces
     .filter(({ manifest }) => manifest.scripts?.check)
@@ -77,15 +86,7 @@ export function selectChecks(paths, workspaces) {
     changed = false;
     for (const { name, manifest } of workspaces) {
       if (affected.has(name)) continue;
-      const dependencies = {
-        ...manifest.dependencies,
-        ...manifest.devDependencies,
-        ...manifest.optionalDependencies,
-        ...manifest.peerDependencies,
-      };
-      if (
-        Object.keys(dependencies).some((dependency) => affected.has(dependency))
-      ) {
+      if (dependencyNames(manifest).some((name) => affected.has(name))) {
         affected.add(name);
         changed = true;
       }
@@ -111,13 +112,7 @@ export function planChecks(selected, workspaces) {
     const workspace = byName.get(name);
     if (!workspace) throw new Error(`Unknown workspace ${name}`);
     visiting.add(name);
-    const dependencies = {
-      ...workspace.manifest.dependencies,
-      ...workspace.manifest.devDependencies,
-      ...workspace.manifest.optionalDependencies,
-      ...workspace.manifest.peerDependencies,
-    };
-    for (const dependency of Object.keys(dependencies)
+    for (const dependency of dependencyNames(workspace.manifest)
       .filter((candidate) => byName.has(candidate))
       .toSorted())
       visit(dependency);
@@ -175,7 +170,7 @@ if (
     );
   } catch (error) {
     console.warn(`Could not determine affected workspaces: ${error.message}`);
-    checks = selectChecks(["package-lock.json"], loadWorkspaces());
+    checks = selectChecks(["pnpm-lock.yaml"], loadWorkspaces());
   }
   console.log(`Affected checks: ${JSON.stringify(checks)}`);
   const mapsHosted = [

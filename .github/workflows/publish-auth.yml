@@ -6,7 +6,8 @@ on:
       - .dockerignore
       - .nvmrc
       - package.json
-      - package-lock.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
       - apps/auth/**
       - packages/**
   workflow_dispatch:
@@ -52,9 +53,10 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version-file: .nvmrc
-      - run: npm ci --allow-remote=all
-      - run: npx playwright install --only-shell chromium
-      - run: npm run check --workspace @harrhy/auth
+      - run: npm install --global --ignore-scripts pnpm@12.21.0
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @harrhy/auth exec playwright install --only-shell chromium
+      - run: pnpm --filter @harrhy/auth run check
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
           cache-binary: false

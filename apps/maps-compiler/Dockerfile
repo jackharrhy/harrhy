@@ -1,26 +1,34 @@
-FROM platformatic/node-caged:26-slim AS build
+FROM platformatic/node-caged:26-slim AS manifests
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ ca-certificates \
   && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json package-lock.json .npmrc ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/maps-compiler/package.json ./apps/maps-compiler/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
 COPY packages/maps-protocol/package.json ./packages/maps-protocol/
 COPY packages/maps-renderer/package.json ./packages/maps-renderer/
 COPY packages/request-body/package.json ./packages/request-body/
-RUN npm ci --workspace @harrhy/maps-compiler --include-workspace-root=true
+
+FROM manifests AS production-dependencies
+RUN pnpm --filter @harrhy/maps-compiler... install --frozen-lockfile --prod
+
+FROM manifests AS build
+RUN pnpm --filter @harrhy/maps-compiler... --filter . install --frozen-lockfile
 COPY tsconfig.base.json ./
 COPY apps/maps-compiler ./apps/maps-compiler
 COPY packages/maps-editor ./packages/maps-editor
 COPY packages/maps-protocol ./packages/maps-protocol
 COPY packages/maps-renderer ./packages/maps-renderer
 COPY packages/request-body ./packages/request-body
-RUN npm run build --workspace @harrhy/worldview-renderer \
-  && npm run build --workspace @harrhy/maps-editor \
-  && npm run build --workspace @harrhy/maps-protocol \
-  && npm run build --workspace @harrhy/maps-compiler \
-  && npm prune --omit=dev --workspace @harrhy/maps-compiler --include-workspace-root=true
+RUN pnpm --filter @harrhy/worldview-renderer run build \
+  && pnpm --filter @harrhy/maps-editor run build \
+  && pnpm --filter @harrhy/maps-protocol run build \
+  && pnpm --filter @harrhy/maps-compiler run build
+
+# Overlay built sources without replacing the production workspace links.
+RUN find apps packages -type d -name node_modules -prune -exec rm -rf {} +
 
 FROM platformatic/node-caged:26-slim
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
@@ -29,12 +37,17 @@ ENV NODE_ENV=production
 ENV HARRHY_MAPS_COMPILER_HOST=0.0.0.0
 ENV HARRHY_MAPS_COMPILER_PORT=8788
 WORKDIR /app/apps/maps-compiler
-COPY --from=build --chown=node:node /app/node_modules /app/node_modules
+COPY --from=production-dependencies --chown=node:node /app/node_modules /app/node_modules
 COPY --from=build --chown=node:node /app/package.json /app/tsconfig.base.json /app/
+COPY --from=production-dependencies --chown=node:node /app/apps/maps-compiler /app/apps/maps-compiler
 COPY --from=build --chown=node:node /app/apps/maps-compiler /app/apps/maps-compiler
+COPY --from=production-dependencies --chown=node:node /app/packages/maps-editor /app/packages/maps-editor
 COPY --from=build --chown=node:node /app/packages/maps-editor /app/packages/maps-editor
+COPY --from=production-dependencies --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=build --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
+COPY --from=production-dependencies --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
 COPY --from=build --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=production-dependencies --chown=node:node /app/packages/request-body /app/packages/request-body
 COPY --from=build --chown=node:node /app/packages/request-body /app/packages/request-body
 USER node
 EXPOSE 8788

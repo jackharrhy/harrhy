@@ -6,7 +6,8 @@ on:
       - .dockerignore
       - .nvmrc
       - package.json
-      - package-lock.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
       - apps/pool/**
       - apps/burger/**
       - apps/gurgur/**

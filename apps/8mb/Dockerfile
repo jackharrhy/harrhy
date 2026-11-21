@@ -1,14 +1,22 @@
-FROM platformatic/node-caged:26-slim AS build
+FROM platformatic/node-caged:26-slim AS manifests
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
-COPY package.json package-lock.json ./
+RUN npm install --global --ignore-scripts pnpm@12.21.0
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/8mb/package.json apps/8mb/package.json
 COPY packages/request-body/package.json packages/request-body/package.json
-RUN npm ci --workspace @harrhy/8mb --include-workspace-root=false
+
+FROM manifests AS production-dependencies
+RUN pnpm --filter @harrhy/8mb... install --frozen-lockfile --prod
+
+FROM manifests AS build
+RUN pnpm --filter @harrhy/8mb... install --frozen-lockfile
 COPY apps/8mb ./apps/8mb
 COPY packages/request-body ./packages/request-body
-RUN npm run build --workspace @harrhy/8mb
-RUN npm prune --omit=dev --workspace @harrhy/8mb
+RUN pnpm --filter @harrhy/8mb run build
+
+# Overlay built sources without replacing the production workspace links.
+RUN find apps packages -type d -name node_modules -prune -exec rm -rf {} +
 
 FROM platformatic/node-caged:26-slim
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
@@ -16,9 +24,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates
 ARG VCS_REF=local
 ENV NODE_ENV=production PORT=5188 APP_REVISION=${VCS_REF} DIAGNOSTICS_DB_FILE=/app/data/diagnostics.sqlite
 WORKDIR /app
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
+COPY --from=production-dependencies --chown=node:node /app/node_modules ./node_modules
 COPY --chown=node:node tsconfig.base.json ./tsconfig.base.json
+COPY --from=production-dependencies --chown=node:node /app/apps/8mb ./apps/8mb
 COPY --from=build --chown=node:node /app/apps/8mb ./apps/8mb
+COPY --from=production-dependencies --chown=node:node /app/packages/request-body ./packages/request-body
 COPY --from=build --chown=node:node /app/packages/request-body ./packages/request-body
 RUN mkdir -p /app/data && chown node:node /app/data
 WORKDIR /app/apps/8mb

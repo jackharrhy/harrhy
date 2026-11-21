@@ -8,7 +8,8 @@ on:
       - .nvmrc
       - tsconfig.base.json
       - package.json
-      - package-lock.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
       - apps/garden/**
       - packages/ui/**
   workflow_dispatch:

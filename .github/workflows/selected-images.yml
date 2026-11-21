@@ -8,7 +8,8 @@ on:
       - .dockerignore
       - .npmrc
       - package.json
-      - package-lock.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
       - tsconfig.base.json
       - apps/ref/**
       - apps/radio/**
