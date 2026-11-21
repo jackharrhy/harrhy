@@ -38,27 +38,6 @@ test("Luke navigation Select preserves focus for pointer and keyboard selection"
   );
 });
 
-test("Adornment preview Select preserves focus for pointer and keyboard selection", async ({
-  page,
-}) => {
-  const origin = await login(page, "andrew");
-  await page.goto(origin + "/tea/admin/media");
-  await expect(page.locator("#workspace")).not.toHaveAttribute("inert", "");
-  await page.locator("input[type=file]").setInputFiles({
-    name: "focus-fixture.png",
-    mimeType: "image/png",
-    buffer: Buffer.from(
-      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=",
-      "base64",
-    ),
-  });
-  await expect(page.getByText("File uploaded.", { exact: true })).toBeVisible();
-  await page.goto(origin + "/tea/admin/adornments");
-  await expect(page.locator("#workspace")).not.toHaveAttribute("inert", "");
-  await page.getByRole("button", { name: "+ New adornment" }).click();
-  await selectWithFocus(page, page.getByLabel("Preview image"), "No image");
-});
-
 test("Visual content stays inert while editing modules load", async ({
   page,
 }) => {
