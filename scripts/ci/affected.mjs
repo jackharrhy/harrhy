@@ -175,6 +175,34 @@ if (
     checks = selectChecks(["pnpm-lock.yaml"], loadWorkspaces());
   }
   console.log(`Affected checks: ${JSON.stringify(checks)}`);
+  if (process.env.GITHUB_STEP_SUMMARY) {
+    let report = "Unavailable: no comparable checkout/base.";
+    const base = process.env.BASE_SHA;
+    if (base && process.env.HEAD_SHA === process.env.GITHUB_SHA) {
+      const result = spawnSync(
+        "pnpm",
+        ["--filter", `...[${base}]`, "list", "--depth", "-1", "--json"],
+        { cwd: root, encoding: "utf8", timeout: 30000 },
+      );
+      try {
+        if (result.status !== 0) throw new Error("filter failed");
+        const names = new Set(JSON.parse(result.stdout).map((pkg) => pkg.name));
+        const shadow = loadWorkspaces()
+          .filter(
+            ({ name, manifest }) => names.has(name) && manifest.scripts?.check,
+          )
+          .map((pkg) => pkg.name)
+          .toSorted((a, b) => a.localeCompare(b));
+        report = `Legacy only: ${JSON.stringify(checks.filter((name) => !shadow.includes(name)))}\n\npnpm only: ${JSON.stringify(shadow.filter((name) => !checks.includes(name)))}`;
+      } catch {
+        report = "Unavailable: pnpm filter failed.";
+      }
+    }
+    appendFileSync(
+      process.env.GITHUB_STEP_SUMMARY,
+      `### pnpm affected shadow (advisory)\n${report}\n\n`,
+    );
+  }
   const mapsHosted = [
     "@harrhy/worldview",
     "@harrhy/maps-service",

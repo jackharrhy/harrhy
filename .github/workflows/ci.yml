@@ -12,6 +12,9 @@ permissions:
   contents: read
 jobs:
   select:
+    permissions:
+      contents: read
+      actions: read
     runs-on: ubuntu-22.04
     timeout-minutes: 5
     outputs:
@@ -37,9 +40,16 @@ jobs:
           node-version-file: .nvmrc
           package-manager-cache: false
       - run: node --test scripts/ci/__tests__/*.test.mjs
+      - id: baseline
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash scripts/ci/main-baseline.sh
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+        continue-on-error: true
       - id: affected
         env:
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.action == 'synchronize' && github.event.before || github.event.pull_request.base.sha || github.event.before }}
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.action == 'synchronize' && github.event.before || github.event.pull_request.base.sha || steps.baseline.outputs.sha }}
           HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.action == 'synchronize' && github.event.pull_request.head.sha || github.sha }}
           DRAFT_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
         run: node scripts/ci/affected.mjs
@@ -73,10 +83,6 @@ jobs:
             esac
             echo "$group=$selected" >> "$GITHUB_OUTPUT"
           }
-          select_group runtime_images scripts/ci/selected-image-smoke.mjs celld.json .dockerignore .npmrc \
-            package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json \
-            apps/ref/ apps/radio/ apps/worldview/ apps/maps-collaboration/ \
-            apps/burger/ apps/gurgur/ apps/pool/ packages/
           select_group garden .github/workflows/publish-garden.yml .github/workflows/publish-images.yml \
             .dockerignore .npmrc .nvmrc tsconfig.base.json package.json pnpm-lock.yaml \
             pnpm-workspace.yaml apps/garden/ packages/ui/
@@ -86,7 +92,7 @@ jobs:
         env:
           CHECK: ${{ steps.affected.outputs.any }}
           NODE_APPS: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.apps }}
-          RUNTIME_IMAGES: ${{ steps.image_paths.outputs.runtime_images }}
+          RUNTIME_IMAGES: ${{ github.event_name == 'push' && '[]' || steps.node_images.outputs.runtime }}
           GARDEN: ${{ steps.image_paths.outputs.garden }}
           HARRY_SLUGGERS: ${{ steps.image_paths.outputs.harry_sluggers }}
         run: node scripts/ci/plan-jobs.mjs
