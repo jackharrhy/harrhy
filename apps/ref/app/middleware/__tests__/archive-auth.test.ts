@@ -96,10 +96,11 @@ describe("Ref delegated archive authorization", () => {
   });
 });
 
+const archiveAccess = (p: TokenPrincipal) =>
+  authorizeArchiveExport(p, project, "ref-browser");
+
 it("archive export authorization requires the scoped human admin, actual grants and a separate client", () => {
   const valid = token("admin", ["archive-read"]);
-  const archiveAccess = (p: TokenPrincipal) =>
-    authorizeArchiveExport(p, project, "ref-browser");
   expect(() =>
     archiveAccess({
       ...valid,
