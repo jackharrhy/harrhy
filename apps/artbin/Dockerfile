@@ -11,7 +11,7 @@ COPY packages/request-body/package.json packages/request-body/package.json
 COPY packages/mcp/package.json packages/mcp/package.json
 COPY packages/json-schema/package.json packages/json-schema/package.json
 COPY packages/result/package.json packages/result/package.json
-COPY packages/schmovement/package.json packages/schmovement/package.json
+COPY packages/maps-renderer/package.json packages/maps-renderer/package.json
 COPY packages/schmovement/package.json packages/schmovement/package.json
 
 FROM manifests AS production-dependencies
@@ -33,7 +33,7 @@ COPY packages/request-body packages/request-body
 COPY packages/mcp packages/mcp
 COPY packages/json-schema packages/json-schema
 COPY packages/result packages/result
-COPY packages/schmovement packages/schmovement
+COPY packages/maps-renderer packages/maps-renderer
 COPY packages/schmovement packages/schmovement
 RUN pnpm --filter @harrhy/worldview-renderer run build
 
@@ -61,9 +61,9 @@ COPY --from=production-dependencies /app/packages/json-schema ./packages/json-sc
 COPY --from=build /app/packages/json-schema ./packages/json-schema
 COPY --from=production-dependencies /app/packages/result ./packages/result
 COPY --from=build /app/packages/result ./packages/result
+COPY --from=production-dependencies /app/packages/maps-renderer ./packages/maps-renderer
 COPY --from=production-dependencies /app/packages/schmovement ./packages/schmovement
-COPY --from=production-dependencies /app/packages/schmovement ./packages/schmovement
-COPY --from=build /app/packages/schmovement ./packages/schmovement
+COPY --from=build /app/packages/maps-renderer ./packages/maps-renderer
 COPY --from=build /app/packages/schmovement ./packages/schmovement
 COPY --from=production-dependencies /app/apps/artbin ./apps/artbin
 COPY --from=build /app/apps/artbin ./apps/artbin
