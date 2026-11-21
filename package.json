@@ -28,6 +28,7 @@
     "json-schema:check": "pnpm run tooling:check && pnpm --filter @harrhy/json-schema run check",
     "knip": "knip",
     "knip:check": "knip",
+    "ci:preflight": "pnpm run tooling:check && pnpm run knip:check",
     "typecheck:tsrs": "node scripts/tooling/tsrs-check.mjs",
     "letters-to-steve:check": "pnpm run tooling:check && pnpm --filter @harrhy/letters-to-steve run check",
     "letters-to-steve:dev": "pnpm --filter @harrhy/letters-to-steve run dev",

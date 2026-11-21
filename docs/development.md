@@ -10,6 +10,8 @@ Use the pnpm version pinned in `packageManager` and `mise.toml`. For disposable 
 
 ## Checks
 
+Run `pnpm run ci:preflight` after a frozen install to reproduce CI’s formatting, typed lint and Knip checks locally. Run `node --test scripts/ci/__tests__/*.test.mjs` for selector tests and `pnpm --filter <workspace> check` for a failing app. The GitHub workflow still verifies runner setup, integration checks and image smokes.
+
 - `pnpm run tooling:check` builds the shared Maps packages, generates missing Worker types, and runs repository formatting and typed lint checks. `pnpm run format` applies formatting; `pnpm run lint` runs typed lint.
 - `pnpm run typecheck:tsrs` checks all workspaces after Worker types have been generated.
 - `pnpm run knip:check` finds unused code. Review findings before removing code; browser, Worker and public-package entry points are configured in [Knip](../knip.jsonc).
