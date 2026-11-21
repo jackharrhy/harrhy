@@ -104,23 +104,62 @@ export function diff(previous: Row[], rows: Row[]) {
   return { put, remove: [...before.keys()] };
 }
 
-export type View = { epoch: string; seq: number; rows: Map<string, Row> };
+// Normalized browser view. A delta only replaces rows in its put set.
+// Preserve ID-array identity too: a row edit isn't necessarily a list reorder.
+export type SessionIndex = {
+  byId: Readonly<Record<string, Row>>;
+  activeIds: readonly string[];
+  archivedIds: readonly string[];
+};
+export const emptyIndex: SessionIndex = {
+  byId: Object.create(null),
+  activeIds: [],
+  archivedIds: [],
+};
+export type View = SessionIndex & { epoch: string; seq: number };
+
+function retainOrder(
+  before: readonly string[],
+  after: string[],
+): readonly string[] {
+  return before.length === after.length &&
+    before.every((id, i) => after[i] === id)
+    ? before
+    : after;
+}
 export function apply(view: View | undefined, frame: Frame): View {
-  if (frame.kind === "snapshot" && frame.seq === 0 && !view)
-    return {
-      epoch: frame.epoch,
-      seq: 0,
-      rows: new Map(frame.rows.map((row) => [row.id, row])),
-    };
-  if (
-    frame.kind !== "change" ||
-    !view ||
-    frame.epoch !== view.epoch ||
-    frame.seq !== view.seq + 1
-  )
+  const previous = view ?? emptyIndex;
+  const byId: Record<string, Row> = Object.assign(
+    Object.create(null),
+    previous.byId,
+  );
+  if (frame.kind === "snapshot" && frame.seq === 0 && !view) {
+    for (const row of frame.rows) byId[row.id] = row;
+  } else if (
+    frame.kind === "change" &&
+    view &&
+    frame.epoch === view.epoch &&
+    frame.seq === view.seq + 1
+  ) {
+    for (const id of frame.remove) delete byId[id];
+    for (const row of frame.put) byId[row.id] = row;
+  } else {
     throw Error("Session state out of sequence");
-  const rows = new Map(view.rows);
-  for (const id of frame.remove) rows.delete(id);
-  for (const row of frame.put) rows.set(row.id, row);
-  return { epoch: view.epoch, seq: frame.seq, rows };
+  }
+  const active: string[] = [],
+    archived: string[] = [];
+  for (const row of Object.values(byId).toSorted(
+    (a, b) =>
+      Number(b.pinned) - Number(a.pinned) ||
+      b.updatedAt - a.updatedAt ||
+      a.id.localeCompare(b.id),
+  ))
+    (row.archivedAt === null ? active : archived).push(row.id);
+  return {
+    epoch: frame.epoch,
+    seq: frame.seq,
+    byId,
+    activeIds: retainOrder(previous.activeIds, active),
+    archivedIds: retainOrder(previous.archivedIds, archived),
+  };
 }

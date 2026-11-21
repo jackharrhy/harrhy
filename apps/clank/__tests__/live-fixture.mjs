@@ -2,6 +2,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { execFileSync } from "node:child_process";
+import { measureRenders } from "./render-counts.mjs";
 import { chromium } from "playwright";
 import { WebSocket } from "ws";
 import { build } from "esbuild";
@@ -91,6 +92,7 @@ try {
     context.newPage(),
     context.newPage(),
   ]);
+  const startRenderInterval = await measureRenders(reader);
   const errors = [];
   for (const p of [editor, reader]) {
     p.on("pageerror", (e) => errors.push(e.message));
@@ -100,12 +102,18 @@ try {
     sent = 0,
     received = 0,
     bytes = 0,
-    sockets = 0;
+    sockets = 0,
+    watches = 0;
   reader.on("request", () => requests++);
   reader.on("websocket", (ws) => {
     sockets++;
     assert.equal(ws.url(), origin.replace("http", "ws") + "/live");
-    ws.on("framesent", () => sent++);
+    ws.on("framesent", ({ payload }) => {
+      sent++;
+      // Count calls to the public watch method, not every Cap’n Web control frame.
+      const [operation, call] = JSON.parse(payload);
+      if (operation === "push" && call?.[2]?.[0] === "watch") watches++;
+    });
     ws.on("framereceived", ({ payload }) => {
       received++;
       bytes += Buffer.byteLength(payload);
@@ -148,10 +156,19 @@ try {
     await heading(reader, title).waitFor();
   });
   await row(title).getByLabel("New title").fill(renamed);
+  const mountedRows = await reader
+    .locator('ul[aria-label="Sessions in activity order"] > li')
+    .count();
+  assert.ok(mountedRows > 1);
+  const finishRenderInterval = await startRenderInterval();
   await measure("rename", async () => {
     await row(title).getByRole("button", { name: "Rename" }).click();
     await heading(reader, renamed).waitFor();
   });
+  const renders = await finishRenderInterval();
+  assert.deepEqual(renders, { row: 1, list: 0, connection: 0 });
+  assert.deepEqual([sockets, watches], [1, 1]);
+  receipt.readerRename = { mountedRows, sockets, watches, renders };
   await measure("archive", async () => {
     await row(renamed).getByRole("button", { name: "Archive" }).click();
     await heading(reader, renamed).waitFor({ state: "detached" });
@@ -219,7 +236,7 @@ try {
     await reader.getByText("Disconnected. Reconnecting…").waitFor();
     await heading(reader, renamed).waitFor();
   });
-  assert.equal(sockets, 2);
+  assert.deepEqual([sockets, watches], [2, 2]);
   // Do not finish the callback. The same 8s delivery deadline covers both RPC hops.
   receipt.slowReader = await held.evaluate(async () => {
     const start = performance.now(),

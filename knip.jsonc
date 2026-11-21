@@ -14,6 +14,17 @@
     "apps/pi/__tests__/fixtures/**",
   ],
   "workspaces": {
+    "apps/clank": {
+      // esbuild entries and the adapter imported by the external fixture launcher.
+      "entry": [
+        "app/browser.tsx",
+        "app/start.ts",
+        "standalone.tsx",
+        "bridge.ts",
+        "__tests__/browser-probe.mjs",
+      ],
+      "ignoreBinaries": ["ss"],
+    },
     "apps/pi": {
       "entry": ["harrhy/*.mjs", "__tests__/*.mjs"],
       "ignoreBinaries": ["bwrap"],

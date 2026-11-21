@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createSessionStore } from "../app/session-store.ts";
 import {
   apply,
   diff,
@@ -51,7 +52,7 @@ test("apply changed and removed rows, reject gaps, duplicates and old epochs", (
     ...diff([row, removed], [renamed]),
   };
   assert.deepEqual(change.remove, ["other"]);
-  assert.deepEqual([...apply(view, change).rows.values()], [renamed]);
+  assert.deepEqual(Object.values(apply(view, change).byId), [renamed]);
   for (const invalid of [
     { ...change, seq: 0 },
     { ...change, seq: 2 },
@@ -75,4 +76,48 @@ test("fixture commands cannot select a model, cwd, principal or arbitrary Chord 
     { kind: "restore", id: row.id },
   ])
     assert.throws(() => parseCommand(v));
+});
+
+test("a local title selection notifies on change, awaits the render, and stops on abort", async () => {
+  const store = createSessionStore(),
+    owner = new AbortController();
+  const title = store.select((state) => state.byId[row.id]?.title);
+  const other = { ...row, id: "other" };
+  const first = apply(undefined, {
+    kind: "snapshot",
+    epoch: "a",
+    seq: 0,
+    rows: [row, other],
+  });
+  await store.publish(first);
+  assert.equal(title.current, row.title);
+  const rendered = Promise.withResolvers<void>();
+  const updates: (string | undefined)[] = [];
+  title.subscribe((value) => {
+    updates.push(value);
+    return rendered.promise;
+  }, owner);
+  const next = apply(first, {
+    kind: "change",
+    epoch: "a",
+    seq: 1,
+    put: [{ ...row, title: "changed" }],
+    remove: [],
+  });
+  assert.equal(next.byId.other, first.byId.other);
+  assert.equal(next.activeIds, first.activeIds);
+  let acknowledged = false;
+  const delivery = store.publish(next).then(() => {
+    acknowledged = true;
+  });
+  await Promise.resolve();
+  assert.equal(title.current, "changed");
+  assert.equal(acknowledged, false);
+  rendered.resolve();
+  await delivery;
+  await store.publish({ pending: true });
+  owner.abort();
+  await store.publish(first);
+  assert.deepEqual(updates, ["changed"]);
+  assert.equal(title.current, row.title);
 });
