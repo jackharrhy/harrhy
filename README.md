@@ -31,6 +31,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/worldview`](apps/worldview/) | Worldview BSP viewer and map editor | [README](apps/worldview/README.md) |
 | [`@harrhy/marky`](apps/marky/) | Collaborative Markdown editor with Jack Auth access | [README](apps/marky/README.md) |
 | [`@harrhy/pool-app`](apps/pool/) | Remix pool hall and authoritative Bun game server | [README](apps/pool/README.md) |
+| [`@harrhy/world`](apps/world/) | Private multiplayer hall walk-through | [README](apps/world/README.md) |
 | [`@harrhy/maps-collaboration`](apps/maps-collaboration/) | Live map sessions and SQLite map cells | [README](apps/maps-collaboration/README.md) |
 | [`@harrhy/maps-compiler`](apps/maps-compiler/) | Local native map compiler helper | [README](apps/maps-compiler/README.md) |
 | [`@harrhy/maps-service`](apps/maps-service/) | Hosted map projects and API | [README](apps/maps-service/README.md) |
@@ -56,6 +57,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/logger`](packages/logger/) | Request and job logging primitives | [README](packages/logger/README.md) |
 | [`@harrhy/maps-editor`](packages/maps-editor/) | Map document and source-rendering primitives | [README](packages/maps-editor/README.md) |
 | [`@harrhy/maps-protocol`](packages/maps-protocol/) | Hosted and collaborative map schemas | [README](packages/maps-protocol/README.md) |
+| [`@harrhy/schmovement`](packages/schmovement/) | GoldSrc-style movement over a host collision sweep | [README](packages/schmovement/README.md) |
 | [`@harrhy/worldview-renderer`](packages/maps-renderer/) | Embeddable WebGPU map renderer and BSP core | [README](packages/maps-renderer/README.md) |
 | [`@harrhy/webmcp`](packages/webmcp/) | Browser-native site tool registration and lifecycle | [README](packages/webmcp/README.md) |
 | [`@harrhy/mcp`](packages/mcp/) | Official SDK HTTP MCP transport and typed tool bindings | [README](packages/mcp/README.md) |

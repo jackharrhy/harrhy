@@ -19,7 +19,7 @@ import type {
 import type { HallView } from "../scene/world";
 import type { GameUI } from "../ui";
 import type { Shot } from "../prediction/shot-command";
-import { CueDrag } from "./cue-drag";
+import { CueDrag } from "@harrhy/pool/cue-drag";
 import { walkDirection } from "./walking";
 interface InputState {
   id: string;

@@ -38,6 +38,7 @@ interface FrameOptions extends SceneFrameOptions {
   readonly includeSprites: boolean;
   readonly sceneGroup: TgpuBindGroup;
   readonly clearColor: readonly [number, number, number, number];
+  readonly drawOverlay?: (pass: GPURenderPassEncoder) => void;
 }
 
 export interface OverviewRenderSettings {
@@ -146,6 +147,7 @@ export class TypeGpuWorldRenderer {
     projectionView: Float32Array,
     camera: CameraState,
     timeSeconds: number,
+    drawOverlay?: (pass: GPURenderPassEncoder) => void,
   ): void {
     if (this.disposed) return;
     const target = this.canvasTarget.current();
@@ -164,6 +166,7 @@ export class TypeGpuWorldRenderer {
       cutaway: null,
       sceneGroup: this.resources.sceneGroup,
       clearColor: this.clearColor,
+      ...(drawOverlay && { drawOverlay }),
     });
     this.device.queue.submit([encoder.finish()]);
   }
@@ -245,6 +248,7 @@ export class TypeGpuWorldRenderer {
       worldFaceVisibility,
       batchCenters: this.batchCenters,
       hasSprites,
+      hasOverlay: Boolean(options.drawOverlay),
       hasWalkability: !options.allFaces && this.walkability.hasContent,
     });
     encodeWorldPasses({
@@ -258,6 +262,7 @@ export class TypeGpuWorldRenderer {
       clearColor: options.clearColor,
       camera,
       timeSeconds,
+      ...(options.drawOverlay && { drawOverlay: options.drawOverlay }),
     });
   }
 

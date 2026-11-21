@@ -13,6 +13,7 @@ COPY apps/maps-collaboration/package.json ./apps/maps-collaboration/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
 COPY packages/maps-protocol/package.json ./packages/maps-protocol/
 COPY packages/maps-renderer/package.json ./packages/maps-renderer/
+COPY packages/schmovement/package.json ./packages/schmovement/
 
 FROM manifests AS dependencies
 RUN pnpm --filter @harrhy/maps-collaboration... install --frozen-lockfile
@@ -25,6 +26,7 @@ COPY apps/maps-collaboration ./apps/maps-collaboration
 COPY packages/maps-editor ./packages/maps-editor
 COPY packages/maps-protocol ./packages/maps-protocol
 COPY packages/maps-renderer ./packages/maps-renderer
+COPY packages/schmovement ./packages/schmovement
 RUN pnpm --filter @harrhy/worldview-renderer run build \
   && pnpm --filter @harrhy/maps-editor run build \
   && pnpm --filter @harrhy/maps-protocol run build
@@ -57,7 +59,9 @@ COPY --from=build --chown=node:node /app/packages/maps-editor /app/packages/maps
 COPY --from=dependencies --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=build --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=dependencies --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=dependencies --chown=node:node /app/packages/schmovement /app/packages/schmovement
 COPY --from=build --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=build --chown=node:node /app/packages/schmovement /app/packages/schmovement
 RUN mkdir -p /app/.celld \
   && chmod +x /app/apps/maps-collaboration/scripts/start-celld.sh \
   && chown -R node:node /app/.celld

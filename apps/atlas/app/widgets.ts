@@ -57,6 +57,27 @@ function object(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === "object" && !Array.isArray(value);
 }
 
+function browserData(value: unknown, depth = 0): boolean {
+  if (depth > 8) return false;
+  if (value === null || typeof value === "string" || typeof value === "boolean")
+    return true;
+  if (typeof value === "number") return Number.isFinite(value);
+  if (Array.isArray(value))
+    return (
+      value.length <= 256 && value.every((item) => browserData(item, depth + 1))
+    );
+  return (
+    object(value) &&
+    Object.keys(value).length <= 256 &&
+    Object.entries(value).every(
+      ([key, item]) =>
+        key.length <= 128 &&
+        !["__proto__", "constructor", "prototype"].includes(key) &&
+        browserData(item, depth + 1),
+    )
+  );
+}
+
 /** Compiles browser code only. Authored modules are never imported by Node. */
 export function createWidgetLoader(manifest: string) {
   let cache = new Map<string, Widget>();
@@ -83,7 +104,7 @@ export function createWidgetLoader(manifest: string) {
         if (
           !object(entry) ||
           Object.keys(entry).some(
-            (key) => !["id", "space", "page", "module"].includes(key),
+            (key) => !["id", "space", "page", "module", "data"].includes(key),
           ) ||
           typeof entry.id !== "string" ||
           !/^[a-z][a-z0-9-]{0,63}$/.test(entry.id) ||
@@ -96,6 +117,13 @@ export function createWidgetLoader(manifest: string) {
           !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,63}\.tsx$/.test(entry.module)
         )
           throw new Error("Invalid widget registration");
+        if (
+          Object.hasOwn(entry, "data") &&
+          (!object(entry.data) ||
+            !browserData(entry.data) ||
+            Buffer.byteLength(JSON.stringify(entry.data)) > 16384)
+        )
+          throw new Error("Invalid browser widget data");
         ids.add(entry.id);
         const source = await readFile(
           path.join(config.root, entry.module),
@@ -115,7 +143,7 @@ const notice=document.getElementById('atlas-widget-notice-${id}');
 let errored=false;
 function failed(){errored=true;if(notice){notice.hidden=false;notice.textContent='Interactive content failed. The article remains readable.';}}
 try {const module=await import('atlas:source'); if(typeof module.Widget!=='function')throw new Error('Missing Widget export');
-const root=createRoot(host);root.addEventListener('error',failed);root.render(createElement(module.Widget,{}));root.flush();if(!errored)notice.hidden=true;window.addEventListener('pagehide',()=>root.dispose(),{once:true});
+const root=createRoot(host);root.addEventListener('error',failed);root.render(createElement(module.Widget,${Object.hasOwn(entry, "data") ? `{data:JSON.parse(${JSON.stringify(JSON.stringify(entry.data))})}` : "{}"}));root.flush();if(!errored)notice.hidden=true;window.addEventListener('pagehide',()=>root.dispose(),{once:true});
 } catch {failed();}`,
               loader: "ts",
               resolveDir: project,
@@ -192,7 +220,12 @@ const root=createRoot(host);root.addEventListener('error',failed);root.render(cr
           if (!script) throw new Error("Widget compilation returned no script");
           if (Buffer.byteLength(script) > 1048576)
             throw new Error("Widget bundle exceeds limit");
-          widget = Object.freeze({ id, page, script, digest: hash(script) });
+          widget = Object.freeze({
+            id,
+            page,
+            script,
+            digest: hash(script),
+          });
         }
         total += Buffer.byteLength(widget.script);
         if (total > 8388608) throw new Error("Widget generation exceeds limit");

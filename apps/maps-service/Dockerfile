@@ -12,6 +12,7 @@ COPY packages/json-schema/package.json ./packages/json-schema/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
 COPY packages/maps-protocol/package.json ./packages/maps-protocol/
 COPY packages/maps-renderer/package.json ./packages/maps-renderer/
+COPY packages/schmovement/package.json ./packages/schmovement/
 COPY packages/mcp/package.json ./packages/mcp/
 COPY packages/request-body/package.json ./packages/request-body/
 COPY packages/result/package.json ./packages/result/
@@ -28,6 +29,7 @@ COPY packages/json-schema ./packages/json-schema
 COPY packages/maps-editor ./packages/maps-editor
 COPY packages/maps-protocol ./packages/maps-protocol
 COPY packages/maps-renderer ./packages/maps-renderer
+COPY packages/schmovement ./packages/schmovement
 COPY packages/mcp ./packages/mcp
 COPY packages/request-body ./packages/request-body
 COPY packages/result ./packages/result
@@ -62,7 +64,9 @@ COPY --from=build --chown=node:node /app/packages/maps-editor /app/packages/maps
 COPY --from=production-dependencies --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=build --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=production-dependencies --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=production-dependencies --chown=node:node /app/packages/schmovement /app/packages/schmovement
 COPY --from=build --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=build --chown=node:node /app/packages/schmovement /app/packages/schmovement
 COPY --from=production-dependencies --chown=node:node /app/packages/mcp /app/packages/mcp
 COPY --from=build --chown=node:node /app/packages/mcp /app/packages/mcp
 COPY --from=production-dependencies --chown=node:node /app/packages/request-body /app/packages/request-body

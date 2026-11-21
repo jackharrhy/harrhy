@@ -15,7 +15,7 @@ import {
 } from "@harrhy/pool";
 import { PoolPhysics } from "@harrhy/pool/engine";
 import { POCKETS } from "@harrhy/pool/table";
-import { chooseBotPlacement, chooseBotShot } from "../../server/bot";
+import { chooseBotPlacement, chooseBotShot } from "@harrhy/pool/bot";
 
 const ball = (id: number, x: number, z: number): Ball => ({
   id,

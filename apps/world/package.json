@@ -1,0 +1,39 @@
+{
+  "name": "@harrhy/world",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsrs -p tsconfig.json --noEmit && tsrs -p celld/tsconfig.json --noEmit",
+    "test": "node --test __tests__/*.test.ts",
+    "build": "vite build && node scripts/build-server.mjs",
+    "start": "node dist/server/index.js",
+    "dev": "pnpm run build && pnpm start",
+    "test:browser": "node __tests__/browser-smoke.mjs",
+    "test:pool-live": "node __tests__/pool-smoke.mjs",
+    "check": "pnpm run typecheck && npm test && pnpm run build && node --test __tests__/frontend.test.mjs",
+    "prebuild": "pnpm --filter @harrhy/worldview-renderer run build",
+    "pretypecheck": "pnpm --filter @harrhy/worldview-renderer run build",
+    "pretest": "pnpm --filter @harrhy/worldview-renderer run build"
+  },
+  "dependencies": {
+    "@harrhy/pool": "0.1.0",
+    "@harrhy/schmovement": "0.1.0",
+    "@harrhy/ui": "0.1.0",
+    "@harrhy/worldview-renderer": "0.2.0",
+    "bitecs": "0.4.0",
+    "chess.js": "1.4.0",
+    "remix": "3.2.0",
+    "three": "0.187.0",
+    "ws": "8.22.2"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20261112.1",
+    "@playwright/test": "1.65.0",
+    "@types/node": "26.6.6",
+    "@types/three": "0.187.0",
+    "@types/ws": "8.18.2",
+    "esbuild": "0.28.2",
+    "vite": "^8.3.8"
+  }
+}

@@ -3,18 +3,25 @@ import { render } from "remix/middleware/render";
 import { csp, getCspNonce } from "remix/middleware/csp";
 import { staticFiles } from "remix/middleware/static";
 import { fileURLToPath } from "node:url";
-import { Button, Field, Input } from "@harrhy/ui/native";
 import { requestTheme } from "./theme.ts";
 import { createCatalog } from "./content/catalog.ts";
 import { createWidgetLoader } from "./widgets.ts";
+import { loadCommentConfiguration } from "./comments/config.ts";
+import { openCommentStore } from "./comments/store.ts";
+import { createCommentService } from "./comments/service.ts";
+import { createCommentHttp } from "./comments/http.ts";
+import { compileComments } from "./comments/asset.ts";
+import { serveImage } from "./images.ts";
+import { navigationScript } from "./navigation.ts";
 import { routes } from "./routes.ts";
 import { loadSpaces, spacePath } from "./spaces.ts";
-import { document, pageList, topicTree, article, trail } from "./ui.tsx";
+import { document, pageList, topicTree, article } from "./ui.tsx";
 
 export async function createAtlas(
   root: string,
   manifestPath: string,
   widgetManifest?: string,
+  commentConfiguration?: string,
 ) {
   const catalog = createCatalog({
     root,
@@ -24,6 +31,34 @@ export async function createAtlas(
   const initial = await catalog.refresh();
   if (!initial.generation)
     throw new Error("Atlas requires a valid curated catalog before startup");
+  const comments = commentConfiguration
+    ? await loadCommentConfiguration(commentConfiguration)
+    : undefined;
+  const commentAsset = comments ? await compileComments() : undefined;
+  const commentStore = comments
+    ? await openCommentStore(comments.config.stateDirectory)
+    : undefined;
+  const commentHttp =
+    comments && commentStore
+      ? createCommentHttp(
+          createCommentService({
+            store: commentStore,
+            bridge: comments.bridge,
+            snapshot(articleUrl) {
+              const state = catalog.read();
+              if (state.status !== "ready") return;
+              const url = new URL(articleUrl);
+              if (url.origin !== comments.config.articleOrigin) return;
+              return state.generation?.pages[
+                url.pathname.replace(/\/$/, "") || "/"
+              ];
+            },
+          }),
+          comments.config.articleOrigin,
+          comments.config.defaultTargetKey,
+          comments.csrfSecret,
+        )
+      : undefined;
   const snapshotKey = createContextKey<ReturnType<typeof catalog.read>>();
   const router = createRouter({
     middleware: [
@@ -33,16 +68,11 @@ export async function createAtlas(
           context.set(snapshotKey, snapshot);
           return {
             defaultSrc: ["'none'"],
-            scriptSrc: snapshot.generation?.widgets.some(
-              (widget) =>
-                widget.page.replace(/\/$/, "") ===
-                new URL(context.request.url).pathname.replace(/\/$/, ""),
-            )
-              ? [`'nonce-${nonce}'`]
-              : ["'none'"],
+            scriptSrc: [`'nonce-${nonce}'`],
+            ...(comments ? { connectSrc: ["'self'"] } : {}),
             styleSrc: ["'self'", "'unsafe-inline'"],
             fontSrc: ["'self'"],
-            imgSrc: ["'none'"],
+            imgSrc: ["'self'"],
             formAction: ["'self'"],
             baseUri: ["'none'"],
             frameAncestors: ["'none'"],
@@ -57,6 +87,41 @@ export async function createAtlas(
   const controller = createController(routes, {
     middleware: [render()],
     actions: {
+      image(context) {
+        return serveImage(
+          context.request,
+          root,
+          context.get(snapshotKey)!.generation!.spaces,
+        );
+      },
+      navigation() {
+        return new Response(navigationScript, {
+          headers: {
+            "Content-Type": "text/javascript; charset=utf-8",
+            "Cache-Control": "private, no-cache",
+            "X-Content-Type-Options": "nosniff",
+          },
+        });
+      },
+      commentAsset(context) {
+        return commentAsset && context.params.digest === commentAsset.digest
+          ? new Response(commentAsset.script, {
+              headers: {
+                "Content-Type": "text/javascript; charset=utf-8",
+                "Cache-Control": "private, max-age=31536000, immutable",
+                "X-Content-Type-Options": "nosniff",
+              },
+            })
+          : new Response("Not Found", { status: 404 });
+      },
+      comments(context) {
+        return commentHttp
+          ? commentHttp(context.request)
+          : new Response("Not Found", {
+              status: 404,
+              headers: { "Cache-Control": "no-store" },
+            });
+      },
       widget(context) {
         const script = catalog.widgetScript(context.params.digest);
         return script === undefined
@@ -80,9 +145,7 @@ export async function createAtlas(
         );
       },
       home: show,
-      search: show,
       space: show,
-      spaceSearch: show,
       authors: show,
       author: show,
       page: show,
@@ -116,9 +179,14 @@ export async function createAtlas(
       context.render(
         document(title, body, {
           stale: snapshot.status === "stale",
+          comments: commentAsset
+            ? { digest: commentAsset.digest, nonce: getCspNonce(context) }
+            : undefined,
           theme: preference.theme,
           url,
           spaces,
+          nonce: getCspNonce(context),
+          pages: Object.values(generation.pages),
           available: spaces.map((space) => ({
             id: space.id,
             count: Object.values(generation.pages).filter(
@@ -136,26 +204,27 @@ export async function createAtlas(
         status: 308,
         headers: { ...headers, Location: location + url.search },
       });
+    if (pathname === "/" || pathname === "/spaces") {
+      const selected =
+        spaces.find((space) => space.id === url.searchParams.get("space")) ??
+        spaces[0];
+      if (selected)
+        return new Response(null, {
+          status: 307,
+          headers: { ...headers, Location: `${spacePath(selected.id)}/` },
+        });
+      return respond(
+        "No agents available",
+        <>
+          <h1>No agents available</h1>
+          <p>No agent corpora are registered yet.</p>
+        </>,
+      );
+    }
     if (pathname === "/authors") return redirect("/");
     if (pathname.startsWith("/authors/")) {
       const owner = spaces.find((space) => pathname === `/authors/${space.id}`);
       if (owner) return redirect(`${spacePath(owner.id)}/`);
-    }
-    if (pathname === "/" || pathname === "/search") {
-      return respond(
-        "Agent spaces",
-        <>
-          <h1>Agent spaces</h1>
-          <p>Choose an agent’s corpus to browse or search.</p>
-          <ul>
-            {spaces.map((space) => (
-              <li>
-                <a href={`${spacePath(space.id)}/`}>{space.name}</a>
-              </li>
-            ))}
-          </ul>
-        </>,
-      );
     }
     const target = generation.routes[pathname];
     const note = target ? generation.pages[target] : undefined;
@@ -175,9 +244,8 @@ export async function createAtlas(
       return respond(
         "Not found",
         <>
-          {trail()}
           <h1>Page not found</h1>
-          <p>Choose an agent space from the directory.</p>
+          <p>Choose an agent from the header.</p>
         </>,
         404,
       );
@@ -186,49 +254,6 @@ export async function createAtlas(
     const pages = Object.values(generation.pages)
       .filter((page) => page.author === owner.id)
       .toSorted((a, b) => a.title.localeCompare(b.title));
-    const navigation = trail(owner);
-    if (pathname === `${base}/search`) {
-      const query = (url.searchParams.get("q") || "").trim().slice(0, 200);
-      const terms = query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-      const matches = terms.length
-        ? generation.search
-            .filter(
-              (page) =>
-                page.author === owner.id &&
-                terms.every((term) =>
-                  `${page.title} ${page.text}`
-                    .toLocaleLowerCase()
-                    .includes(term),
-                ),
-            )
-            .slice(0, 100)
-        : [];
-      return respond(
-        `Search ${owner.name}`,
-        <>
-          {navigation}
-          <h1>Search {owner.name}</h1>
-          <form action={`${base}/search/`} method="get">
-            <Field id="query" label={<>Words in {owner.name}’s corpus</>}>
-              <Input name="q" value={query} maxLength={200} />
-            </Field>
-            <p>
-              <Button type="submit">Search</Button>
-            </p>
-          </form>
-          {query && (
-            <>
-              <p>
-                {matches.length
-                  ? `${matches.length} matching pages`
-                  : "No matching pages. Try fewer words."}
-              </p>
-              {matches.length > 0 && pageList(matches)}
-            </>
-          )}
-        </>,
-      );
-    }
     if (note) {
       const incoming = (generation.backlinks[target!] || [])
         .map((address) => generation.pages[address.replace(/\/$/, "")])
@@ -236,19 +261,19 @@ export async function createAtlas(
       return respond(
         note.title,
         <>
-          {navigation}
           <article>
-            <h1>{note.title}</h1>
             {article(
               note.html,
               generation.widgets.filter((widget) => widget.page === note.path),
               getCspNonce(context),
-            )}
-            {pages.some((child) => child.parent === note.path) && (
-              <section>
-                <h2>Pages</h2>
-                {topicTree(pages, note.path)}
-              </section>
+              comments
+                ? {
+                    articleUrl: `${comments.config.articleOrigin}${note.path}`,
+                    sourceSha256: note.sourceDigest,
+                    annotationProjectionSha256: note.annotationDigest,
+                  }
+                : undefined,
+              note.title,
             )}
             {note.sources.length > 0 && (
               <details>
@@ -292,7 +317,6 @@ export async function createAtlas(
       return respond(
         owner.name,
         <>
-          {navigation}
           <h1>{owner.name}</h1>
           {pages.length ? (
             <>
@@ -316,7 +340,6 @@ export async function createAtlas(
       return respond(
         `${owner.name} dates`,
         <>
-          {navigation}
           <h1>{owner.name} dates</h1>
           {pageList(
             pages
@@ -328,13 +351,12 @@ export async function createAtlas(
     return respond(
       "Not found",
       <>
-        {navigation}
         <h1>Page not found</h1>
-        <p>Browse or search this agent’s corpus.</p>
+        <p>Choose a document from this agent’s directory.</p>
       </>,
       404,
     );
   }
   router.map(routes, controller);
-  return { router, catalog };
+  return { router, catalog, close: () => commentStore?.close() };
 }

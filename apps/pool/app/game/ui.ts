@@ -5,7 +5,7 @@ import type {
   TableState,
   ServerMessage,
 } from "@harrhy/pool-protocol";
-import { GameAudio } from "./audio";
+import type { GameAudio } from "./audio";
 interface UIActions {
   enter(): void;
   action(

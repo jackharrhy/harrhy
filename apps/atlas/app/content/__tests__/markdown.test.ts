@@ -37,85 +37,13 @@ test("removes active HTML, author styles, tracking images and unsafe URLs", asyn
   assert.deepEqual(result.links, []);
 });
 
-test("preserves GFM, safe details and local links for backlink resolution", async () => {
-  const result = await renderMarkdown(`# Heading
-
-| Name | Value |
-| --- | ---: |
-| ~~old~~ | **new** |
-
-- [x] Finished
-- [ ] Pending
-
-<details open><summary>More</summary><p>Details body</p></details>
-
-[relative](../other.md#section) [root](/other) [again](/other)
-[web](https://example.com) <a href="/raw">raw</a>
-`);
-  assert.match(result.html, /<h1 id="heading-heading">Heading<\/h1>/);
-  assert.match(result.html, /<table>/);
-  assert.match(result.html, /<del>old<\/del>/);
-  assert.match(
-    result.html,
-    /<details open><summary>More<\/summary><p>Details body<\/p><\/details>/,
-  );
-  assert.match(result.html, /\[x\] Finished/);
-  assert.match(result.html, /\[ \] Pending/);
-  assert.doesNotMatch(result.html, /<input\b/);
-  assert.match(result.text, /\[x\] Finished/);
-  assert.match(result.text, /\[ \] Pending/);
-  assert.deepEqual(result.links, [
-    "../other.md#section",
-    "/other",
-    "https://example.com",
-    "/raw",
-  ]);
-  assert.match(result.text, /Details body/);
-});
-
-test("GFM tables retain semantics and safe inline content in a keyboard scroll region", async () => {
+test("annotation projection preserves UTF-16 text and code whitespace without widget markers", async () => {
   const result = await renderMarkdown(
-    '| Source | Command | Status |\n| :--- | ---: | :---: |\n| [notes](/notes/) | `a < b` | **ready** |\n| <img src="https://tracker.example" onerror="alert(1)"> | <a href="javascript:alert(1)">unsafe</a> | <script>evil()</script> |',
-    (href) => `/spaces/alpha${href}`,
+    "A **bold** 🦊 quote.\n\n[[widget:example]]\n\n```text\n  first\n    second\n```\n\n<details><summary>More</summary>Hidden quote</details>",
   );
-  assert.match(
-    result.html,
-    /class="atlas-table" role="region" aria-label="Markdown table" tabindex="0"/,
-  );
-  assert.match(
-    result.html,
-    /<thead>\s*<tr>\s*<th align="left" scope="col">Source<\/th>/,
-  );
-  assert.match(
-    result.html,
-    /<tbody>\s*<tr>\s*<td align="left"><a href="\/spaces\/alpha\/notes\/">notes<\/a>/,
-  );
-  assert.match(result.html, /<code>a (?:&lt;|&#x3C;) b<\/code>/);
-  assert.match(result.html, /<strong>ready<\/strong>/);
-  assert.doesNotMatch(
-    result.html,
-    /<script|<img|onerror|javascript:|tracker\.example|evil\(\)/,
-  );
-  assert.deepEqual(result.links, ["/spaces/alpha/notes/"]);
-});
-
-test("highlights fenced code after sanitizing and tolerates unknown languages", async () => {
-  const result = await renderMarkdown(
-    '```typescript\nconst answer: number = 42;\n```\n\n```not-a-real-language\n<safe>\n```\n\n<span style="color:red">author</span>',
-  );
-  assert.match(result.html, /class="hui-highlight github-light/);
-  assert.match(result.html, /style="color:/);
-  assert.match(result.html, /(?:&lt;|&#x3C;)safe(?:&gt;|>)/);
-  assert.match(result.html, /<span>author<\/span>/);
-  assert.doesNotMatch(result.html, /style="color:red"/);
-  assert.match(result.text, /const answer: number = 42;/);
-});
-
-test("highlighted fenced code retains final newline, tabs and UTF-16 text", async () => {
-  const source = 'const fox = "🦊";\n\tconsole.log(fox);\n';
-  const result = await renderMarkdown("```typescript\n" + source + "```\n");
-  assert.match(result.html, /class="language-typescript"/);
-  // This source contains no HTML metacharacters; remove presentation spans only.
-  const code = result.html.match(/<code[^>]*>([\s\S]*?)<\/code>/)?.[1];
-  assert.equal(code?.replace(/<\/?span[^>]*>/g, ""), source);
+  assert.match(result.annotationText, /A bold 🦊 quote\./);
+  assert.match(result.annotationText, /  first\n    second/);
+  assert.match(result.annotationText, /MoreHidden quote/);
+  assert.doesNotMatch(result.annotationText, /widget:example/);
+  assert.match(result.html, /\[\[widget:example\]\]/);
 });

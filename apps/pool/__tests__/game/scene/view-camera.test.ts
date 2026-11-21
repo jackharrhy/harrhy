@@ -2,7 +2,7 @@ import { TABLE_HALF_WIDTH as W, TABLE_HALF_LENGTH as L } from "@harrhy/pool";
 import { FELT_Y, RAIL_WIDTH, RAIL_TOP_Y, POCKETS } from "@harrhy/pool/table";
 import { describe, expect, test } from "bun:test";
 import { PerspectiveCamera, Vector3 } from "three";
-import { ViewCamera } from "../../../app/game/scene/view-camera";
+import { ViewCamera } from "@harrhy/pool/presentation";
 function setup() {
   const camera = new PerspectiveCamera(43, 1, 0.1, 100);
   camera.position.set(7.5, 11, 9.5);

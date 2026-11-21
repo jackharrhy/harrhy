@@ -3,7 +3,7 @@ import {
   BALL_RADIUS,
   TABLE_HALF_WIDTH as W,
   TABLE_HALF_LENGTH as L,
-} from "./dimensions";
+} from "./dimensions.ts";
 
 export const FELT_Y = 0.78;
 // Box3D expands mesh contacts by this distance; the native felt body sits below the visible bed.

@@ -25,6 +25,10 @@
       ],
       "ignoreBinaries": ["ss"],
     },
+    "apps/atlas": {
+      // The example widget is loaded from a registration.
+      "entry": ["examples/tweet-card.tsx"],
+    },
     "apps/review": {
       "entry": ["worker.ts", "browser.ts"],
     },
@@ -198,6 +202,9 @@
         "scripts/recordings.ts",
         "__tests__/browser/production.ts",
       ],
+    },
+    "apps/world": {
+      "entry": ["server/index.ts", "celld/worker.ts", "scripts/bench-room.mjs"],
     },
     "apps/radio": {
       "entry": [

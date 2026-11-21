@@ -1,14 +1,14 @@
 import { Vector3 } from "three";
 import { listenerPose } from "./audio-listener";
 import { FELT_Y } from "@harrhy/pool/table";
-import { CUE_CONTACT_MS } from "./scene/cue-pose";
+import { CUE_CONTACT_MS } from "@harrhy/pool/presentation";
 import { HallView } from "./scene/world";
 import { LocalPrediction, RemoteMotion } from "./prediction/net-state";
 import type { MotionEntity } from "./prediction/net-state";
 import type { PoolPrediction } from "./prediction/pool-prediction";
 import { ShotCommands } from "./prediction/shot-command";
 import { Controls } from "./input/controls";
-import { GameAudio } from "./audio";
+import { createGameAudio } from "./audio";
 import { GameUI } from "./ui";
 import { Session } from "./session";
 import {
@@ -39,7 +39,7 @@ export class GameClient {
     expiresAt: number;
   } | null = null;
   private telemetry = new ClientTelemetry(performance.now());
-  private readonly audio = new GameAudio();
+  private readonly audio = createGameAudio();
   private readonly audioForward = new Vector3(0, 0, -1);
   private readonly listeningPosition = {
     x: HALL_SPAWN.x,
