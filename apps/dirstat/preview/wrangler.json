@@ -1,0 +1,10 @@
+{
+  "name": "dirstat-preview",
+  "main": "worker.js",
+  "compatibility_date": "2026-08-29",
+  "assets": {
+    "directory": "./assets",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  }
+}

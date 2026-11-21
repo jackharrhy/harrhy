@@ -28,6 +28,15 @@
       "entry": ["harrhy/*.mjs", "__tests__/*.mjs"],
       "ignoreBinaries": ["bwrap"],
     },
+    "apps/dirstat": {
+      "entry": [
+        "preview/worker.js",
+        "preview/record.mjs",
+        "preview/synthetic-host.mjs",
+        "__tests__/camera.mjs",
+        "__tests__/preview.mjs",
+      ],
+    },
     "apps/ui": {
       "entry": [
         "app/public/entry.ts",
