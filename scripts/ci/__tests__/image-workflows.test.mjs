@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import {
+  nodeImageApps,
   runtimeApps,
   selectNodeImagesFromCommits,
 } from "../node-image-impact.mjs";
@@ -25,11 +26,62 @@ test("publication triggers on shared inputs copied by Garden", () => {
   }
 });
 
-test("PR image selectors use the tested merge SHA", () => {
-  const step = ci
-    .split("      - id: node_images")[1]
-    ?.split("      - id: plan")[0];
-  assert.ok(step?.includes("HEAD_SHA: ${{ github.sha }}"));
+test("CI builds images only on manual dispatch and does not pull images on PRs", () => {
+  assert.match(
+    ci,
+    /- id: node_images\n +if: github\.event_name == 'workflow_dispatch'/,
+  );
+  for (const output of ["apps", "runtime"]) {
+    assert.ok(ci.includes(`steps.node_images.outputs.${output} || '[]'`));
+  }
+  for (const app of ["radio", "ref"]) {
+    assert.ok(
+      ci.includes(
+        `github.event_name != 'pull_request' && needs.select.outputs.${app} == 'true'\n        run: |\n          set -eu\n          ${app}_celld_image=`,
+      ),
+    );
+  }
+});
+
+test("every publishable image has a smoke check, run on the loaded image before pushing", () => {
+  const workflow = readWorkflow("publish-images");
+  const selected = execFileSync(
+    process.execPath,
+    [new URL("../publish-images.mjs", import.meta.url).pathname],
+    {
+      env: {
+        ...process.env,
+        EVENT: "push",
+        BEFORE: "",
+        GITHUB_SHA: "test-sha",
+        GITHUB_OUTPUT: "",
+      },
+      encoding: "utf8",
+    },
+  );
+  const published = JSON.parse(selected.slice("images=".length));
+  assert.deepEqual(
+    published.map(({ app }) => app).toSorted(),
+    [...nodeImageApps, ...runtimeApps].toSorted(),
+  );
+
+  const build = workflow.indexOf("      - id: build");
+  const smoke = workflow.indexOf(
+    "      - name: Smoke the exact image before publication",
+  );
+  const login = workflow.indexOf("      - uses: docker/login-action@");
+  const push = workflow.indexOf("      - name: Push verified image tags");
+  assert.ok(build >= 0 && build < smoke && smoke < login && login < push);
+  assert.match(workflow.slice(build, smoke), /load: true\n +push: false/);
+  assert.match(
+    workflow.slice(smoke, login),
+    /IMAGE_ID: \$\{\{ steps\.build\.outputs\.imageid \}\}\n +run: node scripts\/ci\/smoke-image\.mjs "\$APP" "\$IMAGE_ID"/,
+  );
+  assert.match(
+    workflow.slice(push),
+    /docker tag "\$IMAGE_ID" "\$tag"\n +docker push "\$tag"/,
+  );
+  assert.doesNotMatch(workflow.slice(smoke), /always\(|continue-on-error:/);
 });
 
 test("Garden and Sluggers select an npmrc-only merge diff and falls back safely", (t) => {
