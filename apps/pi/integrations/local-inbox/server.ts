@@ -21,7 +21,7 @@ import {
 
 import { AdminMethods, Grant, GrantFields, Hash, LocalInboxAdmin } from "./contract.ts";
 
-const prefix = "/api/local-inbox/v1";
+const prefix = "/api/inbox/v1";
 const peer = "local-inbox";
 const id = str({ minLength: 1, maxLength: 128, pattern: "^[A-Za-z0-9._:-]+$" });
 const sessionId = str({
@@ -61,7 +61,7 @@ const eventSchema = compile(
 const idSchema = compile(id);
 
 export default defineFacet((host) => {
-  const disabledPolicy = { label: "Local inbox", revision: "disabled" };
+  const disabledPolicy = { label: "Pi Inbox", revision: "disabled" };
   host.serve(Inbox, (_params, self) => {
     const saved = self.state(Saved);
     self.contribute(AddressedPolicies, {
@@ -78,7 +78,7 @@ export default defineFacet((host) => {
       provision: async ({ grant, bearerHash }, ctx) => {
         await saved.change((draft) => {
           draft.active = {
-            policy: { ...grant, label: "Local inbox", revision: randomUUID() },
+            policy: { ...grant, label: "Pi Inbox", revision: randomUUID() },
             bearerHash,
           };
         }, ctx);
@@ -113,7 +113,7 @@ export default defineFacet((host) => {
           return reply(403, { error: "Direct loopback client required" });
 
         const expected = saved.value.active?.bearerHash;
-        if (!expected) return reply(404, { error: "Local inbox disabled" });
+        if (!expected) return reply(404, { error: "Pi Inbox disabled" });
         const authorization = request.headers.authorization?.match(/^Bearer ([a-f0-9]{64})$/i);
         if (
           !authorization ||
@@ -124,7 +124,7 @@ export default defineFacet((host) => {
         )
           return reply(
             401,
-            { error: "Invalid local inbox credential" },
+            { error: "Invalid Pi Inbox credential" },
             { "WWW-Authenticate": "Bearer" },
           );
 
@@ -189,7 +189,7 @@ export default defineFacet((host) => {
     return admin;
   });
   host.serve(LocalInboxAdmin, (_params, principal, self) => {
-    if (!isOwner(principal)) throw forbidden("Local inbox administration is owner-only");
+    if (!isOwner(principal)) throw forbidden("Pi Inbox administration is owner-only");
     const inbox = self.get(Inbox, {});
     return {
       variant: "owner",

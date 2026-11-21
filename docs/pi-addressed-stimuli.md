@@ -11,7 +11,7 @@ Keep historical receipt reads independently scoped from new sends. Check authori
 ## Adapter order and cutover
 
 1. Qualify addressed recording and readback: race competing targets under one ID, lose the acknowledgement across restart, change the default/main, race sharing and archive, and check readback after send permission is withdrawn.
-2. Use the optional [local inbox](pi-local-inbox.md) for new explicitly requested local sends. Preserve legacy receipts and reconcile or quarantine outstanding IDs on their original path. Never treat a legacy timeout or missing receipt as permission to publish in the new namespace.
+2. Use the optional [Pi Inbox](pi-inbox.md) for new explicitly requested local sends. Preserve legacy receipts and reconcile or quarantine outstanding IDs on their original path. Never treat a legacy timeout or missing receipt as permission to publish in the new namespace.
 3. Preserve Atlas frozen batches and verify the website authorization boundary. Replies are explicit messages to the original authorized feedback thread, not automatic publication of agent answers.
 4. Qualify the revised remote Pi adapter on disposable instances. Both ends expose policy-filtered destinations; both can explicitly send. Keep the SSH transport restricted and directional, and constrain receiving-session tools and outbound traffic independently of sender attribution.
 

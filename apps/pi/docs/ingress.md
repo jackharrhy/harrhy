@@ -1,6 +1,6 @@
 # Legacy external peer ingress v1
 
-For new local sends, use the [optional local inbox](../../../docs/pi-local-inbox.md). This page describes legacy compatibility only; preserve existing receipts on their original path.
+For new local sends, use the [optional Pi Inbox](../../../docs/pi-inbox.md). This page describes legacy compatibility only; preserve existing receipts on their original path.
 
 Install the optional [`ingress` package](../integrations/ingress/) explicitly as a real directory in
 `<P2_DATA_DIR>/plugins/`, using the matching base p2 build if preserving an existing legacy deployment.

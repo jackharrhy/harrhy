@@ -12,7 +12,8 @@ import { Catalog } from "../../plugins/sessions/contract.ts";
 import { startServer } from "../../src/hosts/server.ts";
 import { APP, clientHost, holdIn, http, localOwner, poll, startFixture } from "./helpers.ts";
 
-const prefix = "/api/local-inbox/v1";
+const prefix = "/api/inbox/v1";
+const legacyPrefix = "/api/local-inbox/v1";
 const credential = "a".repeat(64);
 const headers = { Authorization: `Bearer ${credential}`, "Content-Type": "application/json" };
 const hash = (secret: string) => createHash("sha256").update(secret).digest("hex");
@@ -51,30 +52,23 @@ it(
         receipts: true,
       });
       server = await start();
+      let inboxPath = legacyPrefix;
       const targets = (extra = {}) =>
-        http(server!.port, prefix + "/targets", { headers: { ...headers, ...extra } });
+        http(server!.port, inboxPath + "/targets", { headers: { ...headers, ...extra } });
       const send = (event: object) =>
-        http(server!.port, prefix + "/events", {
+        http(server!.port, inboxPath + "/events", {
           method: "POST",
           headers,
           body: JSON.stringify(event),
         });
-      const receipt = (id: string) => http(server!.port, prefix + "/receipts/" + id, { headers });
+      const receipt = (id: string) =>
+        http(server!.port, inboxPath + "/receipts/" + id, { headers });
 
       assert.equal((await targets()).status, 404);
       await rotate(credential);
-      assert.equal((await http(server.port, prefix + "/targets")).status, 401);
+      assert.equal((await http(server.port, inboxPath + "/targets")).status, 401);
       assert.equal((await targets({ Authorization: "Bearer " + "b".repeat(64) })).status, 401);
       assert.equal((await http(server.port, "/__p2_tui", { headers })).status, 401);
-      for (const extra of [
-        { Host: "tunnel.test" },
-        { Origin: `http://127.0.0.1:${server.port}` },
-        { "Sec-Fetch-Mode": "cors" },
-        { Cookie: "test=1" },
-        { "X-Forwarded-Port": "443" },
-        { Via: "1.1 proxy" },
-      ])
-        assert.equal((await targets(extra)).status, 403, JSON.stringify(extra));
 
       assert.equal(
         (await send({ eventId: "no-default-yet", text: "Do not create a Familiar" })).status,
@@ -146,9 +140,19 @@ it(
       await server.close();
       // Keep legacy files and the original client digest, but only the Chord grant may authorize.
       await cp(join(APP, "integrations", "local-inbox"), plugin, { recursive: true });
+      inboxPath = prefix;
       server = await start();
       assert.equal((await receipt(explicit.eventId)).status, 404);
-      const owner = clientHost(await localOwner(server));
+      const local = await localOwner(server);
+      assert.equal(
+        (
+          await http(server.port, legacyPrefix + "/receipts/explicit", {
+            headers: { Cookie: local.cookie },
+          })
+        ).status,
+        404,
+      );
+      const owner = clientHost(local);
       const admin = await holdIn(owner, LocalInboxAdmin, {}, "owner");
       assert.deepEqual(await admin.status({}, BACKGROUND_CONTEXT), { enabled: false });
       const broad = {
@@ -163,6 +167,15 @@ it(
       assert(first.enabled);
       assert.deepEqual(first.grant, broad);
       assert.equal((await receipt(explicit.eventId)).body, admitted.body); // GET only: no replay.
+      for (const extra of [
+        { Host: "tunnel.test" },
+        { Origin: `http://127.0.0.1:${server.port}` },
+        { "Sec-Fetch-Mode": "cors" },
+        { Cookie: "test=1" },
+        { "X-Forwarded-Port": "443" },
+        { Via: "1.1 proxy" },
+      ])
+        assert.equal((await targets(extra)).status, 403, JSON.stringify(extra));
       const future = randomUUID();
       await server.host.root(async (ctx) => {
         const catalog = await ctx.get(Catalog, {});
@@ -198,7 +211,7 @@ it(
       assert.equal((await receipt(explicit.eventId)).status, 401);
       assert.equal(
         (
-          await http(server.port, prefix + "/receipts/explicit", {
+          await http(server.port, inboxPath + "/receipts/explicit", {
             headers: { Authorization: "Bearer " + "b".repeat(64) },
           })
         ).body,

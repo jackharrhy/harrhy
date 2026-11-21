@@ -8,12 +8,12 @@
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "da07cb55dc73f0b2d9ddb8e69268b1b4b1a7ea50bbd7f3d31617ca0d14f666be",
     "voice-server": "e0c3f77d1d60027ec7d223573312ece6dee7652cb1f4e2927941e7414e9dffa8",
-    "docs": "ad1cf864d01a0e594f7527c51d69732d972e3d3aa7589bb762880c2489cfaf9c",
-    "__tests__/p2": "52011737656d7482feb9be391276aed009d50f12d8727ea1d36dbad185b5f30d",
+    "docs": "0ca42c85678ead6babb5e95e77af98a7a9712e464001f9965d7675eca836cbba",
+    "__tests__/p2": "8f88298c720919b148674225fe28d7b70989e346113ecb2269fb33081d796abf",
     "__tests__/fixtures": "ba94c6380dea738948af632378387cd30b9b6ec485e99ba78c9b656e21444b67",
     "compat/packages": "03c4f5f9eb6c068805148c1f1e1efbc58317b684eec47a291e855fc239246c36",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "b565f48c1e7a1ec0841a84646ca02e3b57a08bab285dfcaf64923812d3467a33"
+    "integrations": "bf2b4d0950dc3ed1e9e4c7ae166e7b6c93ebc7d2e58297ca97b1d4d28854ab6e"
   },
   "adaptations": [
     {
