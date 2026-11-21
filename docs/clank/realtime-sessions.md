@@ -34,14 +34,14 @@ One [ClankProvider](../../apps/clank/app/clank-provider.tsx) per hydrated screen
 
 ```tsx
 const app = handle.context.get(ClankProvider);
-const title = app.sessions.select((state) => state.byId[id]?.title);
-title.subscribe(() => handle.update(), { signal: handle.signal });
-return () => <span>{title.current}</span>;
+const rows = app.sessions.select((state) => state.activeRows);
+rows.subscribe(() => handle.update(), { signal: handle.signal });
+// In render, pass each summary to its row, keyed by row.id.
 ```
 
 `current` reads the current slice, including before subscribing. The [store](../../apps/clank/app/session-store.ts) notifies on subsequent changes using `Object.is`. Aborting the signal or calling the returned cleanup unsubscribes the listener. Publication awaits the listeners’ render promises before the provider returns from the Cap’n Web callback. Select a stable leaf rather than allocating a fresh object on every read.
 
-The reducer copies the row index, replacing only changed entries. It sorts the bounded catalog locally and reuses each active/archive ID array when its order hasn't changed. That makes a custom equality option unnecessary for the [list, rows and connection pane](../../apps/clank/app/sessions.tsx). Reordering or switching lists can still render children through their parent; the title-edit measurement below is for unchanged order. Neither Zustand nor a second copy of Remix is a dependency.
+The [ordered list](../../apps/clank/app/sessions.tsx) subscribes once to the visible active or archive summaries. The reducer keeps unchanged row objects and reuses the other list’s array if its rows and order did not change. A visible rename therefore renders the list even if its order stays the same. Each keyed row reads its summary and command availability from props; neither the row nor its buttons subscribe. The connection pane selects only connection status and notice. The selector API still supports individual fields such as `state.byId[id]?.title` for consumers that need them.
 
 ## Runtime and browser evidence
 
@@ -52,15 +52,15 @@ Before changing the transport, the executable behind the running standalone unit
 <!-- prettier-ignore -->
 | Observation | Result |
 | --- | --- |
-| Navigate both pages to both live | 155 ms |
-| Initial bind | 11 rows; 3,874 inbound RPC bytes on the observing tab during both-page bind |
-| Create / rename / archive → visible on the second page | 86 / 56 / 37 ms |
-| Observer inbound RPC bytes during those actions | 460 / 483 / 467 bytes |
-| Rename with four visible rows | 1 row render, 0 ordered-list renders, 0 connection-pane renders; 1 socket and 1 watch on the observing page |
+| Navigate both pages to both live | 139 ms |
+| Initial bind | 12 rows; 4,215 inbound RPC bytes on the observing tab during both-page bind |
+| Create / rename / archive → visible on the second page | 94 / 66 / 75 ms |
+| Observer inbound RPC bytes during those actions | 475 / 483 / 492 bytes |
+| Rename with four visible rows | 1 list render, 4 keyed row renders, 0 connection-pane renders; the unsent title edit survived; 1 socket and 1 watch on the observing page |
 | Reader idle for 10 seconds (longer than the former poll timeout) | 0 additional HTTP requests, 0 sent/received WS application frames |
-| Reader disconnect → authoritative rebind visible | 808 ms; archive view restored. Independent RPC rebind also verified new epoch, sequence zero and archived row |
+| Reader disconnect → authoritative rebind visible | 810 ms; archive view restored. Independent RPC rebind also verified new epoch, sequence zero and archived row |
 | Reader holding its first ack across all three edits | One coalesced delta containing the final archived, renamed row |
-| Reader never acknowledging | One snapshot, disconnected after 8,009 ms |
+| Reader never acknowledging | One snapshot, disconnected after 8,010 ms |
 | Closing all pages | Established Node bridge TCP connections returned to baseline (one pre-existing connection) |
 
 [Chromium precise coverage](../../apps/clank/__tests__/render-counts.mjs) counts invocations of the render functions in the served bundle, not DOM mutations. The test counts outbound `watch` calls as well as upgrades: one before reconnect and one replacement after. The teardown check compares host bridge connections before and after the test; run with a stable fixture baseline, not while another client is reconnecting.

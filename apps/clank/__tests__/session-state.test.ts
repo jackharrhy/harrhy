@@ -105,7 +105,12 @@ test("a local title selection notifies on change, awaits the render, and stops o
     remove: [],
   });
   assert.equal(next.byId.other, first.byId.other);
-  assert.equal(next.activeIds, first.activeIds);
+  assert.notEqual(next.activeRows, first.activeRows);
+  assert.deepEqual(
+    next.activeRows.map((r) => r.title),
+    ["changed", other.title],
+  );
+  assert.equal(next.archivedRows, first.archivedRows);
   let acknowledged = false;
   const delivery = store.publish(next).then(() => {
     acknowledged = true;

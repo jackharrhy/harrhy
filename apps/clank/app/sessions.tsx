@@ -1,4 +1,5 @@
 import { clientEntry, on, type Handle } from "remix/component";
+import type { Row } from "./session-state.ts";
 import { ClankProvider } from "./clank-provider.tsx";
 
 function ConnectionPane(handle: Handle) {
@@ -21,12 +22,10 @@ function ConnectionPane(handle: Handle) {
   );
 }
 
-function Commands(handle: Handle<{ id?: string }>) {
+function Commands(handle: Handle<{ id?: string; disabled: boolean }>) {
   const app = handle.context.get(ClankProvider);
-  const disabled = app.sessions.select((s) => s.status !== "live" || s.pending);
-  disabled.subscribe(() => handle.update(), handle);
   return () => {
-    const { id } = handle.props;
+    const { id, disabled } = handle.props;
     return (
       <>
         <form
@@ -45,13 +44,11 @@ function Commands(handle: Handle<{ id?: string }>) {
             {id ? "New title" : "Session title"}{" "}
             <input name="title" required maxLength={120} />
           </label>{" "}
-          <button disabled={disabled.current}>
-            {id ? "Rename" : "Create"}
-          </button>
+          <button disabled={disabled}>{id ? "Rename" : "Create"}</button>
         </form>
         {id && (
           <button
-            disabled={disabled.current}
+            disabled={disabled}
             mix={on("click", () => app.sessions.archive(id))}
           >
             Archive
@@ -62,13 +59,9 @@ function Commands(handle: Handle<{ id?: string }>) {
   };
 }
 
-function SessionRow(handle: Handle<{ id: string }>) {
-  const app = handle.context.get(ClankProvider);
-  const selected = app.sessions.select((state) => state.byId[handle.props.id]);
-  selected.subscribe(() => handle.update(), handle);
+function SessionRow(handle: Handle<{ row: Row; disabled: boolean }>) {
   return () => {
-    const row = selected.current;
-    if (!row) return null;
+    const { row, disabled } = handle.props;
     return (
       <li>
         <h3>{row.title || "Untitled session"}</h3>
@@ -99,30 +92,32 @@ function SessionRow(handle: Handle<{ id: string }>) {
           )}
         </details>
 
-        {row.archivedAt === null && <Commands id={row.id} />}
+        {row.archivedAt === null && (
+          <Commands id={row.id} disabled={disabled} />
+        )}
       </li>
     );
   };
 }
 
-function OrderedList(handle: Handle<{ archived: boolean }>) {
+function OrderedList(handle: Handle<{ archived: boolean; disabled: boolean }>) {
   const { sessions } = handle.context.get(ClankProvider);
-  const ids = sessions.select((s) =>
+  const rows = sessions.select((s) =>
     s.status === "live"
       ? handle.props.archived
-        ? s.archivedIds
-        : s.activeIds
+        ? s.archivedRows
+        : s.activeRows
       : null,
   );
-  ids.subscribe(() => handle.update(), handle);
+  rows.subscribe(() => handle.update(), handle);
   return () => (
     <>
-      {ids.current?.length === 0 && (
+      {rows.current?.length === 0 && (
         <p>No {handle.props.archived ? "archived" : "active"} sessions.</p>
       )}
       <ul aria-label="Sessions in activity order">
-        {ids.current?.map((id) => (
-          <SessionRow key={id} id={id} />
+        {rows.current?.map((row) => (
+          <SessionRow key={row.id} row={row} disabled={handle.props.disabled} />
         ))}
       </ul>
     </>
@@ -130,9 +125,13 @@ function OrderedList(handle: Handle<{ archived: boolean }>) {
 }
 
 function CatalogPane(handle: Handle) {
+  const { sessions } = handle.context.get(ClankProvider);
+  const disabled = sessions.select((s) => s.status !== "live" || s.pending);
+  disabled.subscribe(() => handle.update(), handle);
   let archived = false;
   return () => (
     <>
+      <Commands disabled={disabled.current} />
       <h2>{archived ? "Archive" : "Active sessions"}</h2>
       <button
         mix={on("click", () => {
@@ -142,7 +141,11 @@ function CatalogPane(handle: Handle) {
       >
         {archived ? "Show active" : "Show archive"}
       </button>
-      <OrderedList key={archived ? "archive" : "active"} archived={archived} />
+      <OrderedList
+        key={archived ? "archive" : "active"}
+        archived={archived}
+        disabled={disabled.current}
+      />
     </>
   );
 }
@@ -153,7 +156,6 @@ export const SessionList = clientEntry(
       <ClankProvider>
         <section>
           <ConnectionPane />
-          <Commands />
           <CatalogPane />
         </section>
       </ClankProvider>

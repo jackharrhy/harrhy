@@ -160,13 +160,21 @@ try {
     .locator('ul[aria-label="Sessions in activity order"] > li')
     .count();
   assert.ok(mountedRows > 1);
+  const readerDraft = (name) =>
+    reader
+      .locator("li")
+      .filter({ has: heading(reader, name) })
+      .getByLabel("New title");
+  await readerDraft(title).fill("Local unsent edit");
   const finishRenderInterval = await startRenderInterval();
   await measure("rename", async () => {
     await row(title).getByRole("button", { name: "Rename" }).click();
     await heading(reader, renamed).waitFor();
   });
   const renders = await finishRenderInterval();
-  assert.deepEqual(renders, { row: 1, list: 0, connection: 0 });
+  assert.equal(await readerDraft(renamed).inputValue(), "Local unsent edit");
+  assert.equal(renders.list, 1);
+  assert.equal(renders.connection, 0);
   assert.deepEqual([sockets, watches], [1, 1]);
   receipt.readerRename = { mountedRows, sockets, watches, renders };
   await measure("archive", async () => {

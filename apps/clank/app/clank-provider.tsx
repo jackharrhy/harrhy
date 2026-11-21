@@ -40,8 +40,8 @@ export function ClankProvider(handle: Handle<{ children?: RemixNode }, App>) {
           clearTimeout(deadline);
           await sessions.publish({
             byId: view.byId,
-            activeIds: view.activeIds,
-            archivedIds: view.archivedIds,
+            activeRows: view.activeRows,
+            archivedRows: view.archivedRows,
             status: "live",
           });
         } catch (error) {

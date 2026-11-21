@@ -105,25 +105,22 @@ export function diff(previous: Row[], rows: Row[]) {
 }
 
 // Normalized browser view. A delta only replaces rows in its put set.
-// Preserve ID-array identity too: a row edit isn't necessarily a list reorder.
+// Keep the other list stable when only one list's summaries changed.
 export type SessionIndex = {
   byId: Readonly<Record<string, Row>>;
-  activeIds: readonly string[];
-  archivedIds: readonly string[];
+  activeRows: readonly Row[];
+  archivedRows: readonly Row[];
 };
 export const emptyIndex: SessionIndex = {
   byId: Object.create(null),
-  activeIds: [],
-  archivedIds: [],
+  activeRows: [],
+  archivedRows: [],
 };
 export type View = SessionIndex & { epoch: string; seq: number };
 
-function retainOrder(
-  before: readonly string[],
-  after: string[],
-): readonly string[] {
+function retainRows(before: readonly Row[], after: Row[]): readonly Row[] {
   return before.length === after.length &&
-    before.every((id, i) => after[i] === id)
+    before.every((row, i) => after[i] === row)
     ? before
     : after;
 }
@@ -146,20 +143,20 @@ export function apply(view: View | undefined, frame: Frame): View {
   } else {
     throw Error("Session state out of sequence");
   }
-  const active: string[] = [],
-    archived: string[] = [];
+  const active: Row[] = [],
+    archived: Row[] = [];
   for (const row of Object.values(byId).toSorted(
     (a, b) =>
       Number(b.pinned) - Number(a.pinned) ||
       b.updatedAt - a.updatedAt ||
       a.id.localeCompare(b.id),
   ))
-    (row.archivedAt === null ? active : archived).push(row.id);
+    (row.archivedAt === null ? active : archived).push(row);
   return {
     epoch: frame.epoch,
     seq: frame.seq,
     byId,
-    activeIds: retainOrder(previous.activeIds, active),
-    archivedIds: retainOrder(previous.archivedIds, archived),
+    activeRows: retainRows(previous.activeRows, active),
+    archivedRows: retainRows(previous.archivedRows, archived),
   };
 }
