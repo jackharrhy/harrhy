@@ -1,8 +1,8 @@
 # Private Hosting
 
-A Linux supervisor for two operator-registered, trusted foreground HTTP apps. SQLite owns desired state, and a dedicated Caddy instance serves only ready apps over a filesystem Unix socket. This is not a deployment API, a sandbox for untrusted code, or an authentication provider.
+A Linux supervisor for operator-registered HTTP apps, including an optional route-only Slides origin. SQLite owns desired state, and a dedicated Caddy instance serves only ready apps over a filesystem Unix socket. This is not a deployment API, a sandbox for untrusted code, or an authentication provider.
 
-- [Daemon and local CLI](daemon.py)
+- [Daemon and local CLI](src/main.rs)
 - [Go demo](demo/main.go)
 - [Infra run and configuration contract](../../docs/private-hosting/operations.md)
 
