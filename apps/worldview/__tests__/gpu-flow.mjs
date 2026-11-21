@@ -36,16 +36,12 @@ const flags = [
   "--disable-vulkan-surface",
   "--enable-unsafe-webgpu",
 ];
-const server = spawn(
-  "pnpm",
-  ["--filter", "@harrhy/worldview", "run", "dev"],
-  {
-    cwd: teaRoot,
-    detached: true,
-    stdio: ["ignore", "pipe", "pipe"],
-    env: { ...process.env, HARRHY_MAPS_DEV_PORT: String(port) },
-  },
-);
+const server = spawn("pnpm", ["--filter", "@harrhy/worldview", "run", "dev"], {
+  cwd: teaRoot,
+  detached: true,
+  stdio: ["ignore", "pipe", "pipe"],
+  env: { ...process.env, HARRHY_MAPS_DEV_PORT: String(port) },
+});
 let serverLogs = "";
 for (const stream of [server.stdout, server.stderr])
   stream.on("data", (chunk) => {
