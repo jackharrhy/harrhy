@@ -98,6 +98,25 @@ The three family roles are `fontDisplay`, `fontUi` and `fontMono`, emitted as `-
 
 Recipes consume the nearest variables, so subtree overrides inherit naturally. Apply `themeRoot` for scoped typography/canvas/selection and reduced-motion tokens. Theme mixins alone only set variables. No theme provider or browser script is required. Prefer one composed theme per element: stacking conflicting `css()` mixins does not guarantee precedence. Native inputs retain browser forced-colors treatment; focus uses an outline rather than a shadow alone. Select popup padding, inner/outer radii and row gap are separate tokens: Clean uses 10/6px radii and 6px padding, Radio 5/2px and 3px, Artbin remains square. Selected rows use a persistent checkmark and selected tonal surface; navigation uses a separate hover surface and inset keyboard ring. Menu and Select share the `popupOffset` theme token (6px by default). Both use official anchor positioning with a preferred below-trigger placement; the engine flips/clamps at viewport edges. Select no longer overlays its selected row on desktop. Menus are viewport-bounded, at least 160px wide when space permits, with 40px option targets; desktop keeps compact selected-row alignment. Disabled controls use readable muted ink, not compounded opacity.
 
+### Graphite and density
+
+Picker names are Basic (cleanTheme), Ledger (tactileTheme), Newspaper (brutalistTheme), Scorebook (sluggersTheme) and Graphite. Existing theme exports are unchanged. Graphite is light token data; the importing app supplies Inter or uses system sans.
+
+```ts
+import {
+  composeTheme,
+  densityOverrides,
+  graphiteTheme,
+  themeStyles,
+} from "@harrhy/ui/theme";
+
+const compactGraphite = themeStyles(
+  composeTheme(graphiteTheme, densityOverrides.compact),
+);
+```
+
+Standard preserves each palette’s native spacing. Compact overrides spacing and table cell padding without changing text size, line height or control targets.
+
 ### Sluggers
 
 `sluggersTheme` is readonly `ThemeTokens` data, not a prebuilt mixin: use `themeStyles(sluggersTheme)` and `themeRoot`, or `composeTheme(sluggersTheme, overrides)`. It carries the source blue canvas, blue-gray translucent tables, white ink, yellow accent/focus, red/green feedback and compact 14px table text with 12px headers and 10px/12px cells. Its source muted ink remains `#d6e3fa`; danger buttons use dark ink rather than inherited white. `colorScheme` supplies native light/dark browser treatment, not component-specific branches. Existing themes remain light.

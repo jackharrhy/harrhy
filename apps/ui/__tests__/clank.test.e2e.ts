@@ -15,8 +15,20 @@ it("replays a single prefix through both Markdown policies, then changes phone v
   const button = (name: string) =>
     page.getByRole("button", { name, exact: true });
   const proof = await page.locator(".scroll").innerText();
-  for (const skin of ["Clean", "Artbin", "Harrhy"]) {
+  for (const skin of ["Basic", "Newspaper", "Graphite"]) {
     await button(skin).click();
+    const session = page.locator(".session").first();
+    const prose = page.locator(".measure p").first();
+    await button("Standard").click();
+    const standard = await session.boundingBox();
+    const textSize = await prose.evaluate((n) => getComputedStyle(n).fontSize);
+    await button("Compact").click();
+    const compact = await session.boundingBox();
+    assert.ok(standard && compact && compact.height < standard.height);
+    assert.equal(
+      await prose.evaluate((n) => getComputedStyle(n).fontSize),
+      textSize,
+    );
     assert.equal(await page.locator(".scroll").innerText(), proof);
   }
   const step = button("Step");
@@ -36,6 +48,9 @@ it("replays a single prefix through both Markdown policies, then changes phone v
   const before = await button("Sessions").boundingBox();
   assert.ok(before && before.height >= 44);
   await button("Sessions").click();
+  assert.ok(
+    (await page.locator(".session").first().boundingBox())!.height >= 44,
+  );
   await page.getByRole("button", { name: /Check the paper profile/ }).click();
   assert.equal(
     await page.locator(".transcript h1").innerText(),

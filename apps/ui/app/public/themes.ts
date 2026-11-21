@@ -1,12 +1,14 @@
 import {
   brutalistTheme,
   cleanTheme,
+  graphiteTheme,
   tactileTheme,
   sluggersTheme,
 } from "@harrhy/ui/theme";
 
 export const themes = {
   clean: cleanTheme,
+  graphite: graphiteTheme,
   tactile: tactileTheme,
   brutalist: brutalistTheme,
   sluggers: sluggersTheme,
@@ -14,13 +16,15 @@ export const themes = {
 export type ThemeName = keyof typeof themes;
 
 export const themeLabels: Record<ThemeName, string> = {
-  clean: "Clean",
-  tactile: "Radio",
-  brutalist: "Artbin",
-  sluggers: "Sluggers",
+  clean: "Basic",
+  graphite: "Graphite",
+  tactile: "Ledger",
+  brutalist: "Newspaper",
+  sluggers: "Scorebook",
 };
 export const themeExports: Record<ThemeName, string> = {
   clean: "cleanTheme",
+  graphite: "graphiteTheme",
   tactile: "tactileTheme",
   brutalist: "brutalistTheme",
   sluggers: "sluggersTheme",

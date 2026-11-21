@@ -23,9 +23,9 @@ it("switches the actual Radio and Sluggers surfaces without remounting their fix
       node.setAttribute("data-test-same-node", "true"),
     );
     for (const [label, id, ink] of [
-      ["Sluggers", "sluggers", "rgb(255, 255, 255)"],
-      ["Artbin", "brutalist", "rgb(17, 17, 17)"],
-      ["Clean", "clean", "rgb(25, 33, 38)"],
+      ["Scorebook", "sluggers", "rgb(255, 255, 255)"],
+      ["Newspaper", "brutalist", "rgb(17, 17, 17)"],
+      ["Basic", "clean", "rgb(25, 33, 38)"],
     ] as const) {
       await page.getByRole("button", { name: "Theme", exact: true }).click();
       await page.getByRole("option", { name: label, exact: true }).click();

@@ -1,8 +1,15 @@
 import { clientEntry, on, ref, type Handle } from "remix/component";
-import { themeRoot, themeStyles } from "@harrhy/ui/theme";
+import {
+  themeRoot,
+  themeStyles,
+  composeTheme,
+  densityOverrides,
+} from "@harrhy/ui/theme";
 import { Button } from "@harrhy/ui/native";
 import { sessions, blocks } from "./fixture.ts";
-import { skins, type Skin } from "./theme.ts";
+import { themes, themeLabels } from "../themes.ts";
+const palettes = ["clean", "brutalist", "graphite"] as const;
+type Skin = (typeof palettes)[number];
 import { Words, Settled } from "./markdown.tsx";
 import { Mark } from "./marks.tsx";
 import { shell } from "./styles.ts";
@@ -14,6 +21,7 @@ export const Cookoff = clientEntry(
       index = 0,
       pane = "Transcript",
       engine = "Tail";
+    let density: keyof typeof densityOverrides = "compact";
     let source = blocks(sessions[index]).join("\n\n"),
       length = source.length;
     let timer: ReturnType<typeof setInterval> | undefined,
@@ -65,7 +73,11 @@ export const Cookoff = clientEntry(
         <div
           data-skin={skin}
           data-pane={pane}
-          mix={[themeStyles(skins[skin]), themeRoot, shell]}
+          mix={[
+            themeStyles(composeTheme(themes[skin], densityOverrides[density])),
+            themeRoot,
+            shell,
+          ]}
         >
           <nav aria-label="Session views" class="mobile">
             {["Sessions", "Transcript", "Overview"].map((p) => (
@@ -98,7 +110,7 @@ export const Cookoff = clientEntry(
               <div class="railfoot">
                 <a href="/?view=scenes">← UI showcase</a>
                 <nav aria-label="Design comparison" class="skins">
-                  {(Object.keys(skins) as Skin[]).map((k) => (
+                  {palettes.map((k) => (
                     <button
                       aria-pressed={skin === k}
                       mix={on("click", () => {
@@ -106,10 +118,23 @@ export const Cookoff = clientEntry(
                         handle.update();
                       })}
                     >
-                      {k}
+                      {themeLabels[k]}
                     </button>
                   ))}
                 </nav>
+                <div class="skins" role="group" aria-label="Density">
+                  {(["standard", "compact"] as const).map((value) => (
+                    <button
+                      aria-pressed={density === value}
+                      mix={on("click", () => {
+                        density = value;
+                        handle.update();
+                      })}
+                    >
+                      {value === "compact" ? "Compact" : "Standard"}
+                    </button>
+                  ))}
+                </div>
               </div>
             </aside>
             <section class="transcript" aria-label="Session detail">

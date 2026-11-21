@@ -153,6 +153,35 @@ export function composeTheme(
   return Object.assign({}, base, ...overrides);
 }
 
+export const graphiteTheme = composeTheme(cleanTheme, {
+  fontUi: "Inter, system-ui, sans-serif",
+  canvas: "#f5f3f0",
+  surface: "#fbfaf8",
+  ink: "#1d1b19",
+  muted: "#6c665f",
+  border: "#e7e4df",
+  hoverSurface: "#f1eee9",
+  selectedSurface: "#f0ede8",
+  selectedInk: "#1d1b19",
+  accent: "#1d1b19",
+  focus: "#1d1b19",
+  success: "#1f754d",
+  controlBorder: "#77716a",
+  panelRadius: "4px",
+  controlRadius: "4px",
+  textSize: "15px",
+});
+
+/** Standard preserves the base theme. Compact changes spacing, not typography or hit targets. */
+export const densityOverrides = {
+  standard: {},
+  compact: {
+    space: "0.5rem",
+    fieldGap: "0.375rem",
+    tableCellPadding: "0.375rem 0.625rem",
+  },
+} as const satisfies Record<string, Partial<ThemeTokens>>;
+
 // Table treatment follows Radio room utility headers and fine desktop list rules.
 export const tactileTheme = composeTheme(cleanTheme, {
   tableBorder: "#7b878c",

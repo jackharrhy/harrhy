@@ -9,7 +9,7 @@ In the UI showcase, open **Scenes → Clank cook-off**. The fixture asks why a p
 - The light shell uses Pi’s background `#fbfaf8`, text `#1d1b19`, rule `#e7e4df`, prompt `#f0ede8` and code `#f5f3f0`. The same neutral ink draws the focus outline. The only chromatic mark is the check next to “Complete”. Muted text is slightly darker than Pi’s to keep contrast on the selected surface.
 - [Pi icons](../../apps/pi/src/web/icons.tsx) use currentColor outlines on a 24-unit grid with 2-unit strokes; [activity rows](../../apps/pi/src/web/activity/activity.css) have no idle background. Here the 16px tool glyph accompanies a native disclosure, not a separate button.
 
-Clean and Artbin keep their existing theme tokens over exactly the same content. The Pi-derived Harrhy recipe stays in the showcase.
+Basic and Newspaper keep the existing Clean and Artbin tokens over exactly the same content. Graphite is the Pi-derived palette, exported as `graphiteTheme` from `@harrhy/ui/theme`. Use Standard or Compact in the Sessions pane to change list and table spacing without changing the palette, transcript size or phone targets. The scene, fixtures and font loading remain app-owned.
 
 ## Interaction references
 
@@ -39,6 +39,6 @@ pnpm --filter @harrhy/ui-app check
 HOST=127.0.0.1 PORT=19374 pnpm --filter @harrhy/ui-app start
 ```
 
-Visit `http://127.0.0.1:19374/?view=scenes&scene=clank`. Add `&theme=clean` or `&theme=brutalist` for the existing tokens. Only the new scene uses Harrhy; nothing changes another app's chosen theme.
+Visit `http://127.0.0.1:19374/?view=scenes&scene=clank`. Add `&theme=clean` or `&theme=brutalist` for the existing tokens. Graphite is also available in the workbench picker; existing theme IDs still work.
 
-Chromium checks covered 320, 390, 768, 1024 and 1440px without horizontal page overflow. Harrhy uses a 2px ink outline for keyboard focus. Phone controls and summaries have 44px minimum targets. No screen-reader or physical-device certification is implied.
+Chromium checks covered 320, 390, 768, 1024 and 1440px without horizontal page overflow. Graphite uses a 2px ink outline for keyboard focus. Phone controls and summaries have 44px minimum targets. No screen-reader or physical-device certification is implied.

@@ -36,7 +36,7 @@ it("offers the real shared Sluggers theme for every Explorer component without p
         await page
           .getByRole("button", { name: "Theme", exact: true })
           .innerText(),
-        "Sluggers",
+        "Scorebook",
       );
       assert.equal(
         await page.evaluate(
@@ -126,7 +126,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
     assert.equal(fontRequests, 0);
   }
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Sluggers", exact: true }).click();
+  await page.getByRole("option", { name: "Scorebook", exact: true }).click();
   await page.waitForFunction(
     () =>
       document
@@ -143,7 +143,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
     /SluggersCezanne/,
   );
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Clean", exact: true }).click();
+  await page.getByRole("option", { name: "Basic", exact: true }).click();
   await page.waitForFunction(
     () =>
       document

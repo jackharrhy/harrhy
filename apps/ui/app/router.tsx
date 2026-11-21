@@ -48,9 +48,7 @@ export function createApp(
           <meta charSet="utf-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1" />
           <meta name="robots" content="noindex, nofollow" />
-          {cookoff && (
-            <link rel="stylesheet" href="/assets/ui/clank/fonts.css" />
-          )}
+          <link rel="stylesheet" href="/assets/ui/clank/fonts.css" />
           <title>@harrhy/ui workbench</title>
           <link rel="stylesheet" href="/assets/hui/fonts.css" />
           {theme === "brutalist" && (
@@ -78,11 +76,9 @@ export function createApp(
           {cookoff ? (
             <Cookoff
               initial={
-                candidate === "clean"
-                  ? "Clean"
-                  : candidate === "brutalist"
-                    ? "Artbin"
-                    : "Harrhy"
+                candidate === "clean" || candidate === "brutalist"
+                  ? candidate
+                  : "graphite"
               }
             />
           ) : url.searchParams.get("view") === "scenes" ? (

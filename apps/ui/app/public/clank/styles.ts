@@ -52,7 +52,7 @@ export const shell = css({
   "& .session": {
     margin: "2px 6px",
     padding: "4px 10px",
-    minHeight: "28px",
+    minHeight: "calc(12px + 2 * var(--hui-space))",
     textAlign: "left",
     fontSize: "14px",
     lineHeight: 1.4,
@@ -143,7 +143,11 @@ export const shell = css({
   "& .tail": { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   "& code": { fontFamily: mono },
   "& table": { borderCollapse: "collapse", width: "100%", fontSize: "13px" },
-  "& td,& th": { textAlign: "left", padding: "6px 8px", borderBottom: line },
+  "& td,& th": {
+    textAlign: "left",
+    padding: "var(--hui-table-cell-padding)",
+    borderBottom: line,
+  },
   "& th": { fontWeight: 600 },
   "& .transport": {
     ...row,
