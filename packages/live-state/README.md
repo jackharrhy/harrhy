@@ -7,4 +7,4 @@ A private workspace containing the `watch` and `channel` pair from the Slides As
 
 The Ref extraction allows async `read` so the producer can check access before each delivery. It suppresses a delivery if stopped during that check and retires once on an invalid acknowledgment. Neither module opens a transport, defines what a revision means, nor authenticates a reader. The app bounds snapshots, writes, scope and subscription lifetime.
 
-Run `npm run check -w @harrhy/live-state` from the repository root.
+Run `pnpm --filter @harrhy/live-state run check` from the repository root.

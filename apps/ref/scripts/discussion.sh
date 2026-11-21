@@ -22,6 +22,7 @@ cleanup() {
 trap cleanup EXIT
 trap "exit 130" INT TERM
 cp -R apps/ref/{app,worker.ts,dist,package.json,tsconfig.json} "$app/"
+ln -s "$root/apps/ref/node_modules" "$app/node_modules"
 cp apps/ref/.dev.vars.example "$app/.dev.vars"
 if [[ $mode == on ]]; then
   cp apps/ref/__tests__/fixtures/live-board.jsonc "$app/wrangler.jsonc"
@@ -31,5 +32,5 @@ else
 fi
 clean=(env -i PATH="$(dirname "$nodebin"):$PATH" HOME="$state/home" TMPDIR="$state/tmp")
 "${clean[@]}" "$nodebin" packages/dev-auth/server.mjs & auth=$!
-"${clean[@]}" CELLD_ESBUILD="$root/node_modules/.bin/esbuild" "$binary" dev "$app" --host 127.0.0.1 --port 8787 --no-watch & runtime=$!
+"${clean[@]}" CELLD_ESBUILD="$root/apps/ref/node_modules/.bin/esbuild" "$binary" dev "$app" --host 127.0.0.1 --port 8787 --no-watch & runtime=$!
 wait -n "$auth" "$runtime"

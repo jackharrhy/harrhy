@@ -13,7 +13,7 @@
   "scripts": {
     "typecheck": "tsrs --noEmit",
     "test": "node --test __tests__/*.test.ts",
-    "check": "npm run typecheck && npm test"
+    "check": "pnpm run typecheck && pnpm test"
   },
   "devDependencies": {
     "@types/node": "26.6.6"

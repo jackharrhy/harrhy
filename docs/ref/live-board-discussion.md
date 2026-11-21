@@ -4,7 +4,7 @@ This local branch combines the inline title/topbar from #269 with a board-scoped
 
 ## Try it
 
-From this checkout, install dependencies with `npm ci`, then run `npm run build -w @harrhy/ref`. Set `CELLD_BIN` to the absolute path of the native executable qualified by this repo's `celld.json`, then:
+From this checkout, install dependencies with `pnpm install --frozen-lockfile`, then run `pnpm --filter @harrhy/ref run build`. Set `CELLD_BIN` to the absolute path of the native executable qualified by this repo's `celld.json`, then:
 
 ```sh
 bash apps/ref/scripts/discussion.sh on
@@ -14,7 +14,7 @@ Open `http://127.0.0.1:8787`, sign in with the local fixture, and create a board
 
 The launcher verifies the binary checksum, stages the built client and Worker into a new directory under `.ref-discussion/`, runs `celld dev` and a disposable issuer on loopback (ports 8787 and 8786), and removes that run's state on exit. No existing auth variables, real data, archives, or control plane are needed. Stop with Ctrl-C. Pass `off` instead of `on` to exercise the same build using the unchanged production binding configuration and synthetic credentials.
 
-With the matching server running, run `npm run test:live-board -w @harrhy/ref -- on` (or `-- off`) in a second terminal. Use installed Playwright Chromium. The check creates synthetic boards and signs in with independent browser cookie jars. It covers RPC and native rename, isolation, cursor expiry, editor reconnect and revocation even for clients ignoring editor teardown. The off check also exercises the #269 HTTP failure and no-JavaScript paths.
+With the matching server running, run `pnpm --filter @harrhy/ref run test:live-board on` (or `off`) in a second terminal. Use installed Playwright Chromium. The check creates synthetic boards and signs in with independent browser cookie jars. It covers RPC and native rename, isolation, cursor expiry, editor reconnect and revocation even for clients ignoring editor teardown. The off check also exercises the #269 HTTP failure and no-JavaScript paths.
 
 ## Boundaries for discussion
 
