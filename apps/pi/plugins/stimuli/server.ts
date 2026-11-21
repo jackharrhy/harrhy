@@ -1,17 +1,15 @@
 // One persisted outbox for one-shot wakes and authorized source events, reconciled against native receipts.
 import { createHash } from "node:crypto";
-import { compile, obj, type Static } from "@earendil-works/pi-schema";
+import { type Static } from "@earendil-works/pi-schema";
 import { formats } from "@earendil-works/pi-schema/formats";
 import {
 	awaitWithContext,
 	type Ctx,
 	defineFacet,
-	defineState,
 	forbidden,
 	isChordError,
 	isOwner,
 	isWorker,
-	record,
 	serveKeyed,
 	signalOf,
 	until,
@@ -20,13 +18,15 @@ import { processLogs } from "@p2/app/v1/node";
 import { Hosts, serverOf, WorkerInitValues } from "@p2/app/v1/server";
 import { Catalog } from "../sessions/contract.ts";
 import { Shares } from "../sharing/contract.ts";
+import { addressedMethods, findTarget, serveAddressed, mayDeliver } from "./addressed-server.ts";
+import { Saved } from "./saved.ts";
 import { StimulusSources, sourceKey } from "./contract.server.ts";
 import {
+	AddressedPolicies, AddressedWorker,
 	type EventReadbackSchema,
-	SourceEventSchema,
+	type SourceEventSchema,
 	type StimulusJson,
 	StimulusWorker,
-	SubscriptionSchema,
 	Subscriptions,
 	WakeSchema,
 	WakeStore,
@@ -34,24 +34,6 @@ import {
 } from "./contract.ts";
 
 type Wake = Static<typeof WakeSchema>;
-const Saved = defineState("p2.stimuli", {
-	version: 2,
-	schema: obj({
-		wakes: record(WakeSchema),
-		events: record(SourceEventSchema),
-		subscriptions: record(SubscriptionSchema),
-	}),
-	initial: () => ({ wakes: {}, events: {}, subscriptions: {} }),
-	migrate: (old, from) => {
-		if (from !== 1) throw new Error(`Unknown p2.stimuli version ${from}`);
-		const schema = compile(obj({ wakes: record(WakeSchema) }));
-		if (!schema.check(old)) throw new Error("Invalid persisted p2.stimuli v1 state");
-		return { wakes: old.wakes, events: {}, subscriptions: {} };
-	},
-	persist: true,
-	checkpointWhen: (_value, _ops, info) => info.deltasSinceBase >= 100,
-});
-
 type SourceEvent = Static<typeof SourceEventSchema>;
 function readback(event: SourceEvent): Static<typeof EventReadbackSchema> {
 	return {
@@ -85,14 +67,16 @@ function eventId(binding: {
 }
 
 export default defineFacet((host) => {
+	serveAddressed(host);
 	serveKeyed(host, StimulusSources);
 	host.serve(
 		WakeStore,
 		(_params, self) => {
 			const saved = self.state(Saved);
 			const sources = self.registry(StimulusSources);
+			const policies = self.registry(AddressedPolicies);
 			const rowFor = (id: string): Wake => {
-				const timer = saved.value.wakes[id];
+				const timer = saved.value.wakes[id] ?? saved.value.addressed[id];
 				if (timer) return timer;
 				const event = saved.value.events[id]!;
 				return {
@@ -103,6 +87,7 @@ export default defineFacet((host) => {
 			};
 			const rows = () => [
 				...Object.values(saved.value.wakes),
+				...Object.values(saved.value.addressed),
 				...Object.values(saved.value.events).map((event) => ({
 					delivery: event.envelope.delivery,
 					phase: event.phase,
@@ -120,6 +105,7 @@ export default defineFacet((host) => {
 			const retry = new Map<string, { at: number; delay: number }>();
 			let changed = () => {};
 			self.on(saved, async () => changed());
+			self.on(policies, async () => changed());
 			self.on(sources, async () => {
 				retry.clear();
 				changed();
@@ -147,10 +133,11 @@ export default defineFacet((host) => {
 			};
 			const blockUnavailable = async (ctx: Ctx) => {
 				await saved.change((draft) => {
-					for (const id of [...Object.keys(draft.wakes), ...Object.keys(draft.events)]) {
-						const row = draft.wakes[id] ?? draft.events[id]!;
-						const delivery = draft.wakes[id]?.delivery ?? draft.events[id]!.envelope.delivery;
+					for (const id of [...Object.keys(draft.wakes), ...Object.keys(draft.events), ...Object.keys(draft.addressed)]) {
+						const row = draft.wakes[id] ?? draft.addressed[id] ?? draft.events[id]!;
+						const delivery = draft.wakes[id]?.delivery ?? draft.addressed[id]?.delivery ?? draft.events[id]!.envelope.delivery;
 						const target = catalog.sessions.value.find((session) => session.id === delivery.session);
+						if (draft.addressed[id] && !target) continue; // The sidebar view is bounded, not an absence proof.
 						if (!target || (target.archivedAt === null && !shared(delivery.session))) continue;
 						if (row.phase.kind === "scheduled") row.phase = { kind: "closed", reason: "blocked" };
 						else if (row.phase.kind === "pending" || row.phase.kind === "uncertain")
@@ -164,7 +151,7 @@ export default defineFacet((host) => {
 			self.on(shares.people, async (_change, ctx) => blockUnavailable(ctx));
 			const phase = async (id: string, next: Wake["phase"], ctx: Ctx) => {
 				await saved.change((draft) => {
-					const row = draft.wakes[id] ?? draft.events[id]!;
+					const row = draft.wakes[id] ?? draft.addressed[id] ?? draft.events[id]!;
 					row.phase = next;
 					delete row.lastError;
 				}, ctx);
@@ -172,8 +159,16 @@ export default defineFacet((host) => {
 			const reconcile = async (id: string, ctx: Ctx) => {
 				let row = rowFor(id);
 				const session = row.delivery.session;
-				if ((await catalog.get({ id: session }, ctx)).archivedAt !== null) return;
-				if (shared(session) && row.phase.kind === "scheduled") {
+				const addressed = saved.value.addressed[id];
+				const target = addressed ? await findTarget(catalog, session, ctx) : await catalog.get({ id: session }, ctx);
+				if (target?.archivedAt !== null) {
+					if (addressed && row.phase.kind === "scheduled") await phase(id, { kind: "closed", reason: "blocked" }, ctx);
+					return;
+				}
+				const unavailable = async () => addressed
+					? !mayDeliver(addressed, policies.value.get(addressed.peer)) || await shares.isShared({ session }, ctx)
+					: shared(session);
+				if (row.phase.kind === "scheduled" && await unavailable()) {
 					await phase(id, { kind: "closed", reason: "blocked" }, ctx);
 					return;
 				}
@@ -188,7 +183,7 @@ export default defineFacet((host) => {
 				if (status.state !== "missing") {
 					await phase(
 						id,
-						status.state === "done" || status.state === "unanswered"
+						!addressed && (status.state === "done" || status.state === "unanswered")
 							? { kind: "settled", receipt: status.receipt, outcome: status.state }
 							: { kind: "admitted", receipt: status.receipt },
 						ctx,
@@ -199,7 +194,7 @@ export default defineFacet((host) => {
 				if (row.phase.kind === "uncertain" && row.phase.policy === "readback-only") return;
 				if (row.phase.kind === "admitted") throw new Error("Native wake receipt disappeared");
 				if (row.phase.kind === "closed" || row.phase.kind === "settled") return;
-				if (shared(session)) {
+				if (await unavailable()) {
 					await phase(
 						id,
 						row.phase.kind === "scheduled"
@@ -213,7 +208,7 @@ export default defineFacet((host) => {
 				if (source && !sources.value.has(sourceKey(source.envelope.source))) return;
 				// Persist before RPC. Cancellation after this point cannot claim to undo admission.
 				await saved.change((draft) => {
-					const current = draft.wakes[id] ?? draft.events[id]!;
+					const current = draft.wakes[id] ?? draft.addressed[id] ?? draft.events[id]!;
 					if (
 						current.phase.kind === "scheduled" ||
 						(current.phase.kind === "uncertain" && current.phase.policy === "retry") ||
@@ -225,7 +220,11 @@ export default defineFacet((host) => {
 				if (row.phase.kind !== "pending") return;
 				try {
 					const source = saved.value.events[id];
-					const result = source
+					const result = addressed
+						? await (await ctx.get(AddressedWorker, { session })).admit({
+							delivery: row.delivery, peer: addressed.peer, label: addressed.label,
+						}, ctx)
+						: source
 						? await worker.admitSource(source.envelope, ctx)
 						: await worker.admit(row.delivery, ctx);
 					if (result.state === "conflict") throw new Error("Conflicting wake intent");
@@ -267,6 +266,9 @@ export default defineFacet((host) => {
 							const { id, session, notBefore } = row.delivery;
 							if (row.phase.kind === "closed" || row.phase.kind === "settled" || occupied.has(session)) continue;
 							const source = saved.value.events[id];
+							const addressed = saved.value.addressed[id];
+							if (addressed && row.phase.kind === "admitted") continue;
+							if (row.phase.kind === "scheduled" && addressed && !policies.value.has(addressed.peer)) continue;
 							if (
 								row.phase.kind === "scheduled" &&
 								source &&
@@ -274,10 +276,12 @@ export default defineFacet((host) => {
 							)
 								continue;
 							const target = catalog.sessions.value.find((entry) => entry.id === session);
-							if (!target || target.archivedAt !== null) continue;
+							if (target?.archivedAt != null || (!addressed && !target)) continue;
 							const at = Math.max(notBefore, retry.get(id)?.at ?? 0);
 							if (at > now) {
-								if (row.phase.kind !== "scheduled") occupied.add(session);
+								if (row.phase.kind !== "scheduled" &&
+									!(addressed && row.phase.kind === "uncertain" && row.phase.policy === "readback-only"))
+									occupied.add(session);
 								next = Math.min(next, at);
 								continue;
 							}
@@ -288,7 +292,7 @@ export default defineFacet((host) => {
 								.catch(async (error: unknown) => {
 									if (signal.aborted) return;
 									await saved.change((draft) => {
-										(draft.wakes[id] ?? draft.events[id]!).lastError =
+										(draft.wakes[id] ?? draft.addressed[id] ?? draft.events[id]!).lastError =
 											error instanceof Error ? error.message : String(error);
 									}, ctx);
 								})
@@ -321,6 +325,7 @@ export default defineFacet((host) => {
 				}
 			});
 			return {
+				...addressedMethods(self, saved),
 				createSubscription: async (args, ctx) => {
 					declaration(args.source).validateConfig(args.config);
 					if (Buffer.byteLength(canonical(args.config)) > 32768)
@@ -477,7 +482,7 @@ export default defineFacet((host) => {
 				},
 			};
 		},
-		{ accepts: { 1: {} } },
+		{ accepts: { 1: {}, 2: {} } },
 	);
 	host.serve(Subscriptions, (_params, principal, self) => {
 		const store = self.get(WakeStore, {});

@@ -28,7 +28,7 @@ Set `CHROMIUM_BIN` for separately installed Chromium. The check installs the iso
 
 Owners can use **Settings → Theme** to tint the web interface independently of light/dark mode or upload a sidebar logo (PNG, JPEG or WebP, up to 512 × 512 pixels and 500 kB). Reset either setting to restore the default Pi appearance.
 
-Atlas feedback and Hermes ingress are optional host plugins, not built-ins. See [Optional integrations](integrations/README.md) for installation and cutover. A base start does not register either endpoint.
+The [Pi Inbox](../../docs/pi-inbox.md) and Atlas feedback are optional host plugins. See [Optional integrations](integrations/README.md). A base start does not register their endpoints.
 
 The retained settings/model APIs use the selected instance's data directory, not Harrhy repository files. Read `plugins/models/model-config.ts` and `src/runtime/settings.ts` before changing settings. Never point a fixture or preview at live `P2_DATA_DIR`, copy production auth/configuration, or treat `P2_FAKE` alone as isolation. The preview and fixture wrappers must supply an explicit reviewed plugin selection and network/filesystem boundary.
 
