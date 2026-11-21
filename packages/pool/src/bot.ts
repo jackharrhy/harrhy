@@ -6,9 +6,9 @@ import {
   shotPower,
   type Ball,
   type PoolMatch,
-} from "@harrhy/pool";
+} from "./index.ts";
 
-import { CUSHIONS, POCKETS } from "@harrhy/pool/table";
+import { CUSHIONS, POCKETS } from "./physical-table.ts";
 
 type Point = { x: number; z: number };
 type Shot = { angle: number; power: number };

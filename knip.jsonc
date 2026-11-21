@@ -194,6 +194,9 @@
         "__tests__/browser/production.ts",
       ],
     },
+    "apps/world": {
+      "entry": ["server/index.ts", "celld/worker.ts", "scripts/bench-room.mjs"],
+    },
     "apps/radio": {
       "entry": [
         "app/assets/entry.ts",

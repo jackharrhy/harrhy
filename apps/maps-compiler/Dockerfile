@@ -9,6 +9,7 @@ COPY apps/maps-compiler/package.json ./apps/maps-compiler/
 COPY packages/maps-editor/package.json ./packages/maps-editor/
 COPY packages/maps-protocol/package.json ./packages/maps-protocol/
 COPY packages/maps-renderer/package.json ./packages/maps-renderer/
+COPY packages/schmovement/package.json ./packages/schmovement/
 COPY packages/request-body/package.json ./packages/request-body/
 
 FROM manifests AS production-dependencies
@@ -21,6 +22,7 @@ COPY apps/maps-compiler ./apps/maps-compiler
 COPY packages/maps-editor ./packages/maps-editor
 COPY packages/maps-protocol ./packages/maps-protocol
 COPY packages/maps-renderer ./packages/maps-renderer
+COPY packages/schmovement ./packages/schmovement
 COPY packages/request-body ./packages/request-body
 RUN pnpm --filter @harrhy/worldview-renderer run build \
   && pnpm --filter @harrhy/maps-editor run build \
@@ -46,7 +48,9 @@ COPY --from=build --chown=node:node /app/packages/maps-editor /app/packages/maps
 COPY --from=production-dependencies --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=build --chown=node:node /app/packages/maps-protocol /app/packages/maps-protocol
 COPY --from=production-dependencies --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=production-dependencies --chown=node:node /app/packages/schmovement /app/packages/schmovement
 COPY --from=build --chown=node:node /app/packages/maps-renderer /app/packages/maps-renderer
+COPY --from=build --chown=node:node /app/packages/schmovement /app/packages/schmovement
 COPY --from=production-dependencies --chown=node:node /app/packages/request-body /app/packages/request-body
 COPY --from=build --chown=node:node /app/packages/request-body /app/packages/request-body
 USER node

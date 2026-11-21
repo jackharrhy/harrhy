@@ -3,7 +3,7 @@ import { createMatch } from "@harrhy/pool";
 import type { TableState } from "@harrhy/pool-protocol";
 import type { HallView } from "../../../app/game/scene/world";
 import { Controls } from "../../../app/game/input/controls";
-import { CueDrag } from "../../../app/game/input/cue-drag";
+import { CueDrag } from "@harrhy/pool/cue-drag";
 import { INPUT_DT, type PlayerState } from "@harrhy/pool-protocol";
 import {
   addAvatar,

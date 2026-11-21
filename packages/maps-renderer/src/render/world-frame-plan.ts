@@ -17,6 +17,7 @@ export interface WorldFramePlanOptions {
   readonly batchCenters: ReadonlyMap<DrawBatch, Vec3Tuple>;
   readonly hasSprites: boolean;
   readonly hasWalkability: boolean;
+  readonly hasOverlay?: boolean;
 }
 
 export interface WorldFramePlan {
@@ -128,7 +129,8 @@ export function createWorldFramePlan(
     opaque.length > 0 ||
     translucent.length > 0 ||
     options.hasSprites ||
-    options.hasWalkability;
+    options.hasWalkability ||
+    Boolean(options.hasOverlay);
   return {
     sky,
     opaque,

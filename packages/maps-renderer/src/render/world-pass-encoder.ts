@@ -23,6 +23,7 @@ export interface WorldPassEncoding {
   readonly clearColor: readonly [number, number, number, number];
   readonly camera: CameraState;
   readonly timeSeconds: number;
+  readonly drawOverlay?: (pass: GPURenderPassEncoder) => void;
 }
 
 export function encodeWorldPasses(input: WorldPassEncoding): void {
@@ -88,6 +89,7 @@ export function encodeWorldPasses(input: WorldPassEncoding): void {
       );
     }
     if (plan.hasSprites) sprites.drawOpaque(pass, input.sceneGroup);
+    input.drawOverlay?.(pass);
     for (const batch of plan.translucent) {
       resources.drawBatch(
         pass,

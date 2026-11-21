@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { CueDrag } from "../../../app/game/input/cue-drag";
+import { CueDrag } from "@harrhy/pool/cue-drag";
 
 const shot = { table: "table-1", turn: 7, angle: 1.2 };
 

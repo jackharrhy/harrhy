@@ -148,3 +148,8 @@ export type {
   ParsedWorld,
   Vec3Tuple,
 } from "./types.js";
+export {
+  BSP_VERTEX_STRIDE,
+  raycastBspSurfaces,
+  type BspSurfaceHit,
+} from "./surface-ray.js";

@@ -60,7 +60,17 @@ export class ViewCamera {
     const scale = Math.max(1, Math.hypot(x, z));
     return { x: x / scale, z: z / scale };
   }
-  update(dt: number, anchor: Vector3, mode: Mode, mobile: boolean) {
+  update(
+    dt: number,
+    anchor: Vector3,
+    mode: Mode,
+    mobile: boolean,
+    bounds = {
+      halfWidth: W + RAIL_WIDTH,
+      halfLength: L + RAIL_WIDTH,
+      height: RAIL_TOP_Y - FELT_Y,
+    },
+  ) {
     this.mode = mode;
     const view = this.views[mode];
     const offset =
@@ -99,9 +109,9 @@ export class ViewCamera {
       const vertical = Math.tan(MathUtils.degToRad(this.camera.fov / 2)) * 0.9;
       const horizontal = vertical * this.camera.aspect;
       distance = 0;
-      for (const x of [-W - RAIL_WIDTH, W + RAIL_WIDTH])
-        for (const z of [-L - RAIL_WIDTH, L + RAIL_WIDTH]) {
-          const corner = new Vector3(x, RAIL_TOP_Y - FELT_Y, z);
+      for (const x of [-bounds.halfWidth, bounds.halfWidth])
+        for (const z of [-bounds.halfLength, bounds.halfLength]) {
+          const corner = new Vector3(x, bounds.height, z);
           distance = Math.max(
             distance,
             corner.dot(backward) + Math.abs(corner.dot(right)) / horizontal,

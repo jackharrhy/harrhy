@@ -6,7 +6,7 @@ import {
   TABLE_HALF_WIDTH as W,
   TABLE_HALF_LENGTH as L,
   createRack,
-} from "@harrhy/pool";
+} from "../index";
 import {
   FELT_Y,
   FELT_GEOMETRY,
@@ -20,9 +20,9 @@ import {
   RETURN_TRAY,
   CABINET_BOUNDS,
   POCKET_WELL_BOTTOM_Y,
-} from "@harrhy/pool/table";
+} from "../physical-table";
 import { canvasTexture } from "./textures";
-import { pendantRig } from "./lighting";
+import { pendantRig } from "./pendants";
 export { FELT_Y };
 export const BALL_Y = FELT_Y + BALL_RADIUS;
 const RAIL_Y = FELT_Y - 0.025;
@@ -272,7 +272,10 @@ function feltMaterial() {
   });
 }
 
-export function createTable(ballMaterials: THREE.MeshStandardMaterial[]) {
+export function createTable(
+  ballMaterials: THREE.MeshStandardMaterial[],
+  { walnutUrl }: { walnutUrl: string },
+) {
   const group = new THREE.Group();
   const graphics = new THREE.Group();
   graphics.name = "table-graphics";
@@ -280,7 +283,7 @@ export function createTable(ballMaterials: THREE.MeshStandardMaterial[]) {
   const tabletop = new THREE.Group();
   tabletop.name = "tabletop-lid";
   graphics.add(tabletop);
-  const grain = new THREE.TextureLoader().load("/textures/walnut.webp");
+  const grain = new THREE.TextureLoader().load(walnutUrl);
   grain.colorSpace = THREE.SRGBColorSpace;
   grain.wrapS = grain.wrapT = THREE.RepeatWrapping;
   grain.anisotropy = 8;

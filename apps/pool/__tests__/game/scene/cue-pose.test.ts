@@ -4,11 +4,7 @@ import {
   TABLE_HALF_WIDTH as W,
   TABLE_HALF_LENGTH as L,
 } from "@harrhy/pool";
-import {
-  cuePose,
-  CUE_LENGTH,
-  CUE_RADIUS,
-} from "../../../app/game/scene/cue-pose";
+import { cuePose, CUE_LENGTH, CUE_RADIUS } from "@harrhy/pool/presentation";
 import { FELT_Y, RAIL_TOP_Y, RAIL_WIDTH } from "@harrhy/pool/table";
 
 test("cue stays above the cloth and rails while aiming and pulling back near every cushion", () => {

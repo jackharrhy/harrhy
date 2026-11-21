@@ -8,13 +8,14 @@ export {
   createShotResult,
   canPlaceCue,
   placeCue,
-} from "./physics";
+} from "./physics.ts";
 export type {
   Ball,
   PhysicalBall,
   BallStage,
   ShotResult,
   PoolSound,
-} from "./physics";
-export { createMatch, startMatch, resolveShot } from "./rules";
-export type { PoolMatch } from "./rules";
+} from "./physics.ts";
+export { createMatch, startMatch, resolveShot } from "./rules.ts";
+export type { PoolMatch } from "./rules.ts";
+export { copyPredictedBalls, predictionDiffers } from "./prediction.ts";

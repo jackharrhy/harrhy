@@ -2,8 +2,8 @@ import {
   BALL_RADIUS,
   TABLE_HALF_WIDTH as W,
   TABLE_HALF_LENGTH as L,
-} from "@harrhy/pool";
-import { FELT_Y, RAIL_TOP_Y } from "@harrhy/pool/table";
+} from "../dimensions";
+import { FELT_Y, RAIL_TOP_Y } from "../physical-table";
 
 export const CUE_CONTACT_MS = 40;
 export const CUE_LENGTH = 1.45;
@@ -50,4 +50,42 @@ export function cuePose(
     ] as [number, number, number],
     axis,
   };
+}
+
+import * as THREE from "three/webgpu";
+
+const finish = (color: number) =>
+  new THREE.MeshStandardMaterial({ color, roughness: 0.8 });
+
+export function createCue() {
+  const cue = new THREE.Group();
+  const shaft = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0065, 0.012, CUE_LENGTH - 0.43, 10),
+    finish(0xd8b77c),
+  );
+  shaft.rotation.z = -Math.PI / 2;
+  shaft.position.x = -0.03 - (CUE_LENGTH - 0.43) / 2;
+  cue.add(shaft);
+  const ferrule = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0065, 0.0065, 0.026, 10),
+    finish(0xf0e8cf),
+  );
+  ferrule.rotation.z = -Math.PI / 2;
+  ferrule.position.x = -0.017;
+  cue.add(ferrule);
+  const tip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.0065, 0.0065, 0.004, 10),
+    finish(0x537a80),
+  );
+  tip.rotation.z = -Math.PI / 2;
+  tip.position.x = -0.002;
+  cue.add(tip);
+  const grip = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.012, CUE_RADIUS, 0.4, 10),
+    finish(0x4d3024),
+  );
+  grip.rotation.z = -Math.PI / 2;
+  grip.position.x = -CUE_LENGTH + 0.2;
+  cue.add(grip);
+  return cue;
 }

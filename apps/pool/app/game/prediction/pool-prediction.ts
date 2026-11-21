@@ -1,5 +1,9 @@
 import { PoolPhysics } from "@harrhy/pool/engine";
-import { createShotResult } from "@harrhy/pool";
+import {
+  createShotResult,
+  copyPredictedBalls,
+  predictionDiffers,
+} from "@harrhy/pool";
 import type { PhysicalBall, PoolSound } from "@harrhy/pool";
 import { INPUT_DT } from "@harrhy/pool-protocol";
 import type {
@@ -42,9 +46,6 @@ const TICK = INPUT_DT * 1000;
 const HISTORY = 120;
 const MAX_STEPS = 60;
 const BLEND_MS = 180;
-const copyBalls = (balls: PhysicalBall[]): PhysicalBall[] =>
-  balls.map((ball) => ({ ...ball, q: [...ball.q], w: [...ball.w] }));
-
 type Quaternion = NonNullable<MotionEntity["q"]>;
 const IDENTITY: Quaternion = { x: 0, y: 0, z: 0, w: 1 };
 const ERROR_DECAY_MS = 90;
@@ -365,7 +366,7 @@ export class PoolPrediction {
   private record(): void {
     this.history.push({
       tick: this.tick,
-      balls: copyBalls(this.engine!.balls),
+      balls: copyPredictedBalls(this.engine!.balls),
     });
     if (this.history.length > HISTORY) this.history.shift();
   }
@@ -427,15 +428,7 @@ export class PoolPrediction {
         const p = frame.balls.find(
           (candidatePoint) => candidatePoint.id === b.id,
         );
-        return (
-          !p ||
-          Math.hypot(p.x - b.x, p.y - b.y, p.z - b.z) > 0.025 ||
-          Math.hypot(p.vx - b.vx, p.vy - b.vy, p.vz - b.vz) > 0.2 ||
-          p.pocketed !== b.pocketed ||
-          p.revision !== b.revision ||
-          p.stage !== b.stage ||
-          Math.hypot(p.w[0] - b.w[0], p.w[1] - b.w[1], p.w[2] - b.w[2]) > 1
-        );
+        return !p || predictionDiffers(p, b);
       });
     if (!mismatch) return;
     // Measure only aligned history at an actual restore. Revision/stage changes

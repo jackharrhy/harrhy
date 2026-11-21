@@ -3,7 +3,7 @@ import * as THREE from "three/webgpu";
 import { createMatch, createRack } from "@harrhy/pool";
 import type { TableState } from "@harrhy/pool-protocol";
 import { TablePresence } from "../../../app/game/scene/table-presence";
-import { cuePose } from "../../../app/game/scene/cue-pose";
+import { cuePose } from "@harrhy/pool/presentation";
 
 function fixture() {
   const group = new THREE.Group();
