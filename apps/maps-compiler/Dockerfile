@@ -13,10 +13,10 @@ COPY packages/schmovement/package.json ./packages/schmovement/
 COPY packages/request-body/package.json ./packages/request-body/
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/maps-compiler... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/maps-compiler... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/maps-compiler... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/maps-compiler... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/maps-compiler ./apps/maps-compiler
 COPY packages/maps-editor ./packages/maps-editor

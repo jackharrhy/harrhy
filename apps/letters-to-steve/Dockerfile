@@ -5,7 +5,7 @@ RUN npm install --global --ignore-scripts pnpm@12.21.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/letters-to-steve/package.json apps/letters-to-steve/package.json
 COPY packages/identity/package.json packages/identity/package.json
-RUN pnpm --filter @harrhy/letters-to-steve... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/letters-to-steve... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 COPY apps/letters-to-steve ./apps/letters-to-steve
 COPY packages/identity ./packages/identity
 

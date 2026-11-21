@@ -18,10 +18,10 @@ COPY packages/request-body/package.json ./packages/request-body/
 COPY packages/result/package.json ./packages/result/
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/maps-service... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/maps-service... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/maps-service... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/maps-service... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/maps-service ./apps/maps-service
 COPY packages/identity ./packages/identity

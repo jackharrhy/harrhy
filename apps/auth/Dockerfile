@@ -6,7 +6,7 @@ COPY apps/auth/package.json apps/auth/package.json
 COPY packages/logger/package.json packages/logger/package.json
 COPY packages/ui/package.json packages/ui/package.json
 COPY packages/ui/styles.ts packages/ui/styles.ts
-RUN pnpm --filter @harrhy/auth... install --frozen-lockfile
+RUN pnpm --filter @harrhy/auth... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY packages/logger ./packages/logger
 
 FROM platformatic/node-caged:26-slim

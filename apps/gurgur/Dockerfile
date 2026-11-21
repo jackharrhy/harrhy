@@ -6,7 +6,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/gurgur/package.json ./apps/gurgur/
 COPY packages/gurgur-engine/package.json ./packages/gurgur-engine/
 COPY packages/gurgur-game/package.json ./packages/gurgur-game/
-RUN pnpm --filter @harrhy/gurgur... install --frozen-lockfile
+RUN pnpm --filter @harrhy/gurgur... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/gurgur ./apps/gurgur
 COPY packages/gurgur-engine ./packages/gurgur-engine

@@ -16,11 +16,11 @@ COPY packages/schmovement/package.json ./packages/schmovement/
 COPY packages/webmcp/package.json ./packages/webmcp/
 
 FROM manifests AS dependencies
-RUN pnpm --filter @harrhy/worldview... install --frozen-lockfile
+RUN pnpm --filter @harrhy/worldview... install --frozen-lockfile --config.enable-global-virtual-store=false
 
 FROM manifests AS build
 # Shared Maps builds need root tsrs; runtime dependencies remain in the prior stage.
-RUN pnpm --filter @harrhy/worldview... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/worldview... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/worldview ./apps/worldview
 COPY packages/maps-editor ./packages/maps-editor

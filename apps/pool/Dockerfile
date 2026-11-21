@@ -7,7 +7,7 @@ COPY apps/pool/package.json ./apps/pool/
 COPY packages/pool/package.json ./packages/pool/
 COPY packages/pool-protocol/package.json ./packages/pool-protocol/
 COPY packages/pool-simulation/package.json ./packages/pool-simulation/
-RUN pnpm --filter @harrhy/pool-app... install --frozen-lockfile
+RUN pnpm --filter @harrhy/pool-app... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/pool ./apps/pool
 COPY packages/pool ./packages/pool

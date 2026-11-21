@@ -6,7 +6,13 @@ The [workspace index](../README.md) links to each app and package. Use `pnpm --f
 
 ## Worktree installs
 
-Use the pnpm version pinned in `packageManager` and `mise.toml`. For disposable development worktrees on the same host, use `pnpm install --frozen-lockfile --config.enable-global-virtual-store=true` to reuse installed packages across checkouts. Do not point production or container builds at a host store: their dependency trees must be self-contained. Pi’s nested `apps/pi/compat` install remains on npm.
+Use the pnpm version pinned in `packageManager` and `mise.toml`. Local installs share pnpm’s global virtual store by default. External dependency links resolve through `links/` under `pnpm store path`; workspace dependencies still resolve to source in the current checkout. Keep the store and its worktrees on the same filesystem for hardlinks. If a worktree lives on another filesystem, choose a writable store there with `--store-dir /path/to/store` and keep using that setting for subsequent installs.
+
+Convert one development checkout at a time. Stop its dev servers and watchers, then inspect and move aside the root and workspace `node_modules` directories managed by pnpm before reinstalling with `pnpm install --frozen-lockfile`. Keep the old directories until you verify the new install. Leave lockfiles, source, local data and Pi’s nested `apps/pi/compat/**/node_modules` alone. Pi compat still uses npm. If you use Pi locally, rerun `node apps/pi/harrhy/install.mjs` to recreate its overlay links after replacing `apps/pi/node_modules`.
+
+To roll back or keep a checkout self-contained, move aside its pnpm-managed directories again and run `pnpm install --frozen-lockfile --config.enable-global-virtual-store=false`. This flag overrides the workspace default; `CI=true` alone does not. GitHub workflow installs and Dockerfiles explicitly opt out. Do not copy a dependency tree linked to the global store into a deployment artifact or prune the shared store as part of conversion.
+
+**UI browser checks need the self-contained layout.** With the pinned Remix CLI, `pnpm --filter @harrhy/ui-app run check` passes typechecking but the browser harness rejects its own scripts when their real path is outside the checkout. Use the opt-out above in a dedicated checkout for UI checks; the full UI check passes with that layout.
 
 ## Checks
 

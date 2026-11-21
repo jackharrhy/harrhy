@@ -16,11 +16,11 @@ COPY packages/maps-renderer/package.json ./packages/maps-renderer/
 COPY packages/schmovement/package.json ./packages/schmovement/
 
 FROM manifests AS dependencies
-RUN pnpm --filter @harrhy/maps-collaboration... install --frozen-lockfile
+RUN pnpm --filter @harrhy/maps-collaboration... install --frozen-lockfile --config.enable-global-virtual-store=false
 
 FROM manifests AS build
 # Shared Maps builds need root tsrs; runtime dependencies remain in the prior stage.
-RUN pnpm --filter @harrhy/maps-collaboration... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/maps-collaboration... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/maps-collaboration ./apps/maps-collaboration
 COPY packages/maps-editor ./packages/maps-editor

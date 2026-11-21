@@ -7,10 +7,10 @@ COPY apps/8mb/package.json apps/8mb/package.json
 COPY packages/request-body/package.json packages/request-body/package.json
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/8mb... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/8mb... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/8mb... install --frozen-lockfile
+RUN pnpm --filter @harrhy/8mb... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY apps/8mb ./apps/8mb
 COPY packages/request-body ./packages/request-body
 RUN pnpm --filter @harrhy/8mb run build

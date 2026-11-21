@@ -12,10 +12,10 @@ COPY packages/json-schema/package.json packages/json-schema/package.json
 COPY packages/result/package.json packages/result/package.json
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/lists... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/lists... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/lists... install --frozen-lockfile
+RUN pnpm --filter @harrhy/lists... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY apps/lists apps/lists
 COPY packages/ui packages/ui
 COPY packages/identity packages/identity

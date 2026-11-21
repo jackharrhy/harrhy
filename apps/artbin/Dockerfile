@@ -15,10 +15,10 @@ COPY packages/maps-renderer/package.json packages/maps-renderer/package.json
 COPY packages/schmovement/package.json packages/schmovement/package.json
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/artbin-app... install --frozen-lockfile --prod --ignore-scripts
+RUN pnpm --filter @harrhy/artbin-app... install --frozen-lockfile --config.enable-global-virtual-store=false --prod --ignore-scripts
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/artbin-app... --filter . install --frozen-lockfile --ignore-scripts
+RUN pnpm --filter @harrhy/artbin-app... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false --ignore-scripts
 # Build against the compression-enabled runtime, then transfer only the binding.
 RUN addon="$(realpath apps/artbin/node_modules/better-sqlite3)" \
   && rm -rf "$addon/prebuilds" \

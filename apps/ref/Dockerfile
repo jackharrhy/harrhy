@@ -21,7 +21,7 @@ COPY packages/request-body/package.json ./packages/request-body/
 COPY packages/result/package.json ./packages/result/
 COPY packages/ui/package.json ./packages/ui/
 COPY packages/webmcp/package.json ./packages/webmcp/
-RUN pnpm --filter @harrhy/ref... install --frozen-lockfile
+RUN pnpm --filter @harrhy/ref... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/ref ./apps/ref
 COPY packages/board ./packages/board

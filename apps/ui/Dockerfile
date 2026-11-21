@@ -4,7 +4,7 @@ RUN npm install --global --ignore-scripts pnpm@12.21.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/ui/package.json apps/ui/package.json
 COPY packages/ui/package.json packages/ui/package.json
-RUN pnpm --filter @harrhy/ui-app... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/ui-app... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 COPY packages/ui ./packages/ui
 COPY apps/ui ./apps/ui
 

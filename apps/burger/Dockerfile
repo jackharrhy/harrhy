@@ -5,7 +5,7 @@ RUN npm install --global --ignore-scripts pnpm@12.21.0
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/burger/package.json ./apps/burger/
 COPY packages/burger-core/package.json ./packages/burger-core/
-RUN pnpm --filter @harrhy/burger... install --frozen-lockfile
+RUN pnpm --filter @harrhy/burger... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/burger ./apps/burger
 COPY packages/burger-core ./packages/burger-core

@@ -16,10 +16,10 @@ COPY packages/rich-text/package.json ./packages/rich-text/
 COPY packages/ui/package.json ./packages/ui/
 
 FROM manifests AS production-dependencies
-RUN pnpm --filter @harrhy/cms... install --frozen-lockfile --prod
+RUN pnpm --filter @harrhy/cms... install --frozen-lockfile --config.enable-global-virtual-store=false --prod
 
 FROM manifests AS build
-RUN pnpm --filter @harrhy/cms... --filter . install --frozen-lockfile
+RUN pnpm --filter @harrhy/cms... --filter . install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY tsconfig.base.json ./
 COPY apps/cms ./apps/cms
 COPY packages/identity ./packages/identity

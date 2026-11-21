@@ -80,6 +80,7 @@ for (const [name, workspace] of workspaces) {
     for (const [, args] of install) {
       assert.ok(args.startsWith(`--filter ${name}... `), args);
       assert.match(args, / --frozen-lockfile\b/);
+      assert.match(args, / --config\.enable-global-virtual-store=false(?: |$)/);
     }
     assert.equal(
       install.some(([, args]) => args.includes("--filter . ")),

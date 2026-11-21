@@ -88,7 +88,7 @@ jobs:
       - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
         with:
           cache: true
-      - run: pnpm install --frozen-lockfile
+      - run: pnpm install --frozen-lockfile --config.enable-global-virtual-store=false
       - run: pnpm run ci:preflight
       - name: Install Pi isolated browser prerequisites
         if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/pi')
