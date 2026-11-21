@@ -10,7 +10,7 @@
     "dev": "node scripts/build.mjs --dev && node scripts/dev.mjs",
     "typecheck": "tsrs --noEmit",
     "test": "vitest run",
-    "test:embed": "npm run build --workspace @harrhy/worldview-renderer && node __tests__/embed-flow.mjs",
+    "test:embed": "pnpm --filter @harrhy/worldview-renderer run build && node __tests__/embed-flow.mjs",
     "test:gpu": "node __tests__/gpu-flow.mjs",
     "test:corpus:gpu": "node __tests__/gpu-flow.mjs --corpus",
     "test:corpus:gpu:all": "node __tests__/gpu-flow.mjs --corpus-all",

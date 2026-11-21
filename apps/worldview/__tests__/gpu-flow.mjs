@@ -37,8 +37,8 @@ const flags = [
   "--enable-unsafe-webgpu",
 ];
 const server = spawn(
-  "npm",
-  ["run", "dev", "--workspace", "@harrhy/worldview"],
+  "pnpm",
+  ["--filter", "@harrhy/worldview", "run", "dev"],
   {
     cwd: teaRoot,
     detached: true,
