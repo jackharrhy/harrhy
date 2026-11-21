@@ -82,7 +82,6 @@ try {
       first,
       "reload preserves fixed seed/time",
     );
-    await page.screenshot({ path: `/tmp/auth-explorer-${viewport.width}.png` });
     await canvas.evaluate((el) =>
       el.getContext("webgl2").getExtension("WEBGL_lose_context").loseContext(),
     );
@@ -132,7 +131,6 @@ try {
         .getByText("People")
         .waitFor({ state: "visible" });
     }
-    await page.screenshot({ path: `/tmp/auth-header-${viewport.width}.png` });
     await page.close();
   }
   const product = await browser.newPage();

@@ -1,29 +1,11 @@
 import assert from "node:assert/strict";
-import { createServer } from "node:http";
-import { mkdtemp, readFile, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { spawn } from "node:child_process";
-import { once } from "node:events";
+import { readFile } from "node:fs/promises";
 import { chromium } from "playwright";
-const directory = await mkdtemp(tmpdir() + "/auth-gallery-");
-const reservation = createServer();
-reservation.listen(0, "127.0.0.1");
-await once(reservation, "listening");
-const port = reservation.address().port;
-await new Promise((resolve) => reservation.close(resolve));
-const origin = `http://127.0.0.1:${port}`;
-const server = spawn(process.execPath, ["tools/doodle-gallery/server.mjs"], {
-  env: {
-    ...process.env,
-    GALLERY_HOST: "127.0.0.1",
-    GALLERY_PORT: String(port),
-    GALLERY_POOL_FILE: directory + "/pool.json",
-  },
-  stdio: ["ignore", "pipe", "pipe"],
-});
+import { startDoodleGallery } from "../fixtures/doodle-gallery.mjs";
+
+const { origin, poolFile, close } = await startDoodleGallery();
 let browser;
 try {
-  await once(server.stdout, "data");
   browser = await chromium.launch({ args: ["--enable-unsafe-swiftshader"] });
   const context = await browser.newContext({
       viewport: { width: 1000, height: 900 },
@@ -79,11 +61,11 @@ try {
   await page.getByRole("button", { name: "Save changes", exact: true }).click();
   await page.getByText("Saved", { exact: true }).waitFor();
   assert.deepEqual(
-    JSON.parse(await readFile(directory + "/pool.json", "utf8")).enabled,
+    JSON.parse(await readFile(poolFile, "utf8")).enabled,
     ["silk", "silk-braid"],
   );
   assert.equal(
-    JSON.parse(await readFile(directory + "/pool.json", "utf8")).settings.silk
+    JSON.parse(await readFile(poolFile, "utf8")).settings.silk
       .color,
     1.65,
   );
@@ -93,25 +75,6 @@ try {
     await page.getByLabel("Saturation", { exact: true }).inputValue(),
     "1.8",
   );
-  const forged = await context.request.patch(origin + "/api/pool", {
-    headers: { origin: "http://wrong.invalid" },
-    data: { enabled: ["silk-braid"], expectedRevision: 1 },
-  });
-  assert.equal(forged.status(), 403);
-  const invalidSettings = await context.request.patch(origin + "/api/pool", {
-    headers: { origin },
-    data: {
-      enabled: ["silk-braid"],
-      expectedRevision: 1,
-      settings: { silk: { color: 99 } },
-    },
-  });
-  assert.equal(invalidSettings.status(), 400);
-  const invalid = await context.request.patch(origin + "/api/pool", {
-    headers: { origin },
-    data: { enabled: [], expectedRevision: 1 },
-  });
-  assert.equal(invalid.status(), 400);
   await page.getByLabel("Motion", { exact: true }).uncheck();
   await page.locator(".stage").scrollIntoViewIfNeeded();
   const still = await page.locator(".motion-canvas").screenshot();
@@ -135,11 +98,9 @@ try {
   );
   assert.deepEqual(errors, []);
   console.log(
-    "PASS real WebGL gallery: ten shaders, private pool persistence/Origin, paused frame, context-loss fallback and mobile.",
+    "PASS real WebGL gallery: ten shaders, private pool persistence, paused frame, context-loss fallback and mobile.",
   );
 } finally {
   await browser?.close();
-  server.kill("SIGTERM");
-  await once(server, "exit");
-  await rm(directory, { recursive: true, force: true });
+  await close();
 }

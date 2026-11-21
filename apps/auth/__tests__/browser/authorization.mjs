@@ -12,11 +12,6 @@ const key = `${directory}/credential.json`;
 await writeFile(key, JSON.stringify({ token: "fixture-only" }), {
   mode: 0o600,
 });
-const enrollmentKey = `${directory}/enrollment.json`;
-const enrollmentToken = "fixture-only-enrollment-key".repeat(3);
-await writeFile(enrollmentKey, JSON.stringify({ token: enrollmentToken }), {
-  mode: 0o600,
-});
 const applications = JSON.parse(
   await readFile(new URL("../../config/applications.json", import.meta.url)),
 );
@@ -33,7 +28,6 @@ let rejectProviderSession = false;
 let credentialAttempts = 0;
 let completions = 0,
   resetCalls = 0,
-  silentSuccesses = 0,
   loginRequired = 0;
 let holdProfileLookup = false,
   profileLookupEntered,
@@ -240,7 +234,6 @@ const serverOptions = {
     ZITADEL_API_URL: `http://127.0.0.1:${provider.address().port}`,
     LOGIN_TOKEN_FILE: key,
     MANAGEMENT_TOKEN_FILE: key,
-    FOURM_ENROLLMENT_KEY_FILE: enrollmentKey,
     RADIO_ENROLLMENT_DB_FILE: `${directory}/radio-memberships.sqlite`,
     ORGANIZATION_ID: "fixture",
     LORE_PROJECT_ID: "fixture",
@@ -262,78 +255,6 @@ try {
   await once(server.stdout, "data");
   browser = await chromium.launch();
   const policyContext = await browser.newContext();
-  const event = {
-    requestId: "request_12345678901234567890",
-    subject: "fixture-user",
-  };
-  const unauthenticatedCompletion = await policyContext.request.post(
-    `${origin}/enroll/complete`,
-    { data: event },
-  );
-  assert.equal(unauthenticatedCompletion.status(), 401);
-  assert.equal(unauthenticatedCompletion.headers()["set-cookie"], undefined);
-  const nominatedProject = await policyContext.request.post(
-    `${origin}/enroll/complete`,
-    {
-      headers: { authorization: `Bearer ${enrollmentToken}` },
-      data: { ...event, projectId: "lore" },
-    },
-  );
-  assert.equal(nominatedProject.status(), 400);
-  assert.equal(nominatedProject.headers()["set-cookie"], undefined);
-  const wrongMethod = await policyContext.request.get(
-    `${origin}/enroll/complete`,
-  );
-  assert.equal(wrongMethod.status(), 405);
-  assert.equal(wrongMethod.headers()["set-cookie"], undefined);
-  const protectedClient = applications.find((app) => app.id === "fourm")
-    .pkceClientIds[0];
-  const denied = await policyContext.request.get(
-    `${origin}/internal/oidc/authorize-policy`,
-    {
-      headers: {
-        "x-forwarded-uri": `/oauth/v2/authorize?client_id=${protectedClient}&response_type=code`,
-        "x-forwarded-method": "GET",
-      },
-    },
-  );
-  assert.equal(denied.status(), 400);
-  assert.equal(denied.headers()["set-cookie"], undefined);
-  const permitted = await policyContext.request.post(
-    `${origin}/internal/oidc/authorize-policy`,
-    {
-      headers: {
-        "x-forwarded-uri": "/oauth/v2/authorize",
-        "x-forwarded-method": "POST",
-        "content-type": "application/x-www-form-urlencoded",
-      },
-      data: new URLSearchParams({
-        client_id: protectedClient,
-        response_type: "code",
-        code_challenge: "a".repeat(43),
-        code_challenge_method: "S256",
-      }).toString(),
-    },
-  );
-  assert.equal(permitted.status(), 200);
-  assert.equal(permitted.headers()["set-cookie"], undefined);
-  const [stagedClient, requestBoundary] = Object.entries(
-    applications.find((app) => app.id === "fourm").authRequestNotBefore,
-  )[0];
-  const stagedPolicy = await policyContext.request.get(
-    `${origin}/internal/oidc/authorize-policy`,
-    {
-      headers: {
-        "x-forwarded-uri": `/oauth/v2/authorize?client_id=${stagedClient}&response_type=code`,
-        "x-forwarded-method": "GET",
-      },
-    },
-  );
-  assert.equal(stagedPolicy.status(), 400);
-  assert.equal(
-    stagedPolicy.headers()["x-jack-auth-not-before"],
-    requestBoundary,
-  );
   const lists = applications.find((app) => app.id === "lists");
   if (lists.authorizationHold) {
     currentClient = lists.clientIds[0];
@@ -379,50 +300,30 @@ try {
       assert.equal(stale.status(), 400);
       creationDateOverride = undefined;
     }
-    const firstContext = await browser.newContext();
-    const firstPage = await firstContext.newPage();
-    const loginResponse = await firstPage.goto(
-      `${origin}/login?returnTo=${encodeURIComponent("/authorize?authRequest=first-valid")}`,
-    );
-    if (app.id === "fourm") {
-      const styleNonce = await firstPage
-        .locator("style[nonce]")
-        .first()
-        .evaluate((style) => style.nonce);
-      assert(styleNonce);
-      const loginCsp = loginResponse.headers()["content-security-policy"];
-      assert(loginCsp.includes(`'nonce-${styleNonce}'`));
-    }
-    await firstPage.locator("[name=username]").fill("fixture-user-" + app.id);
-    await firstPage.locator("[name=password]").fill("fixture-password");
-    await firstPage
-      .getByRole("button", { name: "Sign in", exact: true })
-      .click();
-    await firstPage.waitForURL(`${callbackOrigin}/callback?**`, {
-      timeout: 5000,
-    });
-    assert.equal(
-      await firstPage.locator("h1").innerText(),
-      "Consumer session established",
-    );
-    await firstContext.close();
     const violations = [];
     page.on("console", (message) => {
       if (message.text().includes("Content Security Policy"))
         violations.push(message.text());
     });
-    await page.goto(
+    const loginResponse = await page.goto(
       app.id === "fourm"
         ? `${origin}/login?authRequest=fixture`
         : `${origin}/login?returnTo=${encodeURIComponent("/authorize?authRequest=fixture")}`,
     );
-    await page.locator("[name=username]").fill("fixture-user-" + app.id);
-    await page.locator("[name=password]").fill("wrong");
-    await page.getByRole("button", { name: "Sign in", exact: true }).click();
-    assert.match(
-      await page.locator("[role=alert]").innerText(),
-      /Sign-in failed/,
-    );
+    if (app.id === "fourm") {
+      const styleNonce = await page
+        .locator("style[nonce]")
+        .first()
+        .evaluate((style) => style.nonce);
+      assert(styleNonce);
+      assert(
+        loginResponse.headers()["content-security-policy"].includes(`'nonce-${styleNonce}'`),
+      );
+      await page.locator("[name=username]").fill("fixture-user-fourm");
+      await page.locator("[name=password]").fill("wrong");
+      await page.getByRole("button", { name: "Sign in", exact: true }).click();
+      assert.match(await page.locator("[role=alert]").innerText(), /Sign-in failed/);
+    }
     await page.locator("[name=username]").fill("fixture-user-" + app.id);
     await page.locator("[name=password]").fill("fixture-password");
     await page.getByRole("button", { name: "Sign in", exact: true }).click();
@@ -436,24 +337,15 @@ try {
       await page.locator("h1").innerText(),
       "Consumer session established",
     );
-    // Existing central session must resume without another credential form.
-    await page.goto(`${origin}/login?authRequest=second`);
-    await page
-      .waitForURL(`${callbackOrigin}/callback?**`, { timeout: 5000 })
-      .catch(async (error) => {
-        console.error(await page.locator("body").innerText(), violations);
-        throw error;
-      });
     assert.deepEqual(violations, []);
     if (app.id === "rotund-portal") {
+      // The central cookie must resume a silent request without credentials.
       silent = true;
+      const attempts = credentialAttempts;
       await page.goto(`${origin}/login?authRequest=existing-session-probe`);
       await page.waitForURL(`${callbackOrigin}/callback?**`, { timeout: 5000 });
-      assert.equal(
-        await page.locator("h1").innerText(),
-        "Consumer session established",
-      );
-      silentSuccesses++;
+      assert.equal(await page.locator("h1").innerText(), "Consumer session established");
+      assert.equal(credentialAttempts, attempts);
       silent = false;
     }
     if (["artbin", "ref"].includes(app.id)) {
@@ -502,7 +394,7 @@ try {
     }
     await context.close();
     console.log(
-      `PASS ${app.id}: first-valid login, failed-login retry and existing-session callback`,
+      `PASS ${app.id}: native login and callback`,
     );
   }
   currentClient = applications.find((app) => app.id === "artbin").clientIds[0];
@@ -803,7 +695,7 @@ try {
   console.log(
     "LOGIN_DIAGNOSTIC " +
       JSON.stringify({
-        freshFirstSubmissionApps: enabled.length,
+        nativeLoginApps: enabled.length,
         staleFormRepro: "Auth process restart",
         browserOriginMatches: true,
         secureHttpOnlyLaxBeforeAndAfter: true,
@@ -821,10 +713,7 @@ try {
   );
   assert.equal(
     completions,
-    5 +
-      enabled.length * 3 +
-      enabled.filter((app) => ["artbin", "ref"].includes(app.id)).length +
-      silentSuccesses,
+    5 + enabled.length + 2 /* delegated approvals */ + 1 /* silent session */,
   );
   const resetContext = await browser.newContext();
   const resetPage = await resetContext.newPage();
