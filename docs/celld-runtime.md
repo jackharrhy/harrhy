@@ -1,6 +1,6 @@
 # Common Celld runtime
 
-Harrhy uses one qualified Celld fork artifact across containerized apps and native previews. The maintained fork follows the latest qualified upstream release with owned patches in linear history, without merge commits. Historical refs and disposable upgrade fixtures are not running-version exceptions.
+Harrhy uses one qualified Celld fork artifact across containerized apps and native previews. The maintained fork follows the latest qualified upstream release with owned patches in linear history, without merge commits. Preserve required standalone-storage and security fixes when updating upstream. Historical refs and disposable compatibility tests with older or candidate binaries do not change the fleet selection.
 
 ## Authoritative selection
 
@@ -39,6 +39,6 @@ On 16 November 2026 the fork owner declared this exact artifact READY after rele
 
 These bounded checks are not full Ref browser/archive acceptance, Radio room/WebSocket/audio/SIGKILL acceptance, or collaboration operation/WebSocket persistence acceptance. Earlier README receipts for 0.6.2 remain historical evidence, not repeated 0.6.3 results.
 
-Source adoption and normal image publication are not evidence of runtime adoption. The runtime operator coordinates container and native-preview convergence and verifies actual binary hashes plus app provenance. Before rollout, observed fleet runtimes were 0.6.2 with binary SHA-256 `4fb58268c1b89a2452d486615442adabb13fc0a80d4078bc2a73cafc19ad2a8b`. Do not leave a persistent mixed-version fleet.
+Qualify the fork and publish the immutable artifact before changing app pins. The runtime operator coordinates container and native-preview convergence, including native CLI binaries and preview supervisors. Shared-runtime operations may need serialization; that does not gate independent source work. Source pins and published images do not prove runtime adoption. Verify actual binary hashes and app provenance. Before rollout, observed fleet runtimes were 0.6.2 with binary SHA-256 `4fb58268c1b89a2452d486615442adabb13fc0a80d4078bc2a73cafc19ad2a8b`. Do not leave a persistent mixed-version fleet.
 
 Preserve authoritative stores, replica boundaries and existing recovery procedures; this upgrade does not require reseeding or rebuilding databases. Compatibility fixtures use disposable data, never the human-review cohort. Preserve the 4orm issuer `https://newport.hedgehog-python.ts.net:8565`; no Python cutover, Auth migration or identity relinking is authorized by this upgrade.
