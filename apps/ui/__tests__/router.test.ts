@@ -1,5 +1,6 @@
 import * as assert from "remix/assert";
 import { it } from "remix/test";
+import { stories } from "../app/public/explorer.tsx";
 import { createApp } from "../app/router.tsx";
 it("rejects unknown hosts before routes and assets", async (t) => {
   const app = createApp();
@@ -56,5 +57,30 @@ it("registers the synthetic Sluggers scene and gates its private font stylesheet
         assert.match(html, /Lil Slug Crew/);
       }
     }
+  }
+});
+
+it("renders each Explorer preview and its source with the selected Sluggers theme", async (t) => {
+  const app = createApp(undefined, { sluggersPrivateFonts: false });
+  t.after(() => app.close());
+  for (const { id } of stories) {
+    const response = await app.fetch(
+      new Request("http://localhost/?component=" + id + "&theme=sluggers"),
+    );
+    assert.equal(response.status, 200, id);
+    const html = await response.text();
+    assert.ok(
+      html.includes('data-preview="' + id + '" data-theme="sluggers"'),
+      id,
+    );
+    // Syntax highlighting wraps individual tokens; compare the rendered source text.
+    const source = html.match(
+      /<[^>]+ data-source[^>]*>[\s\S]*?<pre[^>]*>([\s\S]*?)<\/pre>/,
+    )?.[1];
+    assert.match(
+      source?.replace(/<[^>]+>/g, "") ?? "",
+      /themeStyles\(sluggersTheme\)/,
+      id,
+    );
   }
 });

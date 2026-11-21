@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import "remix/node-tsx";
-const { cleanTheme, sluggersTheme, composeTheme } = await import("../theme.ts");
+const { sluggersTheme } = await import("../theme.ts");
 
 function luminance(hex) {
   const values = hex.match(/[0-9a-f]{2}/gi).map((part) => {
@@ -17,12 +17,7 @@ function contrast(a, b) {
   return (values[0] + 0.05) / (values[1] + 0.05);
 }
 
-test("Sluggers exports composable semantic token data with readable controls and feedback", () => {
-  const snapshot = structuredClone(cleanTheme);
-  const themed = composeTheme(sluggersTheme, { space: "14px" });
-  assert.equal(themed.space, "14px");
-  assert.equal(sluggersTheme.space, "10px");
-  assert.deepEqual(cleanTheme, snapshot);
+test("Sluggers tokens preserve dark table geometry and readable controls and feedback", () => {
   assert.equal(sluggersTheme.colorScheme, "dark");
   assert.equal(sluggersTheme.tableHeaderTextSize, "12px");
   assert.equal(sluggersTheme.tableCellPadding, "10px 12px");

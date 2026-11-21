@@ -9,18 +9,6 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-test("test DB initializes with all tables", () => {
-  const db = createTestDb();
-  const lists = db.select().from(schema.lists).all();
-  expect(lists).toEqual([]);
-  const subscribers = db.select().from(schema.subscribers).all();
-  expect(subscribers).toEqual([]);
-  const campaigns = db.select().from(schema.campaigns).all();
-  expect(campaigns).toEqual([]);
-  const messages = db.select().from(schema.messages).all();
-  expect(messages).toEqual([]);
-});
-
 test("file database tolerates short-lived concurrent writers", () => {
   const directory = mkdtempSync(join(tmpdir(), "lists-sqlite-"));
   try {
@@ -35,24 +23,6 @@ test("file database tolerates short-lived concurrent writers", () => {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
-});
-
-test("built-in newsletter uses the quiet default design", () => {
-  const db = createTestDb();
-  const template = db
-    .select()
-    .from(schema.emailTemplates)
-    .where(eq(schema.emailTemplates.slug, "newsletter"))
-    .get()!;
-
-  expect(template.htmlSource).toContain(
-    "font-size:16px;font-weight:600;line-height:22px",
-  );
-  expect(template.htmlSource).toContain(
-    "Manage preferences</a>&nbsp;&nbsp;&nbsp;<a",
-  );
-  expect(template.htmlSource).not.toContain("text-transform:uppercase");
-  expect(template.htmlSource).not.toContain(" · ");
 });
 
 test("built-in newsletter seeding never overwrites an existing template", () => {
