@@ -1,0 +1,7 @@
+{
+  "name": "@harrhy/private-hosting",
+  "private": true,
+  "scripts": {
+    "check": "python3 -B -m unittest discover -s __tests__ -v"
+  }
+}
