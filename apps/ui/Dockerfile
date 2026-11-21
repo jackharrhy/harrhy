@@ -1,6 +1,7 @@
 FROM platformatic/node-caged:26-slim AS dependencies
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/ui/package.json apps/ui/package.json
 COPY packages/ui/package.json packages/ui/package.json

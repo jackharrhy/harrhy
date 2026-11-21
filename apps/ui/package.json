@@ -10,7 +10,7 @@
     "dev": "node dev.mjs",
     "start": "node --import remix/node-tsx server.ts",
     "typecheck": "tsrs --noEmit",
-    "test": "cd ../.. && remix test 'apps/ui/__tests__/*.test{,.browser,.e2e}.{ts,tsx}'",
+    "test": "node __tests__/run.mjs",
     "check": "npm run typecheck && npm test"
   },
   "dependencies": {

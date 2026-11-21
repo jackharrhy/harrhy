@@ -12,7 +12,7 @@ Convert one development checkout at a time. Stop its dev servers and watchers, t
 
 To roll back or keep a checkout self-contained, move aside its pnpm-managed directories again and run `pnpm install --frozen-lockfile --config.enable-global-virtual-store=false`. This flag overrides the workspace default; `CI=true` alone does not. GitHub workflow installs and Dockerfiles explicitly opt out. Do not copy a dependency tree linked to the global store into a deployment artifact or prune the shared store as part of conversion.
 
-**UI browser checks need the self-contained layout.** With the pinned Remix CLI, `pnpm --filter @harrhy/ui-app run check` passes typechecking but the browser harness rejects its own scripts when their real path is outside the checkout. Use the opt-out above in a dedicated checkout for UI checks; the full UI check passes with that layout.
+Run UI browser checks through `pnpm --filter @harrhy/ui-app run check` in either layout. The UI test entry point stages known Remix browser modules under the checkout when the pinned test harness lives in the shared store. It does not change production asset serving.
 
 ## Checks
 

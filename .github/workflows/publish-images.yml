@@ -59,6 +59,8 @@ on: # jactionlint ignore=concurrency-limits
           - rotund
           - worldview
 permissions: {}
+env:
+  PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE: "false"
 jobs:
   select:
     if: github.ref == 'refs/heads/main'

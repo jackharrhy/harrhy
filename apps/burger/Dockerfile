@@ -2,6 +2,7 @@ FROM node:26-bookworm AS build
 WORKDIR /app
 COPY --from=oven/bun:1.4.4 /usr/local/bin/bun /usr/local/bin/bun
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/burger/package.json ./apps/burger/
 COPY packages/burger-core/package.json ./packages/burger-core/

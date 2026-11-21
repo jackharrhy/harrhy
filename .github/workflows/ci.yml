@@ -10,6 +10,8 @@ concurrency:
   cancel-in-progress: true
 permissions:
   contents: read
+env:
+  PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE: "false"
 jobs:
   select:
     permissions:

@@ -5,6 +5,7 @@ RUN apt-get update \
 
 WORKDIR /app
 RUN npm install --global --ignore-scripts pnpm@12.21.0
+ENV PNPM_CONFIG_ENABLE_GLOBAL_VIRTUAL_STORE=false
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/maps-service/package.json ./apps/maps-service/
 COPY packages/identity/package.json ./packages/identity/
