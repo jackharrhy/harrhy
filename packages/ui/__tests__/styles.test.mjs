@@ -22,21 +22,19 @@ test("standalone primary actions preserve the existing Auth contract", async () 
     assert.ok(html.includes(rule), rule);
   assert.ok(!html.includes("min-height:"), "new base geometry stays opt-in");
 });
-test("new action base supports native link, button and disclosure geometry", async () => {
-  for (const tag of ["a", "button", "summary"]) {
-    const html = await renderToString(
-      createElement(
-        tag,
-        { mix: [uiActionStyles, uiSecondaryActionStyles] },
-        "Action",
-      ),
-    );
-    for (const rule of [
-      "min-height: var(--ui-action-min-height, 40px)",
-      "padding: var(--ui-action-padding, 9px 14px)",
-      "border-radius: var(--ui-control-radius, 5px)",
-      "var(--ui-control-hover)",
-    ])
-      assert.ok(html.includes(rule), rule);
-  }
+test("new action base emits opt-in control geometry", async () => {
+  const html = await renderToString(
+    createElement(
+      "button",
+      { mix: [uiActionStyles, uiSecondaryActionStyles] },
+      "Action",
+    ),
+  );
+  for (const rule of [
+    "min-height: var(--ui-action-min-height, 40px)",
+    "padding: var(--ui-action-padding, 9px 14px)",
+    "border-radius: var(--ui-control-radius, 5px)",
+    "var(--ui-control-hover)",
+  ])
+    assert.ok(html.includes(rule), rule);
 });

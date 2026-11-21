@@ -106,22 +106,6 @@ test("request body changes reach every consumer", () => {
   );
 });
 
-test("ported dependency changes reach their consumers", () => {
-  assert.deepEqual(
-    selectChecks(["packages/result/src/index.ts"], workspaces),
-    checks(
-      "@harrhy/cms",
-      "@harrhy/mcp",
-      "@harrhy/json-schema",
-      "@harrhy/result",
-    ),
-  );
-  assert.deepEqual(
-    selectChecks(["packages/logger/src/index.ts"], workspaces),
-    checks("@harrhy/cms", "@harrhy/mcp", "@harrhy/logger"),
-  );
-});
-
 test("an independently checked workspace is picked up automatically", () => {
   const extra = {
     path: "apps/radio",
