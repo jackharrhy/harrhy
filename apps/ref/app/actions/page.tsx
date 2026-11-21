@@ -5,7 +5,7 @@ import {
   uiPrimaryActionStyles,
   uiSecondaryActionStyles,
 } from "@harrhy/ui";
-import { archiveMcpScopes } from "../mcp/auth.ts";
+import { archiveExportScopes } from "../middleware/archive-auth.ts";
 import { routes } from "../routes.ts";
 import type { BoardRecord } from "../data/directory-cell.ts";
 import { browserAssets } from "../assets/build-manifest.ts";
@@ -172,7 +172,7 @@ export function HomePage(
 }
 
 export function ExportPage(handle: Handle<{ projectId: string }>) {
-  const scopes = archiveMcpScopes(handle.props.projectId);
+  const scopes = archiveExportScopes(handle.props.projectId);
   return () => (
     <Document title="Export archive">
       <main class="home-content">
@@ -201,7 +201,7 @@ export function ExportPage(handle: Handle<{ projectId: string }>) {
             <p>
               Use the resource and issuer in Ref’s{" "}
               <a
-                href="/.well-known/oauth-protected-resource/mcp/archive"
+                href="/.well-known/oauth-protected-resource/api/archive"
                 mix={css({ textDecoration: "underline" })}
               >
                 archive resource metadata

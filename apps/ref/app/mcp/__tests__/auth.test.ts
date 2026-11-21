@@ -5,12 +5,7 @@ import {
   roleScope,
   type TokenPrincipal,
 } from "@harrhy/identity";
-import {
-  archiveMcpMetadata,
-  authorizeArchiveMcp,
-  authorizeRefMcp,
-  mcpAuthError,
-} from "../auth.ts";
+import { authorizeRefMcp } from "../auth.ts";
 import { authorizeArchive } from "../../middleware/archive-auth.ts";
 import { toolsFor, callRefTool } from "../tools.ts";
 import type { AppRuntimeService } from "../../data/runtime.ts";
@@ -99,78 +94,9 @@ test("machines, wrong audiences, ambiguous admission, missing real grants and un
     expect(() => authorizeRefMcp(invalid, project)).toThrow();
 });
 
-const archivePrincipal = () => principal("admin", ["archive-read"]);
-const archiveAccess = (p: TokenPrincipal) =>
-  authorizeArchiveMcp(p, project, "ref-browser");
-const origin = "https://ref.test";
-
-test("archive discovery and challenges request exactly one valid permission family", async () => {
-  const metadata = archiveMcpMetadata(origin, "https://issuer.test", project);
-  const document = (await metadata.json()) as {
-    resource: string;
-    scopes_supported: string[];
-  };
-  expect(document.resource).toBe(`${origin}/mcp/archive`);
-  expect(document.scopes_supported).toEqual([...archivePrincipal().scopes]);
-  for (const status of [401, 403]) {
-    const response = mcpAuthError(origin, status, "denied", {
-      projectId: project,
-      missingBearer: status === 401,
-    });
-    const challenge = response.headers.get("WWW-Authenticate");
-    expect(challenge).toContain(
-      `resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp/archive"`,
-    );
-    expect(challenge).toContain(
-      `scope="${document.scopes_supported.join(" ")}"`,
-    );
-    if (status === 403)
-      expect(challenge).toContain('error="insufficient_scope"');
-    else expect(challenge).not.toContain("error=");
-  }
-  const unavailable = mcpAuthError(origin, 503, "unavailable", {
-    projectId: project,
-  });
-  expect(unavailable.headers.has("WWW-Authenticate")).toBe(false);
-});
-
-test("archive authorization requires the scoped human admin, actual grants and a separate client", () => {
-  const valid = archivePrincipal();
-  const access = archiveAccess({
-    ...valid,
-    roles: new Set([...valid.roles, "boards-write", "archive-restore"]),
-  });
-  expect(access).toEqual({
-    subject: valid.subject,
-    canRead: false,
-    canWrite: false,
-    archiveOnly: true,
-  });
-  expect(() => authorizeRefMcp(valid, project)).toThrow();
-  for (const invalid of [
-    principal(),
-    principal("member", ["archive-read"]),
-    principal("admin", ["archive-read", "boards-read"]),
-    principal("admin", ["archive-read", "archive-restore"]),
-    principal("admin", ["archive-read", "unknown"]),
-    { ...valid, principalType: "service" as const },
-    { ...valid, clientId: "ref-browser" },
-    { ...valid, subject: "" },
-    { ...valid, audiences: new Set(["other"]) },
-    { ...valid, scopes: new Set([...valid.scopes, roleScope("member")]) },
-  ])
-    expect(() => archiveAccess(invalid)).toThrow();
-  for (const field of ["roles", "scopes"] as const) {
-    for (const omitted of valid[field]) {
-      const remaining = new Set(valid[field]);
-      remaining.delete(omitted);
-      expect(() => archiveAccess({ ...valid, [field]: remaining })).toThrow();
-    }
-  }
-});
-
 test("export RPCs take the verified subject; only ready jobs expose a nonsecret download URL", async () => {
-  const archive = archiveAccess(archivePrincipal());
+  const origin = "https://ref.test";
+  const reader = authorizeRefMcp(principal(), project);
   const boards = authorizeRefMcp(principal("admin", ["boards-write"]), project);
   const calls: string[][] = [];
   const job = {
@@ -191,23 +117,18 @@ test("export RPCs take the verified subject; only ready jobs expose a nonsecret 
       },
     },
   } as unknown as AppRuntimeService;
-  expect(toolsFor(archive).map((tool) => tool.name)).toEqual([
-    "export_start",
-    "export_status",
-  ]);
   for (const [access, name, args] of [
-    [archive, "boards_list", {}],
     [boards, "export_start", {}],
     [boards, "export_status", { id: job.id }],
-    [archive, "export_start", { subject: "other" }],
-    [archive, "export_status", {}],
-    [archive, "export_status", { id: 123 }],
+    [reader, "export_start", { subject: "other" }],
+    [reader, "export_status", {}],
+    [reader, "export_status", { id: 123 }],
   ] as const) {
     const result = await callRefTool(runtime, access, name, args, origin);
     expect(result).toHaveProperty("isError", true);
   }
   expect(calls).toEqual([]);
-  const start = await callRefTool(runtime, archive, "export_start", {}, origin);
+  const start = await callRefTool(runtime, reader, "export_start", {}, origin);
   expect(start).toHaveProperty("structuredContent", {
     id: job.id,
     state: "building",
@@ -217,7 +138,7 @@ test("export RPCs take the verified subject; only ready jobs expose a nonsecret 
     job.state = state;
     const status = await callRefTool(
       runtime,
-      archive,
+      reader,
       "export_status",
       { id: job.id },
       origin,
@@ -234,17 +155,17 @@ test("export RPCs take the verified subject; only ready jobs expose a nonsecret 
   }
   const missing = await callRefTool(
     runtime,
-    archive,
+    reader,
     "export_status",
     { id: "missing" },
     origin,
   );
   expect(missing).toHaveProperty("isError", true);
   expect(calls).toEqual([
-    [archive.subject],
-    [archive.subject, job.id],
-    [archive.subject, job.id],
-    [archive.subject, "missing"],
+    [reader.subject],
+    [reader.subject, job.id],
+    [reader.subject, job.id],
+    [reader.subject, "missing"],
   ]);
 });
 

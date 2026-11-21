@@ -154,13 +154,17 @@ const catalog = specTypeSchemas.ListToolsResult["~standard"].validate({
 });
 if (catalog.issues) throw new Error("Invalid Ref MCP catalog");
 const refTools = catalog.value.tools;
-const readTools = new Set(["boards_list", "board_get", "asset_get"]);
+const readTools = new Set([
+  "boards_list",
+  "board_get",
+  "asset_get",
+  "export_start",
+  "export_status",
+]);
 export function toolsFor(access: RefMcpAccess) {
-  return refTools.filter((t) => {
-    if (t.name === "export_start" || t.name === "export_status")
-      return access.archiveOnly === true || access.canRead;
-    return readTools.has(t.name) ? access.canRead : access.canWrite;
-  });
+  return refTools.filter((t) =>
+    readTools.has(t.name) ? access.canRead : access.canWrite,
+  );
 }
 function string(
   args: Record<string, unknown>,
