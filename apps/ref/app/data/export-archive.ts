@@ -7,8 +7,7 @@ import {
 } from "./image-upload.ts";
 import { isUuid, type LinkPreview } from "./protocol.ts";
 
-// Limits include the final manifest, tar headers and block padding. The historic
-// transfer had 1 board, 49 items and 48 media files. Never buffer a whole tar.
+// Limits include the manifest, tar headers and block padding.
 const MAX_BYTES = 512 * 1024 * 1024;
 const MAX_MANIFEST = 4 * 1024 * 1024;
 const MAX_FILES = 256;
@@ -58,7 +57,7 @@ export async function writeExportArchive(
   function checkFile(size: number) {
     requireArchive(
       files < MAX_FILES &&
-      total + 512 + Math.ceil(size / 512) * 512 + 1024 <= MAX_BYTES,
+        total + 512 + Math.ceil(size / 512) * 512 + 1024 <= MAX_BYTES,
     );
   }
   function file(path: string, bytes: Uint8Array<ArrayBuffer>) {
@@ -86,8 +85,10 @@ export async function writeExportArchive(
     const contentType = asset?.contentType ?? object.httpMetadata?.contentType;
     try {
       requireArchive(
-        Number.isSafeInteger(size) && size > 0 && size <= limit &&
-        (!asset || size === asset.size),
+        Number.isSafeInteger(size) &&
+          size > 0 &&
+          size <= limit &&
+          (!asset || size === asset.size),
       );
       checkFile(size);
     } catch (error) {
@@ -98,10 +99,13 @@ export async function writeExportArchive(
     const bytes = new Uint8Array(buffer);
     const header = new File([bytes.subarray(0, 16)], "header");
     requireArchive(
-      contentType && bytes.length === size &&
-      (await imageType(header, limit)) === contentType,
+      contentType &&
+        bytes.length === size &&
+        (await imageType(header, limit)) === contentType,
     );
-    const digest = new Uint8Array(await crypto.subtle.digest("SHA-256", buffer));
+    const digest = new Uint8Array(
+      await crypto.subtle.digest("SHA-256", buffer),
+    );
     const sha256 = Array.from(digest, (n) =>
       n.toString(16).padStart(2, "0"),
     ).join("");
@@ -123,7 +127,9 @@ export async function writeExportArchive(
     const snapshot = await env.BOARDS.getByName(id).snapshot(id);
     items += snapshot.items.length;
     requireArchive(
-      snapshot.boardId === id && snapshot.items.length <= 2_000 && items <= MAX_ITEMS,
+      snapshot.boardId === id &&
+        snapshot.items.length <= 2_000 &&
+        items <= MAX_ITEMS,
     );
     const serialized = JSON.stringify(snapshot);
     requireArchive(serialized.length <= MAX_MANIFEST - manifestBytes);
@@ -137,7 +143,7 @@ export async function writeExportArchive(
       if (item.link) {
         requireArchive(
           parseArchivedPreview(item.link, id) &&
-          JSON.stringify(item.link).length <= 4096,
+            JSON.stringify(item.link).length <= 4096,
         );
         links.set(item.assetId, item.link);
         const prefix = `/previews/${id}/`;
@@ -145,8 +151,9 @@ export async function writeExportArchive(
           previewIds.add(item.link.imageUrl.slice(prefix.length));
       } else {
         requireArchive(
-          item.filename.length > 0 && item.filename.length <= 160 &&
-          !/[\0/\\]/.test(item.filename),
+          item.filename.length > 0 &&
+            item.filename.length <= 160 &&
+            !/[\0/\\]/.test(item.filename),
         );
         filenames.set(item.assetId, item.filename);
       }

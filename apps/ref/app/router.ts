@@ -10,7 +10,10 @@ import authController from "./actions/auth-controller.ts";
 import boardsController from "./actions/boards/controller.tsx";
 import resourcesController from "./actions/resources/controller.tsx";
 import archiveController from "./actions/archive/controller.ts";
-import mcpController from "./mcp/controller.ts";
+import mcpController, {
+  archiveMcpRoutes,
+  archiveMcpController,
+} from "./mcp/controller.ts";
 import type { RefMcpAccess } from "./mcp/auth.ts";
 import {
   AppRuntime,
@@ -97,5 +100,6 @@ export function createAppRouter(
   router.map(routes.resources, resourcesController);
   router.map(routes.archive, archiveController);
   router.map(routes.mcp, mcpController);
+  router.map(archiveMcpRoutes, archiveMcpController);
   return router;
 }

@@ -32,9 +32,10 @@ async function run(action) {
   status.textContent =
     action === download ? "Downloading archive…" : "Checking export…";
   try {
-    const path = action === start
-      ? endpoint
-      : `${endpoint}/${encodeURIComponent(job.id)}${action === download ? "/download" : ""}`;
+    const path =
+      action === start
+        ? endpoint
+        : `${endpoint}/${encodeURIComponent(job.id)}${action === download ? "/download" : ""}`;
     const response = await fetch(path, {
       method: action === start ? "POST" : "GET",
       headers: { Authorization: `Bearer ${token.value.trim()}` },
@@ -47,7 +48,8 @@ async function run(action) {
     if (!response.ok) {
       if (response.status === 401 || response.status === 403) {
         token.value = "";
-        status.textContent = "Access denied. Paste a current admin token with archive-read and try again.";
+        status.textContent =
+          "Access denied. Paste a current admin token with archive-read and try again.";
         token.focus();
       } else if (response.status === 404 || response.status === 410) {
         job = null;
@@ -58,9 +60,13 @@ async function run(action) {
       return;
     }
     if (action === download) {
-      save(await response.blob(), response.headers.get("Content-Disposition") ?? "");
+      save(
+        await response.blob(),
+        response.headers.get("Content-Disposition") ?? "",
+      );
       token.value = "";
-      status.textContent = "Download started. Keep the archive somewhere private.";
+      status.textContent =
+        "Download started. Keep the archive somewhere private.";
       return;
     }
     const result = await response.json();
@@ -75,10 +81,12 @@ async function run(action) {
     status.textContent = {
       building: "Building archive. Check status in a moment.",
       ready: "Archive ready to download.",
-      failed: "Export failed. Start a new export to try again.",
+      failed:
+        "Export failed. Try again after this export expires (within 15 minutes).",
     }[job.state];
   } catch {
-    if (!request.signal.aborted) status.textContent = "Could not complete the request. Try again.";
+    if (!request.signal.aborted)
+      status.textContent = "Could not complete the request. Try again.";
   } finally {
     pending = null;
     updateControls();

@@ -1,3 +1,4 @@
+import { downloadExport } from "../../data/export-download.ts";
 import { isUuid } from "../../data/protocol.ts";
 import { currentLog } from "@harrhy/logger";
 import { createController } from "remix/router";
@@ -28,10 +29,9 @@ export default createController(routes.archive, {
     async exportStatus(context) {
       const subject = context.get(ArchiveSubject);
       if (!subject) return new Response("Forbidden", { status: 403 });
-      const job = await context.get(AppRuntime)!.exports.status(
-        subject,
-        context.params.id,
-      );
+      const job = await context
+        .get(AppRuntime)!
+        .exports.status(subject, context.params.id);
       return job
         ? Response.json(job)
         : new Response("Export not found", { status: 404 });
@@ -39,7 +39,8 @@ export default createController(routes.archive, {
     async downloadExport(context) {
       const subject = context.get(ArchiveSubject);
       if (!subject) return new Response("Forbidden", { status: 403 });
-      return context.get(AppRuntime)!.exports.download(
+      return downloadExport(
+        context.get(AppRuntime)!.exports,
         subject,
         context.params.id,
       );

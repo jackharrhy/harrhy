@@ -189,6 +189,19 @@ only for the same operation. Ordinary uploads and link creation remain human
 controls; no file access, arbitrary JavaScript, or general DOM automation is
 exposed.
 
+## Download a portable export
+
+From the boards page, choose **Export archive**. Supply a short-lived delegated admin/archive-read access token, start the export, then check its status and download it. The page does not store the token. For MCP, connect separately to `/mcp/archive`, call `export_start` and `export_status`, and fetch the ready URL with the authorized bearer's header. See [export consent and scopes](export-consent.md). Board read/write access and an ordinary browser session do not authorize exports.
+
+Both interfaces return the same private tar file. One job runs at a time for the entire instance. Starting again as its owner returns the same job until it expires, including after a failure. The service discards partial data on failure, rechecks board records and snapshots after copying media, and expires the job and staged bytes 15 minutes after start. A build gets at most five minutes and three attempts. Limits: 32 boards, 4,000 items total (2,000 per board), 256 files including a 4 MiB manifest, and 512 MiB including tar padding. Media retain the existing per-file limits. The server streams the result; the browser may need space for the full file before saving.
+
+Extract a tar downloaded directly from Ref into a **new private directory**, then use the existing restore command with a separately authorized restore credential. For example:
+
+```sh
+(umask 077 && mkdir ref-backup && tar -xf ref-archive.tar -C ref-backup)
+REF_URL=https://new-ref.example.com npm run restore --workspace @harrhy/ref -- ./ref-backup
+```
+
 ## Back up and restore
 
 The archive commands require a short-lived delegated `REF_ACCESS_TOKEN` or a

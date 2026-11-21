@@ -143,7 +143,9 @@ export function mcpAuthError(
       `resource_metadata="${origin}${archive ? archiveMcpMetadataPath : "/.well-known/oauth-protected-resource/mcp"}"`,
     ];
     if (archive)
-      parameters.push(`scope="${archiveMcpScopes(archive.projectId).join(" ")}"`);
+      parameters.push(
+        `scope="${archiveMcpScopes(archive.projectId).join(" ")}"`,
+      );
     if (!(status === 401 && archive?.missingBearer))
       parameters.push(
         `error="${status === 401 ? "invalid_token" : "insufficient_scope"}"`,

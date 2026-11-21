@@ -201,22 +201,26 @@ export function ExportPage(handle: Handle<{ projectId: string }>) {
           </p>
           <p id="export-help">
             Sign in with your archive OAuth client and request a short-lived Ref
-            access token with the admin and archive-read scopes. Paste that token
-            below. Board sign-in alone cannot authorize an export. This tab
-            clears the token after five minutes, on download, or when you leave.
+            access token with the admin and archive-read scopes. Paste that
+            token below. Board sign-in alone cannot authorize an export. This
+            tab clears the token after five minutes, on download, or when you
+            leave.
           </p>
           <details>
             <summary>OAuth request details</summary>
             <p>
               Use the resource and issuer in Ref’s{" "}
               <a
-                href="/.well-known/oauth-protected-resource/api/archive"
+                href="/.well-known/oauth-protected-resource/mcp/archive"
                 mix={css({ textDecoration: "underline" })}
               >
                 archive resource metadata
-              </a>. Request these scopes:
+              </a>
+              . Request these scopes:
             </p>
-            <code mix={css({ overflowWrap: "anywhere" })}>{scopes.join(" ")}</code>
+            <code mix={css({ overflowWrap: "anywhere" })}>
+              {scopes.join(" ")}
+            </code>
           </details>
           <div
             mix={css({ display: "grid", gap: "0.5rem", marginBlock: "1.5rem" })}

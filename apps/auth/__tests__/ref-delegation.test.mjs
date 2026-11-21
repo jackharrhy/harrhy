@@ -90,7 +90,10 @@ test("archive export consent is delegated-client authorization, not per-export a
     clientId: app.clientIds[0],
   });
   assert.equal(direct.consent, false);
-  assert.deepEqual(direct.anyRoles, app.clientRoleRequirements[app.clientIds[0]]);
+  assert.deepEqual(
+    direct.anyRoles,
+    app.clientRoleRequirements[app.clientIds[0]],
+  );
 
   const session = { userId: "admin-fixture" };
   let roles = ["admin", "archive-read"];
@@ -102,19 +105,27 @@ test("archive export consent is delegated-client authorization, not per-export a
       decisions.push(options.body.error ? "deny" : "allow");
       return { callbackUrl: current.redirectUri };
     },
-    grants: async () => [{
-      userId: session.userId,
-      state: "USER_GRANT_STATE_ACTIVE",
-      roleKeys: roles,
-    }],
+    grants: async () => [
+      {
+        userId: session.userId,
+        state: "USER_GRANT_STATE_ACTIVE",
+        roleKeys: roles,
+      },
+    ],
   });
-  await assert.rejects(actions.complete("first", session, "approve"), { status: 400 });
+  await assert.rejects(actions.complete("first", session, "approve"), {
+    status: 400,
+  });
   const intent = await actions.view("first", session);
   assert.equal(intent.consent, true);
   assert.deepEqual(intent.roles, ["admin", "archive-read"]);
-  await assert.rejects(actions.complete("first", session, "approve", true), { status: 400 });
+  await assert.rejects(actions.complete("first", session, "approve", true), {
+    status: 400,
+  });
   roles = ["admin"];
-  await assert.rejects(actions.complete("first", session, "approve"), { status: 403 });
+  await assert.rejects(actions.complete("first", session, "approve"), {
+    status: 403,
+  });
   assert.deepEqual(decisions, []);
   roles = ["admin", "archive-read"];
   await actions.complete("first", session, "deny");

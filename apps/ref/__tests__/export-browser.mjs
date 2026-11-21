@@ -38,4 +38,5 @@ export async function checkBrowserExport(page, archiveToken) {
   assert.equal(await file.failure(), null);
   assert.ok((await stat(await file.path())).size > 0);
   await expect(input).toBeEmpty();
+  return file.path();
 }

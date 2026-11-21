@@ -480,8 +480,15 @@ try {
       assert(consentCsp.includes(`'nonce-${consentNonce}'`));
       if (app.id === "ref") {
         const values = await page.locator("dl.profile dd").allTextContents();
-        assert.deepEqual(values, [app.name, callbackOrigin, "Administrator, archive-read"]);
-        assert.equal(await page.getByRole("button", { name: "Deny" }).count(), 1);
+        assert.deepEqual(values, [
+          app.name,
+          callbackOrigin,
+          "Administrator, archive-read",
+        ]);
+        assert.equal(
+          await page.getByRole("button", { name: "Deny" }).count(),
+          1,
+        );
       }
       await page.getByRole("button", { name: "Allow", exact: true }).click();
       await page

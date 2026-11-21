@@ -119,11 +119,16 @@ test("archive discovery and challenges request exactly one valid permission fami
     expect(challenge).toContain(
       `resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp/archive"`,
     );
-    expect(challenge).toContain(`scope="${document.scopes_supported.join(" ")}"`);
-    if (status === 403) expect(challenge).toContain('error="insufficient_scope"');
+    expect(challenge).toContain(
+      `scope="${document.scopes_supported.join(" ")}"`,
+    );
+    if (status === 403)
+      expect(challenge).toContain('error="insufficient_scope"');
     else expect(challenge).not.toContain("error=");
   }
-  const unavailable = mcpAuthError(origin, 503, "unavailable", { projectId: project });
+  const unavailable = mcpAuthError(origin, 503, "unavailable", {
+    projectId: project,
+  });
   expect(unavailable.headers.has("WWW-Authenticate")).toBe(false);
 });
 
@@ -151,7 +156,8 @@ test("archive authorization requires the scoped human admin, actual grants and a
     { ...valid, subject: "" },
     { ...valid, audiences: new Set(["other"]) },
     { ...valid, scopes: new Set([...valid.scopes, roleScope("member")]) },
-  ]) expect(() => archiveAccess(invalid)).toThrow();
+  ])
+    expect(() => archiveAccess(invalid)).toThrow();
   for (const field of ["roles", "scopes"] as const) {
     for (const omitted of valid[field]) {
       const remaining = new Set(valid[field]);
@@ -207,14 +213,30 @@ test("export RPCs take the verified subject; only ready jobs expose a nonsecret 
   });
   for (const state of ["ready", "failed"]) {
     job.state = state;
-    const status = await callRefTool(runtime, archive, "export_status", { id: job.id }, origin);
+    const status = await callRefTool(
+      runtime,
+      archive,
+      "export_status",
+      { id: job.id },
+      origin,
+    );
     expect(status).toHaveProperty("structuredContent", {
-      id: job.id, state, expiresAt: job.expiresAt,
-      ...(state === "ready" ? { downloadUrl: `${origin}/api/archive/exports/${job.id}/download` } : {}),
+      id: job.id,
+      state,
+      expiresAt: job.expiresAt,
+      ...(state === "ready"
+        ? { downloadUrl: `${origin}/api/archive/exports/${job.id}/download` }
+        : {}),
     });
     expect(JSON.stringify(status)).not.toContain(job.internal);
   }
-  const missing = await callRefTool(runtime, archive, "export_status", { id: "missing" }, origin);
+  const missing = await callRefTool(
+    runtime,
+    archive,
+    "export_status",
+    { id: "missing" },
+    origin,
+  );
   expect(missing).toHaveProperty("isError", true);
   expect(calls).toEqual([
     [archive.subject],

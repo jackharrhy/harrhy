@@ -46,9 +46,12 @@ export class ExportCell extends DurableObject<Env> {
   #owned(subject: string, id: string) {
     const job = this.#job();
     if (
-      job && job.subject === subject && job.id === id &&
+      job &&
+      job.subject === subject &&
+      job.id === id &&
       Date.now() < job.expiresAt
-    ) return job;
+    )
+      return job;
     return null;
   }
 
@@ -69,7 +72,10 @@ export class ExportCell extends DurableObject<Env> {
         this.ctx.storage.sql.exec("DELETE FROM chunks");
         this.ctx.storage.sql.exec(
           "INSERT OR REPLACE INTO job VALUES (1, ?, ?, 'building', ?, ?, 0, 0)",
-          id, subject, expiresAt, now + BUILD_TIME,
+          id,
+          subject,
+          expiresAt,
+          now + BUILD_TIME,
         );
       });
       return { id, state: "building", expiresAt } as const;
@@ -81,33 +87,33 @@ export class ExportCell extends DurableObject<Env> {
     return job && publicStatus(job);
   }
 
-  async download(subject: string, id: string): Promise<Response> {
+  // Return a bounded RPC page, not a stream whose later pulls depend on the
+  // lifetime of a completed Durable Object invocation.
+  readPage(subject: string, id: string, seq: number) {
     const job = this.#owned(subject, id);
-    const headers = new Headers({ "Cache-Control": "private, no-store" });
-    if (!job) return new Response("Not found", { status: 404, headers });
-    if (job.state !== "ready")
-      return new Response("Archive unavailable", { status: 409, headers });
-    let seq = 1;
-    let sent = 0;
-    const body = new ReadableStream<Uint8Array>({
-      pull: (controller) => {
-        // A slow reader must not cross expiry and start reading the next job.
-        if (!this.#owned(subject, id)) throw new Error("Archive expired");
-        const chunk = this.ctx.storage.sql.exec<{ data: ArrayBuffer }>(
-          "SELECT data FROM chunks WHERE seq = ?", seq++,
-        ).toArray()[0];
-        if (!chunk || sent + chunk.data.byteLength > job.size)
-          throw new Error("Archive unavailable");
-        controller.enqueue(new Uint8Array(chunk.data));
-        sent += chunk.data.byteLength;
-        if (sent === job.size) controller.close();
-      },
-    }, { highWaterMark: 0 });
-    headers.set("Content-Type", "application/x-tar");
-    headers.set("Content-Disposition", 'attachment; filename="ref-archive.tar"');
-    headers.set("Content-Length", String(job.size));
-    headers.set("X-Content-Type-Options", "nosniff");
-    return new Response(body, { headers });
+    if (!job) return { state: "missing" } as const;
+    if (job.state !== "ready") return { state: "unavailable" } as const;
+    const rows = this.ctx.storage.sql
+      .exec<{ data: ArrayBuffer }>(
+        "SELECT data FROM chunks WHERE seq >= ? ORDER BY seq LIMIT 16",
+        seq,
+      )
+      .toArray();
+    if (!rows.length) throw new Error("Archive unavailable");
+    const bytes = new Uint8Array(
+      rows.reduce((n, r) => n + r.data.byteLength, 0),
+    );
+    let offset = 0;
+    for (const row of rows) {
+      bytes.set(new Uint8Array(row.data), offset);
+      offset += row.data.byteLength;
+    }
+    return {
+      state: "ready",
+      bytes,
+      size: job.size,
+      next: seq + rows.length,
+    } as const;
   }
 
   async alarm(): Promise<void> {
@@ -132,7 +138,8 @@ export class ExportCell extends DurableObject<Env> {
     const ownsAttempt = () => {
       const current = this.#job();
       return (
-        current?.id === job.id && current.state === "building" &&
+        current?.id === job.id &&
+        current.state === "building" &&
         current.attempts === attempt
       );
     };
@@ -150,23 +157,32 @@ export class ExportCell extends DurableObject<Env> {
       checkActive();
       if (attempt > MAX_ATTEMPTS) throw new ArchiveUnavailable();
       const timeout = new Promise<never>((_, reject) => {
-        timer = setTimeout(() => reject(new ArchiveUnavailable()), job.deadline - Date.now());
+        timer = setTimeout(
+          () => reject(new ArchiveUnavailable()),
+          job.deadline - Date.now(),
+        );
       });
-      const build = writeExportArchive(this.env, (bytes) => {
-        for (let i = 0; i < bytes.length; i += CHUNK) {
-          storage.sql.exec(
-            "INSERT INTO chunks (data) VALUES (?)",
-            bytes.slice(i, i + CHUNK).buffer,
-          );
-        }
-      }, checkActive);
+      const build = writeExportArchive(
+        this.env,
+        (bytes) => {
+          for (let i = 0; i < bytes.length; i += CHUNK) {
+            storage.sql.exec(
+              "INSERT INTO chunks (data) VALUES (?)",
+              bytes.slice(i, i + CHUNK).buffer,
+            );
+          }
+        },
+        checkActive,
+      );
       const size = await Promise.race([build, timeout]);
       checkActive();
       storage.sql.exec("UPDATE job SET state = 'ready', size = ?", size);
     } catch (error) {
       if (!ownsAttempt()) return;
-      const failed = error instanceof ArchiveUnavailable ||
-        attempt >= MAX_ATTEMPTS || Date.now() >= job.deadline;
+      const failed =
+        error instanceof ArchiveUnavailable ||
+        attempt >= MAX_ATTEMPTS ||
+        Date.now() >= job.deadline;
       storage.transactionSync(() => {
         storage.sql.exec("DELETE FROM chunks");
         if (failed) storage.sql.exec("UPDATE job SET state = 'failed'");
