@@ -37,6 +37,53 @@ const linkMenu = required<HTMLDetailsElement>("#link-menu");
 const linkForm = required<HTMLFormElement>("#link-form");
 const linkInput = required<HTMLInputElement>("#link-url");
 
+const titleForm = required<HTMLFormElement>("#board-title-form");
+const titleInput = required<HTMLInputElement>("#board-title");
+let savedTitle = titleInput.value;
+async function saveTitle() {
+  if (
+    titleInput.readOnly ||
+    connectionState === "ended" ||
+    titleInput.value === savedTitle
+  )
+    return;
+  titleInput.readOnly = true;
+  try {
+    const response = await fetch(titleForm.action, {
+      method: "POST",
+      body: new FormData(titleForm),
+      headers: { Accept: "application/json" },
+      redirect: "error",
+      keepalive: true,
+      signal: AbortSignal.timeout(10000),
+    });
+    if (response.status === 400) {
+      toast("Name not saved. Enter a board name of 1–100 characters.");
+      return;
+    }
+    if (!response.ok) throw new Error("Rename not confirmed");
+    const { title } = (await response.json()) as { title: string };
+    savedTitle = title;
+    document.title = `${title} · ref`;
+  } catch {
+    toast("Rename not confirmed. Reload to check the board name.");
+  } finally {
+    titleInput.value = savedTitle;
+    titleInput.readOnly = false;
+  }
+}
+titleInput.addEventListener("blur", saveTitle);
+titleForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  void saveTitle();
+});
+titleInput.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !event.isComposing) {
+    event.preventDefault();
+    titleInput.value = savedTitle;
+  }
+});
+
 type Point = { x: number; y: number };
 type Drag =
   | { kind: "pan"; start: Point; startOffset: Point; moved: boolean }
@@ -340,7 +387,7 @@ function endAccess() {
   renderItems();
   empty.hidden = true;
   required<HTMLButtonElement>("#tool-add").disabled = true;
-  for (const selector of [".board-layout", ".board-title-menu", "#link-menu"])
+  for (const selector of [".board-layout", "#board-title-form", "#link-menu"])
     required<HTMLElement>(selector).inert = true;
   toast(
     "Your board access ended. Return to your boards. Unconfirmed edits may not have been saved.",

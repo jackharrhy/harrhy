@@ -55,6 +55,10 @@ export default createController(routes.boards, {
           context.params.boardId,
           String(form.get("title") ?? ""),
         );
+      if (context.request.headers.get("Accept") === "application/json")
+        return board
+          ? Response.json({ title: board.title })
+          : new Response("Could not rename board", { status: 400 });
       return redirect(
         board
           ? `/boards/${board.id}`
