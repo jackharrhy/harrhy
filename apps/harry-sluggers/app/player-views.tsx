@@ -1,12 +1,34 @@
-import { css } from "remix/component";
+import { css, type RemixNode } from "remix/component";
 import type { Archive } from "./database.ts";
 
+type Portrait = (id: number) => RemixNode;
 const styles = css({
+  "& [data-stat-identity]": {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    textAlign: "left",
+  },
+  "& [data-stat-column]": {
+    display: "grid",
+    justifyItems: "center",
+    gap: "4px",
+  },
+  "& [data-stat-identity] [data-portrait], & [data-stat-column] [data-portrait]":
+    { width: "24px", height: "24px" },
+  "& [data-stat-team] [data-portrait]": { width: "20px", height: "20px" },
+  "& [data-chem-cell=positive]": { background: "rgb(52 211 153 / .22)" },
+  "& [data-chem-cell=negative]": { background: "rgb(248 113 113 / .25)" },
+  "& tbody tr:hover": { background: "var(--lab-card-surface)" },
   "& [data-chem-scroll]": { overflow: "auto", maxHeight: "65vh" },
   "& table": { borderCollapse: "separate", borderSpacing: 0 },
   "& th, & td": { textAlign: "center" },
   "& thead th": { position: "sticky", top: 0, zIndex: 1 },
-  "& tbody th": { position: "sticky", left: 0 },
+  "& tbody th": {
+    position: "sticky",
+    left: 0,
+    background: "var(--lab-inset-surface)",
+  },
   "& [data-chem-positive]": { color: "var(--hui-success)" },
   "& [data-chem-negative]": { color: "var(--hui-danger)" },
 });
@@ -31,7 +53,12 @@ export function playerViewNav(path: string) {
     </nav>
   );
 }
-export function leaderboard(data: Archive, url: URL) {
+export function leaderboard(
+  data: Archive,
+  url: URL,
+  portrait: Portrait,
+  teamBadge: Portrait,
+) {
   const columns = [
     ["games", "Games"],
     ["pa", "PA"],
@@ -80,7 +107,13 @@ export function leaderboard(data: Archive, url: URL) {
         a.player.name.localeCompare(b.player.name),
     );
   return (
-    <div data-scroll tabIndex={0} role="region" aria-label="Leaderboard">
+    <div
+      mix={styles}
+      data-scroll
+      tabIndex={0}
+      role="region"
+      aria-label="Leaderboard"
+    >
       <table>
         <thead>
           <tr>
@@ -100,11 +133,17 @@ export function leaderboard(data: Archive, url: URL) {
           {rows.map((row) => (
             <tr>
               <th scope="row">
-                <a href={`/players/${row.player.id}`}>{row.player.name}</a>
+                <span data-stat-identity>
+                  {portrait(row.player.id)}
+                  <a href={`/players/${row.player.id}`}>{row.player.name}</a>
+                </span>
               </th>
               <td>
-                {data.teams.find((team) => team.id === row.player.team_id)
-                  ?.abbreviation ?? "—"}
+                {row.player.team_id === null ? (
+                  <span data-chem-positive>Free</span>
+                ) : (
+                  teamBadge(row.player.team_id)
+                )}
               </td>
               {columns.map(([key]) => (
                 <td>
@@ -133,7 +172,7 @@ const mark = (relation: string | undefined) =>
   ) : (
     "·"
   );
-export function chemistryView(data: Archive) {
+export function chemistryView(data: Archive, portrait: Portrait) {
   const entries = new Map<string, number>();
   for (const player of data.players.toSorted(
     (a, b) => a.sort_position - b.sort_position,
@@ -168,7 +207,12 @@ export function chemistryView(data: Archive) {
             <tr>
               <th scope="col">Character</th>
               {names.map((name) => (
-                <th scope="col">{name}</th>
+                <th scope="col">
+                  <span data-stat-column>
+                    {portrait(entries.get(name) ?? 0)}
+                    {name}
+                  </span>
+                </th>
               ))}
             </tr>
           </thead>
@@ -177,13 +221,21 @@ export function chemistryView(data: Archive) {
               <tr>
                 <th scope="row">
                   {entries.get(name) ? (
-                    <a href={`/players/${entries.get(name)}`}>{name}</a>
+                    <a
+                      data-stat-identity
+                      href={`/players/${entries.get(name)}`}
+                    >
+                      {portrait(entries.get(name) ?? 0)}
+                      {name}
+                    </a>
                   ) : (
                     name
                   )}
                 </th>
                 {names.map((other) => (
-                  <td>{mark(relations.get(name)?.get(other))}</td>
+                  <td data-chem-cell={relations.get(name)?.get(other)}>
+                    {mark(relations.get(name)?.get(other))}
+                  </td>
                 ))}
               </tr>
             ))}

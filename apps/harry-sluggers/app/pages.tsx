@@ -96,7 +96,7 @@ const styles = css({
   "& select, & button, & input": {
     background: "var(--lab-inset-surface)",
     color: "var(--hui-ink)",
-    border: "1px solid var(--hui-control-border)",
+    border: "1px solid var(--lab-surface-edge)",
     borderRadius: "6px",
     padding: "10px",
     font: "inherit",
@@ -539,6 +539,7 @@ const styles = css({
     borderCollapse: "collapse",
     width: "100%",
     fontVariantNumeric: "tabular-nums",
+    background: "var(--lab-card-surface)",
   },
   "& th, & td": {
     padding: "10px",
@@ -978,10 +979,44 @@ export function page(
         <>
           {playerViewNav(playerView[0])}
           {playerView[0] === "/players"
-            ? leaderboard(data, url)
+            ? leaderboard(
+                data,
+                url,
+                (n) => {
+                  const p = player(n);
+                  return (
+                    p &&
+                    playerPortrait(
+                      p,
+                      team(p.team_id)?.captain_id === p.id,
+                      data.lineups.find((row) => row.player_id === n)
+                        ?.is_starred,
+                    )
+                  );
+                },
+                (n) => {
+                  const t = team(n);
+                  return t ? (
+                    <a
+                      data-stat-identity
+                      data-stat-team
+                      href={`/teams/${n}`}
+                      title={t.name}
+                    >
+                      {image("team", n, t.abbreviation)}
+                      {t.abbreviation}
+                    </a>
+                  ) : (
+                    "—"
+                  );
+                },
+              )
             : playerView[0] === "/players/chemistry-graph"
               ? forceGraph(data, assets)
-              : chemistryView(data)}
+              : chemistryView(data, (n) => {
+                  const p = player(n);
+                  return p && image("player", n, p.name, true);
+                })}
         </>
       ),
     };

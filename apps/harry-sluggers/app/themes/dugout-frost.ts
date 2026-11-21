@@ -30,7 +30,6 @@ export const dugoutFrost: LabConcept = {
     panelFilter: "blur(6px)",
     cardRadius: "5px",
     surfaceTint: "#6e8eaf",
-    insetSurface: "#305882",
     contentColumns: "minmax(300px,0.8fr) minmax(0,1.5fr)",
   },
   recipe: css({
