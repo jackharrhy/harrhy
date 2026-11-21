@@ -58,3 +58,7 @@ Navigation consolidates route links and in-page Tabs into one Explorer entry wit
 `?view=scenes&scene=sluggers&theme=clean` opens Sluggers inside the existing workbench. Its four local views and two tenant fixtures use memory only; no account, parser, upload, backend or persistence is initialized. The scene follows the selected workbench theme. The original dotted backdrop is shown with the Sluggers preset. Original font rights remain unresolved: binaries are not committed. Only an explicitly provisioned private preview may set `HARRHY_UI_SLUGGERS_PRIVATE_FONTS=1` to load `/assets/ui/sluggers/fonts.css` on this scene; default/CI rendering uses fallback fonts without requesting absent assets. This flag does not grant redistribution rights. Keep private font provisioning outside the public image/checkout.
 
 [Sluggers research](../../docs/ui/sluggers-research.md)
+
+## Clank comparison
+
+Open Scenes → Clank cook-off (`/?view=scenes&scene=clank`). Clean, Artbin and the scene-scoped Harrhy candidate share one in-memory transcript. Replay or Step, then switch between the literal-tail and Pierre Words renderers without resetting progress. [Design and renderer findings](../../docs/ui/clank-cookoff.md). No real agent, storage, tool execution or connection to Clank.

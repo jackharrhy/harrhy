@@ -21,6 +21,7 @@ export function createAssets() {
       "@harrhy/ui",
       "@chenglou/pretext",
       "@pierre/highlights",
+      "@pierre/words",
     ],
     files: { extensions: [".woff2"] },
     denyFiles: ["**/__tests__/**", "**/*.server.*"],
