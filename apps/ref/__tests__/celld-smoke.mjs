@@ -8,6 +8,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { chromium } from "@playwright/test";
+import { checkBrowserExport } from "./export-browser.mjs";
 
 const { values } = parseArgs({
   options: {
@@ -156,6 +157,7 @@ const readTokenFile = join(state, "mcp-read-token");
 const writeTokenFile = join(state, "mcp-write-token");
 const mixedTokenFile = join(state, "mcp-mixed-token");
 const archiveTokenFile = join(state, "archive-token");
+const exportTokenFile = join(state, "export-token");
 const mcpResultFile = join(state, "mcp-result.json");
 const authConfigFile = join(state, "dev-auth.json");
 const mcpEnvironment = {
@@ -199,6 +201,7 @@ try {
     [writeTokenFile, "admin,boards-write"],
     [mixedTokenFile, "admin,boards-read,archive-read"],
     [archiveTokenFile, "admin,archive-read,archive-restore"],
+    [exportTokenFile, "admin,archive-read"],
   ]) {
     await command(
       [process.execPath, "../../packages/dev-auth/token.mjs", file],
@@ -438,6 +441,9 @@ try {
       z: 0,
     },
   });
+  await page.goto(origin);
+  await checkBrowserExport(page, (await readFile(exportTokenFile, "utf8")).trim());
+  result.checks.push("browser archive export: delegated read, fresh download authorization, native file");
   const archivePath = join(state, "archive");
   const archiveEnvironment = {
     REF_URL: origin,
@@ -487,6 +493,7 @@ try {
       writeTokenFile,
       mixedTokenFile,
       archiveTokenFile,
+      exportTokenFile,
     ].map((file) => rm(file, { force: true })),
   );
   try {

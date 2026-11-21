@@ -9,7 +9,7 @@ import {
 import { tokenHash } from "../data/crypto.ts";
 import { clearSessionCookie } from "../middleware/session.ts";
 import { routes } from "../routes.ts";
-import { AuthPage, HomePage } from "./page.tsx";
+import { AuthPage, ExportPage, HomePage } from "./page.tsx";
 
 import { movedPath } from "./move.ts";
 
@@ -27,6 +27,12 @@ export default createController(routes, {
       const boards = await context.get(AppRuntime)!.directory.listBoards();
       return context.render(
         <HomePage boards={boards} error={error} moved={!!moved} />,
+      );
+    },
+    exportPage(context) {
+      if (!context.get(Authenticated)) return redirect(routes.home.href(), 303);
+      return context.render(
+        <ExportPage projectId={context.get(AppIdentity)!.config.projectId} />,
       );
     },
     async logout(context) {
