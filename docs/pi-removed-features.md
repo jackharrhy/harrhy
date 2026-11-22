@@ -17,6 +17,7 @@ at that commit.
 | Workspace panel | `b2834089` | `plugins/workspace/{Workspace.tsx,file.tsx,commands.tsx,web.tsx,tabs.ts,server.ts,fuzzy.ts}`, the workspace route and its per-device memory, `.workspace-*` styles |
 | PowerShell | `9041e2c9` | `plugins/powershell` |
 | Vendored TUI package | `9041e2c9` | `compat/packages/tui` (`@earendil-works/pi-tui`), `compat/packages/chord/src/tui`, `compat/packages/chord/src/node/tui`, the `/tui` and `/tui/launcher` Chord entry points |
+| Session tree UI | `15f6ce2f` | `plugins/tree/{web.tsx,TreePanel.tsx,toc.ts,entry-in-view.ts,tree.css,branch-target.ts}`, `plugins/sessions/BranchSheet.tsx`, the `sessions.rename-branch` command, the `tree-actions` slot and `.tree-toggle` style |
 
 Paths are under `apps/pi/`.
 
@@ -257,3 +258,28 @@ Worth bringing back: nothing in the library. A new terminal client would start f
 `apps/pi/docs/discord.md` described the Discord plugin and nothing else; it is in git history. Other docs under
 `apps/pi/docs/` that still mention these features (`p3-functions/`, `plugin-loading.md`, `plugin-hooks.md`,
 `rooms-v2.md`, `mcp-durable.md`, `codemode-tools/brief.md`) are design records and say so at the top.
+
+## Session tree UI
+
+The tree panel was a button in the top bar (the `tree-actions` slot, "Conversation tree") that opened a table of
+contents of the session in the side panel (a sheet on phones): every turn of every branch, oldest first, the current
+branch at the top level and the other branches inset under the turn they were forked after, with an indicator that
+followed the turn in view in the transcript. Choosing a turn scrolled the transcript to it, first switching the session
+to that branch (`SessionTree.select`) when it was another one. A branch's label in the panel was a command-menu target
+for "Rename branch…", a sheet in the sessions plugin.
+
+What stayed:
+
+- Branching itself. Editing a past user message and "Send in a new branch" call `SessionTree.navigate` and
+  `SessionTree.branch` from `plugins/chat/web.tsx`; older branches stay read-only. The worker, the whole `SessionTree`
+  contract (`tree`, `navigate`, `select`, `rename`, `branch`), `p2.main` with its stored branch labels and
+  `tree.test.ts` are unchanged, so stored sessions read as before.
+- The `data-entry` attributes on transcript rows (search reveal and the scope prompt read them) and the generic side
+  panel (`openPanel`, `Route.panel`).
+
+Worth bringing back:
+
+- Getting back to an older branch. Nothing calls `select` now, so a branch left by editing and resending is reachable
+  only by a link naming its conversation. A branch switcher on the session or a plain branch list would restore this;
+  the panel's turn nesting was more than that needs.
+- Renaming a branch. Labels are still stored (the start of the branch's first message), but nothing can change them.

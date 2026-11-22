@@ -1287,9 +1287,6 @@ audio.file-media {
 	letter-spacing: 0.04em;
 	text-transform: uppercase;
 }
-.tree-toggle.on {
-	color: var(--text);
-}
 /* Someone else's message (Chat.tsx Incoming): a header line, the body indented under the name. One shape for every
    kind: no coloured edges, no per-kind colours; kinds differ by icon and word. */
 .incoming {

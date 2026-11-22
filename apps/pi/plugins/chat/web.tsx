@@ -788,7 +788,6 @@ function TopBar({
 				)}
 			</div>
 			{offline && <span className="offline">Offline</span>}
-			<Slot name="tree-actions" />
 			<Slot name="session-options" />
 			<Slot name="session-actions" />
 		</header>

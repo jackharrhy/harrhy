@@ -42,7 +42,6 @@ import { type ReactNode, useMemo, useState } from "react";
 import { conversationOf } from "../chat/contract.ts";
 import { DIRECTORY_PICKER, directoryPickerLayer } from "../envs/contract.web.tsx";
 import { stoppable } from "./agent-actions.ts";
-import { branchSheetLayer } from "./BranchSheet.tsx";
 import { commandSession, NotArchived, useCommandSession, useOpenFromMenu, useSessions } from "./command-session.tsx";
 import { type Session, Sessions } from "./contract.ts";
 import { FOLDER_ROLLUP, folderKey, type NewTarget } from "./sidebar/model.ts";
@@ -76,16 +75,6 @@ export const SESSION_COMMANDS: Readonly<Record<string, Command>> = {
 		target: ["session"],
 		owner: true,
 		action: { kind: "page", page: "rename-session" },
-	},
-	"sessions.rename-branch": {
-		title: "Rename branch…",
-		group: "Branch",
-		order: 10,
-		icon: PencilIcon,
-		keywords: ["label", "name"],
-		target: ["branch"],
-		owner: true,
-		action: { kind: "run", run: renameBranch },
 	},
 	"sessions.change-directory": {
 		title: "Change working directory…",
@@ -176,11 +165,6 @@ function changeDirectory(ctx: CommandContext): void {
 	const id = commandSession(ctx.target, ctx.route);
 	if (id === undefined) openLayer(DIRECTORY_PICKER);
 	else openLayerIn(id, id === ctx.route.session ? ctx.route.conversation : knownMain(id), DIRECTORY_PICKER);
-}
-
-/** Opens the target branch's rename sheet (the sidebar's `BranchSheet`) over the current route, a phone's drawer too. */
-function renameBranch(ctx: CommandContext): void {
-	if (ctx.target?.type === "branch") openLayer(branchSheetLayer(ctx.target.id));
 }
 
 /** Archives the command's session; the open one gives way to the new-session screen first, as in the Session sheet. */
