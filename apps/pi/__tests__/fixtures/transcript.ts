@@ -6,7 +6,6 @@ import { codemodeActivity } from "../../plugins/codemode/activity.tsx";
 import { codingToolActivities } from "../../plugins/coding-tools/activity.tsx";
 import { conversationsActivity } from "../../plugins/conversations/activity.tsx";
 import { historyActivities } from "../../plugins/history/activity.tsx";
-import { powershellActivity } from "../../plugins/powershell/activity.tsx";
 import { sendFileActivity } from "../../plugins/send-file/activity.tsx";
 import { subagentActivity } from "../../plugins/subagents/activity.tsx";
 import type { Detail, ToolActivityTable } from "../../src/web/activity/model.ts";
@@ -23,7 +22,6 @@ export const PLUGIN_TOOLS: ToolActivityTable = new Map(
 		agent: agentActivity,
 		codemode: codemodeActivity,
 		conversations: conversationsActivity,
-		powershell: powershellActivity,
 		send_file: sendFileActivity,
 		subagent: subagentActivity,
 	}),

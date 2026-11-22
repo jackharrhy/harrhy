@@ -287,7 +287,7 @@ The context (`ToolRenderContext`) has `cwd`, `expanded` (Ctrl+O), `isPartial`, `
 `state` (the card's own state across renders), `lastComponent` (to update instead of rebuilding) and `invalidate()`.
 Helpers come from `@p2/app/v1/tui`: `str`, `num`, `record`, `getTextOutput`, `lineText`, `safeText`,
 `shortenPath`, `moreLinesHint`, `renderDiff`, `VisualLinePreview`, `Theme` (`Theme.language(path)` for highlighting),
-and `createShellRenderers(prompt)`, the card of a tool that runs `args.command` (bash and PowerShell use it).
+and `createShellRenderers(prompt)`, the card of a tool that runs `args.command` (bash uses it).
 Resolvers (`TuiToolRendererResolvers`) wrap every tool's renderers: `plugins/quiet-tools` draws one line per call
 until expanded, from the tool's first string argument unless it knows the tool; a resolver keeps the registered
 `nestedCalls`.

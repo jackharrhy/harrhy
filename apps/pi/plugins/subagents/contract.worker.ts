@@ -1,5 +1,5 @@
 // Worker-side contracts of the subagents plugin: the session's subagent registry (a Durable document other worker
-// plugins read: one-shot agents, search, PowerShell), the tool choices subagents and one-shot agents resolve alike
+// plugins read: one-shot agents, search), the tool choices subagents and one-shot agents resolve alike
 // from their caller's tools, and giving a subagent its own location (a granted `location_move`).
 
 import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
