@@ -3,7 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
-    types: [opened, synchronize, reopened, ready_for_review, converted_to_draft]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 concurrency:
   group: ci-${{ github.ref }}
@@ -51,9 +51,8 @@ jobs:
         continue-on-error: true
       - id: affected
         env:
-          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.action == 'synchronize' && github.event.before || github.event.pull_request.base.sha || steps.baseline.outputs.sha }}
-          HEAD_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft && github.event.action == 'synchronize' && github.event.pull_request.head.sha || github.sha }}
-          DRAFT_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.draft }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || steps.baseline.outputs.sha }}
+          HEAD_SHA: ${{ github.sha }}
         run: node scripts/ci/affected.mjs
       - id: node_images
         if: github.event_name == 'workflow_dispatch'
@@ -73,8 +72,6 @@ jobs:
     if: needs.select.outputs.jobs != '' && fromJSON(needs.select.outputs.jobs)['check']
     runs-on: ubuntu-22.04
     timeout-minutes: 30
-    env:
-      RUN_INTEGRATION: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -124,22 +121,22 @@ jobs:
           fi
           convert -version
           identify -version
-      - if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/ui-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/letters-to-steve') || (needs.select.outputs.browser == 'true' && (env.RUN_INTEGRATION == 'true' || needs.select.outputs.radio == 'true'))
+      - if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/ui-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/letters-to-steve') || needs.select.outputs.browser == 'true'
         run: pnpm --filter @harrhy/ui-app exec playwright install --only-shell chromium
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.pool == 'true'
+      - if: needs.select.outputs.pool == 'true'
         run: pnpm --filter @harrhy/pool-app exec playwright install --only-shell chromium
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+      - if: needs.select.outputs.maps_hosted == 'true'
         run: pnpm --filter @harrhy/worldview exec playwright install --only-shell chromium
       - env:
           SELECTED_CHECKS: ${{ needs.select.outputs.selected }}
         run: node scripts/ci/run-checks.mjs
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.cms == 'true'
+      - if: needs.select.outputs.cms == 'true'
         run: pnpm --filter @harrhy/cms run test:browser
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.pool == 'true'
+      - if: needs.select.outputs.pool == 'true'
         run: pnpm --filter @harrhy/pool-app run test:browser
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.burger == 'true'
+      - if: needs.select.outputs.burger == 'true'
         run: pnpm --filter @harrhy/burger run test:browser
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.ref == 'true'
+      - if: needs.select.outputs.ref == 'true'
         run: |
           set -eu
           ref_smoke_dir=$(mktemp -d "$RUNNER_TEMP/tea-ref-smoke.XXXXXX")
@@ -188,11 +185,11 @@ jobs:
           chmod +x "$RUNNER_TEMP/ref-celld"
           node scripts/celld-runtime.mjs verify "$RUNNER_TEMP/ref-celld"
           CELLD_BIN="$RUNNER_TEMP/ref-celld" pnpm --filter @harrhy/ref run test:celld --output "$RUNNER_TEMP/ref-celld-smoke.json"
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+      - if: needs.select.outputs.maps_hosted == 'true'
         run: pnpm --filter @harrhy/worldview run test:hosted --output "$RUNNER_TEMP/maps-hosted-smoke.json"
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+      - if: needs.select.outputs.maps_hosted == 'true'
         run: pnpm --filter @harrhy/worldview run test:gpu
-      - if: env.RUN_INTEGRATION == 'true' && needs.select.outputs.maps_hosted == 'true'
+      - if: needs.select.outputs.maps_hosted == 'true'
         run: pnpm --filter @harrhy/worldview run test:embed
   workflows:
     runs-on: ubuntu-24.04

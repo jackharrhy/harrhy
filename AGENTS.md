@@ -8,7 +8,7 @@ Use the primary checkout for uncontended work; isolate concurrent writers or tas
 
 Never edit another task’s checkout. Isolate dependencies, outputs, caches and runtime state per worktree, and use distinct server ports. Retry ordinary Git/GitHub races; update or rebase when conflicts, integration checks or GitHub require it, then rerun affected checks.
 
-Use the [PR description skill](.agents/skills/pr-description/SKILL.md) for PR titles and bodies. Before merging, mark the PR ready, review the diff, run applicable local checks and verify all expected PR workflows succeeded on the exact head. Draft coverage is reduced; required-only queries are insufficient because GitHub does not enforce required checks here. Never bypass failures or safeguards.
+Use the [PR description skill](.agents/skills/pr-description/SKILL.md) for PR titles and bodies. Before merging, mark the PR ready, review the diff, run applicable local checks and verify all expected PR workflows succeeded on the exact head. Draft and ready PRs use the same checks; required-only queries are insufficient because GitHub does not enforce required checks here. Never bypass failures or safeguards.
 
 Agents may create worktrees, push PRs and self-merge within owner-approved scope without coordinator permission. Notify Harrhy of the result. Ask through Familiar only for a specific unresolved product, security or destructive decision; include the PR link and reason. Remove finished worktrees only after preserving the work and checking private state and active users; never force removal to discard unknown data.
 

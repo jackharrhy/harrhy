@@ -22,7 +22,7 @@ Run `pnpm run ci:preflight` after a frozen install to reproduce CI’s formattin
 - `pnpm run typecheck:tsrs` checks all workspaces after Worker types have been generated.
 - `pnpm run knip:check` finds unused code. Review findings before removing code; browser, Worker and public-package entry points are configured in [Knip](../knip.jsonc).
 
-[CI’s workspace selector](../scripts/ci/affected.mjs) checks changed workspaces and their consumers; shared or unknown inputs can trigger a full check. Ready PRs run the full comparison and eligible browser integration tests. Docker-backed native Celld integration runs on main or manual CI. See [container checks](node-images.md) for image validation and publication, and [the common Celld runtime](celld-runtime.md) for the qualified artifact.
+[CI’s workspace selector](../scripts/ci/affected.mjs) checks changed workspaces and their consumers; shared or unknown inputs can trigger a full check. Draft and ready PRs both compare the base with the tested merge commit and run affected browser integrations. Changing review status alone does not rerun CI. Docker-backed native Celld integration runs on main or manual CI. See [container checks](node-images.md) for image validation and publication, and [the common Celld runtime](celld-runtime.md) for the qualified artifact.
 
 ## Local containers
 
