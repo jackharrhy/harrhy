@@ -73,7 +73,7 @@ it("explores actual props, matching source, and global themes", async (t) => {
       true,
     );
   }
-  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page.locator("summary").filter({ hasText: "Browse examples" }).click();
   await page
     .getByRole("link", { name: "Field", exact: true })
     .filter({ visible: true })
@@ -173,14 +173,17 @@ it("filters component navigation with a native GET and without scripts", async (
   await page.route("**/assets/**", (route) => route.abort());
   await page.goto("/");
   await page
-    .getByLabel("Find a component", { exact: true })
+    .getByRole("searchbox", { name: "Find a component", exact: true })
     .fill("nothing-matches");
   await page.getByRole("button", { name: "Find", exact: true }).click();
-  await page.getByText("No components found.", { exact: false }).waitFor();
+  await page
+    .getByText("No components found.", { exact: false })
+    .filter({ visible: true })
+    .waitFor();
   assert.equal(new URL(page.url()).searchParams.get("q"), "nothing-matches");
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/");
-  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page.locator("summary").filter({ hasText: "Browse examples" }).click();
   await page
     .getByRole("link", { name: "Field", exact: true })
     .filter({ visible: true })
@@ -270,8 +273,10 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
       () => document.documentElement.dataset.uiReady === "true",
     );
     const trigger = page.getByRole("button", { name: "Theme", exact: true });
-    await page.evaluate(() => window.scrollTo(0, 300));
-    await page.waitForFunction(() => window.scrollY > 100);
+    const preview = page.getByRole("region", { name: "Example preview" });
+    await preview.evaluate((pane) => pane.scrollTo(0, 300));
+    assert.ok(await preview.evaluate((pane) => pane.scrollTop > 100));
+    assert.equal(await page.evaluate(() => window.scrollY), 0);
     const header = await page.getByRole("banner").boundingBox();
     assert.equal(header?.y, 0);
     assert.ok((await trigger.boundingBox())!.height >= 44);
@@ -310,8 +315,14 @@ it("keeps the same header across workbench routes", async (t) => {
   const page = await t.serve(await createTestServer(app.fetch));
   await page.setViewportSize({ width: 1440, height: 900 });
   const nav = page.getByRole("navigation", { name: "Workbench" });
-  const measure = () =>
-    nav
+  const measure = async () => {
+    await page.evaluate(() => document.fonts.ready.then(() => true));
+    await page.waitForFunction(
+      () =>
+        getComputedStyle(document.querySelector("header nav a")!).fontSize ===
+        "16px",
+    );
+    return nav
       .getByRole("link")
       .evaluateAll((links) =>
         links.map((link) => [
@@ -320,12 +331,22 @@ it("keeps the same header across workbench routes", async (t) => {
           link.getBoundingClientRect().width,
         ]),
       );
+  };
   await page.goto("/?view=scenes&theme=basic");
   assert.equal(new URL(page.url()).pathname, "/scenes");
   const baseline = await measure();
   await nav.getByRole("link", { name: "Explorer" }).click();
   await page.waitForURL((url) => url.pathname === "/explorer");
   assert.deepEqual(await measure(), baseline);
+  await page.setViewportSize({ width: 1440, height: 480 });
+  const rail = page.getByRole("complementary", { name: "Examples" });
+  const preview = page.getByRole("region", { name: "Example preview" });
+  await rail.evaluate((pane) => pane.scrollTo(0, 200));
+  assert.equal(await preview.evaluate((pane) => pane.scrollTop), 0);
+  await preview.evaluate((pane) => pane.scrollTo(0, 200));
+  assert.ok(await preview.evaluate((pane) => pane.scrollTop > 0));
+  assert.equal(await rail.evaluate((pane) => pane.scrollTop), 200);
+  assert.equal(await page.evaluate(() => window.scrollY), 0);
   await nav.getByRole("link", { name: "Scenes" }).click();
   await page.getByRole("link", { name: "Clank cook-off" }).click();
   await page.waitForURL((url) => url.pathname === "/scenes/clank");

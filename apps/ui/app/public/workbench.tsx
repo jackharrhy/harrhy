@@ -65,8 +65,6 @@ export function WorkbenchHeader(
 const headerStyles = css({
   display: "flex",
   alignItems: "center",
-  position: "sticky",
-  top: 0,
   zIndex: 5,
   "--workbench-picker-height": "32px",
   gap: "16px",

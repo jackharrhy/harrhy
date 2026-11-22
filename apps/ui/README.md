@@ -27,6 +27,7 @@ Tests use temporary loopback servers. Install browser support with `npx playwrig
 - `app/public/expanded-stories.tsx`: Progress, Breadcrumbs, Table, native Collapsible, official Accordion/Menu and typography specimens with matching source.
 - `app/public/explorer.tsx`: component navigation, live controls, preview and matching code.
 - `app/public/scenes.tsx`: scene navigation, composed form fixtures and theme comparison.
+- `app/public/workspace.tsx`: shared scene and component navigation, with independently scrolling navigation and preview panes.
 - `app/public/radio/`: source-derived Radio room presentation, synthetic action model and scenario fixtures; its README records source and font provenance.
 - `app/public/sluggers/`: four synthetic league/result/lineup/import compositions using the shared Sluggers theme, plus an explicitly opt-in private cookoff; its README records fixture and private-font boundaries.
 - `app/public/workbench.tsx`: shared, globally themed header and theme URL updates.

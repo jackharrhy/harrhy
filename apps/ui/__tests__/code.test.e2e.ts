@@ -78,7 +78,7 @@ it("integrates shared code views, safe live source, copy and prepared diff state
       true,
     );
   }
-  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page.locator("summary").filter({ hasText: "Browse examples" }).click();
   await page
     .getByRole("link", { name: "CodeDiff", exact: true })
     .filter({ visible: true })

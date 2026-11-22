@@ -4,7 +4,7 @@ const line = "1px solid var(--hui-border)",
   mono = "var(--hui-font-mono)";
 const row = { display: "flex", alignItems: "center", gap: "8px" } as const;
 export const shell = css({
-  height: "100dvh",
+  height: "100%",
   display: "flex",
   flexDirection: "column",
   fontSize: "var(--hui-text-size)",
