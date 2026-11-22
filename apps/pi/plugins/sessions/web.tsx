@@ -49,10 +49,7 @@ import { SidebarRollups } from "../rollups/contract.ts";
 import { Search, SessionReads } from "../search/contract.ts";
 import { SessionStatus } from "../status/contract.ts";
 import { type Child, Subagents } from "../subagents/contract.ts";
-import { branchOf } from "../tree/branch-target.ts";
-import { SessionTree } from "../tree/contract.ts";
 import { archiveSubagent, stopRuns } from "./agent-actions.ts";
-import { BRANCH_SHEET, BranchSheet } from "./BranchSheet.tsx";
 import { SESSION_COMMANDS, SESSION_PAGES, SESSION_SEARCH } from "./commands.tsx";
 import { type Operation, type Session, Sessions, SidebarSettings, type SidebarWindow } from "./contract.ts";
 import { type DrawerRows, DrawerRowsContext } from "./contract.web.tsx";
@@ -507,48 +504,12 @@ function Sidebar() {
 		],
 		fail,
 	);
-	// A branch's rename: a reference of its own (the change also reaches the session row).
 	const host = useHost();
-	const withTree = useCallback(
-		(session: string, action: (tree: HeldIn<typeof SessionTree, "owner">) => Promise<unknown>) => {
-			const held = host.hold(SessionTree, { session }, BACKGROUND_CONTEXT);
-			return whenLive(held)
-				.then(() => {
-					const tree = liveIn(held, "owner");
-					if (!tree) throw new Error("Only the owner changes branches");
-					return action(tree);
-				})
-				.finally(() => held.release());
-		},
-		[host],
-	);
 	// The Projects rollup's "+": the folder picker, then the sheet naming the project (each a layer over the drawer).
 	const onNewProject = useCallback(
 		() => openLayer(directoryPickerLayer(null, "~", PROJECT_FOLDER), { fromDrawer: true }),
 		[],
 	);
-	// A branch's rename sheet: a layer "Rename branch…" opens (commands.tsx; the tree panel's branch labels target it).
-	const branchSheet = useSheet(BRANCH_SHEET);
-	const renaming = branchOf(branchSheet?.locator);
-	const renamed = renaming && list?.find((each) => each.id === renaming.session);
-	const branch = renamed?.branches.find((each) => each.conversation === renaming?.conversation);
-	// A layer naming no branch of the loaded sessions (an old address, a branch of a deleted session) goes away.
-	const staleBranchSheet = branchSheet !== undefined && list !== undefined && branch === undefined;
-	useEffect(() => {
-		if (staleBranchSheet) closeLayers();
-	}, [staleBranchSheet]);
-	const renameBranch = (session: Session, conversation: number, label: string | null) =>
-		edit(
-			{
-				id: session.id,
-				change: {
-					branches: session.branches.map((each) =>
-						each.conversation === conversation ? { ...each, label } : each,
-					),
-				},
-			},
-			() => withTree(session.id, (tree) => tree.rename({ conversation, label }, BACKGROUND_CONTEXT)),
-		);
 	const sessionSheet = useSheet("session");
 	const { projectsHeld, archivedProjects, onAssign, onMoveProject, writable, onCancel, onArchive, onArchiveAgent } =
 		data;
@@ -769,16 +730,6 @@ function Sidebar() {
 					taken={[...context.projects, ...archivedProjects].map((project) => project.name)}
 					onCreate={(name) => createProject(name, newPlace)}
 					onClose={closeLayers}
-				/>
-			)}
-			{catalog && renamed && branch && (
-				<BranchSheet
-					title={renamed.title}
-					conversation={branch.conversation}
-					label={branch.label}
-					onSave={(label) => renameBranch(renamed, branch.conversation, label)}
-					// Only the sheet closes: a phone's drawer it was opened over stays open.
-					onClose={closeTopLayer}
 				/>
 			)}
 			{sessionSheet && catalog && viewed && route.conversation === viewed.main && (
