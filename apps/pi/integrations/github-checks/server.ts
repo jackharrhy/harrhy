@@ -5,7 +5,7 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { arr, compile, int, obj, opt, type Static, str } from "@earendil-works/pi-schema";
-import { type Ctx, contribute, defineFacet, forbidden, isWorker, type Ref, signalOf, sleep } from "@p2/app/v1";
+import { type Ctx, contribute, defineFacet, forbidden, isChordError, isWorker, type Ref, signalOf, sleep } from "@p2/app/v1";
 import { optionalText, processLogs } from "@p2/app/v1/node";
 import {
 	bindStimulusPublisher,
@@ -36,6 +36,8 @@ const ConfigSchema = obj({
 	settleMs: opt(int({ minimum: 0, maximum: 300_000 })),
 	/** How long to wait for a new commit's first check to appear before saying that none ran (ms; default 60000). */
 	graceMs: opt(int({ minimum: 0, maximum: 3_600_000 })),
+	/** How long to keep looking at a pinned commit or closed pull request after its checks finish, for a later stage (ms; default 600000). */
+	lingerMs: opt(int({ minimum: 0, maximum: 86_400_000 })),
 });
 const configCheck = compile(ConfigSchema);
 const watchCheck = compile(WatchSchema);
@@ -49,10 +51,13 @@ type Settings = {
 	idleMs: number;
 	settleMs: number;
 	graceMs: number;
+	lingerMs: number;
 };
 
 const TOKEN_TTL_MS = 3_600_000;
 const RETRY_MAX_MS = 300_000;
+/** How long to wait before asking again about a watch GitHub or the allowlist refused. */
+const REFUSED_RETRY_MS = 3_600_000;
 const run = promisify(execFile);
 
 /** The adapter's private configuration, read afresh; throws why when it is absent or invalid. */
@@ -86,25 +91,50 @@ async function readSettings(ctx: Ctx): Promise<Settings> {
 		idleMs: value.idleMs ?? 60_000,
 		settleMs: value.settleMs ?? 20_000,
 		graceMs: value.graceMs ?? 60_000,
+		lingerMs: value.lingerMs ?? 600_000,
 	};
+}
+
+/** The host `gh auth token` is asked about: the web host of the API (`api.github.com` is `github.com`). */
+function ghHostname(apiBase: string): string {
+	const { hostname } = new URL(apiBase);
+	return hostname === "api.github.com" ? "github.com" : hostname;
 }
 
 /** The settings and a client for them; the token comes from the config or, kept for an hour, from `gh auth token`. */
 function createAccess() {
-	let fetched: { value: string; at: number } | undefined;
+	let fetched: { key: string; value: string; at: number } | undefined;
+	let asking: Promise<string> | undefined;
 	let client: { key: string; github: GithubClient } | undefined;
-	const ghToken = async (command: string): Promise<string> => {
-		if (fetched !== undefined && Date.now() - fetched.at < TOKEN_TTL_MS) return fetched.value;
-		let output: string;
-		try {
-			output = (await run(command, ["auth", "token"], { timeout: 10_000, maxBuffer: 8192 })).stdout.trim();
-		} catch {
-			throw new Error("No GitHub token: set `token` in github-checks.json, or sign in with `gh auth login`");
-		}
-		if (!/^[A-Za-z0-9_-]{20,}$/.test(output)) throw new Error("`gh auth token` did not return a token");
-		processLogs.redactor.addSecret(output);
-		fetched = { value: output, at: Date.now() };
-		return output;
+	const ghToken = (command: string, hostname: string, signal: AbortSignal): Promise<string> => {
+		const key = `${command}\n${hostname}`;
+		if (fetched?.key === key && Date.now() - fetched.at < TOKEN_TTL_MS) return Promise.resolve(fetched.value);
+		asking ??= (async () => {
+			try {
+				const { stdout } = await run(command, ["auth", "token", "--hostname", hostname], {
+					timeout: 10_000,
+					maxBuffer: 8192,
+					signal,
+				});
+				const token = stdout.trim();
+				if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) throw new Error("`gh auth token` did not return a token");
+				processLogs.redactor.addSecret(token);
+				fetched = { key, value: token, at: Date.now() };
+				return token;
+			} catch (error) {
+				// A token that was good an hour ago is probably still good: keep using it when `gh` fails now.
+				if (fetched?.key === key) return fetched.value;
+				if (error instanceof Error && error.message.startsWith("`gh auth token`")) throw error;
+				throw new Error(
+					(error as NodeJS.ErrnoException).code === "ENOENT"
+						? `\`${command}\` not found: set \`ghPath\` to its full path, or set \`token\``
+						: "No GitHub token: set `token` in github-checks.json, or sign in with `gh auth login`",
+				);
+			} finally {
+				asking = undefined;
+			}
+		})();
+		return asking;
 	};
 	return {
 		/** The next read asks `gh` again (GitHub refused the token). */
@@ -113,7 +143,7 @@ function createAccess() {
 		},
 		async get(ctx: Ctx): Promise<{ settings: Settings; github: GithubClient }> {
 			const settings = await readSettings(ctx);
-			const token = settings.token ?? (await ghToken(settings.ghPath));
+			const token = settings.token ?? (await ghToken(settings.ghPath, ghHostname(settings.apiBase), signalOf(ctx)));
 			const key = `${settings.apiBase}\n${token}`;
 			if (client?.key !== key) client = { key, github: githubClient({ token, apiBase: settings.apiBase }) };
 			return { settings, github: client.github };
@@ -121,6 +151,8 @@ function createAccess() {
 	};
 }
 type Access = ReturnType<typeof createAccess>;
+/** The subscriptions' states, and what the settings were when they were made. */
+type States = Map<string, State> & { environment: string | undefined };
 
 /** A subscription that will not become watchable by asking again. */
 class Permanent extends Error {}
@@ -151,9 +183,17 @@ export default defineFacet((host) => {
 				probe: async ({ repo, ref }, ctx) => {
 					const { settings, github } = await access.get(ctx);
 					if (!repoAllowed(repo, settings.repos)) throw new Error(`${repo} is not a repository Pi may watch`);
-					const head = await github.head(repo, ref);
-					if (!/^[0-9a-f]{40}$/.test(head.sha)) throw new Error(`GitHub knows no commit for ${refLabel(ref)}`);
-					return { sha: head.sha };
+					const signal = signalOf(ctx);
+					try {
+						const head = await github.head(repo, ref, signal);
+						if (!/^[0-9a-f]{40}$/.test(head.sha)) throw new Error(`GitHub knows no commit for ${refLabel(ref)}`);
+						// A full commit hash needs no lookup to resolve, so ask GitHub for its checks to see that it exists.
+						if (ref.kind === "commit") await github.runs(repo, head.sha, signal);
+						return { sha: head.sha };
+					} catch (error) {
+						if (error instanceof GithubError && error.status === 401) access.forgetToken();
+						throw error;
+					}
 				},
 			},
 		};
@@ -162,7 +202,7 @@ export default defineFacet((host) => {
 		self.contribute(StimulusSources, { [sourceKey(GithubChecks)]: GithubChecks });
 		self.onLive(async (ctx) => {
 			const signal = signalOf(ctx);
-			const states = new Map<string, State>();
+			const states: States = Object.assign(new Map<string, State>(), { environment: undefined as string | undefined });
 			let problem: string | undefined;
 			while (!signal.aborted) {
 				let wait: number;
@@ -175,7 +215,7 @@ export default defineFacet((host) => {
 					// Not configured is normal when the plugin is installed first; say each problem once.
 					if (message !== problem) console.error(`p2 github-checks: ${message}`);
 					problem = message;
-					wait = 10_000;
+					wait = 3_000;
 				}
 				if (!signal.aborted) await sleep(Math.max(20, wait), ctx).catch(() => {});
 			}
@@ -184,8 +224,14 @@ export default defineFacet((host) => {
 });
 
 /** One look at every watched subscription that is due; returns how long to wait until the next one is. */
-async function pass(ctx: Ctx, access: Access, states: Map<string, State>): Promise<number> {
+async function pass(ctx: Ctx, access: Access, states: States): Promise<number> {
 	const { settings, github } = await access.get(ctx);
+	// What decides whether a watch is allowed or can be read: when it changes, what failed before may work now.
+	const environment = JSON.stringify([settings.repos, settings.apiBase, settings.token, github.key]);
+	if (states.environment !== environment) {
+		states.clear();
+		states.environment = environment;
+	}
 	const store = await ctx.get(WakeStore, {});
 	const subscriptions = (await store.subscriptions({}, ctx)).filter(
 		(row) => row.enabled && row.source.id === SOURCE_ID && row.source.version === SOURCE_VERSION,
@@ -194,7 +240,8 @@ async function pass(ctx: Ctx, access: Access, states: Map<string, State>): Promi
 	for (const id of states.keys()) if (!live.has(id)) states.delete(id);
 	const signal = signalOf(ctx);
 	for (const row of subscriptions) {
-		if (signal.aborted) break;
+		// While GitHub asks to wait, no row sends anything.
+		if (signal.aborted || Date.now() < github.pausedUntil()) break;
 		let state = states.get(row.id);
 		if (state === undefined || state.revision !== row.revision) {
 			state = { revision: row.revision, firstSeen: Date.now(), finished: false, nextAt: 0, failures: 0 };
@@ -209,15 +256,19 @@ async function pass(ctx: Ctx, access: Access, states: Map<string, State>): Promi
 			if (signal.aborted) break;
 			const message = error instanceof Error ? error.message : String(error);
 			if (error instanceof GithubError && error.status === 401) access.forgetToken();
-			// A pull request or branch GitHub does not know, or a repository not allowed, will not get better by asking.
-			if (error instanceof Permanent || (error instanceof GithubError && error.permanent)) state.finished = true;
+			// What GitHub or the allowlist refuses (an unknown pull request, a repository not listed, a session that may not
+			// be written to) rarely changes: ask again in an hour, not every few minutes.
+			const refused =
+				error instanceof Permanent ||
+				(error instanceof GithubError && error.permanent) ||
+				(isChordError(error) && error.code === "forbidden");
 			state.failures++;
 			state.nextAt = Math.max(
-				Date.now() + Math.min(settings.pollMs * 2 ** state.failures, RETRY_MAX_MS),
+				Date.now() + (refused ? REFUSED_RETRY_MS : Math.min(settings.pollMs * 2 ** state.failures, RETRY_MAX_MS)),
 				github.pausedUntil(),
 			);
 			if (message !== state.lastError)
-				console.error(`p2 github-checks: ${row.id}: ${message}${state.finished ? " (not watching any more)" : ""}`);
+				console.error(`p2 github-checks: ${row.id}: ${message}${refused ? " (looking again in an hour)" : ""}`);
 			state.lastError = message;
 		}
 	}
@@ -267,6 +318,8 @@ async function check(
 	}
 	if (verdict === "none" && now - state.firstSeen < settings.graceMs) {
 		// A commit's checks can appear a little after it does: wait before saying that none ran.
+		delete state.instance;
+		delete state.doneAt;
 		state.nextAt = now + settings.pollMs;
 		return;
 	}
@@ -306,7 +359,8 @@ async function check(
 		}
 		state.lastEventId = eventId;
 	}
-	// A pinned commit and a closed pull request get no new commits; a branch or open pull request may.
-	if (head.closed) state.finished = true;
+	// A pinned commit and a closed pull request get no new commits, but a later stage or a re-run can still change
+	// their checks: keep looking for a while after the last change, then stop. A branch or open pull request goes on.
+	if (head.closed && Date.now() - (state.doneAt ?? now) >= settings.lingerMs) state.finished = true;
 	else state.nextAt = Date.now() + settings.idleMs;
 }

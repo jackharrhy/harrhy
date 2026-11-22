@@ -1,6 +1,6 @@
 // A fake GitHub API on loopback and disposable real stores with the fake model: never touches GitHub or credentials.
 import assert from "node:assert/strict";
-import { chmod, mkdtemp, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createServer } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -137,7 +137,7 @@ async function fakeGithub(fake: Fake) {
 }
 
 const fakeState = (): Fake => ({ pulls: {}, branch: { sha: SHA_C }, runs: {}, statuses: {}, hits: {}, token: TOKEN });
-const FAST = { pollMs: 40, idleMs: 40, settleMs: 80, graceMs: 80 };
+const FAST = { pollMs: 40, idleMs: 40, settleMs: 80, graceMs: 80, lingerMs: 600 };
 
 async function harness(fake: Fake, config: object = { token: TOKEN }) {
 	const github = await fakeGithub(fake);
@@ -160,6 +160,7 @@ async function harness(fake: Fake, config: object = { token: TOKEN }) {
 	};
 	return {
 		fixture,
+		apiBase: github.base,
 		subscriptions,
 		watch,
 		close: async () => {
@@ -222,13 +223,19 @@ it("still reports checks that finish, start again and finish the same way", { ti
 	const fake = fakeState();
 	fake.pulls[5] = { head: SHA_A, state: "open" };
 	fake.runs[SHA_A] = [run("build", "completed", "success")];
-	const h = await harness(fake, { token: TOKEN, settleMs: 400 });
+	const h = await harness(fake, { token: TOKEN, settleMs: 600 });
+	const runsPath = `/repos/acme/site/commits/${SHA_A}/check-runs`;
+	const lookedAgain = async () => {
+		const before = fake.hits[runsPath] ?? 0;
+		await poll(async () => (fake.hits[runsPath] ?? 0) > before, 5000, "poller looked again");
+	};
 	try {
 		const session = await h.watch("Flapping");
 		await h.subscriptions.createTarget({ id: "pr", source: SOURCE, target: session.target, config: { repo: "acme/site", ref: { kind: "pr", number: 5 } } }, TEST);
-		await new Promise((resolve) => setTimeout(resolve, 150));
+		// Seen finished, then running, then finished the same way, all inside one settle window.
+		await poll(async () => (fake.hits[runsPath] ?? 0) >= 1, 8000, "poller saw it done");
 		fake.runs[SHA_A] = [run("build", "in_progress", null)];
-		await new Promise((resolve) => setTimeout(resolve, 150));
+		await lookedAgain();
 		fake.runs[SHA_A] = [run("build", "completed", "success")];
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("PR #5")));
 		assert.equal(session.texts().length, 1);
@@ -238,7 +245,7 @@ it("still reports checks that finish, start again and finish the same way", { ti
 	}
 });
 
-it("stops looking at a closed pull request once it has reported", { timeout: 30_000 }, async () => {
+it("keeps looking at a closed pull request for a while, then stops", { timeout: 30_000 }, async () => {
 	const fake = fakeState();
 	fake.pulls[9] = { head: SHA_A, state: "closed" };
 	fake.runs[SHA_A] = [run("build", "completed", "success")];
@@ -247,10 +254,35 @@ it("stops looking at a closed pull request once it has reported", { timeout: 30_
 		const session = await h.watch("Closed");
 		await h.subscriptions.createTarget({ id: "pr", source: SOURCE, target: session.target, config: { repo: "acme/site", ref: { kind: "pr", number: 9 } } }, TEST);
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("PR #9")));
-		await new Promise((resolve) => setTimeout(resolve, 200));
+		// A later stage appears after the first report: it is still seen.
+		fake.runs[SHA_A] = [run("build", "completed", "success"), run("deploy", "completed", "failure")];
+		await until(session.chat.view, () => session.texts().some((text) => text.includes("deploy")));
+		// Then, after a quiet while, no more requests.
+		await new Promise((resolve) => setTimeout(resolve, 1200));
 		const hits = fake.hits["/repos/acme/site/pulls/9"];
 		await new Promise((resolve) => setTimeout(resolve, 400));
-		assert.equal(fake.hits["/repos/acme/site/pulls/9"], hits, "no more requests after it reported");
+		assert.equal(fake.hits["/repos/acme/site/pulls/9"], hits, "no more requests after it has been quiet");
+		session.chat.release();
+	} finally {
+		await h.close();
+	}
+});
+
+it("watches a repository again once it is added to the allowlist", { timeout: 40_000 }, async () => {
+	const fake = fakeState();
+	fake.runs[SHA_D] = [run("deploy", "completed", "failure")];
+	const h = await harness(fake, { repos: ["other/*"], token: TOKEN });
+	try {
+		const session = await h.watch("Allowlist");
+		await h.subscriptions.createTarget({ id: "pinned", source: SOURCE, target: session.target, config: { repo: "acme/site", ref: { kind: "commit", sha: SHA_D } } }, TEST);
+		await new Promise((resolve) => setTimeout(resolve, 600));
+		assert(!session.texts().length && !fake.hits[`/repos/acme/site/commits/${SHA_D}/check-runs`], "not watched while unlisted");
+		await writeFile(
+			join(h.fixture.dataDir, "github-checks.json"),
+			JSON.stringify({ repos: ["other/*", "acme/site"], apiBase: h.apiBase, token: TOKEN, ...FAST }),
+			{ mode: 0o600 },
+		);
+		await until(session.chat.view, () => session.texts().some((text) => text.includes("deploy")));
 		session.chat.release();
 	} finally {
 		await h.close();
@@ -260,7 +292,7 @@ it("stops looking at a closed pull request once it has reported", { timeout: 30_
 it("lets the agent watch, list and stop, and refuses what cannot be watched", { timeout: 90_000 }, async () => {
 	const fake = fakeState();
 	fake.runs[SHA_D] = [run("deploy", "completed", "failure")];
-	const h = await harness(fake);
+	const h = await harness(fake, { token: TOKEN, repos: ["acme/*"] });
 	try {
 		const first = await h.watch("Agent one");
 		const second = await h.watch("Agent two");
@@ -283,6 +315,11 @@ it("lets the agent watch, list and stop, and refuses what cannot be watched", { 
 		await until(first.chat.view, () => first.model().includes("evil/site is not a repository Pi may watch"));
 		await first.call('return await tools.github_checks_watch({ repo: "acme/site", pr: 999 })');
 		await until(first.chat.view, () => first.model().includes("GitHub 404"));
+		await first.call(`return await tools.github_checks_watch({ repo: "nobody/missing", commit: "${SHA_C}" })`);
+		await until(first.chat.view, () => first.model().includes("nobody/missing is not a repository Pi may watch"));
+		// A full commit hash needs no lookup, so the probe asks for its checks: a repository GitHub does not know fails.
+		await first.call(`return await tools.github_checks_watch({ repo: "acme/missing", commit: "${SHA_C}" })`);
+		await until(first.chat.view, () => first.model().includes("GitHub 404 for /repos/acme/missing"));
 
 		// Stop and list.
 		const id = /(github-checks-[0-9a-f]+)/.exec(first.model())![1]!;
@@ -297,21 +334,23 @@ it("lets the agent watch, list and stop, and refuses what cannot be watched", { 
 	}
 });
 
-it("takes the token from `gh auth token` when the config has none", { timeout: 60_000 }, async () => {
+it("takes the token from `gh auth token` for the API's host when the config has none", { timeout: 60_000 }, async () => {
 	const fake = fakeState();
 	fake.token = "gho_fakeghtokennotarealsecret0000";
 	fake.runs[SHA_D] = [run("deploy", "completed", "failure")];
 	const directory = await mkdtemp(join(tmpdir(), "p2-fake-gh-"));
 	const gh = join(directory, "gh");
-	await writeFile(gh, `#!/bin/sh\n[ "$1 $2" = "auth token" ] && echo ${fake.token}\n`);
+	await writeFile(gh, `#!/bin/sh\necho "$@" >> ${join(directory, "args")}\n[ "$1 $2" = "auth token" ] && echo ${fake.token}\n`);
 	await chmod(gh, 0o755);
 	const h = await harness(fake, { ghPath: gh });
 	try {
 		const session = await h.watch("gh token");
 		await h.subscriptions.createTarget({ id: "pinned", source: SOURCE, target: session.target, config: { repo: "acme/site", ref: { kind: "commit", sha: SHA_D } } }, TEST);
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("deploy")));
+		assert.equal((await readFile(join(directory, "args"), "utf8")).split("\n")[0], "auth token --hostname 127.0.0.1");
 		session.chat.release();
 	} finally {
 		await h.close();
+		await rm(directory, { recursive: true, force: true });
 	}
 });

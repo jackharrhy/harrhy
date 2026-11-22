@@ -29,20 +29,22 @@ export type GithubClient = {
 	statuses(repo: string, sha: string, signal?: AbortSignal): Promise<Json[]>;
 	/** When GitHub last told this client to wait until, in ms since the epoch (0: not at all). */
 	pausedUntil(): number;
+	/** Names this client's credentials and host, so a changed one is noticed. */
+	key: string;
 };
 
 const CACHE_ENTRIES = 200;
 const PAGE = 100;
 const MAX_PAGES = 10;
 
-export function githubClient(options: { token: string; apiBase: string; timeoutMs?: number }): GithubClient {
+export function githubClient(options: { token: string; apiBase: string }): GithubClient {
 	// Bodies by URL for If-None-Match; oldest dropped, so a long-lived watcher of a busy branch stays small.
 	const cache = new Map<string, { etag: string; body: Json }>();
 	let paused = 0;
 	const get = async (path: string, signal?: AbortSignal): Promise<Json> => {
 		const url = `${options.apiBase}${path}`;
 		const cached = cache.get(url);
-		const timeout = AbortSignal.timeout(options.timeoutMs ?? 15_000);
+		const timeout = AbortSignal.timeout(15_000);
 		const response = await fetch(url, {
 			headers: {
 				Authorization: `Bearer ${options.token}`,
@@ -54,7 +56,12 @@ export function githubClient(options: { token: string; apiBase: string; timeoutM
 			redirect: "error",
 			signal: signal === undefined ? timeout : AbortSignal.any([signal, timeout]),
 		});
-		if (response.status === 304 && cached !== undefined) return cached.body;
+		if (response.status === 304 && cached !== undefined) {
+			// Newest use last, so a URL asked about every poll is not the one dropped.
+			cache.delete(url);
+			cache.set(url, cached);
+			return cached.body;
+		}
 		if (!response.ok) {
 			const retryAfter = Number(response.headers.get("retry-after"));
 			const reset = Number(response.headers.get("x-ratelimit-reset"));
@@ -84,7 +91,7 @@ export function githubClient(options: { token: string; apiBase: string; timeoutM
 			if (batch.length < PAGE || (total !== undefined && items.length >= total)) return items;
 		}
 		// Judging part of a commit's checks could report a pass that is not one.
-		throw new GithubError(0, `More than ${MAX_PAGES * PAGE} checks on one commit`);
+		throw new Error(`More than ${MAX_PAGES * PAGE} checks on one commit`);
 	};
 	const sha = (value: unknown) => (typeof value === "string" ? value : "");
 	return {
@@ -118,5 +125,6 @@ export function githubClient(options: { token: string; apiBase: string; timeoutM
 		runs: (repo, commit, signal) => pages(`/repos/${repo}/commits/${commit}/check-runs`, "check_runs", signal),
 		statuses: (repo, commit, signal) => pages(`/repos/${repo}/commits/${commit}/status`, "statuses", signal),
 		pausedUntil: () => paused,
+		key: `${options.apiBase}\n${options.token}`,
 	};
 }

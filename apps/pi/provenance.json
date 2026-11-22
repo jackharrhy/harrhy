@@ -9,11 +9,11 @@
     "scripts": "c99c163ab8b58ecec775fe9caa8d1f775041f1ca3e02be71e7ba4ea98692e9b1",
     "voice-server": "e0c3f77d1d60027ec7d223573312ece6dee7652cb1f4e2927941e7414e9dffa8",
     "docs": "0ca42c85678ead6babb5e95e77af98a7a9712e464001f9965d7675eca836cbba",
-    "__tests__/p2": "ee86920e62ea3ea2179c077448464ee76441974bdd9cdbc35c240ba2b1958a4a",
+    "__tests__/p2": "9599692a79a75049fcf7091fd9b6e9ed08f1be1edb206b476ef6298129d9c6e4",
     "__tests__/fixtures": "bd04039ff7a82af872c0492282b68b642d9c694a431b679ea13889ce81a944e5",
     "compat/packages": "03c4f5f9eb6c068805148c1f1e1efbc58317b684eec47a291e855fc239246c36",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "9b22e97ceac6ccfe1db7fd245338caff327576e40f98fdd891c70c2ec107fe85"
+    "integrations": "cf8ba1c6143d227c454499b31d408b032cf8b6f3a66a25759791b72c3ac18f26"
   },
   "adaptations": [
     {

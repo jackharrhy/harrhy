@@ -44,7 +44,8 @@ export function itemsOf(runs: readonly Json[], statuses: readonly Json[]): Item[
 			const state = text(status.state);
 			const url = linkOf(status.target_url);
 			return {
-				id: String(status.id ?? status.context),
+				// A status is its context: the same one posted again is the same check, not a new one.
+				id: `status:${text(status.context, "status")}`,
 				name: text(status.context, "status"),
 				done: state !== "pending",
 				conclusion: state === "success" ? "success" : state === "pending" ? "pending" : "failure",
@@ -69,7 +70,7 @@ export function eventChecks(items: readonly Item[]): ChecksEvent["checks"] {
 		.sort((a, b) => rank(a) - rank(b) || a.name.localeCompare(b.name))
 		.slice(0, 50)
 		.map((item) => ({
-			name: item.name.slice(0, 200),
+			name: item.name.slice(0, 100),
 			conclusion: item.conclusion.slice(0, 40),
 			...(item.url === undefined ? {} : { url: item.url }),
 		}));
@@ -100,7 +101,7 @@ const line = (value: string) => value.replace(/[\p{C}\u2028\u2029]+/gu, " ").sli
 
 /** Check names and links come from the repository: data to read, never instructions. */
 export function renderResult(event: ChecksEvent): string {
-	const head = `GitHub checks for ${event.repo}, ${refLabel(event.ref)} at ${event.sha.slice(0, 7)}`;
+	const head = `GitHub checks for ${event.repo}, ${line(refLabel(event.ref))} at ${event.sha.slice(0, 7)}`;
 	const plural = (count: number) => `${count} check${count === 1 ? "" : "s"}`;
 	const bad = event.checks.filter((check) => !PASSING.has(check.conclusion));
 	const body =

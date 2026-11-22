@@ -16,7 +16,7 @@ const text = (value: unknown) => ({ output: [{ type: "text" as const, text: JSON
 /** The same watch always has the same ID, however it was spelled; the ID belongs to one conversation of one session. */
 function watchId(session: string, conversation: number, watch: Watch): string {
 	const only = [...new Set(watch.only ?? [])].sort();
-	const normal = { repo: watch.repo, ref: watch.ref, notify: watch.notify ?? "all", only };
+	const normal = { repo: watch.repo.toLowerCase(), ref: watch.ref, notify: watch.notify ?? "all", only };
 	const hash = createHash("sha256")
 		.update(JSON.stringify([session, conversation, normal]))
 		.digest("hex");
