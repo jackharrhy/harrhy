@@ -8,7 +8,7 @@ it("switches the actual Radio and Sluggers surfaces without remounting their fix
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   for (const scene of ["radio", "sluggers"]) {
-    await page.goto(`/scenes/${scene}?theme=clean`);
+    await page.goto(`/scenes/${scene}?theme=basic`);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );
@@ -23,9 +23,9 @@ it("switches the actual Radio and Sluggers surfaces without remounting their fix
       node.setAttribute("data-test-same-node", "true"),
     );
     for (const [label, id, ink] of [
-      ["Scorebook", "sluggers", "rgb(255, 255, 255)"],
-      ["Newspaper", "brutalist", "rgb(17, 17, 17)"],
-      ["Basic", "clean", "rgb(25, 33, 38)"],
+      ["Scorebook", "scorebook", "rgb(255, 255, 255)"],
+      ["Newspaper", "newspaper", "rgb(17, 17, 17)"],
+      ["Basic", "basic", "rgb(25, 33, 38)"],
     ] as const) {
       await page.getByRole("button", { name: "Theme", exact: true }).click();
       await page.getByRole("option", { name: label, exact: true }).click();

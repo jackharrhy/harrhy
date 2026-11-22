@@ -344,7 +344,7 @@ export const SluggersLab = clientEntry(
           ]}
         >
           <header data-lab-toolbar>
-            <a href="/explorer/button?theme=sluggers">@harrhy/ui</a>
+            <a href="/explorer/button?theme=scorebook">@harrhy/ui</a>
             <h1>Sluggers cookoff</h1>
             <span>Private, read-only archive · no writes or uploads</span>
             <a

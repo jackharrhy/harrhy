@@ -488,7 +488,7 @@ export function document(
         <meta name="robots" content="noindex, nofollow" />
         <title>{documentTitle(title)}</title>
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        {options.theme === "brutalist" && (
+        {options.theme === "newspaper" && (
           <link rel="stylesheet" href="/fonts.css" />
         )}
       </head>

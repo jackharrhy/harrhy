@@ -7,27 +7,27 @@ import {
 } from "@harrhy/ui/theme";
 
 export const themes = {
-  clean: cleanTheme,
+  basic: cleanTheme,
   graphite: graphiteTheme,
   dial: dialTheme,
-  brutalist: brutalistTheme,
-  sluggers: sluggersTheme,
+  newspaper: brutalistTheme,
+  scorebook: sluggersTheme,
 };
 export type ThemeName = keyof typeof themes;
 
 export const themeLabels: Record<ThemeName, string> = {
-  clean: "Basic",
+  basic: "Basic",
   graphite: "Graphite",
   dial: "Dial",
-  brutalist: "Newspaper",
-  sluggers: "Scorebook",
+  newspaper: "Newspaper",
+  scorebook: "Scorebook",
 };
 export const themeExports: Record<ThemeName, string> = {
-  clean: "cleanTheme",
+  basic: "cleanTheme",
   graphite: "graphiteTheme",
   dial: "dialTheme",
-  brutalist: "brutalistTheme",
-  sluggers: "sluggersTheme",
+  newspaper: "brutalistTheme",
+  scorebook: "sluggersTheme",
 };
 export const themeOptions = (Object.keys(themes) as ThemeName[]).map(
   (value) => ({ value, label: themeLabels[value] }),

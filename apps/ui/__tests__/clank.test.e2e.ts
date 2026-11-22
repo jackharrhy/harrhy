@@ -21,8 +21,8 @@ it("replays a single prefix through both Markdown policies, then changes phone v
     0,
   );
   for (const [skin, id] of [
-    ["Basic", "clean"],
-    ["Newspaper", "brutalist"],
+    ["Basic", "basic"],
+    ["Newspaper", "newspaper"],
     ["Graphite", "graphite"],
   ]) {
     await header.getByRole("button", { name: "Theme", exact: true }).click();

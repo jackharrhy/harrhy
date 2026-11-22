@@ -46,8 +46,8 @@ it("explores actual props, matching source, and global themes", async (t) => {
     () => document.activeElement?.getAttribute("role") === "listbox",
   );
   await page.getByRole("option", { name: "Newspaper", exact: true }).click();
-  await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
-  assert.equal(new URL(page.url()).searchParams.get("theme"), "brutalist");
+  await page.waitForURL((url) => url.searchParams.get("theme") === "newspaper");
+  assert.equal(new URL(page.url()).searchParams.get("theme"), "newspaper");
   const button = preview.getByRole("button", {
     name: "Delete reference",
     exact: true,
@@ -236,10 +236,10 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   assert.equal(await list.isVisible(), false);
   await page.getByRole("button", { name: "Theme", exact: true }).click();
   await page.getByRole("option", { name: "Newspaper", exact: true }).click();
-  await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
+  await page.waitForURL((url) => url.searchParams.get("theme") === "newspaper");
   await page.getByRole("link", { name: "Scenes", exact: true }).click();
   await page.getByRole("link", { name: "Radio", exact: true }).click();
-  assert.equal(new URL(page.url()).searchParams.get("theme"), "brutalist");
+  assert.equal(new URL(page.url()).searchParams.get("theme"), "newspaper");
   assert.equal(
     await page
       .locator("header")
@@ -289,7 +289,7 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
     );
     await page.getByRole("option", { name: "Newspaper", exact: true }).click();
     await page.waitForURL(
-      (url) => url.searchParams.get("theme") === "brutalist",
+      (url) => url.searchParams.get("theme") === "newspaper",
     );
     assert.equal(await list.isVisible(), false);
     assert.equal(
@@ -315,7 +315,7 @@ it("keeps the same header across workbench routes", async (t) => {
           link.getBoundingClientRect().width,
         ]),
       );
-  await page.goto("/?view=scenes&theme=clean");
+  await page.goto("/?view=scenes&theme=basic");
   assert.equal(new URL(page.url()).pathname, "/scenes");
   const baseline = await measure();
   await nav.getByRole("link", { name: "Explorer" }).click();

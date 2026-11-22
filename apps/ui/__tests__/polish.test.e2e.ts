@@ -52,7 +52,7 @@ it("gives the table frame sole outer-border ownership and Radio its source-deriv
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  for (const theme of ["clean", "dial", "brutalist"])
+  for (const theme of ["basic", "dial", "newspaper"])
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
       await page.goto(`/explorer/table?theme=${theme}`);

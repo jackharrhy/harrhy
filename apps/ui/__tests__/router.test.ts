@@ -39,7 +39,7 @@ it("registers the synthetic Sluggers scene and gates its private font stylesheet
     const app = createApp(undefined, { sluggersPrivateFonts });
     t.after(() => app.close());
     for (const path of [
-      "/scenes/sluggers?theme=clean",
+      "/scenes/sluggers?theme=basic",
       "/scenes/forms",
       "/explorer/button?scene=sluggers",
     ]) {
@@ -65,12 +65,12 @@ it("renders each Explorer preview and its source with the selected Sluggers them
   t.after(() => app.close());
   for (const { id } of stories) {
     const response = await app.fetch(
-      new Request("http://localhost/explorer/" + id + "?theme=sluggers"),
+      new Request("http://localhost/explorer/" + id + "?theme=scorebook"),
     );
     assert.equal(response.status, 200, id);
     const html = await response.text();
     assert.ok(
-      html.includes('data-preview="' + id + '" data-theme="sluggers"'),
+      html.includes('data-preview="' + id + '" data-theme="scorebook"'),
       id,
     );
     // Syntax highlighting wraps individual tokens; compare the rendered source text.

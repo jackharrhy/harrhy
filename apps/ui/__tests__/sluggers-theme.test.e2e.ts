@@ -17,12 +17,12 @@ it("applies Sluggers CSS on narrow and wide previews without private asset reque
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 960 });
     for (const story of ["table", "menu"]) {
-      await page.goto(`/explorer/${story}?theme=sluggers`);
+      await page.goto(`/explorer/${story}?theme=scorebook`);
       await page.waitForFunction(
         () => document.documentElement.dataset.uiReady === "true",
       );
       const preview = page.locator(`[data-preview="${story}"]`);
-      assert.equal(await preview.getAttribute("data-theme"), "sluggers");
+      assert.equal(await preview.getAttribute("data-theme"), "scorebook");
       assert.equal(
         await preview.evaluate((node) => getComputedStyle(node).colorScheme),
         "dark",
@@ -59,7 +59,7 @@ it("keeps Sluggers keyboard focus and official popup semantics", async (t) => {
   const app = createApp(undefined, { sluggersPrivateFonts: false });
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/explorer/menu?theme=sluggers");
+  await page.goto("/explorer/menu?theme=scorebook");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -106,7 +106,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
   page.on("request", (request) => {
     if (request.url().includes("sluggers-font-fixture")) fontRequests++;
   });
-  for (const theme of ["clean", "dial"]) {
+  for (const theme of ["basic", "dial"]) {
     await page.goto(`/explorer/button?theme=${theme}`);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
@@ -120,11 +120,11 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
     () =>
       document
         .querySelector('[data-preview="button"]')
-        ?.getAttribute("data-theme") === "sluggers",
+        ?.getAttribute("data-theme") === "scorebook",
   );
   await page.evaluate(() => document.fonts.ready);
   assert.equal(fontRequests > 0, true);
-  assert.match(page.url(), /theme=sluggers/);
+  assert.match(page.url(), /theme=scorebook/);
   assert.match(
     await page
       .locator('[data-preview="button"]')
@@ -137,7 +137,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
     () =>
       document
         .querySelector('[data-preview="button"]')
-        ?.getAttribute("data-theme") === "clean",
+        ?.getAttribute("data-theme") === "basic",
   );
   assert.equal(
     await page

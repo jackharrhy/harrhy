@@ -250,7 +250,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
         data-match-id={`${league.id}-match-${view === "match" ? matchDay : 3}`}
         mix={[
           themeRoot,
-          handle.props.theme === "sluggers" &&
+          handle.props.theme === "scorebook" &&
             css({
               backgroundImage:
                 "radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%), radial-gradient(circle, rgb(255 255 255 / 0.025) 40%, transparent 21%)",

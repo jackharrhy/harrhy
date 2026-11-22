@@ -50,7 +50,7 @@ export function createApp(
     const theme: ThemeName =
       candidate && Object.hasOwn(themes, candidate)
         ? (candidate as ThemeName)
-        : "clean";
+        : "basic";
     const entry = await assets.getScriptEntry("apps/ui/app/public/entry.ts");
     const stream = renderToStream(
       <html lang="en">
@@ -61,7 +61,7 @@ export function createApp(
           <link rel="stylesheet" href="/assets/ui/clank/fonts.css" />
           <title>@harrhy/ui workbench</title>
           <link rel="stylesheet" href="/assets/hui/fonts.css" />
-          {theme === "brutalist" && (
+          {theme === "newspaper" && (
             <link
               rel="preload"
               href="/assets/hui/fonts/ibm-plex-sans-latin.woff2"

@@ -10,7 +10,7 @@ it("exercises extracted parts, official Accordion/Menu and matching Explorer sou
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const visit = async (story: string) => {
-    await page.goto(`/explorer/${story}?theme=brutalist`);
+    await page.goto(`/explorer/${story}?theme=newspaper`);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );
