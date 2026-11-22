@@ -26,8 +26,6 @@ The design, the rule book for all of this, is [docs/design.md](docs/design.md).
 | `@earendil-works/chord/surfaces` | The client surfaces' server side: `webSurface` (base bundle, plugin scripts, the page) and `tuiSurface` (the terminal surface). | Node |
 | `@earendil-works/chord/web` | The web surface's browser side: `startPage` in the app's web entry, `followThemes`, `followLanguage`. | Browsers |
 | `@earendil-works/chord/react` | Optional React bindings: `HostProvider`, `useHold`, `useWatch`, `useRefState`, `useVariant`, `useRegistry`, `usePageState`, `useMessages`, `watchStore`. | Browsers |
-| `@earendil-works/chord/tui` | The terminal surface's sandbox side: `startTerminalRuntime` in the app's terminal entry, `BridgeTerminal`, `TerminalTheme`, `TuiScope`. | Node (sandboxed) |
-| `@earendil-works/chord/tui/launcher` | The terminal launcher, the trusted side of a terminal client: `startTerminal`, `requireSandboxNode`. | Node |
 | `@earendil-works/chord/context` | Explicit cancellation, telemetry, and invocation values: `BACKGROUND_CONTEXT`, `withCancel`, `withAbortSignal`, `withoutAbortSignal`, `withTelemetry`, `traceIn`, `withContextValue`, `awaitWithContext`. | Node and browsers |
 | `@earendil-works/chord/delta` | The transactional JSON tracker, structural diff, immutable apply, and the wire encoder/decoder for operation batches. | Node and browsers |
 | `@earendil-works/chord/json` | `JsonValue`, `JsonRepresentation`, `copyJson`, `isJsonValue`. | Node and browsers |
@@ -39,7 +37,7 @@ The design, the rule book for all of this, is [docs/design.md](docs/design.md).
 | `@earendil-works/chord/sqlite/cloudflare` | `DurableObjectSqliteDatabase` and the structural `DurableObjectSqliteStorage` binding type. | Cloudflare Durable Objects |
 | `@earendil-works/chord/sync` | Sync (experimental): a store's outbox commits uploaded to a remote into slots created once (`uploadSession`), applied on another copy (`pullSession`), folded into snapshots (`foldSession`); `FlushScheduler`; the remote and sync-state interfaces, and directory-backed ones over a `SyncFileSystem` for development and tests. | Node and browsers |
 
-`esbuild` (for `/plugins`, `/surfaces` and `/workers`), `ws` (for `/http` and `/tui/launcher`) and `react` (for `/react`) are optional peer dependencies, imported only there; `/app` uses all but `react`.
+`esbuild` (for `/plugins`, `/surfaces` and `/workers`), `ws` (for `/http`) and `react` (for `/react`) are optional peer dependencies, imported only there; `/app` uses all but `react`.
 
 ## Quick start
 

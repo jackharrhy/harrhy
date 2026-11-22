@@ -16,6 +16,7 @@ at that commit.
 | Artifacts and views | `63776fc1` | `plugins/artifacts`, `plugins/views`, `src/web/artifact-kinds.ts`, `src/web/view-kinds.ts`, `docs/artifacts.md`, `docs/views.md`, `docs/glyph-editor-port.md` |
 | Workspace panel | `b2834089` | `plugins/workspace/{Workspace.tsx,file.tsx,commands.tsx,web.tsx,tabs.ts,server.ts,fuzzy.ts}`, the workspace route and its per-device memory, `.workspace-*` styles |
 | PowerShell | `9041e2c9` | `plugins/powershell` |
+| Vendored TUI package | `9041e2c9` | `compat/packages/tui` (`@earendil-works/pi-tui`), `compat/packages/chord/src/tui`, `compat/packages/chord/src/node/tui`, the `/tui` and `/tui/launcher` Chord entry points |
 
 Paths are under `apps/pi/`.
 
@@ -96,9 +97,9 @@ Worth keeping in mind:
 - The `quiet-tools` plugin (one line per tool call), the per-visitor preferences served from `<data>/tui.json`, the
   `SentFiles` text preview of the session worker and the Settings row for the model cycling scope existed only for the
   terminal and went with it.
-- Still in the tree: the `@earendil-works/pi-tui` library (`compat/packages/tui`; `@` file completion ranks with its
-  `fuzzyMatch`), Chord's own `tui` modules, and the `enabledModels` setting with the `Models` contract's scope
-  members, which nothing reads now.
+- Still in the tree: the `enabledModels` setting with the `Models` contract's scope members, which nothing reads now,
+  and Chord's server-side `tuiSurface`. The pi-tui library and Chord's terminal modules went later; see Vendored TUI
+  package.
 - Left on a machine that ran it, read by nothing now: the launcher's `~/.pi/p2-tui/` (preferences and saved sign-in
   cookies) and `<data>/tui.json`.
 
@@ -234,6 +235,22 @@ Left on a machine that ran it, read by nothing now: the browser's `pi-review:*` 
 The `powershell` plugin offered Durable's deferred `powershell` tool to each conversation (the main agent and every subagent) whose location's machine ran Windows and that had the `bash` tool. It decided from the local platform or the remote environment's OS report, asked an unreachable remote again every 30 s, and showed calls in the chat as a command block.
 
 Kept: the vendored `createPowerShellTool` in `compat/packages/durable`, which shares code with `bash` and is a public export of that package (nothing in Pi uses it now), and the SSH environment's PowerShell probing of Windows hosts, which is unrelated.
+
+## Vendored TUI package
+
+`@earendil-works/pi-tui` (`compat/packages/tui`, version 1.5.2, about 20,000 lines) was pi's terminal UI library:
+differential rendering, an editor, markdown and image components, and native clipboard helpers. It was kept after the
+Terminal UI went because `@` file completion used its `fuzzyMatch`. Last commit with it: `9041e2c9`.
+
+- Chord's terminal sandbox (`@earendil-works/chord/tui`, `src/tui`) and launcher (`@earendil-works/chord/tui/launcher`,
+  `src/node/tui`) went with it. Nothing imported them; they were the terminal client's two halves.
+- `fuzzyMatch` is now `plugins/file-index/fuzzy.ts`, copied with its attribution (MIT).
+- The `@earendil-works/pi-tui` host package for plugin workers and the compat workspace dependency are gone, so a
+  plugin importing it no longer builds.
+- Kept: Chord's `tuiSurface` and the `tui` option of `startServer`, which serve a terminal client's bundle. Nothing
+  in Pi uses them.
+
+Worth bringing back: nothing in the library. A new terminal client would start from a current pi-tui release.
 
 ## Docs removed with them
 

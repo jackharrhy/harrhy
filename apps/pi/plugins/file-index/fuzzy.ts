@@ -1,3 +1,6 @@
+// Copied from @earendil-works/pi-tui 1.5.2 (packages/tui/src/fuzzy.ts, MIT, (c) 2025 Mario Zechner; see ../../LICENSE),
+// without `fuzzyFilter`, which p2 does not use.
+
 /**
  * Fuzzy matching utilities.
  * Matches if all query characters appear in order (not necessarily consecutive).
@@ -112,48 +115,4 @@ export function fuzzyMatch(query: string, text: string): FuzzyMatch {
 	}
 
 	return { matches: true, score: swappedMatch.score + 5 };
-}
-
-/**
- * Filter and sort items by fuzzy match quality (best matches first).
- * Supports whitespace- and slash-separated tokens: all tokens must match.
- */
-export function fuzzyFilter<T>(items: T[], query: string, getText: (item: T) => string): T[] {
-	if (!query.trim()) {
-		return items;
-	}
-
-	const tokens = query
-		.trim()
-		.split(/[\s/]+/)
-		.filter((t) => t.length > 0);
-
-	if (tokens.length === 0) {
-		return items;
-	}
-
-	const results: { item: T; totalScore: number }[] = [];
-
-	for (const item of items) {
-		const text = getText(item);
-		let totalScore = 0;
-		let allMatch = true;
-
-		for (const token of tokens) {
-			const match = fuzzyMatch(token, text);
-			if (match.matches) {
-				totalScore += match.score;
-			} else {
-				allMatch = false;
-				break;
-			}
-		}
-
-		if (allMatch) {
-			results.push({ item, totalScore });
-		}
-	}
-
-	results.sort((a, b) => a.totalScore - b.totalScore);
-	return results.map((r) => r.item);
 }
