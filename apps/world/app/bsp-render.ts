@@ -16,6 +16,9 @@ import { ViewCamera } from "@harrhy/pool/presentation";
 import { createTableLayer } from "./pool-overlay";
 import { updateTableCamera } from "./table-camera";
 
+import { UNITS_PER_METRE } from "../shared/bsp-collision";
+
+const farClip = 160;
 const up = new THREE.Vector3(0, 1, 0);
 
 type FloorPoint = { x: number; z: number };
@@ -69,6 +72,7 @@ export async function createBspView(
       canvas,
       source: { bsp: bytes },
       overlayAtlas: atlas,
+      fog: { start: 35 * UNITS_PER_METRE, end: 105 * UNITS_PER_METRE },
     });
   } finally {
     atlas.close();
@@ -84,24 +88,19 @@ export async function createBspView(
     scene.dispose();
     throw error;
   }
-  const camera = new THREE.PerspectiveCamera(70, 1, 0.04, 60);
+  const camera = new THREE.PerspectiveCamera(70, 1, 0.04, farClip);
   camera.coordinateSystem = THREE.WebGPUCoordinateSystem;
-  const tableCamera = new THREE.PerspectiveCamera(43, 1, 0.04, 60);
+  const tableCamera = new THREE.PerspectiveCamera(43, 1, 0.04, farClip);
   tableCamera.coordinateSystem = THREE.WebGPUCoordinateSystem;
   let activeCamera = camera;
-  const transitionCamera = new THREE.PerspectiveCamera(43, 1, 0.04, 60);
+  const transitionCamera = new THREE.PerspectiveCamera(43, 1, 0.04, farClip);
   transitionCamera.coordinateSystem = THREE.WebGPUCoordinateSystem;
   const rig = new ViewCamera(tableCamera);
   let transition = 0;
   let lastDraw = 0;
   let tableView: PoolTable | undefined;
   let tables: readonly (PoolState | ChessState)[] = [];
-  const ray = new THREE.Raycaster(
-    undefined,
-    undefined,
-    camera.near,
-    camera.far,
-  );
+  const ray = new THREE.Raycaster(undefined, undefined, camera.near, 60);
   const projectionView = new THREE.Matrix4();
   let floor: { point: THREE.Vector3; normal: THREE.Vector3 } | undefined;
   let drewFrame = false;

@@ -2,7 +2,7 @@
 
 World is a private multiplayer walk-through of the authored GoldSrc hall. One Celld process serves the Remix 3 page, native static assets and same-origin game traffic. `WorldRoomCell` owns player simulation. The browser uses Worldview’s WebGPU renderer, Gurgur’s directional sprites and a Wood HUD built with `@harrhy/ui`.
 
-Right-drag to orbit your avatar (drag on touch), click or tap the floor to walk, and scroll all the way in for first person. Click to capture the mouse, use WASD, and hold Space to auto-bhop. Scroll out to return to third person. The west wall has a surf ramp. A WebGPU-capable browser is required.
+Right-drag to orbit your avatar (drag on touch), click or tap the floor to walk, and scroll all the way in for first person. Click to capture the mouse, use WASD, and hold Space to auto-bhop. Scroll out to return to third person. Walk straight from spawn to enter the [Lumen surf course](content/LUMEN.md); press **R** to return to spawn. A WebGPU-capable browser is required.
 Click either table to walk up and sit. Moss joins automatically at the west table; the east table is human-only. Right-drag orbits the shared Pool camera; middle-drag pans and the wheel zooms. Pull back and release to shoot, or use arrow keys and hold Space. A disconnected seat stays reserved for 30 seconds in the same tab. Leave the table to resume walking.
 
 Click a chess table to sit. The west table is human-only; the east table automatically seats a random-move bot. Click a piece and then a highlighted square. Chess shares the same table camera and seat recovery as pool.

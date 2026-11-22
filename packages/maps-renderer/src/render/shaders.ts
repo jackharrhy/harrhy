@@ -93,6 +93,25 @@ function sampleDiffuse(uv: d.v2f): d.v4f {
   );
 }
 
+function fogAmount(position: d.v3f): number {
+  "use gpu";
+  const range = sceneLayout.$.scene.fogRange;
+  if (range.y <= range.x) return 0;
+  return std.smoothstep(
+    range.x,
+    range.y,
+    std.distance(position, sceneLayout.$.scene.eyeTime.xyz),
+  );
+}
+
+function applyFog(position: d.v3f, color: d.v4f): d.v4f {
+  "use gpu";
+  return d.vec4f(
+    std.mix(color.rgb, sceneLayout.$.scene.fogColor, fogAmount(position)),
+    color.a,
+  );
+}
+
 function lightmapped(input: FragmentInput): d.v4f {
   "use gpu";
   clipOverview(input.worldPosition);
@@ -123,21 +142,21 @@ function lightmapped(input: FragmentInput): d.v4f {
 
 export function opaqueFragment(input: FragmentInput): d.v4f {
   "use gpu";
-  return lightmapped(input);
+  return applyFog(input.worldPosition, lightmapped(input));
 }
 
 export function alphaFragment(input: FragmentInput): d.v4f {
   "use gpu";
   const color = lightmapped(input);
   if (color.a <= 0.25) std.discard();
-  return color;
+  return applyFog(input.worldPosition, color);
 }
 
 export function unlitFragment(input: FragmentInput): d.v4f {
   "use gpu";
   clipOverview(input.worldPosition);
   const diffuse = sampleDiffuse(input.diffuseUv);
-  return d.vec4f(diffuse.rgb, diffuse.a);
+  return applyFog(input.worldPosition, diffuse);
 }
 
 export function unlitAlphaFragment(input: FragmentInput): d.v4f {
@@ -151,23 +170,29 @@ export function translucentTextureFragment(input: FragmentInput): d.v4f {
   "use gpu";
   clipOverview(input.worldPosition);
   const diffuse = sampleDiffuse(input.diffuseUv);
-  return d.vec4f(
-    diffuse.rgb,
-    diffuse.a * materialLayout.$.material.renderColor.w,
+  return applyFog(
+    input.worldPosition,
+    d.vec4f(diffuse.rgb, diffuse.a * materialLayout.$.material.renderColor.w),
   );
 }
 
 export function translucentColorFragment(input: FragmentInput): d.v4f {
   "use gpu";
   clipOverview(input.worldPosition);
-  return materialLayout.$.material.renderColor;
+  return applyFog(input.worldPosition, materialLayout.$.material.renderColor);
 }
 
 export function additiveFragment(input: FragmentInput): d.v4f {
   "use gpu";
   clipOverview(input.worldPosition);
   const diffuse = sampleDiffuse(input.diffuseUv);
-  return d.vec4f(diffuse.rgb.mul(materialLayout.$.material.renderColor.w), 1);
+  return d.vec4f(
+    diffuse.rgb.mul(
+      materialLayout.$.material.renderColor.w *
+        (1 - fogAmount(input.worldPosition)),
+    ),
+    1,
+  );
 }
 
 export function spriteFragment(input: FragmentInput): d.v4f {
@@ -221,9 +246,9 @@ export function waterFragment(input: FragmentInput): d.v4f {
       materialLayout.$.textureSampler,
       uv.div(64),
     );
-    return d.vec4f(
-      diffuse.rgb,
-      diffuse.a * materialLayout.$.material.renderColor.w,
+    return applyFog(
+      input.worldPosition,
+      d.vec4f(diffuse.rgb, diffuse.a * materialLayout.$.material.renderColor.w),
     );
   } else {
     uv = uv.mul(2.75);
@@ -233,9 +258,9 @@ export function waterFragment(input: FragmentInput): d.v4f {
     );
   }
   const diffuse = sampleDiffuse(uv);
-  return d.vec4f(
-    diffuse.rgb,
-    diffuse.a * materialLayout.$.material.renderColor.w,
+  return applyFog(
+    input.worldPosition,
+    d.vec4f(diffuse.rgb, diffuse.a * materialLayout.$.material.renderColor.w),
   );
 }
 

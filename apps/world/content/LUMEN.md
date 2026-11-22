@@ -1,0 +1,9 @@
+# Lumen surf course
+
+[Lumen (`surf_lumen`)](https://github.com/yassinsolim/WebStrafe/tree/21b66d9cf38d1872566aebed89ef5b9692639e11/public/maps/surf_lumen) is an original WebStrafe Team map. The [upstream map documentation](https://github.com/yassinsolim/WebStrafe/blob/21b66d9cf38d1872566aebed89ef5b9692639e11/docs/assets/maps.md) points to `tools/blender/maps/build_surf_lumen.py` and `layouts/surf_lumen.json`. The [map manifest](https://github.com/yassinsolim/WebStrafe/blob/21b66d9cf38d1872566aebed89ef5b9692639e11/public/maps/manifest.json) identifies the layout and procedural textures as MIT-licensed. See the [upstream copyright and license](LUMEN-LICENSE).
+
+This GoldSrc adaptation reconstructs the six original convex ramps and the start and finish collision brushes from `collision.glb`. The rear start rail is split to connect to the Hall. Original ramp textures from `scene.glb` were decoded to RGB, quantized to 256-color WAD3 miptextures and mapped using the source planar UVs. The adaptation also uses original limestone, gold, underside and water textures. The sealing enclosure, Hall connector and baked lighting are new. Decorative scene meshes and WebStrafe's lightmap, lighting effects, course timer and trigger behavior are not included.
+
+Source glTF coordinates map to BSP as `(x, y, z) = (738 − 12 × sourceZ, −12 × sourceX, 12 × sourceY)`. The Hall spawn and all four tables are unchanged. The original Lumen start marker is at World `(0, 0, −11.1)`; walk straight from Hall spawn with yaw zero. The catch floor is at World `y = −37`; returning from it requires runtime respawn.
+
+Rebuild with [`build-hall.sh`](build-hall.sh). Local verification covered a sealed BSP30 bake with visibility and RGB lightmaps, walking through the connector in both directions, and standing-hull traces on both faces of all six ramps and the catch floor.

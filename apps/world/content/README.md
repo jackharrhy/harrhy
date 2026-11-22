@@ -1,6 +1,7 @@
 # Editing the Hall
 
 `hall.map` is the editable GoldSrc Valve 220 source. It contains the Pool hall envelope, paneling, bar, three stools and the west surf ramp, with a solid ceiling added at the original wall tops to seal the map. It also defines the default spawn and eleven baked point lights. `hall.wad` is the editor/build material library; the six used miptextures are embedded in `hall.bsp`. Serve only the compiled BSP at `/maps/hall.bsp`; no external WAD or lightmap is needed.
+Walk straight from spawn into [Lumen, WebStrafe’s six-ramp surf course](LUMEN.md). Press **R** to return to the hall spawn.
 
 ## Worldview
 

@@ -80,6 +80,7 @@ export default {
     }
     if (
       pathname === "/world.css" ||
+      pathname === "/lumen-license.txt" ||
       /^\/(?:assets|textures|billboard|audio)\/[a-zA-Z0-9._-]+$/.test(pathname)
     ) {
       const asset = await env.ASSETS.fetch(request);
@@ -291,6 +292,20 @@ export class WorldRoomCell extends DurableObject<Env> {
     try {
       value = JSON.parse(payload);
     } catch {
+      return;
+    }
+    if (
+      value &&
+      typeof value === "object" &&
+      "type" in value &&
+      value.type === "respawn"
+    ) {
+      if ([...this.tables.values()].some((table) => table.hasSeat(id))) return;
+      const pose = room.respawn(id);
+      if (pose) {
+        for (const { socket: peerSocket } of this.peers.values())
+          this.send(peerSocket, { type: "respawn", pose });
+      }
       return;
     }
     const input = validateInput(value);

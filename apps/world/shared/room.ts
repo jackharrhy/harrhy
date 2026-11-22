@@ -31,6 +31,24 @@ export async function createRoom(collision: BspCollision) {
   let tick = 0;
   let disposed = false;
 
+  function spawnPlayer(id: string, ack: number) {
+    return motionState(
+      {
+        id,
+        ...spawn,
+        yaw: 0,
+        pitch: 0,
+        ack,
+        velocityX: 0,
+        velocityZ: 0,
+        verticalVelocity: 0,
+        jumpHeld: false,
+        stepCooldown: 0,
+      },
+      halfHeight,
+    );
+  }
+
   return {
     join(id: string): Pose {
       if (disposed) throw new Error("Room is disposed");
@@ -39,22 +57,17 @@ export async function createRoom(collision: BspCollision) {
         return motionPose(Player[existing]!, halfHeight);
       const eid = addEntity(ecs);
       addComponent(ecs, eid, Player);
-      Player[eid] = motionState(
-        {
-          id,
-          ...spawn,
-          yaw: 0,
-          pitch: 0,
-          ack: 0,
-          velocityX: 0,
-          velocityZ: 0,
-          verticalVelocity: 0,
-          jumpHeld: false,
-          stepCooldown: 0,
-        },
-        halfHeight,
-      );
+      Player[eid] = spawnPlayer(id, 0);
       ids.set(id, eid);
+      return motionPose(Player[eid]!, halfHeight);
+    },
+    respawn(id: string): Pose | undefined {
+      const eid = ids.get(id);
+      if (eid === undefined) return;
+      const player = Player[eid]!;
+      // Acknowledge discarded commands so they cannot be replayed after teleporting.
+      const ack = player.pending?.at(-1)?.seq ?? player.ack;
+      Player[eid] = spawnPlayer(id, ack);
       return motionPose(Player[eid]!, halfHeight);
     },
     leave(id: string): boolean {

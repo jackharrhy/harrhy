@@ -120,6 +120,43 @@ test("room accepts only newer inputs, advances once per tick, and isolates playe
   }
 });
 
+test("respawn restores the hall spawn and discards queued motion without rewinding ack", async () => {
+  const room = await createRoom(await loadBspCollision(floorBsp()));
+  try {
+    const spawn = room.join("a");
+    room.join("b");
+    room.input("a", command(1, { forward: 1, jump: true, yaw: 1, pitch: 0.2 }));
+    room.input("b", command(1, { forward: 1 }));
+    room.step();
+    const [moving, other] = room.snapshot().players;
+    assert.ok(moving.verticalVelocity > 0);
+    assert.notEqual(moving.z, spawn.z);
+    assert.equal(room.input("a", command(2, { forward: 1, jump: true })), true);
+
+    assert.equal(room.respawn("missing"), undefined);
+    assert.deepEqual(room.respawn("a"), { ...spawn, ack: 2 });
+    assert.deepEqual(room.snapshot().players, [{ ...spawn, ack: 2 }, other]);
+    assert.equal(room.input("a", command(2)), false);
+    room.step();
+    const idle = room.snapshot().players[0];
+    assert.partialDeepStrictEqual(idle, {
+      x: spawn.x,
+      y: spawn.y,
+      z: spawn.z,
+      ack: 2,
+    });
+    assert.equal(
+      Math.hypot(idle.velocityX, idle.velocityZ, idle.verticalVelocity),
+      0,
+    );
+    assert.equal(room.input("a", command(3, { forward: 1 })), true);
+    room.step();
+    assert.notEqual(room.snapshot().players[0].z, spawn.z);
+  } finally {
+    room.dispose();
+  }
+});
+
 test("Authority and predictor agree on yaw-relative motion, jump, landing and wall collision", async () => {
   const collision = await authoredCollision();
   const room = await createRoom(collision);
