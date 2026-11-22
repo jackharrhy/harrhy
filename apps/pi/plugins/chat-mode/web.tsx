@@ -1,6 +1,6 @@
 // Chat mode in the browser: the composer's "Chat" chip, and chat entries in the transcript. While chat mode is on, a
 // second chip shows how the agent is mentioned (`@pi`); the owner taps it to rename the agent for this conversation
-// (what people type after `@`, and what voice mode listens for).
+// (what people type after `@`).
 
 import { BACKGROUND_CONTEXT, contribute, defineFacet } from "@p2/app/v1";
 import {
@@ -64,8 +64,7 @@ function NameSheet({ name, onSave, onClose }: { name: string; onSave: (name: str
 					/>
 				</label>
 				<p className="muted small">
-					People mention it as {mentionToken(valid ? draft.trim() : name)}, and in voice mode its name anywhere in
-					what they say counts. One word: letters, digits, - and _.
+					People mention it as {mentionToken(valid ? draft.trim() : name)}. One word: letters, digits, - and _.
 				</p>
 				<div className="inline-form">
 					<button type="submit" className="button" disabled={!valid || draft.trim() === name}>

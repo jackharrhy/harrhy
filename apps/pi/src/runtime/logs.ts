@@ -63,7 +63,6 @@ export class LogRedactor {
 				"settings.json",
 				"envs.json",
 				"sandbox-secrets.json",
-				"discord.json",
 				"owner-key",
 				"owner-token.txt",
 			]) {

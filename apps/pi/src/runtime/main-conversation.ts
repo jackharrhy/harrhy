@@ -61,7 +61,7 @@ export async function isTopLevel(read: DocumentReader, id: ConversationId, conte
 }
 
 /**
- * The conversation holding an agent's own documents (its artifacts list, voice and chat mode): conversation 1 for the
+ * The conversation holding an agent's own documents (its artifacts list and chat mode): conversation 1 for the
  * main agent, whichever top-level conversation it works in, so a `/tree` switch keeps them; a subagent's or one-shot
  * agent's own conversation otherwise. TODO: these could become session-scoped documents keyed per agent (a migration).
  */

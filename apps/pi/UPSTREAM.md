@@ -7,7 +7,7 @@ Pi is first-class Harrhy source, with upstream file names, formatting, import sp
 <!-- prettier-ignore -->
 | Pi source | Harrhy source |
 | --- | --- |
-| `apps/p2/{src,plugins,scripts,public,voice-server}/**` | `apps/pi/{src,plugins,scripts,public,voice-server}/**` |
+| `apps/p2/{src,plugins,scripts,public}/**` | `apps/pi/{src,plugins,scripts,public}/**` |
 | `packages/X/**` (retained compatibility packages) | `apps/pi/compat/packages/X/**` |
 | App qualification tests | `apps/pi/__tests__/p2/**` |
 | Root license | `apps/pi/LICENSE` |
