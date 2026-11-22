@@ -62,7 +62,8 @@ async function revision() {
   const files = [...sourceFiles];
   async function collect(dir) {
     for (const entry of await readdir(dir, { withFileTypes: true })) {
-      if (entry.name === "__tests__") continue;
+      if (!entry.isDirectory() && !entry.isFile()) continue;
+      if (entry.name === "__tests__" || entry.name === "node_modules") continue;
       const path = resolve(dir, entry.name);
       if (entry.isDirectory()) await collect(path);
       else if (!path.endsWith(".md")) files.push(path);
@@ -227,7 +228,13 @@ let timer;
 // Watch directories, not file inodes: editors commonly save via atomic rename.
 const watchers = [root, sourceDirs[1]].map((path) =>
   watch(path, { recursive: true }, (_event, name) => {
-    if (name?.includes("__tests__") || name?.endsWith(".md")) return;
+    if (
+      name
+        ?.split("/")
+        .some((part) => part === "node_modules" || part === "__tests__") ||
+      name?.endsWith(".md")
+    )
+      return;
     if (
       path === root &&
       name &&
