@@ -65,11 +65,20 @@ it(
 		const sender = await holdIn(owner, CitationSend, { session: source }, "owner");
 		await assert.rejects(
 			sender.send({ ...args, cite: { ...cite, entryId: claimed.id } }, TEST),
-			/Citation unavailable/,
+			/ordinary owner-authored input/,
 		);
+		await assert.rejects(
+			sender.send({ ...args, cite: { ...cite, entryId: Number.MAX_SAFE_INTEGER } }, TEST),
+			/entry was not found in the source conversation/,
+		);
+		await assert.rejects(sender.send({ ...args, to: source }, TEST), /Choose a different session/);
+		const sourceSharing = await holdIn(owner, Sharing, { session: source }, "owner");
+		await sourceSharing.share({ email: "citation@example.com", mode: "view" }, TEST);
+		await assert.rejects(sender.send(args, TEST), /source session has a share link or active guest grant/);
+		await sourceSharing.disable({}, TEST);
 		const sharing = await holdIn(owner, Sharing, { session: to }, "owner");
 		await sharing.link({ mode: "view" }, TEST);
-		await assert.rejects(sender.send(args, TEST), /Citation unavailable/);
+		await assert.rejects(sender.send(args, TEST), /destination session has a share link or active guest grant/);
 		await sharing.disable({}, TEST);
 		const [down, up] = memoryLinkPair();
 		const lost = Promise.withResolvers<void>();

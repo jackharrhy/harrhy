@@ -222,19 +222,17 @@ export default defineFacet((host) => {
 							cite.session !== worker().init.values.session.id ||
 							cite.conversation !== (await mainConversation(durable, ctx))
 						)
-							return null;
+							throw forbidden("Citation source is not the current root conversation");
 						return durable.commit(async (tx) => {
 							const entry = await tx.entry(cite.entryId as EntryId);
-							if (entry?.kind !== INPUT_ENTRY || entry.conversationId !== cite.conversation) return null;
-							const data = messageData(entry.data);
-							if (
-								data?.author.kind !== "owner" ||
-								data.author.id !== "owner" ||
-								data.attachments.length ||
-								!data.text.trim() ||
-								Buffer.byteLength(data.text) > 8192
-							)
-								return null;
+							if (!entry || entry.conversationId !== cite.conversation)
+								throw forbidden("Citation entry was not found in the source conversation");
+							const data = entry.kind === INPUT_ENTRY ? messageData(entry.data) : undefined;
+							if (data?.author.kind !== "owner" || data.author.id !== "owner")
+								throw forbidden("Citation entry must be an ordinary owner-authored input");
+							if (data.attachments.length) throw forbidden("Citation entry must not have attachments");
+							if (!data.text.trim()) throw forbidden("Citation entry must contain non-blank text");
+							if (Buffer.byteLength(data.text) > 8192) throw forbidden("Citation entry exceeds 8192 UTF-8 bytes");
 							return { text: data.text, name: data.author.name };
 						}, ctx);
 					}),
@@ -242,11 +240,11 @@ export default defineFacet((host) => {
 					worker().liveness.call(async () => {
 						const init = worker().init;
 						if (init.generation !== generation || init.values.session.id !== citation.destination)
-							throw forbidden("Citation unavailable");
+							throw forbidden("Citation destination worker changed; admission could not be confirmed");
 						for (const gate of gates.value.values()) await gate(ctx);
 						const durable = harness().durable;
 						const main = await durable.conversation(await mainConversation(durable, ctx), ctx);
-						if (!main || main.id !== 1) throw forbidden("Citation unavailable");
+						if (!main || main.id !== 1) throw forbidden("Citation destination is not on its root conversation");
 						const requestId = `citation:${citation.id}`;
 						return main.commit(async (tx) => {
 							const existing = await tx.submissionByRequest(main.id, requestId);

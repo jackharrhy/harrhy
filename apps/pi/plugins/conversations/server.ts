@@ -11,6 +11,8 @@ import {
 	LOCAL,
 	nativeOf,
 	signalOf,
+	until,
+	withAbortSignal,
 	withoutAbortSignal,
 } from "@p2/app/v1";
 import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
@@ -136,13 +138,25 @@ export default defineFacet((host) => {
 
 		return {
 			attach: async ({ session, cite, to, message, requestId }, ctx) => {
-				if (cite.session !== session || session === to || !message.trim()) throw forbidden("Citation unavailable");
+				if (cite.session !== session) throw forbidden("Citation source does not match the open session");
+				if (session === to) throw forbidden("Choose a different session for the citation destination");
+				if (!message.trim()) throw forbidden("Citation send requires a non-blank message");
 				const source = await holdPeer(session, ctx);
 				const quote = await source.quote(cite, ctx);
 				if (!quote) throw forbidden("Citation unavailable");
 				const destination = await holdPeer(to, ctx);
-				const worker = hosts.workers.value[to];
-				if (!worker?.running || !worker.pid) throw forbidden("Citation unavailable");
+				// Holding the remote reference starts the worker but does not await its published PID.
+				const timeout = AbortSignal.timeout(10_000);
+				const states = await until(
+					hosts.workers,
+					(workers) => !!(workers[to]?.running && workers[to]?.pid) || !!workers[to]?.error,
+					withAbortSignal(AbortSignal.any([signalOf(ctx), timeout]), ctx),
+				).catch((error: unknown) => {
+					if (signalOf(ctx).aborted || !timeout.aborted) throw error;
+					throw forbidden("Citation destination worker is not ready; retry shortly");
+				});
+				const worker = states[to];
+				if (!worker?.running || !worker.pid) throw forbidden("Citation destination worker is not ready; retry shortly");
 				const { generation, pid } = worker;
 				// Complete the fenced admission independently of the owner's connection. If the
 				// worker RPC fails ambiguously, retain both reservations until that PID exits.
@@ -154,18 +168,20 @@ export default defineFacet((host) => {
 					{ generation, pid },
 					token,
 					async () => {
-						for (const id of sessions) {
-							if (
-								(await catalog.get({ id }, scope)).archivedAt !== null ||
-								(await shares.isShared({ session: id }, scope))
-							)
-								return false;
+						for (const [id, side] of [
+							[session, "source"],
+							[to, "destination"],
+						] as const) {
+							if ((await catalog.get({ id }, scope)).archivedAt !== null)
+								throw forbidden(`Citation ${side} session is archived`);
+							if (await shares.isShared({ session: id }, scope))
+								throw forbidden(`Citation ${side} session has a share link or active guest grant`);
 						}
 						return true;
 					},
 					scope,
 				);
-				if (!reserved) throw forbidden("Citation unavailable");
+				if (!reserved) throw forbidden("Citation admission is reserved by another operation; retry shortly");
 				const id = createHash("sha256")
 					.update(JSON.stringify([session, to, requestId]))
 					.digest("hex");
