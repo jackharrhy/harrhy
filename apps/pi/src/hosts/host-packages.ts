@@ -22,7 +22,6 @@ import * as piMcp from "@earendil-works/pi-mcp";
 import * as piMcpOauth from "@earendil-works/pi-mcp/oauth";
 import * as piSchema from "@earendil-works/pi-schema";
 import * as schemaFormats from "@earendil-works/pi-schema/formats";
-import * as piTui from "@earendil-works/pi-tui";
 import * as ws from "ws";
 import * as yaml from "yaml";
 import * as api from "../api/v1/index.ts";
@@ -56,14 +55,12 @@ export const SHARED_PACKAGES = {
 };
 
 /**
- * The host packages of worker facets (pi-tui too: file completion ranks as pi-tui's autocomplete does; Durable's image
- * fitting, with the worker's processor `WorkerParts.images`).
+ * The host packages of worker facets (Durable's image fitting, with the worker's processor `WorkerParts.images`).
  */
 export const WORKER_PACKAGES = {
 	"@p2/app/v1": api,
 	"@p2/app/v1/node": apiNode,
 	"@p2/app/v1/worker": apiWorker,
 	"@earendil-works/pi-durable/images/fit": durableImagesFit,
-	"@earendil-works/pi-tui": piTui,
 	...SHARED_PACKAGES,
 };

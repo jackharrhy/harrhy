@@ -1,7 +1,7 @@
-// Ranking for `@` completion, after pi-tui's autocomplete (`scoreEntry` over fd's substring matches, then depth,
-// length and name). p2 has no fd query, so entries that match only fuzzily (pi-tui fuzzy.ts) rank below every
+// Ranking for `@` completion, after pi's autocomplete (`scoreEntry` over fd's substring matches, then depth,
+// length and name). p2 has no fd query, so entries that match only fuzzily (fuzzy.ts, copied from pi-tui) rank below every
 // substring match instead of being dropped. Pure; shared by the worker index and tests.
-import { fuzzyMatch } from "@earendil-works/pi-tui";
+import { fuzzyMatch } from "./fuzzy.ts";
 import type { FileItem } from "@p2/app/v1";
 
 const basename = (path: string): string => path.slice(path.lastIndexOf("/") + 1);

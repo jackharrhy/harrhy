@@ -137,8 +137,6 @@
         "./compat/packages/coding-agent/src/*"
       ],
       "typebox": ["./compat/node_modules/typebox"],
-      "@earendil-works/pi-tui": ["./compat/packages/tui/src/index.ts"],
-      "@earendil-works/pi-tui/*": ["./compat/packages/tui/src/*"],
       "@earendil-works/pi-agent-old": [
         "./compat/packages/agent-old/src/index.ts"
       ],
