@@ -14,7 +14,7 @@ import type { WalkabilityCutawayGrid } from "../walkability/index.js";
 import type { RenderWorldAssets } from "./assets.js";
 import { createGpuBuffer } from "./gpu-buffer.js";
 import { SceneUniform, sceneLayout, worldVertexLayout } from "./schemas.js";
-import type { CameraState, TextureFiltering } from "./types.js";
+import type { CameraState, DistanceFog, TextureFiltering } from "./types.js";
 import { WorldMaterialResources } from "./world-material-resources.js";
 import {
   createWorldPipelines,
@@ -23,6 +23,8 @@ import {
 } from "./world-pipelines.js";
 
 export interface SceneFrameOptions {
+  readonly fog?: DistanceFog;
+  readonly clearColor: readonly [number, number, number, number];
   readonly fullbright: boolean;
   readonly zMin: number;
   readonly zMax: number;
@@ -94,6 +96,8 @@ function createWorldResourceParts(
     const sceneUniform = root.createUniform(SceneUniform, {
       projectionView: new Float32Array(16),
       eyeTime: [0, 0, 0, 0],
+      fogRange: [0, 0],
+      fogColor: [0, 0, 0],
       frameOptions: [0, 0, 0, 0],
       cutawayTransform: [0, 0, 0, 0],
       cutawayOptions: [0, 0, 0, 0],
@@ -201,6 +205,12 @@ export class WorldRenderResources {
         camera.position[1],
         camera.position[2],
         timeSeconds,
+      ],
+      fogRange: options.fog ? [options.fog.start, options.fog.end] : [0, 0],
+      fogColor: [
+        options.clearColor[0],
+        options.clearColor[1],
+        options.clearColor[2],
       ],
       frameOptions: [
         options.zMin,

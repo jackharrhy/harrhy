@@ -13,6 +13,8 @@ export const worldVertexLayout = tgpu.vertexLayout((count) =>
 export const SceneUniform = d.struct({
   projectionView: d.mat4x4f,
   eyeTime: d.vec4f,
+  fogRange: d.vec2f,
+  fogColor: d.vec3f,
   frameOptions: d.vec4f,
   cutawayTransform: d.vec4f,
   cutawayOptions: d.vec4f,

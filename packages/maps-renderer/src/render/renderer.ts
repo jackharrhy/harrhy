@@ -13,7 +13,7 @@ import type {
 import { TypeGpuWalkabilityRenderer } from "./walkability-renderer.js";
 import type { RenderWorldAssets } from "./assets.js";
 import { TypeGpuSpriteRenderer } from "./sprite-renderer.js";
-import type { CameraState, TextureFiltering } from "./types.js";
+import type { CameraState, DistanceFog, TextureFiltering } from "./types.js";
 import {
   createWorldBatchCenters,
   createWorldFramePlan,
@@ -37,7 +37,6 @@ interface FrameOptions extends SceneFrameOptions {
   readonly includeSky: boolean;
   readonly includeSprites: boolean;
   readonly sceneGroup: TgpuBindGroup;
-  readonly clearColor: readonly [number, number, number, number];
   readonly drawOverlay?: (pass: GPURenderPassEncoder) => void;
 }
 
@@ -109,6 +108,7 @@ export class TypeGpuWorldRenderer {
     private readonly loaded: RenderWorldAssets,
     filtering: TextureFiltering,
     private readonly clearColor: readonly [number, number, number, number],
+    private readonly fog?: DistanceFog,
   ) {
     this.root = root;
     this.device = root.device;
@@ -166,6 +166,7 @@ export class TypeGpuWorldRenderer {
       cutaway: null,
       sceneGroup: this.resources.sceneGroup,
       clearColor: this.clearColor,
+      ...(this.fog && { fog: this.fog }),
       ...(drawOverlay && { drawOverlay }),
     });
     this.device.queue.submit([encoder.finish()]);

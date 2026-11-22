@@ -54,6 +54,7 @@ export type ServerMessage =
   | { type: "joined"; id: string }
   | { type: "left"; id: string }
   | { type: "roster"; ids: string[] }
+  | { type: "respawn"; pose: Pose }
   | ({ type: "motion" } & Snapshot);
 
 export function parseInput(raw: string): InputCommand | null {
