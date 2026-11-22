@@ -1,7 +1,7 @@
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { PiLogo, useObject, useOwner, useReadable } from "@p2/app/v1/web";
 import { type CSSProperties, useEffect, useId, useState } from "react";
-import { ThemeBranding } from "./theme-contract.ts";
+import { MAX_NAME_LENGTH, ThemeBranding } from "./theme-contract.ts";
 import "./theme.css";
 
 export function useBaseTint(owner: boolean) {
@@ -17,6 +17,27 @@ export function useBaseTint(owner: boolean) {
 			root.style.removeProperty("--pi-base-hue");
 		};
 	}, [owner, tint]);
+	const name = useReadable(branding?.name);
+	const logo = useReadable(branding?.logo);
+	useEffect(() => {
+		if (!owner || !name) return;
+		const previous = document.title;
+		document.title = name;
+		return () => {
+			document.title = previous;
+		};
+	}, [owner, name]);
+	useEffect(() => {
+		const link = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+		if (!owner || !logo || !link) return;
+		const { href, type } = link;
+		link.href = logo;
+		link.type = "image/png";
+		return () => {
+			link.href = href;
+			link.type = type;
+		};
+	}, [owner, logo]);
 }
 
 function BrandImage({ logo, compact = false }: { logo: string; compact?: boolean }) {
@@ -75,6 +96,9 @@ function OwnerThemeFields() {
 	const branding = useObject(ThemeBranding, {});
 	const tint = useReadable(branding?.tint);
 	const logo = useReadable(branding?.logo);
+	const name = useReadable(branding?.name);
+	const [draftName, setDraftName] = useState<string>();
+	const nameHelp = useId();
 	const [pick, setPick] = useState<string>();
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState("");
@@ -93,7 +117,7 @@ function OwnerThemeFields() {
 			setBusy(false);
 		}
 	};
-	if (!branding || tint === undefined || logo === undefined) return <output>Loading theme…</output>;
+	if (!branding || tint === undefined || logo === undefined || name === undefined) return <output>Loading theme…</output>;
 	return (
 		<div className="pi-theme-fields">
 			<p className="muted small">Change this instance’s owner-view colors without changing light or dark mode.</p>
@@ -115,13 +139,25 @@ function OwnerThemeFields() {
 					else void save(() => branding.setTint({ tint: null }, BACKGROUND_CONTEXT), true);
 				}}>Reset tint</button>
 			</div>
+			<label>
+				Tab name
+				<input type="text" maxLength={MAX_NAME_LENGTH} placeholder="Pi" aria-describedby={nameHelp} disabled={busy}
+					value={draftName ?? name ?? ""} onChange={(event) => setDraftName(event.currentTarget.value)} />
+			</label>
+			<p id={nameHelp} className="muted small">Shown as the browser tab title. The sidebar logo is the tab icon.</p>
+			<div className="pi-theme-actions">
+				<button type="button" disabled={busy || draftName === undefined || draftName.trim() === (name ?? "")}
+					onClick={() => void save(() => branding.setName({ name: draftName?.trim() || null }, BACKGROUND_CONTEXT)).then(() => setDraftName(undefined))}>Apply name</button>
+				<button type="button" disabled={busy || (name === null && draftName === undefined)}
+					onClick={() => void save(() => branding.setName({ name: null }, BACKGROUND_CONTEXT)).then(() => setDraftName(undefined))}>Reset name</button>
+			</div>
 			<div className="pi-theme-logo-preview">
 				{logo ? <BrandImage key={logo} logo={logo} /> : <PiLogo />}
 				<span className="muted small">Current sidebar logo</span>
 			</div>
 			<label>
 				Sidebar logo
-				<input type="file" accept="image/png,image/jpeg,image/webp" aria-describedby={logoHelp} disabled={busy}
+				<input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" aria-describedby={logoHelp} disabled={busy}
 					onChange={(event) => {
 						const file = event.currentTarget.files?.[0];
 						event.currentTarget.value = "";
@@ -134,7 +170,7 @@ function OwnerThemeFields() {
 					}}
 				/>
 			</label>
-			<p id={logoHelp} className="muted small">PNG, JPEG or WebP. Up to 512 × 512 pixels and 500 kB.</p>
+			<p id={logoHelp} className="muted small">PNG, JPEG, WebP or SVG. Up to 512 × 512 pixels and 500 kB; an SVG is converted to a 512 pixel PNG.</p>
 			<div className="pi-theme-actions">
 				<button type="button" disabled={busy || logo === null} onClick={() => void save(() => branding.clearLogo(BACKGROUND_CONTEXT))}>Reset logo to Pi</button>
 			</div>
