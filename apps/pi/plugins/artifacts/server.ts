@@ -241,10 +241,7 @@ export default defineFacet((host) => {
 				if (read.summary.kind !== "html") throw new Error("not a page");
 				const body = Buffer.from(framePage(read.content), "utf8");
 				response.writeHead(200, {
-					// `frame-ancestors` checks every ancestor: through Radius the app sits in the Radius shell's frame.
-					"Content-Security-Policy": `${FRAME_CSP}; frame-ancestors 'self'${
-						origin.relayShellOrigin === undefined ? "" : ` ${origin.relayShellOrigin}`
-					}`,
+					"Content-Security-Policy": `${FRAME_CSP}; frame-ancestors 'self'`,
 					"Content-Type": "text/html; charset=utf-8",
 					"Content-Length": body.byteLength,
 					"Cross-Origin-Resource-Policy": "same-origin",

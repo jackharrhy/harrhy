@@ -71,8 +71,7 @@ const Name = union([str(), nul()]);
 
 /**
  * What the server calls itself (src/runtime/server-name-file.ts): the owner's name for it, else the device's. Plugins
- * that show the server elsewhere follow `name` (Radius keeps a copy for its shell); the owner's Settings change it
- * through `ServerNameSettings`.
+ * that show the server elsewhere follow `name`; the owner's Settings change it through `ServerNameSettings`.
  */
 export const ServerName = local("p2.server-name", {
 	version: 1,
@@ -214,24 +213,14 @@ export type RequestOrigin = {
 	readonly origin: string;
 	readonly remote: boolean;
 	readonly port: number;
-	/** The Radius shell origin allowed to frame the UI (relayed requests only); everything else may not frame it. */
-	readonly relayShellOrigin?: string;
-	/**
-	 * A signed-in Radius user other than the owner (relayed requests only). Radius verified who they are and admitted
-	 * them because a session is shared with their email; authenticators map them to what is shared with them now.
-	 */
-	readonly relayUser?: RelayUser;
 };
-
-/** A person Radius authenticated: their Radius user ID and normalized, verified email. */
-export type RelayUser = { readonly id: string; readonly email: string };
 
 /** Who sent an HTTP request (undefined: nobody authenticated, e.g. a guest before joining) and from where. */
 export type RequestAccess = { readonly principal: P2Principal | undefined; readonly origin: RequestOrigin };
 
 /**
  * Trusted transports may authenticate a marked loopback request as remote, before ordinary Host checks. Without a
- * principal, the authenticators decide who the request is (a relayed Radius user: see `RequestOrigin.relayUser`).
+ * principal, the authenticators decide who the request is.
  */
 export type RequestResolver = (request: IncomingMessage, ctx: Ctx) => RequestAccess | undefined;
 export const RequestResolvers = keyedRegistry<RequestResolver>("p2.request-resolvers");
@@ -293,13 +282,6 @@ export type Authenticator = (
 export const Authenticators = keyedRegistry<Authenticator>("p2.authenticators");
 
 /**
- * Where people a session is shared with by email open it, through a transport that authenticates them (the brain's
- * page in the Radius shell), or undefined while unknown. Without one, sharing with people is unavailable.
- */
-export type ShareUrl = (session: string) => string | undefined;
-export const ShareUrls = keyedRegistry<ShareUrl>("p2.share-urls");
-
-/**
  * Whether a principal other than the owner may reach a session (its worker host, its files): any entry saying yes
  * admits. Example: the sharing plugin admits a guest of that session whose grant is current.
  */
@@ -357,7 +339,6 @@ export function serveServerRegistries(facet: FacetHost): void {
 		PageCookies,
 		Upgrades,
 		Authenticators,
-		ShareUrls,
 		SessionAccess,
 		WorkerInitValues,
 	])

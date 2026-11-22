@@ -29,10 +29,9 @@ export default defineFacet((host) => {
 				(["admit", "receipt"] as const).map((operation) => [
 					operation === "admit" ? "POST /api/ingress/v1/events" : "GET /api/ingress/v1/receipts/*",
 					(async (request, response, { origin }, ctx) => {
-						// This wire boundary is deliberately local-only, including when a relay resolves the request first.
+						// This wire boundary is deliberately local-only.
 						if (
 							origin.remote ||
-							origin.relayShellOrigin !== undefined ||
 							request.headers.origin !== undefined ||
 							request.headers["sec-fetch-site"] !== undefined ||
 							request.headers.forwarded !== undefined ||

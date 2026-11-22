@@ -5,7 +5,7 @@ export const RETRY_INITIAL_MS = 250;
 export const RETRY_MAX_MS = 5000;
 /** A connection that stayed open this long counted as working: the next retry starts again at the initial delay. */
 export const STABLE_MS = 10_000;
-/** A socket not open after this long is given up. Through Radius an upgrade may wait 15 s for the brain's side. */
+/** A socket not open after this long is given up. */
 export const CONNECT_TIMEOUT_MS = 20_000;
 /** The server pings every 15 s: an open socket silent for longer than this is presumed dead. */
 export const STALE_MS = 25_000;

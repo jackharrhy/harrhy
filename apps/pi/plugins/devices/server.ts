@@ -39,7 +39,7 @@ export default defineFacet((host) => {
 				return accessResource.value;
 			},
 		});
-		// A local session counts only on loopback: a copied cookie on a tunnel host or through Radius is nobody.
+		// A local session counts only on loopback: a copied cookie on a tunnel host is nobody.
 		const principal = (request: IncomingMessage, origin: RequestOrigin): P2Principal | undefined => {
 			const session = accessResource.value.session(request, origin.port);
 			if (session?.kind === "device") return { kind: "owner", access: "device", device: session.id };

@@ -697,7 +697,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	const closeDevChannel = dev && !supervised ? await serveDevChannel(dataDir, execute) : undefined;
 
 	/**
-	 * Who sent a request: an owner session cookie (a local one only on loopback), a guest cookie, a Radius user. An owner
+	 * Who sent a request: an owner session cookie (a local one only on loopback), or a guest cookie. An owner
 	 * wins over a guest cookie in the same browser. Loopback alone proves nothing (any user of the machine reaches it):
 	 * the local owner is whoever proved to run as the server's user (`src/runtime/local-owner.ts`) or redeemed an owner
 	 * link on loopback, and holds that local session cookie. Another site's requests lose every principal in
@@ -719,8 +719,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	const credentialAccess = async (request: IncomingMessage, ctx: Ctx): Promise<RequestAccess | undefined> => {
 		for (const resolve of (await host.registry(RequestResolvers, ctx)).value.values()) {
 			const access = resolve(request, ctx);
-			if (access?.principal === undefined && access?.origin.relayUser !== undefined)
-				return { principal: await authenticate(request, access.origin, ctx), origin: access.origin };
 			if (access !== undefined) return access;
 		}
 		const origin = requestOrigin(request, allowedHosts);
@@ -731,18 +729,12 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	 * A browser request another site made (Fetch Metadata: cross-site, or same-site such as a page on another local
 	 * port, whose cookies SameSite does not separate) gets no principal from any credential: no fetch, module, upload
 	 * or WebSocket of a foreign page can read or drive p2 with the owner's or a guest's cookie. Only a top-level
-	 * navigation to an app page authenticates, so links into p2 open it normally. Radius-relayed requests are
-	 * authenticated per channel by Radius (and framed by its shell), not by browser cookies; requests without Fetch
-	 * Metadata (the TUI, scripts) are unaffected.
+	 * navigation to an app page authenticates, so links into p2 open it normally. Requests without Fetch Metadata
+	 * (the TUI, scripts) are unaffected.
 	 */
 	const resolveAccess = async (request: IncomingMessage, ctx: Ctx): Promise<RequestAccess | undefined> => {
 		const access = await credentialAccess(request, ctx);
-		if (
-			access?.principal !== undefined &&
-			access.origin.relayShellOrigin === undefined &&
-			foreignBrowserRequest(request) &&
-			!pageNavigation(request)
-		)
+		if (access?.principal !== undefined && foreignBrowserRequest(request) && !pageNavigation(request))
 			return { ...access, principal: undefined };
 		return access;
 	};
@@ -759,8 +751,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 				const access = await resolveAccess(request, ctx);
 				if (access !== undefined) {
 					response.setHeader("Content-Security-Policy", contentSecurityPolicy(nonce, access.origin));
-					// The Radius shell frames the relayed UI; X-Frame-Options cannot name another origin.
-					if (access.origin.relayShellOrigin !== undefined) response.removeHeader("X-Frame-Options");
 				}
 				if (access === undefined || !sameOrigin(request, access.origin)) {
 					response.writeHead(403, { "Content-Type": "text/plain" });
@@ -843,8 +833,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 					if (cookies.length) response.setHeader("Set-Cookie", cookies);
 				}
 				if (isOwner(principal) || (isGuest(principal) && (await web?.guestMayLoad(request, principal)))) {
-					if (web !== undefined)
-						return web.handle(request, response, { principal, shellOrigin: origin.relayShellOrigin });
+					if (web !== undefined) return web.handle(request, response, { principal });
 					response.writeHead(404, { "Content-Type": "text/plain" });
 					response.end("Not found");
 					return;
@@ -855,12 +844,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 					return;
 				}
 				request.resume();
-				// A Radius user is signed in already; owner sign-in is not for them.
-				if (origin.relayUser !== undefined) {
-					response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
-					response.end("Nothing on this brain is shared with you. Ask its owner for a share link.\n");
-					return;
-				}
 				// A link from another site may arrive without the owner's cookie (Chrome launching an installed app sent
 				// none): the page loads itself once more from this origin, which sends it.
 				signIn(request, response, 401, { reload: foreignBrowserRequest(request) && pageNavigation(request) });
@@ -881,7 +864,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	};
 	/**
 	 * A page's link from code other than the current: its `web` query names another base bundle, or it names neither a
-	 * base nor a client (`client`: the TUI, Cloud Brain's pages, scripts), a page from before pages named their base
+	 * base nor a client (`client`: the TUI, scripts), a page from before pages named their base
 	 * (src/runtime/stale-page.ts). Without the web surface no page is served here and none is asked.
 	 */
 	const stalePage = async (request: IncomingMessage): Promise<StalePage | undefined> => {
@@ -1033,7 +1016,7 @@ function isOwnerNotice(error: HostError): boolean {
 const CLOSE_DEADLINE_MS = 8000;
 
 if (process.argv[1] !== undefined && import.meta.url === pathToFileURL(process.argv[1]).href) {
-	// Provider logins and server plugins (e.g. the Radius gateway) fetch in this process too.
+	// Provider logins and server plugins fetch in this process too.
 	configureFetch();
 	const server = await startServer();
 	const local = new URL(`http://127.0.0.1:${server.port}`);

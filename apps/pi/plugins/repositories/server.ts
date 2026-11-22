@@ -1,7 +1,6 @@
 // Registered preview metadata is read on demand and never probes or starts a service.
 import { defineFacet, forbidden, isOwner } from "@p2/app/v1";
 import { Server } from "@p2/app/v1/server";
-import { ForwardStore } from "../ports/contract.ts";
 import { ReadCache } from "./cache.ts";
 import { type PreviewRead, Previews } from "./contract.ts";
 import { readPreviews } from "./previews.ts";
@@ -11,7 +10,6 @@ export default defineFacet((host) => {
 	host.serve(Previews, (_params, principal, self) => {
 		if (!isOwner(principal)) throw forbidden("previews are owner-only");
 		const server = self.get(Server, {});
-		const forwards = self.get(ForwardStore, {});
 		return {
 			variant: "owner",
 			members: {
@@ -20,7 +18,7 @@ export default defineFacet((host) => {
 						return await metadata.read(
 							"metadata",
 							refresh ? "refresh" : "reuse",
-							() => readPreviews(server.info.value.dataDir, forwards.list.value),
+							() => readPreviews(server.info.value.dataDir),
 							ctx,
 						);
 					} catch (error) {

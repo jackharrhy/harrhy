@@ -17,13 +17,10 @@ export const GuestGrantSchema = obj({
 	kind: literal("guest"),
 	id: str(),
 	name: str(),
-	email: opt(str()),
 	home: str(),
 	sessions: record(ModeSchema),
 	revision: num(),
 });
-
-export const PersonSchema = obj({ id: str(), name: str(), session: str(), mode: ModeSchema });
 
 export const ConnectedSchema = obj({
 	id: str(),
@@ -36,12 +33,8 @@ export const ConnectedSchema = obj({
  * session shared with it; every change of its grants (share, join, removal, link reset, archive, restore) bumps its
  * revision and invalidates the objects of the older principal.
  *
- * Sessions are shared two ways, into the same grants:
- *
- * - Links, for browsers on loopback or a tunnel host. A session has at most one link per mode. Joining mints a cookie
- *   (the name is self-chosen); the same browser joining more links gains their sessions.
- * - By email, for people who reach the brain through Radius (only offered while it is connected to Radius). Radius
- *   verifies the email of whoever opens the brain, and admits only emails the brain reported (`emails`).
+ * Sessions are shared through links, for browsers on loopback or a tunnel host. A session has at most one link per
+ * mode. Joining mints a cookie (the name is self-chosen); the same browser joining more links gains their sessions.
  */
 const SharesV1 = local("p2.shares", {
 	version: 1,
@@ -49,14 +42,8 @@ const SharesV1 = local("p2.shares", {
 	members: {
 		/** Every link (small: at most two per session). */
 		links: arr(LinkSchema),
-		/** Normalized emails sessions that are not archived are shared with: whom Radius may admit. */
-		emails: arr(str()),
-		/** Every grant to a person by email that is not removed (archived sessions included). */
-		people: arr(PersonSchema),
 		/** The principal of a guest cookie value (`<id>.<secret>`), or null. */
 		authenticate: method(obj({ cookie: str() }), union([GuestGrantSchema, nul()])),
-		/** The principal of a person Radius authenticated by their normalized email, or null. */
-		authenticateEmail: method(obj({ email: str() }), union([GuestGrantSchema, nul()])),
 		/** A guest's current principal, or null (nothing shared with it now). */
 		grant: method(obj({ id: str() }), union([GuestGrantSchema, nul()])),
 		/** The live link of a token, or null (reset, archived). */
@@ -69,8 +56,6 @@ const SharesV1 = local("p2.shares", {
 				remoteConfirmed: opt(bool()),
 			}),
 		),
-		/** Shares `session` with the person of `email` (as the owner wrote it), or changes their mode. */
-		share: method(obj({ session: str(), email: str(), mode: ModeSchema, remoteConfirmed: opt(bool()) })),
 		remove: method(obj({ session: str(), guestId: str() })),
 		/**
 		 * Joins through a link: the browser's guest (its cookie) gains the link's session; otherwise a new guest is
@@ -102,9 +87,7 @@ export const GuestPresence = remote("p2.guest-presence", {
 });
 
 /**
- * Sharing of one session (owner only): its links, the people it is shared with by email, and connected guests.
- * `peopleUrl` is where those people open the session (the brain's page in Radius), or null while sharing with people
- * is unavailable: the brain is not connected to Radius, or does not know its address there yet.
+ * Sharing of one session (owner only): its links and connected guests.
  */
 const SharingV1 = remote("p2.sharing", {
 	version: 1,
@@ -117,8 +100,6 @@ const SharingV1 = remote("p2.sharing", {
 				env: union([str(), nul()]),
 				links: arr(obj({ mode: ModeSchema, token: str(), url: str() })),
 				guests: arr(obj({ id: str(), name: str(), mode: ModeSchema })),
-				people: arr(obj({ id: str(), name: str(), mode: ModeSchema })),
-				peopleUrl: union([str(), nul()]),
 			},
 			methods: {
 				/** Creates the link of `mode`, or with `reset` replaces it (new token) and ends its guests' access. */
@@ -129,17 +110,12 @@ const SharingV1 = remote("p2.sharing", {
 						remoteConfirmed: opt(bool()),
 					}),
 				),
-				/**
-				 * Shares the session with the person of `email`, or changes their mode. They open it through Radius, signed in
-				 * with that email.
-				 */
-				share: method(obj({ email: str(), mode: ModeSchema, remoteConfirmed: opt(bool()) })),
-				/** Ends one guest's or person's access to the session; a link keeps working for others. */
+				/** Ends one guest's access to the session; a link keeps working for others. */
 				remove: method(obj({ guestId: str() })),
 			},
 		},
 	},
 });
 
-/** Owner-only session privacy: revoke every link and person grant without archiving. */
+/** Owner-only session privacy: revoke every link and guest grant without archiving. */
 export const Sharing = evolve(SharingV1, (e) => e.addMethod("owner", "disable", obj({}), nul()));

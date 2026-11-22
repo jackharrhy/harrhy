@@ -41,7 +41,7 @@ export type {
 
 /**
  * Where this instance backs up to: a folder (a local disk, a mounted bucket or NAS; tests), or a plugin's target by its
- * name (`radius`: the Radius this instance is signed in to, `BackupTargets`).
+ * name (`BackupTargets`).
  */
 export type BackupTarget =
 	| { readonly kind: "folder"; readonly path: string }
@@ -49,12 +49,12 @@ export type BackupTarget =
 
 /**
  * The backup target from the environment, or undefined when backup is off: `P2_BACKUP_DIR=<path>` for a folder,
- * `P2_BACKUP=<name>` for a plugin's target (`radius`). Both set is a mistake, refused.
+ * `P2_BACKUP=<name>` for a plugin's target. Both set is a mistake, refused.
  */
 export function backupTarget(env: NodeJS.ProcessEnv = process.env): BackupTarget | undefined {
 	const path = env.P2_BACKUP_DIR;
 	const name = env.P2_BACKUP;
-	if (path && name) throw new Error("Set P2_BACKUP_DIR (a folder) or P2_BACKUP (a target such as radius), not both");
+	if (path && name) throw new Error("Set P2_BACKUP_DIR (a folder) or P2_BACKUP (a plugin's target), not both");
 	if (path) return { kind: "folder", path };
 	if (name) return { kind: "named", name };
 	return undefined;
@@ -62,9 +62,9 @@ export function backupTarget(env: NodeJS.ProcessEnv = process.env): BackupTarget
 
 /**
  * A backup target a plugin offers: its remote (only the server holds it), and the device the remote records for this
- * instance's slots. A remote that records its own device (Radius stamps the authenticated server's ID) names it here,
+ * instance's slots. A remote that records its own device (a service stamping the authenticated server's ID) names it here,
  * so an upload tells its own earlier slot (a lost answer) from another machine's; otherwise the instance's own.
- * `server` names the server's store there: one remote may hold several instances' (a user's on Radius).
+ * `server` names the server's store there: one remote may hold several instances'.
  */
 export type OpenBackupTarget = {
 	readonly remote: SessionSyncStore;
@@ -76,7 +76,7 @@ export type OpenBackupTarget = {
 
 /**
  * The target's own folder for upload bookmarks (`backup/<key>/` beside each store): a store's "uploaded through N" is
- * true for one target only, so switching targets (a folder, then Radius) starts the new one from a full copy instead of
+ * true for one target only, so switching targets (a folder, then a plugin's) starts the new one from a full copy instead of
  * resuming another's history. Computed from the environment, so the server and every worker agree.
  */
 export function backupTargetKey(target: BackupTarget): string {

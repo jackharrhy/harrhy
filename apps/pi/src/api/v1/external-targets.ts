@@ -21,8 +21,7 @@ export async function externalTargets(ctx: Ctx) {
 			const session = catalog.sessions.value.find((row) => row.id === id);
 			return session && targetOf(session);
 		},
-		shared: (id: string) =>
-			shares.links.value.some((row) => row.session === id) || shares.people.value.some((row) => row.session === id),
+		shared: (id: string) => shares.links.value.some((row) => row.session === id),
 	};
 }
 

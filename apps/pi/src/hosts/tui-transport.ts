@@ -1,5 +1,5 @@
-// How the launcher reaches its server: HTTP requests and the chord WebSocket, directly with a cookie or through Radius
-// (tui-radius.ts). Credentials stay inside a transport; callers name only paths on the server.
+// How the launcher reaches its server: HTTP requests and the chord WebSocket, directly with a cookie. Credentials stay
+// inside a transport; callers name only paths on the server.
 import { WebSocket } from "ws";
 import { connectionHeaders, type TuiCredentials } from "./tui-config.ts";
 

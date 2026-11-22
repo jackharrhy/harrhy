@@ -240,7 +240,7 @@ export default defineFacet((host) => {
 						await manager().manager.forgetHostKey(name);
 						return null;
 					},
-					// Every owner (device, associated device, Radius) manages keys, as in Pi Mobile; Envs' factory excludes guests.
+					// Every owner (device, associated device) manages keys, as in Pi Mobile; Envs' factory excludes guests.
 					generateKey: async ({ name }, ctx) => {
 						const publicKey = await manager().manager.generateKey(name);
 						await service.reload(ctx);

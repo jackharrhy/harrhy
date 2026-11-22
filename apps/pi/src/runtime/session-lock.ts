@@ -6,7 +6,7 @@ import { arr, bool, obj, type Static, str, union } from "@earendil-works/pi-sche
 import { literal } from "./schema.ts";
 
 /** Capabilities a locked session may get besides MCP servers and instructions. */
-export const LOCK_CAPABILITIES = ["ports", "conversations"] as const;
+export const LOCK_CAPABILITIES = ["conversations"] as const;
 export type LockCapability = (typeof LOCK_CAPABILITIES)[number];
 
 export const SessionLockSchema = obj({
@@ -16,6 +16,6 @@ export const SessionLockSchema = obj({
 	projectMcp: bool(),
 	/** The global AGENTS.md, skills and prompt templates. */
 	instructions: bool(),
-	capabilities: arr(union([literal("ports"), literal("conversations")]), { maxItems: 8 }),
+	capabilities: arr(union([literal("conversations")]), { maxItems: 8 }),
 });
 export type SessionLock = Static<typeof SessionLockSchema>;

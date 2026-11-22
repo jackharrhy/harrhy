@@ -1,12 +1,11 @@
 // The server's name on disk and the device's name it falls back to.
 //
-// The name belongs to the server, not to Radius: `<data>/identity.json` (`{ "name": "Studio" }`) lives beside the
-// sessions, works without Radius and survives `radius:login` and signing out (which rewrite or remove `radius.json`).
+// The name belongs to the server: `<data>/identity.json` (`{ "name": "Studio" }`) lives beside the
+// sessions, works without any service.
 // The file exists only while the owner has named the server; without it the server is called by the device's name
-// ("Cristina's MacBook Pro"), read again at every start, so renaming the device renames an unnamed server. Radius keeps
-// a copy for its shell (plugins/radius/brain.ts, "Name"); the copy never flows back.
+// ("Cristina's MacBook Pro"), read again at every start, so renaming the device renames an unnamed server.
 //
-// The name is a label, never an identity or a credential: the Radius server ID stays the server's identity, and nothing
+// The name is a label, never an identity or a credential, and nothing
 // authorizes by name. Places of projects name this machine by `os.hostname()`, not by this name.
 import { execFile } from "node:child_process";
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
@@ -28,7 +27,7 @@ export function normalizeServerName(name: string): string | undefined {
 /**
  * The device's name, best effort: on macOS the computer name from System Settings ("Cristina’s MacBook Air"), else
  * the host name the operating system reports (`os.hostname()`), without the `.local` that macOS adds to it.
- * Undefined when neither gives one; the server then has no name and Radius shows its server ID.
+ * Undefined when neither gives one; the server then has no name.
  */
 export async function deviceName(): Promise<string | undefined> {
 	if (process.platform === "darwin") {

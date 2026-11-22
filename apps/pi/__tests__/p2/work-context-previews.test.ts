@@ -45,35 +45,27 @@ test("reads Infra leases and exact-URL declarations, retaining unknown and expir
 	};
 	writeFileSync(join(directory, "work-context.json"), JSON.stringify(config));
 	const before = readFileSync(registry, "utf8");
-	const result = await readPreviews(directory, [
-		{ id: "port", port: 22001, url: "https://port.preview.example/", session: "opening-session" },
-	]);
-	assert.equal(result.items.length, 4);
+	const result = await readPreviews(directory);
+	assert.equal(result.items.length, 3);
 	const linked = result.items.find((preview) => preview.id === "declared:ui")!;
 	assert.deepEqual(linked.lease, { kind: "expires", at: 1000 });
 	const atlas = result.items.find((preview) => preview.id === "declared:atlas")!;
 	assert.deepEqual(atlas.lease, { kind: "none" });
-	const forward = result.items.find((preview) => preview.id === "forward:port")!;
-	assert.deepEqual(forward.lease, { kind: "unknown" });
 	assert.equal(readFileSync(registry, "utf8"), before);
 	writeFileSync(registry, JSON.stringify({ version: 2, leases: {} }));
-	await assert.rejects(readPreviews(directory, []), /Unsupported Infra preview registry schema/);
+	await assert.rejects(readPreviews(directory), /Unsupported Infra preview registry schema/);
 });
 
 test("an absent optional config never inspects host registries and unsafe URLs fail closed", async (t) => {
 	const directory = mkdtempSync(join(tmpdir(), "p2-work-context-"));
 	t.after(() => rmSync(directory, { recursive: true, force: true }));
-	assert.deepEqual((await readPreviews(directory, [])).items, []);
-	await assert.rejects(
-		readPreviews(directory, [{ id: "unsafe", port: 22001, url: "javascript:alert(1)" }]),
-		/Unsafe preview URL/,
-	);
+	assert.deepEqual((await readPreviews(directory)).items, []);
 	for (const url of ["javascript:alert(1)", "https://user:password@preview.example/"]) {
 		writeFileSync(
 			join(directory, "work-context.json"),
 			JSON.stringify({ previews: [{ id: "bad", name: "Bad", url }] }),
 		);
-		await assert.rejects(readPreviews(directory, []), /Unsafe preview URL/);
+		await assert.rejects(readPreviews(directory), /Unsafe preview URL/);
 	}
 	writeFileSync(
 		join(directory, "work-context.json"),
@@ -84,7 +76,7 @@ test("an absent optional config never inspects host registries and unsafe URLs f
 			],
 		}),
 	);
-	await assert.rejects(readPreviews(directory, []), /Duplicate preview declaration URL/);
+	await assert.rejects(readPreviews(directory), /Duplicate preview declaration URL/);
 });
 
 test("explicit static-router coverage includes nonexpiring unknown associations and rereads dynamic sources without invented ages", async (t) => {
@@ -132,12 +124,11 @@ test("explicit static-router coverage includes nonexpiring unknown associations 
 		}),
 	);
 	const before = readFileSync(routes, "utf8");
-	const result = await readPreviews(directory, [{ id: "no-url", port: 22001 }]);
+	const result = await readPreviews(directory);
 	assert.equal(result.items.length, 2);
 	const alderpoint = result.items.find((item) => item.id === "infra-static:alderpoint")!;
 	assert.equal(alderpoint.url, "https://alderpoint.preview.example/");
 	assert.deepEqual(alderpoint.lease, { kind: "none" });
-	assert.ok(!result.items.some((item) => item.id === "forward:no-url"));
 	assert.equal(readFileSync(routes, "utf8"), before);
 	writeFileSync(
 		registry,
@@ -148,8 +139,8 @@ test("explicit static-router coverage includes nonexpiring unknown associations 
 			},
 		}),
 	);
-	assert.equal((await readPreviews(directory, [])).items.length, 3);
+	assert.equal((await readPreviews(directory)).items.length, 3);
 	document.http.routers.alderpoint.entryPoints = ["web"];
 	writeFileSync(routes, JSON.stringify(document));
-	await assert.rejects(readPreviews(directory, []), /Unsupported configured private router/);
+	await assert.rejects(readPreviews(directory), /Unsupported configured private router/);
 });

@@ -98,9 +98,7 @@ export default defineFacet((host) => {
 			const shares = self.get(Shares, {});
 			const startValues = self.registry(WorkerInitValues);
 			const startReady = self.derive([startValues], ([values]) => values.has("session"));
-			const shared = (session: string) =>
-				shares.links.value.some((link) => link.session === session) ||
-				shares.people.value.some((person) => person.session === session);
+			const shared = (session: string) => shares.links.value.some((link) => link.session === session);
 			const active = new Map<string, Promise<void>>();
 			const retry = new Map<string, { at: number; delay: number }>();
 			let changed = () => {};
@@ -148,7 +146,6 @@ export default defineFacet((host) => {
 			};
 			self.on(catalog.sessions, async (_change, ctx) => blockUnavailable(ctx));
 			self.on(shares.links, async (_change, ctx) => blockUnavailable(ctx));
-			self.on(shares.people, async (_change, ctx) => blockUnavailable(ctx));
 			const phase = async (id: string, next: Wake["phase"], ctx: Ctx) => {
 				await saved.change((draft) => {
 					const row = draft.wakes[id] ?? draft.addressed[id] ?? draft.events[id]!;

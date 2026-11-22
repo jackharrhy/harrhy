@@ -1,5 +1,5 @@
 // The share store (`plugins/sharing/store.ts`, `Shares`' tables in the server's Chord store): one guest holds grants to
-// several sessions, removal and link resets end one grant each, people and emails follow the grants.
+// several sessions, removal and link resets end one grant each.
 
 import assert from "node:assert/strict";
 import { test } from "node:test";
@@ -7,32 +7,24 @@ import { constant, openStore, sqliteBackend } from "@earendil-works/chord";
 import { openNodeSqliteDatabase } from "@earendil-works/chord/sqlite/node";
 import { BACKGROUND_CONTEXT as context, query } from "@p2/app/v1";
 import { Shares } from "../../plugins/sharing/contract.ts";
-import { normalizeEmail } from "../../plugins/sharing/server.ts";
 import {
-	emailGrantsOf,
 	GrantRows,
 	GuestRows,
 	LinkRows,
-	openEmails,
-	peopleOf,
 	ShareStore,
 	sortedLinks,
 } from "../../plugins/sharing/store.ts";
 import { createHost, defineFacet } from "../../src/runtime/chord.ts";
 import { HOST } from "../../src/runtime/principals.ts";
 
-/** A `ShareStore` on an in-memory server store, with reads of its links, people and email grants. */
+/** A `ShareStore` on an in-memory server store, with a read of its links. */
 async function shareStore() {
 	const store = await openStore(sqliteBackend(await openNodeSqliteDatabase(":memory:")), context);
 	const host = createHost({ principal: HOST, store, onError: (error) => assert.fail(String(error)) });
 	let found:
 		| {
 				db: ShareStore;
-				read: () => Promise<{
-					links: ReturnType<typeof sortedLinks>;
-					people: ReturnType<typeof peopleOf>;
-					emails: ReturnType<typeof emailGrantsOf>;
-				}>;
+				read: () => Promise<{ links: ReturnType<typeof sortedLinks> }>;
 		  }
 		| undefined;
 	const refused = () => Promise.reject(new Error("not in this test"));
@@ -53,28 +45,16 @@ async function shareStore() {
 						found = {
 							db: new ShareStore({ links, guests, grants, tx: (fn, inner) => self.tx(fn, inner) }),
 							read: async () => {
-								const guestRows = new Map(
-									(await all(guests.rows(query(GuestRows), context))).map((row) => [row.id, row]),
-								);
-								const grantRows = await all(grants.rows(query(GrantRows), context));
-								return {
-									links: sortedLinks(await all(links.rows(query(LinkRows), context))),
-									people: peopleOf(grantRows, guestRows),
-									emails: emailGrantsOf(grantRows, guestRows),
-								};
+								return { links: sortedLinks(await all(links.rows(query(LinkRows), context))) };
 							},
 						};
 						return {
 							links: constant([]),
-							emails: constant([]),
-							people: constant([]),
 							authenticate: refused,
-							authenticateEmail: refused,
 							grant: refused,
 							active: refused,
 							isShared: refused,
 							link: refused,
-							share: refused,
 							remove: refused,
 							disableSession: refused,
 							join: refused,
@@ -124,28 +104,6 @@ test("a guest holds several sessions; removal and link resets end one grant each
 		changed: false,
 	});
 
-	const ann = await db.share("s1", "ann@example.com", "Ann@Example.com", "view", context);
-	await db.share("s2", "ann@example.com", "Ann@Example.com", "full", context);
-	assert.equal((await db.guestOfEmail("ann@example.com", context))?.id, ann.guest);
-	assert.deepEqual(
-		openEmails((await read()).emails, () => true),
-		["ann@example.com"],
-	);
-	assert.deepEqual(
-		openEmails((await read()).emails, (session) => session !== "s1" && session !== "s2"),
-		[],
-		"archived sessions report nobody",
-	);
-	assert.equal((await read()).people.length, 2);
-
-	assert.equal(await db.remove("s1", ann.guest, context), true);
-	assert.deepEqual(
-		(await read()).people.map((person) => person.session),
-		["s2"],
-	);
-	await db.share("s1", "ann@example.com", "Ann@Example.com", "view", context);
-	assert.equal((await read()).people.length, 2, "sharing again gives a removed person access again");
-
 	assert.deepEqual(await db.link("s1", "view", true, context), [bob.id]);
 	assert.deepEqual(
 		(await db.grants(bob.id, context)).map(({ session }) => session),
@@ -155,7 +113,7 @@ test("a guest holds several sessions; removal and link resets end one grant each
 	assert.equal(await db.linkByToken(first.token, context), undefined, "the old token ended");
 });
 
-test("disabling a session revokes all modes and people, preserves other grants, and rejects stale joins", async (t) => {
+test("disabling a session revokes all modes, preserves other grants, and rejects stale joins", async (t) => {
 	const { db, read, close } = await shareStore();
 	t.after(close);
 	await db.link("private", "view", false, context);
@@ -166,24 +124,18 @@ test("disabling a session revokes all modes and people, preserves other grants, 
 	const full = links.find((link) => link.session === "private" && link.mode === "full");
 	assert(view && full);
 	const browser = await db.join(view, "Browser", undefined, context);
-	const person = await db.share("private", "person@example.com", "Person", "full", context);
-	await db.share("other", "person@example.com", "Person", "view", context);
-	const revision = (await db.guest(person.guest, context))?.revision;
-	assert.deepEqual((await db.disableSession("private", context)).sort(), [browser.guest, person.guest].sort());
+	const other = await db.join(links.find((link) => link.session === "other")!, "Other", undefined, context);
+	assert.deepEqual((await db.disableSession("private", context)).sort(), [browser.guest].sort());
 	assert.deepEqual(
 		(await read()).links,
 		links.filter((link) => link.session === "other"),
 	);
-	assert.deepEqual(
-		(await read()).people.map(({ session }) => session),
-		["other"],
-	);
 	assert.deepEqual(await db.grants(browser.guest, context), []);
 	assert.deepEqual(
-		(await db.grants(person.guest, context)).map(({ session }) => session),
+		(await db.grants(other.guest, context)).map(({ session }) => session),
 		["other"],
+		"other sessions' grants stay",
 	);
-	assert.equal((await db.guest(person.guest, context))?.revision, (revision ?? 0) + 1);
 	for (const link of [view, full]) {
 		assert.equal(await db.linkByToken(link.token, context), undefined);
 		await assert.rejects(db.join(link, "Stale", undefined, context), /share has ended/);
@@ -205,10 +157,4 @@ test("guest names are made unique", async (t) => {
 	}
 	assert.deepEqual(names, ["Alice", "Alice (2)", "Alice (3)"]);
 	await assert.rejects(db.join(link, "  ", undefined, context), /Choose a guest name/);
-});
-
-test("emails normalize as Radius normalizes them", () => {
-	assert.equal(normalizeEmail(" Ann.Example@GoogleMail.com "), "annexample@gmail.com");
-	assert.equal(normalizeEmail("Bob@Bücher.example"), "bob@xn--bcher-kva.example");
-	assert.equal(normalizeEmail("not an address"), null);
 });

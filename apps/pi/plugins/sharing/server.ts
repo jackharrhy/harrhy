@@ -1,7 +1,6 @@
-// Share links, sharing with people by email, the join page, guest authentication and live revocation (server).
+// Share links, the join page, guest authentication and live revocation (server).
 import { randomBytes } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { domainToASCII } from "node:url";
 import { arr, nul, obj, str, union } from "@earendil-works/pi-schema";
 import {
 	type Context,
@@ -30,7 +29,6 @@ import {
 	Server,
 	type ServerInfo,
 	SessionAccess,
-	ShareUrls,
 	sendJson,
 	sessionAdmissionOf,
 } from "@p2/app/v1/server";
@@ -38,19 +36,16 @@ import { Catalog } from "../sessions/contract.ts";
 import { ChildStore, remoteEnvironments } from "../subagents/contract.ts";
 import { GuestPresence, Presence, type ShareLink, type ShareMode, Shares, Sharing } from "./contract.ts";
 import {
-	emailGrantsOf,
 	GrantRows,
 	type GuestRow,
 	GuestRows,
 	JoinError,
 	LinkRows,
-	openEmails,
-	peopleOf,
 	ShareStore,
 	sortedLinks,
 } from "./store.ts";
 
-/** Registers the join routes, the guest cookie and Radius authenticators, and guest session access. */
+/** Registers the join routes, the guest cookie authenticator, and guest session access. */
 
 const cookieName = (port: number): string => `p2_guest_${port}`;
 
@@ -58,21 +53,6 @@ const cookieName = (port: number): string => `p2_guest_${port}`;
 function shareUrl(token: string, { allowedHosts, port }: ServerInfo): string {
 	const origin = allowedHosts[0] ? `https://${allowedHosts[0]}` : `http://127.0.0.1:${port}`;
 	return `${origin}/join/${token}`;
-}
-
-const GMAIL_DOMAINS = new Set(["gmail.com", "googlemail.com"]);
-
-/**
- * An email as Radius normalizes it (`normalizeEmail` in radius/packages/control-plane/src/utils/mail.ts), so that the
- * address the owner typed matches the verified one Radius names. Keep the two in step. Null when it is no address.
- */
-export function normalizeEmail(email: string): string | null {
-	const parts = email.trim().split("@");
-	if (parts.length !== 2 || !parts[0]?.trim() || !parts[1]) return null;
-	const local = parts[0].trim().toLowerCase();
-	const domain = domainToASCII(parts[1]).toLowerCase();
-	if (!domain || !domain.includes(".")) return null;
-	return GMAIL_DOMAINS.has(domain) ? `${local.replaceAll(".", "")}@gmail.com` : `${local}@${domain}`;
 }
 
 /** Server-rendered pages run one inline script, allowed by a per-response nonce. */
@@ -155,12 +135,11 @@ export default defineFacet((host) => {
 				if (!home || grant.grantedAt >= home.at) home = { session: grant.session, at: grant.grantedAt };
 			}
 			if (!home) return null;
-			const { id, name, email, revision } = row;
+			const { id, name, revision } = row;
 			return {
 				kind: "guest",
 				id,
 				name,
-				...(email === null ? {} : { email }),
 				home: home.session,
 				sessions,
 				revision,
@@ -198,18 +177,8 @@ export default defineFacet((host) => {
 		});
 		return {
 			links: deriveTyped(self, [links], ([rows]) => sortedLinks(rows)),
-			emails: deriveTyped(self, [grants, guests, catalog.sessions], ([rows, guestRows, sessions]) => {
-				const archivedNow = new Set(sessions.filter((entry) => entry.archivedAt !== null).map((entry) => entry.id));
-				return openEmails(emailGrantsOf(rows, guestMap(guestRows)), (session) => !archivedNow.has(session));
-			}),
-			people: deriveTyped(self, [grants, guests], ([rows, guestRows]) => peopleOf(rows, guestMap(guestRows))),
 			authenticate: async ({ cookie }, ctx) => {
 				const principal = await principalOf(await db.guestOfCookie(cookie, ctx), ctx);
-				if (principal) await db.seen(principal.id, ctx);
-				return principal;
-			},
-			authenticateEmail: async ({ email }, ctx) => {
-				const principal = await principalOf(await db.guestOfEmail(email, ctx), ctx);
 				if (principal) await db.seen(principal.id, ctx);
 				return principal;
 			},
@@ -240,20 +209,6 @@ export default defineFacet((host) => {
 				await changeSharing(
 					session,
 					async (scope) => revoke(await db.link(session, mode, reset, scope), scope),
-					ctx,
-				);
-				return null;
-			},
-			share: async ({ session, email, mode, remoteConfirmed }, ctx) => {
-				const normalized = normalizeEmail(email);
-				if (!normalized) throw new Error("Enter an email address");
-				await confirmRemote(session, mode, remoteConfirmed, ctx);
-				await changeSharing(
-					session,
-					async (scope) => {
-						const shared = await db.share(session, normalized, email.trim(), mode, scope);
-						if (shared.changed) await revoke([shared.guest], scope);
-					},
 					ctx,
 				);
 				return null;
@@ -317,7 +272,6 @@ export default defineFacet((host) => {
 		const catalog = self.get(Catalog, {});
 		const children = self.get(ChildStore, {});
 		// Every remote environment a read/write guest can reach: the session's and its subagents' own.
-		const shareUrls = self.registry(ShareUrls);
 		const env = self.derive(
 			[catalog.sessions, children.children],
 			([sessions, stored]) =>
@@ -331,17 +285,6 @@ export default defineFacet((host) => {
 				.filter((link) => link.session === session)
 				.map(({ mode, token }) => ({ mode, token, url: shareUrl(token, info as ServerInfo) })),
 		);
-		const peopleView = self.derive([shares.people], ([people]) =>
-			people.filter((person) => person.session === session).map(({ id, name, mode }) => ({ id, name, mode })),
-		);
-		// Read when the people change; a brain learns its Radius page from the owner's first visit through Radius.
-		const peopleUrl = self.derive([shares.people, shareUrls], ([, urls]) => {
-			for (const url of urls.values()) {
-				const value = url(session);
-				if (value !== undefined) return value;
-			}
-			return null;
-		});
 		const guestsView = self.derive([presence.guests], ([guests]) =>
 			Object.values(guests)
 				.flatMap(({ id, name, sessions }) => {
@@ -356,15 +299,11 @@ export default defineFacet((host) => {
 				env,
 				links: linksView,
 				guests: guestsView,
-				people: peopleView,
-				peopleUrl,
 				link: ({ mode, reset, remoteConfirmed }, ctx) =>
 					shares.link(
 						{ session, mode, reset: reset ?? false, ...(remoteConfirmed ? { remoteConfirmed } : {}) },
 						ctx,
 					),
-				share: ({ email, mode, remoteConfirmed }, ctx) =>
-					shares.share({ session, email, mode, ...(remoteConfirmed ? { remoteConfirmed } : {}) }, ctx),
 				remove: ({ guestId }, ctx) => shares.remove({ session, guestId }, ctx),
 				disable: (_args, ctx) => shares.disableSession({ session }, ctx),
 			},
@@ -450,24 +389,13 @@ export default defineFacet((host) => {
 				});
 			}
 		};
-		/** Through Radius, people are shared with by email and carry no cookie, so links do not apply there. */
-		const refuseRelayed = (request: IncomingMessage, response: ServerResponse): void => {
-			request.resume();
-			response.writeHead(403, { "Content-Type": "text/plain; charset=utf-8" });
-			response.end("Share links do not work through Radius. Ask the owner to share the session with your email.\n");
-		};
 		self.contribute(Routes, {
-			"GET /join/*": (request, response, { principal, origin }, ctx) =>
-				origin.relayUser ? refuseRelayed(request, response) : joinPage(request, response, principal, ctx),
-			"HEAD /join/*": (request, response, { principal, origin }, ctx) =>
-				origin.relayUser ? refuseRelayed(request, response) : joinPage(request, response, principal, ctx),
-			"POST /join": (request, response, { origin }, ctx) =>
-				origin.relayUser ? refuseRelayed(request, response) : join(request, response, origin, ctx),
+			"GET /join/*": (request, response, { principal }, ctx) => joinPage(request, response, principal, ctx),
+			"HEAD /join/*": (request, response, { principal }, ctx) => joinPage(request, response, principal, ctx),
+			"POST /join": (request, response, { origin }, ctx) => join(request, response, origin, ctx),
 		});
 		self.contribute(Authenticators, {
 			guest: async (request, origin, ctx) => {
-				if (origin.relayUser !== undefined)
-					return (await shares.authenticateEmail({ email: origin.relayUser.email }, ctx)) ?? undefined;
 				const cookie = cookieValue(request, cookieName(origin.port));
 				return cookie === undefined ? undefined : ((await shares.authenticate({ cookie }, ctx)) ?? undefined);
 			},

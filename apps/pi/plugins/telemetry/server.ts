@@ -43,9 +43,7 @@ export default defineFacet((host) => {
 			const check = async (_ctx: Ctx) => {
 				if (locks.locks.value[session] !== undefined)
 					throw forbidden("Telemetry is the owner's: this session is locked.");
-				const shared =
-					shares.links.value.some((link) => link.session === session) ||
-					shares.people.value.some((person) => person.session === session);
+				const shared = shares.links.value.some((link) => link.session === session);
 				if (shared) throw forbidden("Telemetry is the owner's: this session is shared.");
 			};
 			return { variant: "agent", members: reads(store, check) };

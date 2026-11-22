@@ -28,13 +28,6 @@ export const SECRET_PRESETS: readonly SecretPreset[] = [
 		hint: "git over HTTPS (a credential helper is set), gh (GH_TOKEN), the GitHub API. Use a fine-grained token.",
 	},
 	{
-		id: "radius",
-		label: "Radius token",
-		name: "RADIUS_TOKEN",
-		hosts: ["radius.earendil.com", "radius.pi.dev"],
-		hint: 'Radius (artifacts at radius.earendil.com, the model gateway at radius.pi.dev): curl -H "Authorization: Bearer $RADIUS_TOKEN" …',
-	},
-	{
 		id: "npm",
 		label: "npm token",
 		name: "NPM_TOKEN",

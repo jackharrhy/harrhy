@@ -5,7 +5,6 @@ import { arr, bool, compile, int, num, obj, opt, type Static, str, union } from 
 import { LocationSchema, literal, record } from "@p2/app/v1";
 import { optionalText } from "@p2/app/v1/node";
 import { isMap, parseDocument } from "yaml";
-import type { ForwardSchema } from "../ports/contract.ts";
 import type { Preview, PreviewRead } from "./contract.ts";
 
 const ConfigSchema = obj({
@@ -49,11 +48,8 @@ const registryValidator = compile(
 	}),
 );
 
-/** Reads only configured metadata sources and existing p2 forwards, preserving explicit provenance and unknown links. */
-export async function readPreviews(
-	directory: string,
-	forwards: readonly Static<typeof ForwardSchema>[],
-): Promise<PreviewRead> {
+/** Reads only configured metadata sources, preserving explicit provenance and unknown links. */
+export async function readPreviews(directory: string): Promise<PreviewRead> {
 	const text = await optionalText(join(directory, "work-context.json"));
 	let input: unknown;
 	try {
@@ -62,20 +58,7 @@ export async function readPreviews(
 		throw new Error("Invalid work-context.json syntax");
 	}
 	if (!configValidator.check(input)) throw new Error("Invalid work-context.json metadata");
-	const items: Preview[] = forwards.flatMap((forward) => {
-		const url = forward.url ?? forward.publicUrl;
-		return url
-			? [
-					{
-						id: `forward:${forward.id}`,
-						name: forward.name ?? `Port ${forward.port}`,
-						url: safeURL(url),
-						lease: { kind: "unknown" },
-						access: forward.url ? "Owner sign-in" : "Public (existing forward)",
-					},
-				]
-			: [];
-	});
+	const items: Preview[] = [];
 	if (input.infra) {
 		if (!/^(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/i.test(input.infra.domain))
 			throw new Error("Invalid Infra preview domain");

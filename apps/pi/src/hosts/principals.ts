@@ -58,9 +58,8 @@ export function foreignBrowserRequest(request: IncomingMessage): boolean {
 /**
  * Whether a route serving a session's bytes (an entry's image, a file) refuses this request: a cross-site one, except a
  * top-level GET navigation. Such a navigation shows the bytes in a tab of their own, where no other page reads them;
- * it is how an image or file opened in a new tab arrives through Radius, whose sign-in redirects make it cross-site.
- * Frames and every fetch, subresource or form of another site stay refused. Local and tunnel requests never get this
- * far with a credential (the server's foreign-request rule), so the exception only reaches Radius-relayed ones.
+ * it is how an image or file opened in a new tab arrives from a link on another site.
+ * Frames and every fetch, subresource or form of another site stay refused.
  */
 export function crossSiteRead(request: IncomingMessage): boolean {
 	return (
@@ -97,8 +96,7 @@ export function pageNavigation(request: IncomingMessage): boolean {
 
 /**
  * The CSP of every response (as Pi Mobile's): the app's own scripts (the page's inline ones carry the nonce), its
- * WebSocket, and frames only from its own origin (artifact previews). Nothing may frame it but the Radius shell
- * that relays it.
+ * WebSocket, and frames only from its own origin (artifact previews). Nothing may frame it.
  */
 export function contentSecurityPolicy(nonce: string, origin: RequestOrigin | undefined): string {
 	const socketOrigin = origin?.origin.replace(/^http/, "ws") ?? "";
@@ -115,6 +113,6 @@ export function contentSecurityPolicy(nonce: string, origin: RequestOrigin | und
 		"frame-src 'self'",
 		"base-uri 'none'",
 		"form-action 'none'",
-		`frame-ancestors ${origin?.relayShellOrigin ?? "'none'"}`,
+		"frame-ancestors 'none'",
 	].join("; ");
 }

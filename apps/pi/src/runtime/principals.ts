@@ -9,16 +9,13 @@ export type OwnerPrincipal =
 	 * owner link on loopback. Its local-only powers (minting owner links, loopback provider sign-ins) rest on that proof.
 	 */
 	| { readonly kind: "owner"; readonly access: "local" }
-	/** Through Radius, authenticated by the relay. */
-	| { readonly kind: "owner"; readonly access: "relay" }
 	/** An associated device's owner cookie, on any address (also on loopback). Revoked per device. */
 	| { readonly kind: "owner"; readonly access: "device"; readonly device: string };
 /** A session worker calling the server: stamped by the server's `session:` route, with the spawn generation. */
 export type WorkerPrincipal = { readonly kind: "worker"; readonly session: string; readonly generation: number };
 /**
- * Someone sessions were shared with: a browser that joined through share links (`name` is self-chosen and unverified),
- * or a person the owner shared with by email, whom Radius authenticated (`email`, verified; `name` is how the owner
- * wrote it). `sessions` are the sessions shared with them now and their modes; `home` is the one shared or joined last,
+ * Someone sessions were shared with: a browser that joined through share links (`name` is self-chosen and unverified).
+ * `sessions` are the sessions shared with them now and their modes; `home` is the one shared or joined last,
  * where they land. `revision` is the guest's: any change of its grants (share, join, removal, link reset, archive)
  * bumps it and invalidates every object of the older principal.
  */
@@ -39,7 +36,7 @@ export type P2Principal = OwnerPrincipal | GuestPrincipal | WorkerPrincipal | Se
 
 /**
  * What revokes principals (`host.revoke`, the same on every host): one associated device's owner, every remote owner
- * (relay and devices), every local owner session ("sign out all devices" revokes both), or one guest (all revisions of
+ * (devices), every local owner session ("sign out all devices" revokes both), or one guest (all revisions of
  * its grant).
  */
 export type Revocation =
@@ -53,9 +50,7 @@ export function revokedBy(principal: P2Principal): Revocation[] {
 		case "owner":
 			return principal.access === "device"
 				? [{ device: principal.device }, { owners: "remote" }]
-				: principal.access === "relay"
-					? [{ owners: "remote" }]
-					: [{ owners: "local" }];
+				: [{ owners: "local" }];
 		case "guest":
 			return [{ guest: principal.id }];
 		default:

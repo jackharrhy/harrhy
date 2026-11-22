@@ -71,7 +71,7 @@ export default defineFacet((host) => {
 		if (!isOwner(principal)) throw forbidden("Provider login is only available to owners");
 		const config = self.get(ModelConfig, {});
 		const service = self.get(LoginService, {});
-		// This owner's logins: one device's (its cookie), the Radius owner's, or the device owner's (every local tab).
+		// This owner's logins: one device's (its cookie) or the device owner's (every local tab).
 		const owner = principalKey(principal);
 		// Prompts and notices (an auth URL, a device code) only for the owner that started the login.
 		const loginView = deriveTyped(self, [service.login, service.owner], ([login, started]) =>

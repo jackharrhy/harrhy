@@ -70,7 +70,7 @@ export const SessionSchema = obj({
 });
 export type Session = Static<typeof SessionSchema>;
 
-/** Cleanup completed before an archive call returns (e.g. session-owned port forwards). */
+/** Cleanup completed before an archive call returns. */
 export const SessionArchived = keyedRegistry<(session: string, ctx: Ctx) => Promise<void>>("p2.session-archived");
 
 /**

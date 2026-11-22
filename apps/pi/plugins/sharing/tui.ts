@@ -6,9 +6,6 @@
 // `/share` (owner): the session's two links and the guests connected now. Enter copies a link (creating it first)
 // through the launcher's `copy` (its consent screen shows the link); a first read/write link on a remote environment is
 // confirmed first. Ctrl+R resets a link (new token, its guests lose access), Ctrl+D removes a guest; both confirmed.
-//
-// While the brain is connected to Radius, `/share <email> [full]` shares the session with a person, who opens it in
-// Radius signed in with that email. The overlay lists them; Enter copies the session's Radius address to send them.
 
 import { BACKGROUND_CONTEXT, follow, liveIn, whenLive } from "@p2/app/v1";
 import type { TuiCommand, TuiContext } from "@p2/app/v1/tui";
@@ -18,7 +15,6 @@ import { GuestPresence, type ShareMode, Sharing } from "./contract.ts";
 const LABEL: Record<ShareMode, string> = { view: "Read-only", full: "Read/write" };
 type Link = { mode: ShareMode; token: string; url: string };
 type Guest = { id: string; name: string; mode: ShareMode };
-const MODES = new Set<string>(["view", "full"]);
 
 const message = (error: unknown) => (error instanceof Error ? error.message : String(error));
 
@@ -29,8 +25,6 @@ function openShare(ctx: TuiContext): void {
 	const owner = () => liveIn(sharing, "owner");
 	let links: Link[] | undefined;
 	let guests: Guest[] = [];
-	let people: Guest[] = [];
-	let peopleUrl: string | null = null;
 	let env: string | null = null;
 	let status = "";
 	const stops = [
@@ -44,14 +38,6 @@ function openShare(ctx: TuiContext): void {
 		}),
 		follow(sharing.env, (value) => {
 			env = value ?? null;
-			ctx.requestRender();
-		}),
-		follow(sharing.people, (value) => {
-			people = value ?? [];
-			ctx.requestRender();
-		}),
-		follow(sharing.peopleUrl, (value) => {
-			peopleUrl = value ?? null;
 			ctx.requestRender();
 		}),
 	];
@@ -105,20 +91,13 @@ function openShare(ctx: TuiContext): void {
 		);
 		ctx.notify(`${LABEL[mode]} link reset`);
 	};
-	const copyPeopleUrl = async () => {
-		if (!peopleUrl) return;
-		const result = await ctx.grant("copy", { text: peopleUrl, label: "Radius address of this session" });
-		grantNotice(ctx, "Radius address copied", result);
-	};
-	const remove = async (guest: Guest, person: boolean) => {
+	const remove = async (guest: Guest) => {
 		const service = owner();
 		if (service?.variant !== "owner") return;
 		if (
 			!(await confirm(ctx, [
 				`Remove ${lineText(guest.name)}?`,
-				person
-					? "They lose access to this session; share it again to give it back."
-					: "This identity is blocked; the link keeps working for others.",
+				"This identity is blocked; the link keeps working for others.",
 			]))
 		)
 			return;
@@ -128,7 +107,6 @@ function openShare(ctx: TuiContext): void {
 	const linkMode = (row: ListRow | undefined): ShareMode | undefined =>
 		row?.key === "link:view" ? "view" : row?.key === "link:full" ? "full" : undefined;
 	const guestOf = (row: ListRow | undefined) => guests.find((guest) => `guest:${guest.id}` === row?.key);
-	const personOf = (row: ListRow | undefined) => people.find((person) => `person:${person.id}` === row?.key);
 	const overlay = ctx.overlay(
 		"share",
 		new ListOverlay(ctx, {
@@ -143,26 +121,16 @@ function openShare(ctx: TuiContext): void {
 						...(mode === "full" ? { color: "warning" as const } : {}),
 					};
 				}),
-				...people.map((person) => ({
-					key: `person:${person.id}`,
-					label: person.name,
-					detail: `${person.mode === "full" ? "read/write" : "read-only"} · enter copies the Radius address`,
-					...(person.mode === "full" ? { color: "warning" as const } : {}),
+				...guests.map((guest) => ({
+					key: `guest:${guest.id}`,
+					label: `${guest.name} (unverified name)`,
+					detail: guest.mode === "full" ? "read/write" : "read-only",
+					color: "muted" as const,
 				})),
-				// People are listed above; the connected guests here joined through links.
-				...guests
-					.filter((guest) => !people.some((person) => person.id === guest.id))
-					.map((guest) => ({
-						key: `guest:${guest.id}`,
-						label: `${guest.name} (unverified name)`,
-						detail: guest.mode === "full" ? "read/write" : "read-only",
-						color: "muted" as const,
-					})),
 			],
 			onSelect: (row) => {
 				const mode = linkMode(row);
 				if (mode) void copy(mode).catch(fail);
-				else if (personOf(row)) void copyPeopleUrl().catch(fail);
 			},
 			actions: [
 				{
@@ -177,9 +145,8 @@ function openShare(ctx: TuiContext): void {
 					key: "ctrl+d",
 					label: "remove guest",
 					run: (row) => {
-						const person = personOf(row);
-						const guest = person ?? guestOf(row);
-						if (guest) void remove(guest, person !== undefined).catch(fail);
+						const guest = guestOf(row);
+						if (guest) void remove(guest).catch(fail);
 					},
 				},
 			],
@@ -187,12 +154,6 @@ function openShare(ctx: TuiContext): void {
 				ctx.theme.current.fg(
 					"dim",
 					`  Anyone with a link joins this session and its subagents under a name they choose. Read/write lets them make the agent run commands and change files on ${env ? `the remote environment "${lineText(env)}"` : "this host"}.`,
-				),
-				ctx.theme.current.fg(
-					"dim",
-					peopleUrl
-						? "  /share <email> [full] shares it with a person, who opens it in Radius signed in with that email."
-						: "  Connect this brain to Radius to share sessions with people by email.",
 				),
 				...(status ? [ctx.theme.current.fg("error", `  ${lineText(status)}`)] : []),
 			],
@@ -206,52 +167,13 @@ function openShare(ctx: TuiContext): void {
 	);
 }
 
-/** `/share <email> [full]`: shares the session with a person through Radius (read-only unless `full`). */
-async function shareWith(ctx: TuiContext, args: string): Promise<void> {
-	const session = ctx.identity.session;
-	if (!session) return;
-	const [email = "", mode = "view", ...rest] = args.split(/\s+/);
-	if (!MODES.has(mode) || rest.length) {
-		ctx.notify("Usage: /share <email> [full]");
-		return;
-	}
-	const sharing = ctx.host.hold(Sharing, { session }, BACKGROUND_CONTEXT);
-	try {
-		await whenLive(sharing);
-		if (sharing.variant !== "owner") return;
-		if (!sharing.peopleUrl.value) {
-			ctx.notify("Connect this brain to Radius and open it there once to share with people by email");
-			return;
-		}
-		const env = sharing.env.value;
-		const remote = mode === "full" && env !== null && env !== undefined;
-		if (
-			remote &&
-			!(await confirm(ctx, [
-				`Share read/write with ${lineText(email)}?`,
-				`They can make the agent run commands and change files on the remote environment "${lineText(env)}".`,
-			]))
-		)
-			return;
-		await sharing.share(
-			{ email, mode: mode as ShareMode, ...(remote ? { remoteConfirmed: true } : {}) },
-			BACKGROUND_CONTEXT,
-		);
-		ctx.notify(`Shared with ${lineText(email)}; they find it in Radius`);
-	} catch (error) {
-		ctx.notify(message(error));
-	} finally {
-		sharing.release();
-	}
-}
-
 export const SHARE_COMMANDS: Record<string, TuiCommand> = {
 	"p2.share": {
 		title: "Share this session",
 		category: "Session",
 		when: "owner && chat && !overlay",
-		slash: { name: "share", argumentHint: "[email [full]]" },
-		run: (ctx, args) => (args?.trim() ? shareWith(ctx, args.trim()) : openShare(ctx)),
+		slash: { name: "share" },
+		run: (ctx) => openShare(ctx),
 	},
 };
 

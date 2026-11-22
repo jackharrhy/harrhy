@@ -1,5 +1,5 @@
 // The loopback probe, a native of the manager: a listener on the p2 host's 127.0.0.1 that tells a sign-in page whether
-// its browser runs on the p2 host. The page (on p2's Radius or public origin) fetches `http://127.0.0.1:<port>/<nonce>`:
+// its browser runs on the p2 host. The page (on p2's public origin) fetches `http://127.0.0.1:<port>/<nonce>`:
 // only a browser on this machine reaches this listener, and only this p2 knows the nonce, so another program or p2 on
 // the browser's machine cannot answer for it. A wrong answer costs nothing more than a sign-in to paste.
 

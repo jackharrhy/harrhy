@@ -57,8 +57,6 @@ export default defineFacet((host) => {
           sendJson(response, status, value, { "Cache-Control": "no-store", ...headers });
         if (
           origin.remote ||
-          origin.relayShellOrigin !== undefined ||
-          origin.relayUser !== undefined ||
           request.socket.remoteAddress !== "127.0.0.1" ||
           !request.url?.startsWith(prefix + "/") ||
           Object.keys(request.headers).some(

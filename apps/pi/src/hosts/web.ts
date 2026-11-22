@@ -61,9 +61,6 @@ function guestPage(path: string, guest: GuestPrincipal): boolean {
 	return session !== undefined && Object.hasOwn(guest.sessions, session);
 }
 
-const escapeAttribute = (value: string): string =>
-	value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
 /**
  * The app page. The inline style and theme script run before any CSS so the first paint has the right background (by
  * theme.ts's rule: a hosted page ignores its own stored theme); the surface's bootstrap, stylesheets and deferred
@@ -73,7 +70,6 @@ const escapeAttribute = (value: string): string =>
  * while settings.json's `telemetry` is on.
  */
 function page(nonce: string, base: string, assets: PageAssets, viewer: Viewer, telemetry: boolean): string {
-	const { shellOrigin } = viewer;
 	return `<!doctype html>
 <html lang="en" data-web-version="${base}">
 	<head>
@@ -88,11 +84,7 @@ function page(nonce: string, base: string, assets: PageAssets, viewer: Viewer, t
 		<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
 		<meta name="apple-mobile-web-app-title" content="Pi" />
 		<meta name="mobile-web-app-capable" content="yes" />
-		<meta name="apple-mobile-web-app-capable" content="yes" />${
-			shellOrigin === undefined
-				? ""
-				: `\n\t\t<!-- The Radius shell framing this page (src/web/shell-bridge.ts). -->\n\t\t<meta name="p2-shell-origin" content="${escapeAttribute(shellOrigin)}" />`
-		}
+		<meta name="apple-mobile-web-app-capable" content="yes" />
 		<title>Pi</title>
 		<style>
 			:root {
@@ -106,23 +98,9 @@ function page(nonce: string, base: string, assets: PageAssets, viewer: Viewer, t
 		</style>
 		<script nonce="${nonce}">
 			{
-				// The preference is the host's when the Radius shell frames the page or p2-mac shows it (src/web/theme.ts):
-				// the page's stored one is not read, and the shell's hint or the system's scheme stands until the host says.
-				// The same check as shellFrame() in src/web/shell-bridge.ts; src/runtime/page.ts has the server pages' version.
-				const shell = document.querySelector('meta[name="p2-shell-origin"]')?.content;
-				let framed = false;
-				try {
-					framed = window.parent !== window && new URL(shell).origin === shell;
-				} catch {}
-				const hosted = framed || Boolean(window.webkit?.messageHandlers?.piHost);
-				// The shell's scheme when it framed the page, in the frame's URL: WebKit does not resolve a frame's
-				// prefers-color-scheme with the embedder's color-scheme. A colour only; kept for theme.ts until the shell's
-				// hello, and removed before the app reads the URL. Any other fragment stays.
-				const hint = framed ? /^#pi-shell-scheme=(light|dark)$/.exec(location.hash)?.[1] : undefined;
-				if (hint) {
-					document.documentElement.dataset.piShellScheme = hint;
-					history.replaceState(history.state, "", location.pathname + location.search);
-				}
+				// The preference is the host's when p2-mac shows the page (src/web/theme.ts): the page's stored one is not read and
+				// the system's scheme stands until the host says. src/runtime/page.ts has the server pages' version.
+				const hosted = Boolean(window.webkit?.messageHandlers?.piHost);
 				let theme;
 				try {
 					if (!hosted) theme = localStorage.getItem("pi-theme");
@@ -130,7 +108,9 @@ function page(nonce: string, base: string, assets: PageAssets, viewer: Viewer, t
 				document.documentElement.dataset.theme = document.documentElement.dataset.colorScheme =
 					theme === "light" || theme === "dark"
 						? theme
-						: (hint ?? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+						: matchMedia("(prefers-color-scheme: dark)").matches
+							? "dark"
+							: "light";
 			}
 		</script>
 		${pageScripts(assets, nonce).replaceAll("\n", "\n\t\t")}
@@ -180,11 +160,8 @@ async function send(response: ServerResponse, file: HttpResponse, head: boolean,
 	response.end(Buffer.concat(chunks));
 }
 
-/**
- * Who loads an app page: its principal, and the Radius shell that frames a relayed request
- * (`RequestOrigin.relayShellOrigin`), named in app pages for the shell bridge.
- */
-export type Viewer = { readonly principal: P2Principal; readonly shellOrigin: string | undefined };
+/** Who loads an app page: its principal. */
+export type Viewer = { readonly principal: P2Principal };
 
 /** A scope of the server's host for reads that need one (`host.root`). */
 type Root = (fn: (ctx: Ctx) => Promise<void>) => Promise<void>;
