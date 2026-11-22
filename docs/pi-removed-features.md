@@ -234,3 +234,9 @@ Left on a machine that ran it, read by nothing now: the browser's `pi-review:*` 
 The `powershell` plugin offered Durable's deferred `powershell` tool to each conversation (the main agent and every subagent) whose location's machine ran Windows and that had the `bash` tool. It decided from the local platform or the remote environment's OS report, asked an unreachable remote again every 30 s, and showed calls in the chat as a command block.
 
 Kept: the vendored `createPowerShellTool` in `compat/packages/durable`, which shares code with `bash` and is a public export of that package (nothing in Pi uses it now), and the SSH environment's PowerShell probing of Windows hosts, which is unrelated.
+
+## Docs removed with them
+
+`apps/pi/docs/discord.md` described the Discord plugin and nothing else; it is in git history. Other docs under
+`apps/pi/docs/` that still mention these features (`p3-functions/`, `plugin-loading.md`, `plugin-hooks.md`,
+`rooms-v2.md`, `mcp-durable.md`, `codemode-tools/brief.md`) are design records and say so at the top.

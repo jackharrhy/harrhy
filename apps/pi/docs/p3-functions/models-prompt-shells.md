@@ -1,5 +1,7 @@
 # Functionality map: models, credentials, settings, prompt resources, code mode, coding tools, one-shot agents, logs, dev and reload, PowerShell, web and TUI shells
 
+> **Historical.** This table inventories p2 as it was when it was written. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 **Legend.**
 - **Dur** (durability): E = ephemeral, R = until restart, P = persisted, T = transcript-bound.
 - **Who:** O = owner, GR = guest read, GW = guest write (send access), W = worker, S = system.

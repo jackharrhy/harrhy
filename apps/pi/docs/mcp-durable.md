@@ -1,5 +1,7 @@
 # MCP for Durable and p2: work plan
 
+> **Historical.** This is a work plan written against p2's earlier plugins. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 This file is the brief for agents implementing MCP (Model Context Protocol) support for p2, the Durable-based app in
 `apps/p2`. Every work package (WP) below is self-contained: it says where the work happens, what to build, how to test
 it, and when it is done. Read sections 1 to 4 before any work package, then only the package you are given.

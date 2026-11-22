@@ -37,7 +37,7 @@ Every hook a plugin contributes carries a stage. The composer installs all hooks
 | Stage | For | Guarantee |
 | --- | --- | --- |
 | `transform` | arguments, messages, payloads, results that change | runs first |
-| `check` | approvals, permissions, quiet hours, Discord policy: decide, take nothing | sees the final arguments |
+| `check` | approvals, permissions, quiet hours, chat-bridge policy: decide, take nothing | sees the final arguments |
 | `claim` | quotas: take a resource | runs only when every check passed in this pass |
 | `observe` | stats, logs, search indexes | runs last; its return value is dropped, its throw only reported |
 
@@ -476,7 +476,7 @@ self.contribute(WaitRenderers, {
 
 Any page that lists person waits (an inbox plugin, the transcript's card for a parked call, section 4.3) holds
 `PersonWaits`, picks the renderer by `wait.signal`, and calls `answer` with the record's identity and the value;
-without a renderer it shows the title and "answer in the asking plugin's UI". Chat bridges (Discord) answer through
+without a renderer it shows the title and "answer in the asking plugin's UI". Chat bridges answer through
 the same method from their server part. A late joiner sees the same list: records are state.
 
 ### 2.7 A service answers (webhooks)
