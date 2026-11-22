@@ -558,7 +558,7 @@ export function useOwner(): boolean {
 }
 
 /**
- * Whether this browser may write in `session` (send, stop, the workspace): the owner as last known (`useOwner`, so no
+ * Whether this browser may write in `session` (send, stop): the owner as last known (`useOwner`, so no
  * wait for `Access`), or a guest whose grant gives it full access there.
  */
 export function useCanWrite(session: string | undefined): boolean {

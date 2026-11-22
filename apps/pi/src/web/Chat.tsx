@@ -93,7 +93,6 @@ export {
 	OneShotAgents,
 	OpenConversation,
 	OpenPeerConversation,
-	OpenWorkspaceFile,
 	ReplyTo,
 	RevealEntry,
 	relativePath,

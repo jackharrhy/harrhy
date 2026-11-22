@@ -8,7 +8,6 @@ import type { SidebarRow } from "./sidebar/model.ts";
 export {
 	commandSession,
 	NotArchived,
-	openPanelIn,
 	useCommandSession,
 	useOpenFromMenu,
 	useSessions,

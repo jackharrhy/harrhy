@@ -14,6 +14,7 @@ at that commit.
 | Terminal UI | `48c0ac80` | `src/tui`, `src/hosts/tui*`, `src/runtime/tui*`, `src/api/v1/tui.ts`, every plugin's `tui*.ts`, `plugins/quiet-tools`, `docs/p2-tui-port.md` |
 | Web terminal | `46d6b3a9` | `plugins/terminals` (including `vendor/ghostty`), the workspace's Terminal tab, the bottom terminal panel and its CSS |
 | Artifacts and views | `63776fc1` | `plugins/artifacts`, `plugins/views`, `src/web/artifact-kinds.ts`, `src/web/view-kinds.ts`, `docs/artifacts.md`, `docs/views.md`, `docs/glyph-editor-port.md` |
+| Workspace panel | `b2834089` | `plugins/workspace/{Workspace.tsx,file.tsx,commands.tsx,web.tsx,tabs.ts,server.ts,fuzzy.ts}`, the workspace route and its per-device memory, `.workspace-*` styles |
 
 Paths are under `apps/pi/`.
 
@@ -151,7 +152,8 @@ the `artifacts` and `views` plugins.
   `<views>` block with their next message. Listable items (`ArtifactKinds`) let other plugins' boards and games appear
   in the artifacts list.
 
-The workspace panel (files, changes and diffs with review comments, the file viewer) is separate and stayed. Data: the
+The workspace panel (files, changes and diffs with review comments, the file viewer) was separate and stayed then; it is
+removed too, see [Workspace panel](#workspace-panel). Data: the
 `p2.views` session document and `<data>/artifacts/` are left where they are and read by nothing; the instance had no
 artifact versions.
 
@@ -175,3 +177,53 @@ What other features used, and where it went:
   a sheet and a command now.
 - The migration scripts (`migrate-data`, `migrate-files`, `data-report`) still read the old `artifacts/` layout of
   pre-Chord-v2 data.
+
+## Workspace panel
+
+The right-hand panel beside the chat for the viewed conversation's working directory, opened from a folder button in the
+top bar or the command menu. Visible to the owner and to guests who may write. About 4,000 lines in the `workspace`
+plugin, plus its route, styles and a few hooks in the chat. Four tabs:
+
+- **Files**: a lazily expanded tree of the working directory (ignored entries dimmed), a "Go to file" name filter ranked
+  with a fuzzy matcher (`fuzzy.ts`), and an upload button into the folder last expanded. Opening a file showed it with
+  highlighting and a Wrap toggle, as a rendered preview for Markdown and a player or image for media, and with a
+  download link. It opened beside the list when the window had room (split view). Binary files said so; text over 1 MiB
+  was cut.
+- **Changes**: the git status as a tree of changed paths with status letters, then the branch's commits (paged,
+  unpushed ones marked, the upstream shown). A changed file opened as a diff with hunks that expanded to more context, or
+  as the whole file with changes inline. A commit opened its message and changed files, with each file's version at that
+  commit.
+- **Search**: literal text search over the tree, smart-case, skipping ignored files, with include and exclude globs;
+  a hit opened the file at its line.
+- **Comments**: review comments. Tapping a line number in a file or diff opened a box; comments were kept per
+  conversation in the browser until sent, flagged "outdated" when the line changed, and went to the agent as one
+  message (`Review comments:` with path, line, the quoted line and the text), one at a time or all at once.
+
+Around it: the `Workspace` object (a watch on the working tree with the queries above), the server's `/workspace-file`
+download route (with ranges for media) and `/workspace-upload`, `WorkspaceTransfer` and `WorkspaceWrites` for them, the
+`workspace.files`, `workspace.changes` and `workspace.search` commands, the `workspace` route field (tab, folder, file,
+view, line, commit, search) and its per-device memory in `session-panels.ts`, the `workspace-panel` and
+`workspace-actions` slots, the "Open in workspace" button on a tool card's file path (`OpenWorkspaceFile`), and the
+`LinesBlock` options for tapping line numbers, marking a line, expanding a hunk and rendering content under a line
+(`patchLines` and `textLines` went with them).
+
+What stayed:
+
+- The `workspace` plugin's worker half, as the backend of `@` file completion: the watch on the working directory and
+  its `list` and `files` queries (`WorkspaceBackend`, `environment.ts`), which the file index reads. Folder entries no
+  longer carry git's ignored flag, which only the Files tab used.
+- Chat attachments and uploads (`plugins/files`), `send_file` and its downloads, the file viewer for attachments and
+  sent files (`src/web/Viewer.tsx`), and the diff and code blocks in transcript tool cards.
+- The scope prompt (`plugins/scope-prompt`), which points the agent at a part of the page, including a diff line in a
+  tool card, and its transcript note for the old `p2.view-input` entries.
+
+Worth bringing back:
+
+- Looking at what the agent changed without leaving the page. The Changes tab with commits was the useful part; a
+  smaller version could show only the working tree's diff.
+- Review comments on a diff, sent to the agent as one message. The draft handling (kept per conversation, flagged when
+  the line changed) is the part to reuse.
+
+Left on a machine that ran it, read by nothing now: the browser's `pi-review:*` and `pi-review-editor:*` drafts,
+`pi-workspace-wrap` and `pi-workspace-width` in local storage, and the `workspace` entries in `p2-session-panels`
+(entries that carry one drop it when read).

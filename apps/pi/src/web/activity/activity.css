@@ -212,7 +212,7 @@
 	color: var(--semantic-color-text-secondary);
 }
 
-/* A block is selected in the transcript, never represented by an extra workspace tab. */
+/* A block is selected in the transcript, never an extra tab of another panel. */
 .activity-block {
 	margin-inline: calc(-1 * var(--semantic-dimension-space-padding-medium));
 	padding-inline: var(--semantic-dimension-space-padding-medium);
@@ -438,8 +438,7 @@
 .nested-detail {
 	padding-inline: var(--s3);
 }
-/* Code, a file's lines and diffs in a detail wrap too, as the workspace's wrap mode does: a patch's wrapped line keeps
-   its indent beside the gutter. */
+/* Code, a file's lines and diffs in a detail wrap too, so a patch's wrapped line keeps its indent beside the gutter. */
 .activity-detail .code-block pre,
 .activity-detail .diff-line,
 .activity-detail .diff-code {

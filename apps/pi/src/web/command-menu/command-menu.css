@@ -1,7 +1,7 @@
 /* The command menu (src/web/command-menu/): a dialog on the sheet layer's scrim, near the top of the screen, with its
    input where a sheet has its header. One option is highlighted by aria-selected (highlight.ts), by keys and the mouse
    alike, so rows need no :hover rule. Shared with style.css: the input's reset (`.search input`), the headings
-   (`.workspace-section`), reduced motion and the chip ×'s touch target (its touch-target block). */
+   (`.command-heading`), reduced motion and the chip ×'s touch target (its touch-target block). */
 .command-layer {
 	--layer-align: flex-start;
 	/* Wide screens: the dialog's distance from the top. */

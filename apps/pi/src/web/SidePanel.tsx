@@ -24,13 +24,13 @@ export function useWide(): boolean {
 }
 
 /**
- * Whether the side panel may show what the route names: not while the workspace panel is open (it takes the same
- * place), and on phones not while a sheet or viewer is above it (Back shows it again).
+ * Whether the side panel may show what the route names: on phones not while a sheet or viewer is above it (Back
+ * shows it again).
  */
 export function useSidePanelShown(): boolean {
 	const route = useRoute();
 	const wide = useWide();
-	return !route.workspace && (wide || !route.layers.length);
+	return wide || !route.layers.length;
 }
 
 /**
@@ -39,8 +39,8 @@ export function useSidePanelShown(): boolean {
  */
 export function showInSidePanel(change: Pick<Route, "activity" | "panel">): void {
 	const nav = getNavigation();
-	const next = { ...nav.route, workspace: undefined, activity: undefined, panel: undefined, ...change };
-	if ((nav.route.activity || nav.route.panel) && !nav.route.workspace) void nav.replace(next);
+	const next = { ...nav.route, activity: undefined, panel: undefined, ...change };
+	if (nav.route.activity || nav.route.panel) void nav.replace(next);
 	else void nav.push(next);
 }
 

@@ -13,8 +13,6 @@ export const OneShotAgents = createContext<ReadonlyMap<string, number>>(new Map(
 export const OpenPeerConversation = createContext<((sessionId: string, message?: { conversation: number; entryId: number }) => void) | undefined>(undefined);
 /** Tool paths are displayed relative to the containing session's working directory. */
 export const WorkingDirectory = createContext<string | undefined>(undefined);
-/** Opens a cwd-relative file in the workspace panel; absent when the viewer has no workspace access. */
-export const OpenWorkspaceFile = createContext<((path: string, line?: number) => void) | undefined>(undefined);
 /** Download locators are scoped to the containing session, including child views. */
 export const SessionId = createContext<string | undefined>(undefined);
 /** Starts a reply to an entry; absent while the conversation accepts no replies (chat-mode turns them on). */

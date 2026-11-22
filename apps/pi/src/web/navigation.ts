@@ -10,16 +10,6 @@ import { panelsFor, rememberPanels } from "./session-panels.ts";
 // Adapted from Pi Mobile: independent browser-only navigation, no app imports.
 // Plugins own named modal locators; the runtime owns the stack and Back behavior.
 export type Layer = { kind: "drawer" } | { kind: "sheet" | "viewer"; name: string; locator?: string };
-export type WorkspaceTab = "files" | "changes" | "search" | "comments";
-export type WorkspaceFileRoute = { path: string; view: "changes" | "file" | "preview"; line?: number; commit?: string };
-export type WorkspaceRoute = {
-	tab: WorkspaceTab;
-	directory: string;
-	file?: WorkspaceFileRoute;
-	commit?: string;
-	search?: { text: string; include?: string; exclude?: string };
-};
-export type WorkspaceLocation = WorkspaceRoute;
 /**
  * Where the app is. Without `session`, `page` and `newSession` it is home (`/`): what a plugin's `home` slot shows (the
  * Familiar's session), else the new-session screen.
@@ -37,7 +27,6 @@ export type Route = {
 	/** An explicit `/c/<id>` link stays on that conversation, even after the session switches main. */
 	exactConversation?: true;
 	layers: Layer[];
-	workspace?: WorkspaceLocation;
 	/** The transcript block shown in the side panel (SidePanel.tsx); never together with `panel`. */
 	activity?: { row: string; step?: string };
 	/** A plugin's panel shown in the side panel, by its name; never together with `activity`. */
@@ -51,7 +40,7 @@ export const NEW_SESSION: Route = { newSession: true, conversation: 1, layers: [
 
 /**
  * Another conversation, with no modal layers, and with its session's panels (session-panels.ts): within the open
- * session the open ones stay (the workspace on the same tab at the new working tree's root); another
+ * session the open ones stay; another
  * session gets the panels it last had on this device, none if it never had any.
  */
 export function conversationRoute(current: Route, session: string | undefined, conversation = 1): Route {
@@ -481,8 +470,7 @@ export class Navigation {
 	}
 
 	/**
-	 * Back to the first step of the trailing run where `inside` holds, replaced by `next`:
-	 * switching workspace tabs drops the folders and files visited on the previous tab.
+	 * Back to the first step of the trailing run where `inside` holds, replaced by `next`.
 	 */
 	reset(inside: (route: Route) => boolean, next: (route: Route) => Route): Promise<void> {
 		return this.run(async () => {

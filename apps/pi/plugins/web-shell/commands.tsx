@@ -86,10 +86,10 @@ function SidebarDocked({ children }: { children: ReactNode }) {
 	return docked && !collapsed ? children : null;
 }
 
-/** Renders `children` while the side panel shows something (the workspace panel takes its place while open). */
+/** Renders `children` while the side panel shows something. */
 function SidePanelOpen({ children }: { children: ReactNode }) {
-	const { activity, panel, workspace } = useRoute();
-	return (activity || panel) && !workspace ? children : null;
+	const { activity, panel } = useRoute();
+	return activity || panel ? children : null;
 }
 
 /** The theme switch's choices, in its cycle's order. */

@@ -103,7 +103,6 @@ function Layout() {
 				)}
 			</main>
 			<div id="side-dock" className="side-dock" />
-			<Slot name="workspace-panel" />
 			<SettingsSectionSheets />
 			{/* Layers over the whole page (`overlay:<name>`), e.g. the scope prompt's highlight and composer. */}
 			<SlotList prefix="overlay" />

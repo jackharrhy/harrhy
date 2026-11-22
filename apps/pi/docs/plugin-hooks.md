@@ -230,8 +230,7 @@ self.register(SendRouters, {
 | `app` | `src/hosts/web/main.tsx` (`startWeb`) | single | web-shell |
 | `sidebar` | `src/web/AppLayout.tsx:21` | single | sessions |
 | `main` | `src/web/AppLayout.tsx:60` | single | chat |
-| `workspace-panel` | `src/web/AppLayout.tsx:62` | single | workspace |
-| `artifact-actions`, `workspace-actions`, `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | artifacts, workspace, sessions, sharing |
+| `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | sessions, sharing |
 | `composer:*` | `plugins/chat/web.tsx:925` (`SlotList`) | list | chat-mode |
 | `chat-content` | `plugins/chat/web.tsx:1133` | wrapper (gets `children`) | artifacts (card contexts, the sent-file viewer, the artifacts side panel) |
 | `chat-attribution` | `plugins/chat/web.tsx:1134` | wrapper | conversations |
@@ -272,7 +271,7 @@ Pattern: the plugin's slot component renders its button and, when `useSheet(name
   adds to a person's message (chat-mode, shared with the TUI). Tool cards are a fixed `switch (tool.name)` in
   `src/web/Chat.tsx:303-511` (bash, codemode, read, write, subagent, artifact, ports, send_file, edit, generic). React
   contexts the chat plugin provides to cards (`src/web/Chat.tsx:65-77`: `OpenConversation`, `OneShotAgents`,
-  `OpenPeerConversation`, `WorkingDirectory`, `OpenWorkspaceFile`, `SessionId`, `ReplyTo`) are not a plugin API.
+  `OpenPeerConversation`, `WorkingDirectory`, `SessionId`, `ReplyTo`) are not a plugin API.
 - **Owner notices:** one core lane (`src/web/OwnerNotices.tsx`) fed by `LogNotices` and the dev status; plugins can only
   publish server errors (2.3).
 - **Theme:** `src/web/theme.ts` (system/light/dark, `setTheme`/`subscribeTheme`) and CSS in `src/web/style.css`; plugins
@@ -387,11 +386,9 @@ actions can be requested; `K` actions fire on the visitor's own key and may ask 
    The designed `widget-above`/`widget-below` rendering does not exist.
 8. **The chat surface as API.** TUI plugins import `ChatSurface` and call its methods (`toolViews`, `setCanReply`);
    web plugins use `useComposerState()` from `src/web`. Neither is a declared contract.
-9. **Core knows plugins.** `Route` has `workspace`/`terminal`
-   fields (`src/web/navigation.ts:20-23`); `OwnerNotices` imports the logs contract (`src/web/OwnerNotices.tsx:3`);
+9. **Core knows plugins.** `OwnerNotices` imports the logs contract (`src/web/OwnerNotices.tsx:3`);
    the server reports `hasLogs: plugins.includes("logs")` (`src/hosts/server.ts:424`); `settings.json` has a closed
-   schema with plugin keys such as `codemode` (`src/runtime/settings.ts:63-68`); `src/web/Workspace.tsx` is the
-   workspace plugin's UI in core.
+   schema with plugin keys such as `codemode` (`src/runtime/settings.ts:63-68`).
 10. **Built-ins use internals.** dev-tools imports `src/hosts/dev-channel.ts`; devices imports `src/hosts/principals.ts`;
    sessions and status drive `HostLifecycle.manager` (opaque `SessionHosts`); models, login and radius call the process-global
    `processLogs.redactor`. Single-key registries (`HarnessConfig["default"]`, `HarnessEnvironments["remote"]`) and

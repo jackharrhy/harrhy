@@ -49,7 +49,7 @@ export function ActivityRow({
 }) {
 	const tools = useContext(ToolActivityContext);
 	const route = useRoute();
-	const selected = !route.workspace && route.activity?.row === rowKey;
+	const selected = route.activity?.row === rowKey;
 	// At detail 4 each call opens the same panel with that step expanded; a wheel only before the first call.
 	if (rows && steps.length)
 		return (
