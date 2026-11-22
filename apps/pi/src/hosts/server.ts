@@ -697,7 +697,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 		response.setHeader("Cache-Control", "no-store");
 		response.setHeader("X-Content-Type-Options", "nosniff");
 		response.setHeader("Referrer-Policy", "no-referrer");
-		// Nothing frames the app (a response with its own CSP, e.g. an artifact preview, sets its own frame-ancestors).
+		// Nothing frames the app (a response with its own CSP sets its own frame-ancestors).
 		response.setHeader("Content-Security-Policy", contentSecurityPolicy(nonce, undefined));
 		response.setHeader("X-Frame-Options", "DENY");
 		const path = new URL(request.url ?? "/", "http://localhost").pathname;

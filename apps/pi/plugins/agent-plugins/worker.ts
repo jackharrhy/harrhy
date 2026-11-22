@@ -9,7 +9,7 @@ import { Extensions, harnessOf, PluginSkills, workerOf } from "@p2/app/v1/worker
 
 /** The hint a conversation on another environment gets, for the user plugin root `root`. */
 export const remoteHint = (root: string): string =>
-	`Multiplayer or persistent views (games, shared boards, editors several people use) are p2 plugins on the p2 server. To write one, spawn a subagent with env null and cwd ${JSON.stringify(root)} (location local:${root}); its skills include writing-p2-plugins.`;
+	`Multiplayer or persistent features (games, shared boards, editors several people use) are p2 plugins on the p2 server. To write one, spawn a subagent with env null and cwd ${JSON.stringify(root)} (location local:${root}); its skills include writing-p2-plugins.`;
 
 export default defineFacet((host) => {
 	contribute(host, "p2.agent-plugins", (self) => {

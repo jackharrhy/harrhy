@@ -96,7 +96,7 @@ export function pageNavigation(request: IncomingMessage): boolean {
 
 /**
  * The CSP of every response (as Pi Mobile's): the app's own scripts (the page's inline ones carry the nonce), its
- * WebSocket, and frames only from its own origin (artifact previews). Nothing may frame it.
+ * WebSocket, and frames only from its own origin. Nothing may frame it.
  */
 export function contentSecurityPolicy(nonce: string, origin: RequestOrigin | undefined): string {
 	const socketOrigin = origin?.origin.replace(/^http/, "ws") ?? "";

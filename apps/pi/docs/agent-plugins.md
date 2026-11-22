@@ -1,12 +1,11 @@
 # Agent-written plugins
 
-The agent writes real p2 plugins (multiplayer or persistent views, server objects, tools) and applies them itself.
-Html artifacts (docs/artifacts.md) stay for single-player pages.
+The agent writes real p2 plugins (multiplayer or persistent features, server objects, tools) and applies them itself.
 
 ## Problem
 
-An html artifact is one page per viewer. A shared counter, a game with rules or a board several people edit needs
-state on the server, rules applied there and events between viewers: a plugin. Before this, only a p2 checkout's
+A shared counter, a game with rules or a board several people edit needs state on the server, rules applied there
+and events between viewers: a plugin. Before this, only a p2 checkout's
 built-in plugins could be changed, only by owner-started turns, and only in dev mode.
 
 ## How it works
@@ -33,18 +32,17 @@ built-in plugins could be changed, only by owner-started turns, and only in dev 
      or a host's load error), `refused` (unknown, or a discovery problem: an invalid `package.json`, a built-in's
      name), plus the server's and workers' errors logged since the apply began (`processLogs`);
    - in dev mode the dev status is notified like the Reload button.
-4. **Showing**: `view_open` (code mode) opens any kind a web facet registered in `ViewKinds` (`{ <kind>: { Pane } }`,
-   docs/views.md), with `item` naming what it shows. A plugin keeping several items per session also contributes an
-   artifact kind (`ArtifactKinds`), so the artifacts side panel lists them and opens them as views.
+4. **Showing**: a web facet contributes a sheet to the `overlay:<name>` slot and a command that opens it
+   (`openLayer({ kind: "sheet", name })`), as the example does. The person opens it from the command menu.
 5. **Guidance** is a skill, `plugins/agent-plugins/skills/writing-p2-plugins/SKILL.md`, with a complete, tested
-   example next to it (`example/counter/`: a shared counter with presence, a wave event, a pane and a code-mode
+   example next to it (`example/counter/`: a shared counter with presence, a wave event, a sheet and a code-mode
    tool). Plugins' skills come from the worker registry `PluginSkills` (`src/runtime/plugin-skills.ts`, exported by
    `@p2/app/v1/worker`), keyed by plugin, `{ dir }` (a facet passes `pluginFile("skills")`). The prompt plugin lists
    them in `<available_skills>` after the environment's and the project's skills (the first skill of a name wins),
    counted as global skills (a locked session gets them only with its global instructions), and **only for
    conversations working on the server's machine**: the listing points at the plugin's files, never copied to another
    environment. Its local watches rewatch when the registry's directories change. A conversation on another
-   environment gets instead the agent-plugins plugin's `p2-plugins` prompt section: multiplayer or persistent views
+   environment gets instead the agent-plugins plugin's `p2-plugins` prompt section: multiplayer or persistent features
    are plugins; start a subagent at `local:<data>/plugins`, whose skills include the guide.
 6. **Plugin tools** are code-mode only by default (`callers: ["tools"]`), grouped by the code-mode namespace their
    extension declares (`namespace: { name, description, instructions? }`, Durable's `ToolNamespace`): the prompt lists
@@ -60,16 +58,12 @@ built-in plugins could be changed, only by owner-started turns, and only in dev 
   has. What a session's agents reach is decided by its tool selection, its location (a sandbox) and its lock.
   `reload_plugins` has no requirements, like bash: subagents can be given it.
 - **A failed build applies nothing**, bundles included.
-- **`Views` evolves by versions** (`evolve` with `accepts`) instead of changing in place: version 2 added plugin kinds,
-  version 3 `item` and dropped view state and the library.
-- **Kind names are not checked** against what pages register: the pane shows "Unknown view kind".
 
 ## Tests
 
 `test/p2/agent-plugins.test.ts`: a subagent at `local:<root>` copies the example with `bash` and applies it with
-`reload_plugins` (server object, event, presence, the code-mode tool and its namespace in the prompt, the view kind, the web script in the pages' combined file);
+`reload_plugins` (server object, event, presence, the code-mode tool and its namespace in the prompt, the web script in the pages' combined file);
 an edit reloads in place; build errors with file and line, refusals (a built-in's name, an unknown plugin);
 `pluginFile` in the user root and its skills listed after the project's; a subagent given other tools cannot reload;
-a guest's turn uses `reload_plugins` and the view tools; in Chromium, an unknown kind's pane becomes the plugin's after the
-reload. `envs.test.ts`: a remote conversation lists no plugin skill and gets the hint. `dev-tools.test.ts`: the
+a guest's turn uses `reload_plugins`. `envs.test.ts`: a remote conversation lists no plugin skill and gets the hint. `dev-tools.test.ts`: the
 tool's results. `tool-access.test.ts`: `scope` and `locked` without origin.

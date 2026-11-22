@@ -10,9 +10,9 @@ export type Scope = {
 	readonly selection?: string;
 };
 
-/** Whether the scope lies in the open session's page (its chat or a view beside it): its conversation is the target. */
+/** Whether the scope lies in the open session's page (its chat): its conversation is the target. */
 export const inOpenSession = (scope: Scope, route: Route): boolean =>
-	route.session !== undefined && scope.levels.some((level) => level.kind === "transcript" || level.kind === "view");
+	route.session !== undefined && scope.levels.some((level) => level.kind === "transcript");
 
 /** The block for the open conversation's agent: what the person pointed at in its page, as JSON. */
 export function scopeBlock(scope: Scope): string {

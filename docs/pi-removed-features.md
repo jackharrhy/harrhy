@@ -13,6 +13,7 @@ at that commit.
 | Telemetry panel | `16e22a10` | `plugins/telemetry` |
 | Terminal UI | `48c0ac80` | `src/tui`, `src/hosts/tui*`, `src/runtime/tui*`, `src/api/v1/tui.ts`, every plugin's `tui*.ts`, `plugins/quiet-tools`, `docs/p2-tui-port.md` |
 | Web terminal | `46d6b3a9` | `plugins/terminals` (including `vendor/ghostty`), the workspace's Terminal tab, the bottom terminal panel and its CSS |
+| Artifacts and views | `63776fc1` | `plugins/artifacts`, `plugins/views`, `src/web/artifact-kinds.ts`, `src/web/view-kinds.ts`, `docs/artifacts.md`, `docs/views.md`, `docs/glyph-editor-port.md` |
 
 Paths are under `apps/pi/`.
 
@@ -130,3 +131,46 @@ Worth keeping in mind:
 - Left on a machine that ran it, read by nothing now: `<data>/terminals.logs.json`, the host's socket
   (`p2-<key>-t.sock` in the temp directory) and the browser's remembered terminal placement. A terminal host started
   before the upgrade keeps running until its ten idle minutes pass or it is killed, since it was detached.
+## Artifacts and views
+
+Pages and documents the agent wrote for a session, and the panes beside the chat that showed them. About 6,000 lines in
+the `artifacts` and `views` plugins.
+
+- **Artifacts** (`plugins/artifacts`): the agent's `artifact_*` code-mode tools wrote, edited, read, listed and deleted
+  named, versioned artifacts: an html page or a Markdown document. `artifact_show` put one in the transcript for
+  everyone, `artifact_open` beside it. An html page ran in a sandboxed frame the server served at `/artifact-frame`, with
+  a bridge (`p2view`) for the page's own state, selections, console lines and errors. The agent could read that state,
+  set it (the open page got it at once), evaluate code in the open page and read its errors; new page errors went along
+  with the person's next message. A button in the top bar counted a session's artifacts and opened a list.
+- **Views** (`plugins/views`): panes next to the transcript that the person and the agent shared, in tabs and splits
+  (per device on wide screens, one at a time on phones). A pane showed a Markdown file of the workspace, the working
+  tree's changes, an artifact, or a kind a plugin's web facet registered (`ViewKinds`). The agent opened and arranged
+  them with `view_open`, `view_list`, `view_close`, `view_arrange` and `view_resolve`. The person's text selections,
+  comments, "remove this" marks and freehand drawings over any pane (the annotation layer) went to the agent as a
+  `<views>` block with their next message. Listable items (`ArtifactKinds`) let other plugins' boards and games appear
+  in the artifacts list.
+
+The workspace panel (files, changes and diffs with review comments, the file viewer) is separate and stayed. Data: the
+`p2.views` session document and `<data>/artifacts/` are left where they are and read by nothing; the instance had no
+artifact versions.
+
+Worth bringing back:
+
+- Annotating a pane (select text, comment, mark for removal, draw) and having the marks reach the agent with the next
+  message is a good review loop. The workspace panel could host it, over diffs and rendered files.
+- A page the agent writes and the person uses, with state the agent can read and write, covers small tools better than a
+  plugin does. The sandbox rules (opaque origin, own CSP, bridge-only access) are the part to keep.
+- Several panes beside the chat, laid out by the agent. Nothing replaces the layout engine.
+
+What other features used, and where it went:
+
+- The scope prompt carried its scope block with a message through the views plugin's send router. It has its own router
+  now. Its transcript note keeps the old `p2.view-input` entry kind, so earlier messages that carried selections still
+  show their note. Pointing at a pane or a changes file is gone with them; the chat and diff lines remain.
+- The Previews list was an owner-only pane of the workbench. It opens as a sheet from the command menu ("Previews").
+- The chat's `workbench` slot, the `view-actions`, `artifact-actions` and `chat-content` slots, the `ViewKinds`,
+  `OwnerViewKinds` and `ArtifactKinds` registries, and the `artifact` activity kind and icon are gone.
+- The `writing-p2-plugins` skill and its counter example showed a plugin's UI as a pane opened with `view_open`. They use
+  a sheet and a command now.
+- The migration scripts (`migrate-data`, `migrate-files`, `data-report`) still read the old `artifacts/` layout of
+  pre-Chord-v2 data.

@@ -789,8 +789,6 @@ function TopBar({
 				)}
 			</div>
 			{offline && <span className="offline">Offline</span>}
-			<Slot name="view-actions" />
-			<Slot name="artifact-actions" />
 			<Slot name="tree-actions" />
 			<Slot name="workspace-actions" />
 			<Slot name="session-options" />
@@ -2021,10 +2019,8 @@ function Main() {
 				{ended ? (
 					<ShareEnded />
 				) : route.session ? (
-					<Slot name="chat-content">
-						<Slot name="chat-attribution">
-							<SessionChat key={conversation} sessionId={route.session} conversationId={shownConversation} />
-						</Slot>
+					<Slot name="chat-attribution">
+						<SessionChat key={conversation} sessionId={route.session} conversationId={shownConversation} />
 					</Slot>
 				) : route.newSession ? (
 					<NewSession />
@@ -2033,7 +2029,7 @@ function Main() {
 					<Slot name="home" fallback={<NewSession />} />
 				)}
 				{/* The transcript of the screen above goes into the view (`useChatScreen`), the dock floats over its bottom. */}
-				<div className="chat">
+				<div className="chat" data-transcript-pane>
 					<div className="chat-view" ref={setView} />
 					<Dock frame={frame} dockRef={setDock} />
 				</div>

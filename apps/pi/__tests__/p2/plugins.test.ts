@@ -78,7 +78,7 @@ describe("plugin listing and selection", () => {
 		// The answer follows its state: the new default is on the page when the call resolves.
 		assert.deepEqual(models.defaultModel.value, choice);
 		const files = await readdir(fixture.dataDir);
-		assert(!files.some((name) => ["shares.sqlite", "downloads", "artifacts"].includes(name)));
+		assert(!files.some((name) => ["shares.sqlite", "downloads"].includes(name)));
 		await assert.rejects(fixture.server.reload(["workspace"]), /Cannot reload unloaded p2 plugin: workspace/);
 	});
 

@@ -265,7 +265,7 @@ const SessionsV3 = remote("p2.sessions", {
 				archive: method(Id),
 				restore: method(Id),
 				/**
-				 * A copy of the session as it is now (pi's `/clone`): its store with every conversation, and its artifacts,
+				 * A copy of the session as it is now (pi's `/clone`): its store with every conversation, and its
 				 * downloads and uploads, under a new ID. Refused while the session's worker has work running.
 				 */
 				clone: method(Id, SessionSchemaV3),

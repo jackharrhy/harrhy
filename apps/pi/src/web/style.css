@@ -213,7 +213,6 @@ body,
 /* Rows bleed to the container edge; text stays on the inset. */
 .row-button,
 .model-row,
-.artifact-row,
 .login-action,
 .hit,
 .guest-row,
@@ -234,7 +233,6 @@ body,
    it everywhere. */
 .row-button:active,
 .model-row:active,
-.artifact-row:active,
 .login-action:active,
 .hit:active,
 .workspace-row:active {
@@ -243,15 +241,13 @@ body,
 @media (hover: hover) {
 	.row-button:hover,
 	.model-row:hover,
-	.artifact-row:hover,
 	.login-action:hover,
 	.hit:hover {
 		background: var(--hover);
 	}
 }
 .row-button > span,
-.model-row > span,
-.artifact-row > span {
+.model-row > span {
 	flex: 1;
 	min-width: 0;
 	display: flex;
@@ -641,21 +637,6 @@ textarea.input {
 	padding: 0 var(--s2);
 	color: var(--bad);
 	font-size: var(--fs-xs);
-}
-/* Artifact count sits inline beside its icon. */
-.artifact-button {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--s1);
-	height: var(--control);
-	padding: 0 calc(var(--x) - var(--bar-pad));
-	color: var(--muted);
-	font-family: var(--mono);
-	font-size: var(--fs-xs);
-}
-.artifact-button:hover,
-.artifact-button.on {
-	color: var(--text);
 }
 /* Centred over the chat column: on wide screens it does not stretch across the whole main area. */
 .toast {
@@ -1137,7 +1118,7 @@ textarea.input {
 .chev.open {
 	transform: rotate(90deg);
 }
-/* Artifact and file cards: the body opens the viewer; the bordered end downloads. */
+/* File cards: the body opens the viewer; the bordered end downloads. */
 .file-card {
 	display: flex;
 	align-items: stretch;
@@ -1201,36 +1182,6 @@ textarea.input {
 		background: var(--hover);
 		color: var(--text);
 	}
-}
-/* An artifact rendered at its tool call site (`inline: true`): below the card, at most about 70vh high. */
-.inline-artifact {
-	margin-top: var(--s2);
-	border: 1px solid var(--line);
-	border-radius: var(--radius);
-	overflow: hidden;
-}
-.inline-artifact.markdown,
-.inline-artifact.text {
-	max-height: 70vh;
-	overflow: auto;
-	padding: var(--s3);
-}
-.inline-artifact > pre {
-	margin: 0;
-	font-family: var(--mono);
-	font-size: var(--fs-sm);
-	overflow-wrap: anywhere;
-	white-space: pre-wrap;
-}
-.inline-artifact > iframe {
-	display: block;
-	width: 100%;
-	max-height: 70vh;
-	border: 0;
-	background: white;
-}
-.inline-artifact > .notice {
-	margin: 0;
 }
 .file-media {
 	display: block;
@@ -2891,8 +2842,7 @@ button.diff-number:hover {
 .model-list section h3 {
 	padding-top: var(--s4);
 }
-.model-row strong,
-.artifact-row strong {
+.model-row strong {
 	display: block;
 	overflow: hidden;
 	font-size: var(--fs-md);
@@ -2900,21 +2850,16 @@ button.diff-number:hover {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-.model-row small,
-.artifact-row small {
+.model-row small {
 	display: block;
 	color: var(--muted);
 	font-family: var(--mono);
 	font-size: var(--fs-xs);
 }
-.model-row > span,
-.artifact-row > span {
+.model-row > span {
 	display: block;
 }
 .model-row > svg {
-	flex: none;
-}
-.artifact-row > small {
 	flex: none;
 }
 
@@ -2974,11 +2919,7 @@ button.diff-number:hover {
 	overflow-wrap: anywhere;
 }
 
-/* Artifact viewer */
-.artifact-list {
-	display: flex;
-	flex-direction: column;
-}
+/* File viewer */
 .viewer-layer {
 	position: fixed;
 	inset: 0;
@@ -3047,41 +2988,6 @@ button.diff-number:hover {
 	font-size: var(--fs-sm);
 	overflow-wrap: anywhere;
 	white-space: pre-wrap;
-}
-.artifact-diagnostics {
-	flex: none;
-	max-height: 38%;
-	border-top: 1px solid var(--line);
-}
-.artifact-diagnostics > button {
-	display: flex;
-	justify-content: space-between;
-	gap: var(--s3);
-	width: 100%;
-	padding: var(--s2) var(--x);
-	color: var(--muted);
-	font-size: var(--fs-xs);
-	font-weight: var(--fw-strong);
-}
-.artifact-diagnostics.has-errors > button {
-	color: var(--bad);
-}
-.artifact-diagnostics > div {
-	max-height: 28vh;
-	overflow: auto;
-	padding: 0 var(--x) var(--s3);
-	font-family: var(--mono);
-	font-size: var(--fs-xs);
-}
-.artifact-diagnostics p {
-	overflow-wrap: anywhere;
-	white-space: pre-wrap;
-}
-.artifact-diagnostics p + p {
-	margin-top: var(--s1);
-}
-.artifact-diagnostics strong {
-	text-transform: uppercase;
 }
 
 /* Cost panel */

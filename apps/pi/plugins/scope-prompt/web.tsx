@@ -4,7 +4,9 @@
 // changes. The worker facet carries a prompt's scope with its message (`ScopeStage`).
 import { contribute, defineFacet } from "@p2/app/v1";
 import { Commands, Slots } from "@p2/app/v1/web";
+import { TranscriptEntries } from "../chat/contract.ts";
 import { SCOPE_COMMANDS } from "./commands.tsx";
+import { SCOPE_INPUT, viewInputDisplay } from "./display.ts";
 import { ScopePrompt } from "./Overlay.tsx";
 import { ScopeToggle } from "./Toggle.tsx";
 import "./style.css";
@@ -17,5 +19,6 @@ export default defineFacet((host) => {
 			"topbar-start:scope-prompt": ScopeToggle,
 		});
 		self.contribute(Commands, SCOPE_COMMANDS);
+		self.contribute(TranscriptEntries, { [SCOPE_INPUT]: viewInputDisplay });
 	});
 });

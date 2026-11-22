@@ -8,7 +8,6 @@ import { after, before, describe, it } from "node:test";
 import type { ToolResultMessage } from "@earendil-works/pi-ai";
 import { type ConversationView, createSession, defineDoc, ROOT_CONVERSATION_ID } from "@earendil-works/pi-durable";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
-import { Artifacts } from "../../plugins/artifacts/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { type Session, Sessions } from "../../plugins/sessions/contract.ts";
 import { SessionStatus } from "../../plugins/status/contract.ts";
@@ -151,18 +150,6 @@ describe("/tree (fake provider)", () => {
 		assert.equal(result?.isError, false, JSON.stringify(result?.content));
 		chat.release();
 		await idle();
-	});
-
-	it("keeps the artifacts a branch writes in the session's list", async () => {
-		const tree = await (await treeRef()).tree(BACKGROUND_CONTEXT);
-		const chat = await chatOf(tree.main);
-		await chat.send({ text: "artifact", requestId: "artifact" }, BACKGROUND_CONTEXT);
-		await until(chat.view, (next) => toolResults(next).some((result) => result.toolName === "codemode"));
-		chat.release();
-		await idle();
-		const list = await holdIn(owner, Artifacts, { session: session.id }, "editor");
-		await until(list.artifacts, (value) => value?.some((artifact) => artifact.id === "demo") ?? false);
-		list.release();
 	});
 
 	it("registers a branch's subagents on conversation 1 and reports to the branch", async () => {

@@ -16,7 +16,6 @@ export {
 	LanIcon as PortIcon,
 	RefreshIcon,
 	SearchIcon,
-	ShapesIcon as ArtifactIcon,
 	SmartToyIcon as BotIcon,
 	StopIcon,
 	TerminalIcon,
