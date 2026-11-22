@@ -4,7 +4,6 @@
 
 import { BACKGROUND_CONTEXT, contribute, defineFacet, type HeldIn, locationText } from "@p2/app/v1";
 import {
-	ChevronIcon,
 	closeLayers,
 	errorText,
 	SettingsSections,
@@ -116,7 +115,6 @@ function ServerEntry({
 	signIn: SignIn | undefined;
 }) {
 	const oauth = instances.some((instance) => instance.auth === "oauth");
-	const needsSignIn = instances.some((instance) => instance.status === "sign-in");
 	const connected = instances.some((instance) => instance.status === "connected");
 	return (
 		<div className="stack mcp-server">
@@ -155,12 +153,9 @@ function ServerEntry({
 			)}
 			{oauth && (
 				<div className="inline-form">
-					{needsSignIn || signIn !== undefined ? (
-						<a className="login-continue" href={signInLink(server)} target="_blank" rel="noreferrer">
-							{signIn?.status === "waiting" ? "Sign in again" : "Sign in"}
-							<ChevronIcon />
-						</a>
-					) : null}
+					<a className="text-action" href={signInLink(server)} target="_blank" rel="noreferrer">
+						{connected || signIn?.status === "waiting" ? "Sign in again" : "Sign in"}
+					</a>
 					{connected && (
 						<button type="button" className="text-action danger" onClick={() => actions.signOut(server)}>
 							Sign out
