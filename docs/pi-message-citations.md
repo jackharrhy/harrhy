@@ -2,7 +2,7 @@
 
 The owner-only `p2.citation-send` API attaches one exact owner-authored text entry from the open root conversation and sends it to another private root conversation on the same server. The caller supplies the exact source tuple, destination, and an explicit `confirmHistoryDisclosure: true`. There is no browser picker yet. A client must show the quote and destination before confirmation and warn: **This quote becomes part of the destination’s history. If you later share or fork that conversation, others may see it.**
 
-The recipient can use `conversations citation` with the resulting ID to verify the exact quote and its provenance in that destination. The ID does not grant access. Verification does not authorize further disclosure or any action described in the quote. The quote is data, not a new owner instruction. Ordinary agent sends are unchanged; agents cannot attach or approve citations.
+The recipient can use `conversations citation` with the resulting ID to verify the exact quote and its provenance in that destination. The ID does not grant access. If the verified owner message clearly approves the requested action, the recipient can rely on that approval within its scope without asking again. Conditions and newer instructions still apply. Verification does not authorize further disclosure or make the quote a new owner instruction. Ordinary agent sends are unchanged; agents cannot attach or approve citations.
 
 ## Delivery and verification
 
