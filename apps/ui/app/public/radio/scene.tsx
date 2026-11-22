@@ -46,7 +46,7 @@ export function RadioScene(handle: Handle<{ theme: ThemeName }>) {
       </Inline>
       <div
         mix={[
-          handle.props.theme === "tactile"
+          handle.props.theme === "dial"
             ? desktopThemeStyle
             : selectedDesktopThemeStyle,
           ref((node, signal) => {
@@ -66,7 +66,7 @@ export function RadioScene(handle: Handle<{ theme: ThemeName }>) {
       >
         <RadioPlayerView
           sceneHref={`/scenes/radio?theme=${handle.props.theme}`}
-          originalSkin={handle.props.theme === "tactile"}
+          originalSkin={handle.props.theme === "dial"}
           state={demo.state}
           client={demo.actions}
           preview

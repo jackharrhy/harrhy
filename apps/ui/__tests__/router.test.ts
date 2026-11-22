@@ -16,11 +16,11 @@ it("renders a native filtered fixture and escapes query text", async (t) => {
   const app = createApp();
   t.after(() => app.close());
   const response = await app.fetch(
-    new Request("http://localhost/explorer?theme=tactile&q=%3Cscript%3E"),
+    new Request("http://localhost/explorer?theme=dial&q=%3Cscript%3E"),
   );
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /data-theme="tactile"/);
+  assert.match(html, /data-theme="dial"/);
   assert.match(html, /No components found/);
   assert.ok(!html.includes("<script><"));
   assert.match(html, /method="get"/);

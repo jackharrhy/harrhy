@@ -1,4 +1,4 @@
-import { composeTheme, tactileTheme, themeStyles } from "@harrhy/ui/theme";
+import { composeTheme, dialTheme, themeStyles } from "@harrhy/ui/theme";
 import { css } from "remix/component";
 
 export const DESKTOP_FONT_FAMILY =
@@ -30,7 +30,7 @@ export const desktopThemeStyle = css({
 
 // Radio keeps its own skin; shared controls consume it through the public token contract.
 export const radioControlsTheme = themeStyles(
-  composeTheme(tactileTheme, {
+  composeTheme(dialTheme, {
     muted: "var(--desktop-muted)",
     ink: "var(--desktop-ink)",
     surface: "var(--desktop-paper)",

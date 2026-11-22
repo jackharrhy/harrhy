@@ -1,7 +1,7 @@
 import { createCookie } from "remix/cookie";
 import {
   cleanTheme,
-  tactileTheme,
+  dialTheme,
   brutalistTheme,
   themeStyles,
   composeTheme,
@@ -9,7 +9,7 @@ import {
 
 export const themes = [
   { id: "clean", name: "Basic", tokens: cleanTheme },
-  { id: "tactile", name: "Ledger", tokens: tactileTheme },
+  { id: "dial", name: "Dial", tokens: dialTheme },
   { id: "brutalist", name: "Newspaper", tokens: brutalistTheme },
 ] as const;
 export type ThemeId = (typeof themes)[number]["id"];

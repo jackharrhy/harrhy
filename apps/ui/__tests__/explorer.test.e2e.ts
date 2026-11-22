@@ -251,7 +251,7 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   );
   await page.getByRole("button", { name: "Theme", exact: true }).click();
   await page.getByRole("option", { name: "Dial", exact: true }).click();
-  await page.waitForURL((url) => url.searchParams.get("theme") === "tactile");
+  await page.waitForURL((url) => url.searchParams.get("theme") === "dial");
   await page.reload();
   assert.match(
     await page.getByRole("button", { name: "Theme", exact: true }).innerText(),

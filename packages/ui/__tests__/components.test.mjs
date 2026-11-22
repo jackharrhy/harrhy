@@ -11,7 +11,7 @@ const {
   composeTheme,
   extendTheme,
   cleanTheme,
-  tactileTheme,
+  dialTheme,
   brutalistTheme,
   themeStyles,
 } = await import("../theme.ts");
@@ -104,11 +104,11 @@ test("standalone controls preserve authored invalid state and native metadata", 
 });
 
 test("theme composition is immutable and emits scoped semantic and recipe variables", async () => {
-  const theme = composeTheme(tactileTheme, {
+  const theme = composeTheme(dialTheme, {
     controlHeight: "3rem",
     accent: "#ffffff",
   });
-  assert.equal(tactileTheme.controlHeight, cleanTheme.controlHeight);
+  assert.equal(dialTheme.controlHeight, cleanTheme.controlHeight);
   assert.equal(theme.controlHeight, "3rem");
   assert.notEqual(theme.panelImage, "none");
   const html = await renderToString(

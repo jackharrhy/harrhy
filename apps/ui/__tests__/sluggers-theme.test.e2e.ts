@@ -106,7 +106,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
   page.on("request", (request) => {
     if (request.url().includes("sluggers-font-fixture")) fontRequests++;
   });
-  for (const theme of ["clean", "tactile"]) {
+  for (const theme of ["clean", "dial"]) {
     await page.goto(`/explorer/button?theme=${theme}`);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",

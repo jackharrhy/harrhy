@@ -361,7 +361,7 @@ export const densityOverrides = {
 } as const satisfies Record<string, Partial<ThemeTokens>>;
 
 // Table treatment follows Radio room utility headers and fine desktop list rules.
-export const tactileTheme = extendTheme(cleanTheme, {
+export const dialTheme = extendTheme(cleanTheme, {
   table: {
     border: "#7b878c",
     surface: "#f8fbfb",
