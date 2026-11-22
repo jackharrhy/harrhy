@@ -10,8 +10,8 @@ import { Chat } from "../../plugins/chat/contract.ts";
 import { ProviderLogin } from "../../plugins/login/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
-import { Workspace } from "../../plugins/workspace/contract.ts";
 import { listPlugins, selectPlugins } from "../../src/hosts/plugins.ts";
+import { FileIndex } from "../../src/runtime/file-index.ts";
 import { failureOf, holdIn, settled, startFixture, until } from "./helpers.ts";
 
 /** What a chat session needs; a fixture names every plugin it loads. */
@@ -103,8 +103,8 @@ describe("plugin listing and selection", () => {
 			),
 		);
 		// Unnamed plugins' worker facets are absent.
-		const workspace = browser.hold(Workspace, { session: session.id, conversation: 1 }, BACKGROUND_CONTEXT);
-		assert.equal((await failureOf(workspace)).code, "unavailable");
+		const index = browser.hold(FileIndex, { session: session.id, conversation: 1 }, BACKGROUND_CONTEXT);
+		assert.equal((await failureOf(index)).code, "unavailable");
 		await fixture.server.reload(["chat"]);
 		await chat.send({ text: "after subset reload", requestId: "reload" }, BACKGROUND_CONTEXT);
 		await until(chat.view, (value) =>

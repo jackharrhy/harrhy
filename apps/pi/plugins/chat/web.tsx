@@ -66,7 +66,6 @@ import {
 	navigate,
 	OneShotAgents,
 	OpenConversation,
-	OpenWorkspaceFile,
 	openCommandPage,
 	openLayer,
 	openSidebar,
@@ -790,7 +789,6 @@ function TopBar({
 			</div>
 			{offline && <span className="offline">Offline</span>}
 			<Slot name="tree-actions" />
-			<Slot name="workspace-actions" />
 			<Slot name="session-options" />
 			<Slot name="session-actions" />
 		</header>
@@ -883,19 +881,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 			void nav.push(conversationRoute(nav.route, sessionId, conversation));
 		},
 		[nav, sessionId],
-	);
-	const openWorkspaceFile = useCallback(
-		(path: string, line?: number) => {
-			const current = nav.route;
-			void nav.push({
-				...current,
-				workspace: {
-					...(current.workspace ?? { tab: "files", directory: "" }),
-					file: { path, view: "file", line },
-				},
-			});
-		},
-		[nav],
 	);
 	const connected = useConnected();
 	const host = useHost();
@@ -1677,35 +1662,33 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 									<ToolActivityContext.Provider value={tools}>
 										<OpenConversation.Provider value={openConversation}>
 											<OneShotAgents.Provider value={oneShots}>
-												<OpenWorkspaceFile.Provider value={canWrite ? openWorkspaceFile : undefined}>
-													<ReplyTo.Provider value={participant && canReply ? startReply : undefined}>
-														<BranchFrom.Provider value={branching}>
-															<RevealEntry.Provider value={reveal}>
-																<FillGap.Provider value={fillGap}>
-																	<Messages
-																		transcript={shown}
-																		rows={rows}
-																		list={follow.list}
-																		range={follow.range}
-																		stopped={
-																			stopped?.sessionId === sessionId &&
-																			stopped?.conversationId === conversationId &&
-																			!view?.entries.some((entry) =>
-																				entry.model?.some(
-																					(message) =>
-																						message.role === "assistant" &&
-																						message.stopReason === "aborted",
-																				),
-																			)
-																		}
-																		earlier={earlier}
-																		onEarlier={() => void loadEarlier()}
-																	/>
-																</FillGap.Provider>
-															</RevealEntry.Provider>
-														</BranchFrom.Provider>
-													</ReplyTo.Provider>
-												</OpenWorkspaceFile.Provider>
+												<ReplyTo.Provider value={participant && canReply ? startReply : undefined}>
+													<BranchFrom.Provider value={branching}>
+														<RevealEntry.Provider value={reveal}>
+															<FillGap.Provider value={fillGap}>
+																<Messages
+																	transcript={shown}
+																	rows={rows}
+																	list={follow.list}
+																	range={follow.range}
+																	stopped={
+																		stopped?.sessionId === sessionId &&
+																		stopped?.conversationId === conversationId &&
+																		!view?.entries.some((entry) =>
+																			entry.model?.some(
+																				(message) =>
+																					message.role === "assistant" &&
+																					message.stopReason === "aborted",
+																			),
+																		)
+																	}
+																	earlier={earlier}
+																	onEarlier={() => void loadEarlier()}
+																/>
+															</FillGap.Provider>
+														</RevealEntry.Provider>
+													</BranchFrom.Provider>
+												</ReplyTo.Provider>
 											</OneShotAgents.Provider>
 										</OpenConversation.Provider>
 									</ToolActivityContext.Provider>

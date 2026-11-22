@@ -100,12 +100,6 @@ export const TerminalIcon = ({ size = 15 }: { size?: number }) => (
 		<path d="M7 9.5l3 2.5-3 2.5M12.5 15H17" />
 	</Icon>
 );
-/** Plus over minus: changed files. */
-export const DiffIcon = () => (
-	<Icon>
-		<path d="M12 4v10M7 9h10M7 19h10" />
-	</Icon>
-);
 export const CommentIcon = () => (
 	<Icon>
 		<path d="M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z" />
@@ -212,7 +206,7 @@ export const AttachIcon = () => (
 		<path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.4 17.3a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" />
 	</Icon>
 );
-/** A panel docked at the side of a window: the workspace's position. */
+/** A panel docked at the side of a window: a side panel's position. */
 export const PanelSideIcon = () => (
 	<Icon size={18}>
 		<rect x="3" y="4" width="18" height="16" rx="2" />

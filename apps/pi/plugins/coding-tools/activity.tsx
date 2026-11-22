@@ -102,7 +102,7 @@ function ReadDetail({ step }: { step: Step }) {
 			input={
 				<FilePath
 					path={pathOf(step)}
-					{...(lines ? { line: lines.offset, range: ` · lines ${lines.offset}–${lines.end}` } : {})}
+					{...(lines ? { range: ` · lines ${lines.offset}–${lines.end}` } : {})}
 				/>
 			}
 			output={
