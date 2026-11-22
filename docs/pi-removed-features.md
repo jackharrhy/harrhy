@@ -131,6 +131,7 @@ Worth keeping in mind:
 - Left on a machine that ran it, read by nothing now: `<data>/terminals.logs.json`, the host's socket
   (`p2-<key>-t.sock` in the temp directory) and the browser's remembered terminal placement. A terminal host started
   before the upgrade keeps running until its ten idle minutes pass or it is killed, since it was detached.
+
 ## Artifacts and views
 
 Pages and documents the agent wrote for a session, and the panes beside the chat that showed them. About 6,000 lines in
