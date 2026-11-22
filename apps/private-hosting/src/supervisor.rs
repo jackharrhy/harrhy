@@ -224,7 +224,12 @@ impl Supervisor {
                     Some(path) => format!("unix/{}", path.display()),
                     None => format!("127.0.0.1:{}", spec.port),
                 };
-                let mut proxy = json!({"handler":"reverse_proxy", "upstreams":[{"dial":dial}]});
+                let mut proxy = json!({
+                    "handler":"reverse_proxy", "upstreams":[{"dial":dial}],
+                    // Keep unrelated WebSockets alive during route changes. Caddy
+                    // still closes old-generation upgrades after this delay.
+                    "stream_close_delay":"30s",
+                });
                 if name == "slides" {
                     // The private gateway terminates TLS; Slides validates its native auth origin.
                     proxy["headers"] = json!({"request":{"set":{
@@ -252,14 +257,6 @@ impl Supervisor {
     fn publish(&mut self, ready: Routes) -> Result<()> {
         if let Some(proxy) = &self.proxy {
             ensure!(!exited(&proxy.child)?, "Caddy exited");
-            // Recycling the dedicated data plane also closes in-flight normal HTTP streams.
-            if proxy
-                .published
-                .as_ref()
-                .is_some_and(|old| !old.is_subset(&ready))
-            {
-                self.close_proxy()?;
-            }
         }
         if self.proxy.is_none() {
             if Instant::now() < self.proxy_retry {

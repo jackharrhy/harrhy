@@ -25,9 +25,25 @@ fn atlas_fixture() -> Result<()> {
         let mut conn = conn?;
         std::thread::spawn(move || -> Result<()> {
             let mut req = String::new();
-            BufReader::new(&conn).read_line(&mut req)?;
-            if req.starts_with("GET /stream ") {
+            let mut reader = BufReader::new(&conn);
+            reader.read_line(&mut req)?;
+            if req.starts_with("GET /websocket ") {
+                // The test uses the fixed RFC 6455 example handshake key.
+                let mut header = String::new();
+                while reader.read_line(&mut header)? != 0 && header != "\r\n" {
+                    header.clear();
+                }
+                conn.write_all(b"HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n")?;
+                until(|| Path::new("send-atlas-frame").exists())?;
+                conn.write_all(b"\x81\x05alive")?;
+            } else if req.starts_with("GET /stream ") {
                 conn.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\ndata: opened\n\n")?;
+                until(|| Path::new("send-atlas-frame").exists())?;
+                conn.write_all(
+                    b"data: still here
+
+",
+                )?;
                 sleep(Duration::from_secs(30));
             } else {
                 let ok = !req.starts_with("GET /healthz ") || Path::new("ready").exists();
@@ -69,6 +85,43 @@ fn request(socket: &Path, host: &str, path: &str) -> Result<UnixStream> {
         "GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
     )?;
     Ok(conn)
+}
+
+fn open_events(socket: &Path, host: &str) -> Result<BufReader<UnixStream>> {
+    let mut stream = BufReader::new(request(socket, host, "/stream")?);
+    loop {
+        let mut line = String::new();
+        ensure!(
+            stream.read_line(&mut line)? > 0,
+            "{host} stream did not open"
+        );
+        if line == "data: opened\n" {
+            return Ok(stream);
+        }
+    }
+}
+
+fn open_websocket(socket: &Path) -> Result<BufReader<UnixStream>> {
+    let mut conn = UnixStream::connect(socket)?;
+    conn.set_read_timeout(Some(Duration::from_secs(2)))?;
+    conn.write_all(b"GET /websocket HTTP/1.1\r\nHost: atlas.test\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n\r\n")?;
+    let mut stream = BufReader::new(conn);
+    let mut line = String::new();
+    stream.read_line(&mut line)?;
+    ensure!(
+        line.starts_with("HTTP/1.1 101 "),
+        "unexpected WebSocket response: {line}"
+    );
+    loop {
+        line.clear();
+        ensure!(
+            stream.read_line(&mut line)? > 0,
+            "incomplete WebSocket handshake"
+        );
+        if line == "\r\n" {
+            return Ok(stream);
+        }
+    }
 }
 
 #[test]
@@ -215,23 +268,45 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
     ctl(&["stop", "world"])?;
     until(|| fetch("world.test", "404"))?;
     assert!(!Path::new("/proc").join(new_web).exists());
-    let mut stream = BufReader::new(request(&socket, "atlas.test", "/stream")?);
+    let mut atlas_ws = open_websocket(&socket)?;
+    let mut atlas_events = open_events(&socket, "atlas.test")?;
+    let mut go_events = open_events(&socket, "demo.test")?;
+    let before_stop = Instant::now();
+    let stopped = ctl(&["stop", "go-demo"])?;
+    assert_eq!(stopped["apps"]["go-demo"]["running"], false);
+    assert!(fetch("demo.test", "404"));
+    go_events
+        .read_to_end(&mut Vec::new())
+        .context("Go stream still open after stop")?;
+    assert!(before_stop.elapsed() < Duration::from_secs(5));
+    // This frame only exists after Go has been withdrawn, so buffered data
+    // cannot make a severed Atlas WebSocket appear to have survived the reload.
+    fs::write(root.join("send-atlas-frame"), "")?;
+    let mut frame = [0; 7];
+    atlas_ws
+        .read_exact(&mut frame)
+        .context("Atlas WebSocket did not survive Go withdrawal")?;
+    assert_eq!(&frame, b"\x81\x05alive");
+    drop(atlas_ws);
     loop {
         let mut line = String::new();
-        ensure!(stream.read_line(&mut line)? > 0, "stream did not open");
-        if line == "data: opened\n" {
+        ensure!(
+            atlas_events.read_line(&mut line)? > 0,
+            "Atlas SSE did not survive Go withdrawal"
+        );
+        if line
+            == "data: still here
+"
+        {
             break;
         }
     }
+    ctl(&["start", "go-demo"])?;
+    until(|| fetch("demo.test", "200"))?;
     let stopped = ctl(&["stop", "atlas"])?;
-    let mut remainder = Vec::new();
-    stream
-        .read_to_end(&mut remainder)
-        .context("stream still open after stop")?;
-    assert!(
-        !remainder.ends_with(b"0\r\n\r\n"),
-        "stream was not forcibly closed"
-    );
+    atlas_events
+        .read_to_end(&mut Vec::new())
+        .context("Atlas stream still open after Atlas stop")?;
     assert_eq!(stopped["apps"]["atlas"]["running"], false);
     until(|| fetch("atlas.test", "404") && fetch("demo.test", "200"))?;
     assert!(!runtime.join("caddy/autosave.json").exists());
