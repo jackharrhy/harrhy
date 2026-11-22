@@ -7,7 +7,7 @@ Base Pi does not discover this directory. Each integration is a separately insta
 | --- | --- | --- |
 | `local-inbox` | Server | [Pi Inbox setup and reusable agent prompt](../../../docs/pi-inbox.md) |
 | `atlas-feedback` | Server | [Atlas feedback](atlas-feedback/README.md) |
-| `github-checks` | Server, worker | [GitHub checks](github-checks/README.md) |
+| `github-checks` | Server, worker, web | [GitHub checks](github-checks/README.md) |
 
 Install only the wanted package as a real directory under `<P2_DATA_DIR>/plugins/`, not the enclosing directory or a symlink. An old built-in wins a name clash. Follow the individual guide and obtain separate authorization before modifying a running instance.
 

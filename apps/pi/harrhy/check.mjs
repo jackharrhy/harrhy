@@ -72,6 +72,7 @@ sandbox(
     "__tests__/p2/ui-web-surface.test.ts",
     "__tests__/p2/ui-repositories.test.ts",
     "__tests__/p2/ui-theme-branding.test.ts",
+    "__tests__/p2/ui-github-checks.test.ts",
     "__tests__/p2/activity-model.test.ts",
     "__tests__/p2/files.test.ts",
     "__tests__/p2/history.test.ts",

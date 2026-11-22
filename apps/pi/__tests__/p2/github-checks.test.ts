@@ -6,15 +6,15 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it } from "node:test";
 import { compile } from "@earendil-works/pi-schema";
-import { BACKGROUND_CONTEXT } from "@p2/app/v1";
+import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
 import { decide, instanceOf, itemsOf, renderResult, repoAllowed } from "../../integrations/github-checks/checks.ts";
 import { GithubChecks } from "../../integrations/github-checks/contract.server.ts";
-import { WatchSchema } from "../../integrations/github-checks/contract.ts";
+import { GithubChecksSettings, WatchSchema } from "../../integrations/github-checks/contract.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
 import { Subscriptions } from "../../plugins/stimuli/contract.ts";
 import { PEER_MESSAGE_ENTRY } from "../../src/runtime/entries.ts";
-import { holdIn, poll, startFixture, until } from "./helpers.ts";
+import { expectChord, holdIn, poll, startFixture, until } from "./helpers.ts";
 
 const TEST = BACKGROUND_CONTEXT;
 const TOKEN = "fake-github-token-not-a-real-secret";
@@ -117,6 +117,7 @@ async function fakeGithub(fake: Fake) {
 			response.end(text);
 		};
 		if (request.headers.authorization !== `Bearer ${fake.token}`) return void response.writeHead(401).end();
+		if (path === "/user") return json({ login: "octo-owner" });
 		const pull = /^\/repos\/acme\/site\/pulls\/(\d+)$/.exec(path);
 		if (pull) {
 			const row = fake.pulls[Number(pull[1])];
@@ -139,10 +140,14 @@ async function fakeGithub(fake: Fake) {
 const fakeState = (): Fake => ({ pulls: {}, branch: { sha: SHA_C }, runs: {}, statuses: {}, hits: {}, token: TOKEN });
 const FAST = { pollMs: 40, idleMs: 40, settleMs: 80, graceMs: 80, lingerMs: 600 };
 
-async function harness(fake: Fake, config: object = { token: TOKEN }) {
+/** Pi against the fake GitHub; `allowed` is what the owner allowed in Settings (nothing else is configured). */
+async function harness(fake: Fake, config: object = { token: TOKEN }, allowed: string[] = ["acme/site"]) {
 	const github = await fakeGithub(fake);
 	const fixture = await startFixture({ integrations: ["github-checks"] });
-	await writeFile(join(fixture.dataDir, "github-checks.json"), JSON.stringify({ repos: ["acme/site"], apiBase: github.base, ...FAST, ...config }), { mode: 0o600 });
+	// Only what a test needs to reach the fake: its address and its token.
+	await writeFile(join(fixture.dataDir, "github-checks.json"), JSON.stringify({ apiBase: github.base, ...FAST, ...config }), { mode: 0o600 });
+	const settings = await holdIn(fixture.browser(), GithubChecksSettings, {}, "owner");
+	for (const repo of allowed) await settings.allow({ repo }, TEST);
 	const sessions = await holdIn(fixture.browser(), Sessions, {}, "owner");
 	const subscriptions = await holdIn(fixture.browser(), Subscriptions, {}, "owner");
 	const watch = async (title: string) => {
@@ -160,7 +165,7 @@ async function harness(fake: Fake, config: object = { token: TOKEN }) {
 	};
 	return {
 		fixture,
-		apiBase: github.base,
+		settings,
 		subscriptions,
 		watch,
 		close: async () => {
@@ -268,20 +273,16 @@ it("keeps looking at a closed pull request for a while, then stops", { timeout: 
 	}
 });
 
-it("watches a repository again once it is added to the allowlist", { timeout: 40_000 }, async () => {
+it("watches a repository again once the owner allows it", { timeout: 40_000 }, async () => {
 	const fake = fakeState();
 	fake.runs[SHA_D] = [run("deploy", "completed", "failure")];
-	const h = await harness(fake, { repos: ["other/*"], token: TOKEN });
+	const h = await harness(fake, { token: TOKEN }, ["other/*"]);
 	try {
 		const session = await h.watch("Allowlist");
 		await h.subscriptions.createTarget({ id: "pinned", source: SOURCE, target: session.target, config: { repo: "acme/site", ref: { kind: "commit", sha: SHA_D } } }, TEST);
 		await new Promise((resolve) => setTimeout(resolve, 600));
 		assert(!session.texts().length && !fake.hits[`/repos/acme/site/commits/${SHA_D}/check-runs`], "not watched while unlisted");
-		await writeFile(
-			join(h.fixture.dataDir, "github-checks.json"),
-			JSON.stringify({ repos: ["other/*", "acme/site"], apiBase: h.apiBase, token: TOKEN, ...FAST }),
-			{ mode: 0o600 },
-		);
+		await h.settings.allow({ repo: "acme/site" }, TEST);
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("deploy")));
 		session.chat.release();
 	} finally {
@@ -292,7 +293,7 @@ it("watches a repository again once it is added to the allowlist", { timeout: 40
 it("lets the agent watch, list and stop, and refuses what cannot be watched", { timeout: 90_000 }, async () => {
 	const fake = fakeState();
 	fake.runs[SHA_D] = [run("deploy", "completed", "failure")];
-	const h = await harness(fake, { token: TOKEN, repos: ["acme/*"] });
+	const h = await harness(fake, { token: TOKEN }, ["acme/*"]);
 	try {
 		const first = await h.watch("Agent one");
 		const second = await h.watch("Agent two");
@@ -352,5 +353,33 @@ it("takes the token from `gh auth token` for the API's host when the config has 
 	} finally {
 		await h.close();
 		await rm(directory, { recursive: true, force: true });
+	}
+});
+
+it("keeps the owner's allowed repositories, refuses bad ones, and says whether the login works", { timeout: 40_000 }, async () => {
+	const fake = fakeState();
+	const h = await harness(fake, { token: TOKEN }, []);
+	try {
+		assert.deepEqual(h.settings.repos.value, []);
+		for (const repo of ["acme", "acme/..", "../site", "https://github.com/acme/site", "a/b/c", ""])
+			await assert.rejects(h.settings.allow({ repo }, TEST), /owner\/name/, repo);
+		await h.settings.allow({ repo: " Acme/Site " }, TEST);
+		await h.settings.allow({ repo: "acme/site" }, TEST);
+		await h.settings.allow({ repo: "other/*" }, TEST);
+		assert.deepEqual(h.settings.repos.value, ["Acme/Site", "other/*"], "trimmed, and not listed twice");
+		await h.settings.remove({ repo: "ACME/site" }, TEST);
+		assert.deepEqual(h.settings.repos.value, ["other/*"]);
+		assert.deepEqual(await h.settings.checkLogin({}, TEST), { ok: true, message: "Reading GitHub as octo-owner" });
+		fake.token = "someone-elses-token";
+		const refused = await h.settings.checkLogin({}, TEST);
+		assert.equal(refused.ok, false);
+		assert.match(refused.message, /GitHub 401/);
+		// A guest has no part in it.
+		const guest = h.fixture.as({ kind: "guest", id: "guest", name: "Guest", home: "x", sessions: { x: "full" }, revision: 1 });
+		const ref = guest.hold(GithubChecksSettings, {}, TEST);
+		await expectChord(whenLive(ref), "forbidden");
+		ref.release();
+	} finally {
+		await h.close();
 	}
 });

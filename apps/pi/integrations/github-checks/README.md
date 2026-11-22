@@ -5,41 +5,48 @@ a branch or a commit. Pi polls GitHub itself, so the agent needs no polling loop
 It declares the stimulus source `github.checks` version 1; the stimuli plugin owns the saved delivery, retry and receipt,
 and the target worker owns native input.
 
-- `server.ts`: the poller and the probe the agent's tools call. `github.ts`: a small read-only REST client.
+- `server.ts`: the poller, the owner's allowed list and the probe the agent's tools call. `github.ts`: a small read-only
+  REST client. `web.tsx`: Settings › GitHub.
 - `checks.ts`: the rules (when a commit is done, what its result is, how it reads). `contract.ts`: the shapes.
 - `worker.ts`: the agent's three tools.
 
 ## Installation
 
 Install this directory as a real directory in `<P2_DATA_DIR>/plugins/github-checks/`, on a Pi build that has it, and
-follow the operator window of [the integrations guide](../README.md). It adds no routes and no listener. Without
-configuration it does nothing and says so once in the server log.
+follow the operator window of [the integrations guide](../README.md). It adds no routes and no listener.
 
-Write `<P2_DATA_DIR>/github-checks.json` (mode 0600), read afresh on every poll:
+Nothing needs configuring in a file. In **Settings › GitHub** the owner lists the repositories Pi may watch, as
+`owner/name` or `owner/*` (case-insensitive), and can check that Pi's GitHub login works. The agent's tool refuses any
+other repository, and a subscription made another way for one is not watched. Until a repository is listed, agents
+cannot watch anything. Only the owner has the list.
+
+Pi reads GitHub with the login of the `gh` command: it runs `gh auth token --hostname <host>` (the web host of `apiBase`,
+`github.com` by default) the first time it needs a token, keeps the answer for an hour, asks again after GitHub refuses
+it, and keeps the old one if `gh` fails later. The server's PATH must find `gh` (under a macOS LaunchAgent that usually
+means setting `ghPath` to its full path). That is the easy way to read private repositories with the login you already
+have, but that token is usually broad (it can write).
+
+For anything else there is an optional `<P2_DATA_DIR>/github-checks.json` (mode 0600), read afresh on every poll. It is as
+sensitive as shell access, since `ghPath` runs a program as the server's user.
 
 ```json
 {
-  "repos": ["owner/name", "owner/*"],
-  "token": "<a GitHub token, optional>",
-  "ghPath": "gh"
+  "token": "<a narrower GitHub token>",
+  "ghPath": "/opt/homebrew/bin/gh",
+  "apiBase": "https://api.github.com",
+  "repos": ["owner/name"]
 }
 ```
 
-- `repos` is required: the repositories Pi may watch, as `owner/name` or `owner/*` (case-insensitive). The agent's tool
-  refuses any other repository, and a subscription made another way for one is not watched.
-- The token comes from `token` when it is set. Otherwise Pi runs `gh auth token --hostname <host>` (the web host of
-  `apiBase`: `github.com` for the default) the first time it needs one, keeps the answer for an hour, asks again after
-  GitHub refuses it, and keeps the old one if `gh` fails later. `ghPath` names the command; the server's PATH must find
-  it (under a macOS LaunchAgent that usually means a full path). That is the easy way to read private repositories with
-  the login you already have, but that token is usually broad (it can write). A fine-grained token with read access to
-  Metadata, Pull requests, Checks and Commit statuses is narrower; put it in `token`. `github-checks.json` is as
-  sensitive as shell access, since `ghPath` runs a program as the server's user.
-- Optional timings, in milliseconds: `pollMs` (how often to look while checks run; default 15000), `idleMs` (how often to
-  look at a finished branch or open pull request that may get a new commit; 60000), `settleMs` (how long the finished
-  checks must stay the same before they are reported; 20000) and `graceMs` (how long to wait for a new commit's first
-  check before saying that none ran; 60000), and `lingerMs` (how long to keep looking at a pinned commit or closed pull
-  request after its checks last changed, for a later stage or a re-run; 600000). `apiBase` is for GitHub Enterprise
-  (https, or http on loopback).
+- `token` replaces the `gh` login. A fine-grained token with read access to Metadata, Pull requests, Checks and Commit
+  statuses is narrower.
+- `repos` adds repositories to the owner's list (for a fixed deployment).
+- Timings, in milliseconds: `pollMs` (how often to look while checks run; default 15000), `idleMs` (how often to look at
+  a finished branch or open pull request that may get a new commit; 60000), `settleMs` (how long the finished checks must
+  stay the same before they are reported; 20000), `graceMs` (how long to wait for a new commit's first check before
+  saying that none ran; 60000) and `lingerMs` (how long to keep looking at a pinned commit or closed pull request after
+  its checks last changed, for a later stage or a re-run; 600000). `apiBase` is for GitHub Enterprise (https, or http on
+  loopback).
 
 ## What a subscription watches
 

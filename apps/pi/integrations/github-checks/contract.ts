@@ -1,6 +1,6 @@
 // What a `github.checks` subscription and its events are, and the agent's way to probe a watch. Descriptions only: the
 // rules are in checks.ts. Shared by the server (the source, the poller) and the worker (the agent's tools).
-import { arr, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { arr, bool, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { literal, method, remote, serverHost } from "@p2/app/v1";
 
 export const SOURCE_ID = "github.checks";
@@ -55,5 +55,24 @@ export const GithubChecksProbe = remote("p2.github-checks", {
 	hostAddress: serverHost,
 	variants: {
 		worker: { methods: { probe: method(obj({ repo: Repo, ref: RefSchema }), obj({ sha: str() })) } },
+	},
+});
+
+/** The owner's list of repositories Pi may watch (Settings › GitHub), and a check that Pi can read GitHub with its login. */
+export const GithubChecksSettings = remote("p2.github-checks-settings", {
+	version: 1,
+	params: {},
+	hostAddress: serverHost,
+	variants: {
+		owner: {
+			state: { repos: arr(str()) },
+			methods: {
+				/** Allows `owner/name`, or every repository of an owner as `owner/*`. */
+				allow: method(obj({ repo: str({ maxLength: 200 }) })),
+				remove: method(obj({ repo: str({ maxLength: 200 }) })),
+				/** Asks GitHub who Pi's login is: says so, or why it cannot read. */
+				checkLogin: method(obj({}), obj({ ok: bool(), message: str() })),
+			},
+		},
 	},
 });

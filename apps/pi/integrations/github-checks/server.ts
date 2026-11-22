@@ -5,7 +5,23 @@ import { execFile } from "node:child_process";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { arr, compile, int, obj, opt, type Static, str } from "@earendil-works/pi-schema";
-import { type Ctx, contribute, defineFacet, forbidden, isChordError, isWorker, type Ref, signalOf, sleep } from "@p2/app/v1";
+import {
+	type Ctx,
+	contribute,
+	defineFacet,
+	defineState,
+	deriveTyped,
+	forbidden,
+	invalid,
+	isChordError,
+	isOwner,
+	isWorker,
+	local,
+	method,
+	type Ref,
+	signalOf,
+	sleep,
+} from "@p2/app/v1";
 import { optionalText, processLogs } from "@p2/app/v1/node";
 import {
 	bindStimulusPublisher,
@@ -17,7 +33,7 @@ import {
 } from "@p2/app/v1/server";
 import { decide, eventChecks, instanceOf, type Item, itemsOf, refLabel, repoAllowed } from "./checks.ts";
 import { GithubChecks } from "./contract.server.ts";
-import { GithubChecksProbe, SOURCE_ID, SOURCE_VERSION, WatchSchema } from "./contract.ts";
+import { GithubChecksProbe, GithubChecksSettings, SOURCE_ID, SOURCE_VERSION, WatchSchema } from "./contract.ts";
 import { GithubError, type GithubClient, githubClient } from "./github.ts";
 
 const ConfigSchema = obj({
@@ -25,8 +41,8 @@ const ConfigSchema = obj({
 	token: opt(str({ minLength: 20 })),
 	/** The `gh` command whose `auth token` supplies the token when `token` is absent (default `gh`). */
 	ghPath: opt(str({ minLength: 1, maxLength: 1024 })),
-	/** The repositories Pi may watch: `owner/name` or `owner/*`. A subscription for any other is not watched. */
-	repos: arr(str({ minLength: 1, maxLength: 200 }), { minItems: 1, maxItems: 64 }),
+	/** More repositories Pi may watch, besides those the owner allowed in Settings: `owner/name` or `owner/*`. */
+	repos: opt(arr(str({ minLength: 1, maxLength: 200 }), { maxItems: 64 })),
 	apiBase: opt(str({ minLength: 1, maxLength: 2048 })),
 	/** How often to look while checks run or have not started (ms; default 15000). */
 	pollMs: opt(int({ minimum: 20, maximum: 300_000 })),
@@ -60,18 +76,41 @@ const RETRY_MAX_MS = 300_000;
 const REFUSED_RETRY_MS = 3_600_000;
 const run = promisify(execFile);
 
-/** The adapter's private configuration, read afresh; throws why when it is absent or invalid. */
+/** The repositories the owner allowed: the list of Settings › GitHub, kept in the server's store. */
+const RepoList = obj({ repos: arr(str({ maxLength: 200 }), { maxItems: 256 }) });
+const Allowed = defineState("p2.github-checks-allowed", {
+	version: 1,
+	schema: RepoList,
+	initial: () => ({ repos: [] as string[] }),
+	persist: true,
+	checkpointWhen: () => true,
+});
+const AllowedStore = local("p2.github-checks-allowed-store", {
+	version: 1,
+	params: {},
+	members: { repos: arr(str()), allow: method(obj({ repo: str() })), remove: method(obj({ repo: str() })) },
+});
+const REPO = /^(?!\.{1,2}\/)[A-Za-z0-9._-]+\/(?:\*|(?!\.{1,2}$)[A-Za-z0-9._-]+)$/;
+
+/**
+ * The adapter's settings: the owner's allowed repositories, and an optional `github-checks.json` (advanced: a token,
+ * another host, timings), read afresh. Nothing needs configuring: `gh`'s login and the owner's list are enough.
+ */
 async function readSettings(ctx: Ctx): Promise<Settings> {
 	const server = await ctx.get(Server, {});
+	const allowed = (await ctx.get(AllowedStore, {})).repos.value;
 	const text = await optionalText(join(server.info.value.dataDir, "github-checks.json"));
-	if (text === undefined) throw new Error("github-checks.json is not configured");
-	let value: unknown;
-	try {
-		value = JSON.parse(text);
-	} catch {
-		throw new Error("github-checks.json is not valid JSON");
+	let value: Static<typeof ConfigSchema> = {};
+	if (text !== undefined) {
+		let parsed: unknown;
+		try {
+			parsed = JSON.parse(text);
+		} catch {
+			throw new Error("github-checks.json is not valid JSON");
+		}
+		if (!configCheck.check(parsed)) throw new Error("github-checks.json is invalid");
+		value = parsed;
 	}
-	if (!configCheck.check(value)) throw new Error("github-checks.json is invalid");
 	const apiBase = (value.apiBase ?? "https://api.github.com").replace(/\/+$/, "");
 	try {
 		const url = new URL(apiBase);
@@ -85,7 +124,7 @@ async function readSettings(ctx: Ctx): Promise<Settings> {
 	return {
 		token: value.token,
 		ghPath: value.ghPath ?? "gh",
-		repos: value.repos,
+		repos: [...allowed, ...(value.repos ?? [])],
 		apiBase,
 		pollMs: value.pollMs ?? 15_000,
 		idleMs: value.idleMs ?? 60_000,
@@ -179,6 +218,49 @@ type State = {
 
 export default defineFacet((host) => {
 	const access = createAccess();
+	host.serve(AllowedStore, (_params, self) => {
+		const state = self.state(Allowed);
+		return {
+			repos: deriveTyped(self, [state], ([value]) => value.repos),
+			allow: async ({ repo }, ctx) => {
+				await state.change((draft) => {
+					if (!draft.repos.some((have) => have.toLowerCase() === repo.toLowerCase())) draft.repos.push(repo);
+				}, ctx);
+				return null;
+			},
+			remove: async ({ repo }, ctx) => {
+				await state.change((draft) => {
+					draft.repos = draft.repos.filter((have) => have.toLowerCase() !== repo.toLowerCase());
+				}, ctx);
+				return null;
+			},
+		};
+	});
+	host.serve(GithubChecksSettings, (_params, principal, self) => {
+		if (!isOwner(principal)) throw forbidden("GitHub checks settings are the owner's");
+		const store = self.get(AllowedStore, {});
+		return {
+			variant: "owner",
+			members: {
+				repos: store.repos,
+				allow: ({ repo }, ctx) => {
+					const name = repo.trim();
+					if (!REPO.test(name)) throw invalid("args", "Use owner/name, or owner/* for every repository of an owner");
+					return store.allow({ repo: name }, ctx);
+				},
+				remove: ({ repo }, ctx) => store.remove({ repo }, ctx),
+				checkLogin: async (_args, ctx) => {
+					try {
+						const { github } = await access.get(ctx);
+						return { ok: true, message: `Reading GitHub as ${await github.user(signalOf(ctx))}` };
+					} catch (error) {
+						if (error instanceof GithubError && error.status === 401) access.forgetToken();
+						return { ok: false, message: error instanceof Error ? error.message : String(error) };
+					}
+				},
+			},
+		};
+	});
 	host.serve(GithubChecksProbe, (_params, principal) => {
 		if (!isWorker(principal)) throw forbidden("GitHub checks probes are for session workers");
 		return {
@@ -186,7 +268,7 @@ export default defineFacet((host) => {
 			members: {
 				probe: async ({ repo, ref }, ctx) => {
 					const { settings, github } = await access.get(ctx);
-					if (!repoAllowed(repo, settings.repos)) throw new Error(`${repo} is not a repository Pi may watch`);
+					if (!repoAllowed(repo, settings.repos)) throw new Error(`${repo} is not a repository Pi may watch: the owner can allow it in Settings › GitHub`);
 					const signal = signalOf(ctx);
 					try {
 						const head = await github.head(repo, ref, signal);

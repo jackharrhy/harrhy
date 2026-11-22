@@ -24,6 +24,8 @@ export type Head = {
 };
 
 export type GithubClient = {
+	/** The login the token belongs to. */
+	user(signal?: AbortSignal): Promise<string>;
 	head(repo: string, ref: WatchRef, signal?: AbortSignal): Promise<Head>;
 	runs(repo: string, sha: string, signal?: AbortSignal): Promise<Json[]>;
 	statuses(repo: string, sha: string, signal?: AbortSignal): Promise<Json[]>;
@@ -95,6 +97,10 @@ export function githubClient(options: { token: string; apiBase: string }): Githu
 	};
 	const sha = (value: unknown) => (typeof value === "string" ? value : "");
 	return {
+		async user(signal) {
+			const user = await get("/user", signal);
+			return typeof user.login === "string" ? user.login : "unknown";
+		},
 		async head(repo, ref, signal) {
 			if (ref.kind === "pr") {
 				const pull = await get(`/repos/${repo}/pulls/${ref.number}`, signal);
