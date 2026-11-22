@@ -1,4 +1,4 @@
-import { themeVar } from "../theme.ts";
+import { tokens } from "../theme.ts";
 
 // @ts-expect-error Misspelled token names are not valid references.
-void themeVar.controlBoder;
+void tokens.control.boder;

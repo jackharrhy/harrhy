@@ -164,4 +164,24 @@ The behavior design was compared with Vercel UI SDK at immutable commit `220c1a0
 
 From the root, `npm ci`, then `npm run check --workspace @harrhy/ui`. Checks typecheck actual Remix props, render SSR form/field/theme/dialog/tab contracts, and retain legacy action compatibility tests. `npm run check --workspace @harrhy/ui-app` checks the consuming browser fixture, keyboard and responsive behavior. Run Auth and Ref checks for package changes. Automated checks do not establish assistive-technology or WCAG conformance.
 
-`themeVar` from `@harrhy/ui/theme` references the existing scoped CSS variables. For example, `css({ borderColor: themeVar.controlBorder })` catches misspelled token names without changing theme composition or validating CSS values.
+`@harrhy/ui/theme` uses [Pitlane Theme](https://pitlane.tools/guides/theme) for its schema and nested references. Consumers import only the Harrhy API:
+
+```tsx
+import {
+  cleanTheme,
+  extendTheme,
+  themeRoot,
+  themeStyles,
+  tokens,
+} from "@harrhy/ui/theme";
+
+const accountTheme = extendTheme(cleanTheme, (t) => ({
+  control: { border: "#244753", radius: "4px" },
+  button: { border: t.control.border },
+}));
+const border = tokens.control.border; // var(--hui-control-border)
+
+<section mix={[themeStyles(accountTheme), themeRoot]} />;
+```
+
+The button border stays linked to the control border in CSS. Each subtree keeps its own theme; no global provider is installed. Existing flat `ThemeTokens` and `composeTheme()` calls remain supported. The schema checks token categories and aliases at theme compilation; ordinary Remix `css()` does not enforce Pitlane's branded CSS property types.

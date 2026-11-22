@@ -1,3 +1,5 @@
+import { createTheme } from "@pitlane/theme";
+import * as s from "@pitlane/theme/schema";
 import { css } from "remix/component";
 
 /** Semantic values and part recipes. Surfaces and images are deliberately separate. */
@@ -153,8 +155,180 @@ export function composeTheme(
   return Object.assign({}, base, ...overrides);
 }
 
-export const graphiteTheme = composeTheme(cleanTheme, {
-  fontUi: "Inter, system-ui, sans-serif",
+const contract = {
+  colorScheme: ["colorScheme", s.any()],
+  canvas: ["canvas", s.color()],
+  surface: ["surface", s.color()],
+  elevated: ["elevated", s.color()],
+  ink: ["ink", s.color()],
+  muted: ["muted", s.color()],
+  border: ["border", s.color()],
+  control: {
+    border: ["controlBorder", s.color()],
+    textSize: ["controlTextSize", s.dimension()],
+    height: ["controlHeight", s.dimension()],
+    padding: ["controlPadding", s.any()],
+    radius: ["controlRadius", s.dimension()],
+    shadow: ["controlShadow", s.any()],
+  },
+  hoverSurface: ["hoverSurface", s.color()],
+  selectedSurface: ["selectedSurface", s.color()],
+  selectedInk: ["selectedInk", s.color()],
+  disabledSurface: ["disabledSurface", s.color()],
+  popup: {
+    offset: ["popupOffset", s.dimension()],
+    radius: ["popupRadius", s.dimension()],
+    padding: ["popupPadding", s.any()],
+  },
+  table: {
+    border: ["tableBorder", s.color()],
+    surface: ["tableSurface", s.color()],
+    containerSurface: ["tableContainerSurface", s.color()],
+    stripe: ["tableStripe", s.color()],
+    textSize: ["tableTextSize", s.any()],
+    headerTextSize: ["tableHeaderTextSize", s.any()],
+    cellPadding: ["tableCellPadding", s.any()],
+    columnBorder: ["tableColumnBorder", s.any()],
+    header: ["tableHeader", s.color()],
+    headerImage: ["tableHeaderImage", s.any()],
+    headerShadow: ["tableHeaderShadow", s.any()],
+  },
+  option: {
+    radius: ["optionRadius", s.dimension()],
+    gap: ["optionGap", s.dimension()],
+  },
+  button: {
+    border: ["buttonBorder", s.color()],
+    primaryBorder: ["buttonPrimaryBorder", s.color()],
+    height: ["buttonHeight", s.dimension()],
+    padding: ["buttonPadding", s.any()],
+    textSize: ["buttonTextSize", s.dimension()],
+    image: ["buttonImage", s.any()],
+    shadow: ["buttonShadow", s.any()],
+    weight: ["buttonWeight", s.any()],
+  },
+  label: {
+    size: ["labelSize", s.dimension()],
+    weight: ["labelWeight", s.any()],
+    transform: ["labelTransform", s.any()],
+    tracking: ["labelTracking", s.any()],
+  },
+  field: {
+    gap: ["fieldGap", s.dimension()],
+  },
+  accent: ["accent", s.color()],
+  onAccent: ["onAccent", s.color()],
+  focus: ["focus", s.color()],
+  danger: ["danger", s.color()],
+  onDanger: ["onDanger", s.color()],
+  dangerSurface: ["dangerSurface", s.color()],
+  success: ["success", s.color()],
+  successSurface: ["successSurface", s.color()],
+  font: {
+    display: ["fontDisplay", s.any()],
+    ui: ["fontUi", s.any()],
+    detail: ["fontDetail", s.any()],
+    mono: ["fontMono", s.any()],
+    displayVariation: ["fontDisplayVariation", s.any()],
+    displayOpticalSizing: ["fontDisplayOpticalSizing", s.any()],
+  },
+  textSize: ["textSize", s.dimension()],
+  lineHeight: ["lineHeight", s.any()],
+  space: ["space", s.dimension()],
+  borderWidth: ["borderWidth", s.dimension()],
+  panel: {
+    radius: ["panelRadius", s.dimension()],
+    padding: ["panelPadding", s.any()],
+    image: ["panelImage", s.any()],
+  },
+  overlayShadow: ["overlayShadow", s.any()],
+  motion: ["motion", s.duration()],
+} as const;
+
+type Leaf = readonly [keyof ThemeTokens, s.TokenSchema];
+type Contract = { readonly [key: string]: Leaf | Contract };
+type Schema<C> = {
+  [K in keyof C]: C[K] extends Leaf ? C[K][1] : Schema<C[K]>;
+};
+type Values<C> = {
+  [K in keyof C]: C[K] extends Leaf ? ThemeTokens[C[K][0]] : Values<C[K]>;
+};
+type Patch<C> = {
+  [K in keyof C]?: C[K] extends Leaf ? ThemeTokens[C[K][0]] : Patch<C[K]>;
+};
+
+function isLeaf(node: Leaf | Contract): node is Leaf {
+  return Array.isArray(node);
+}
+
+function mapContract(branch: Contract, leaf: (entry: Leaf) => unknown): object {
+  return Object.fromEntries(
+    Object.entries(branch).map(([key, node]) => [
+      key,
+      isLeaf(node) ? leaf(node) : mapContract(node, leaf),
+    ]),
+  );
+}
+
+const schema = mapContract(contract, ([, validator]) => validator) as Schema<
+  typeof contract
+>;
+
+function toValues(theme: Readonly<ThemeTokens>) {
+  return mapContract(contract, ([key]) => theme[key]) as Values<
+    typeof contract
+  >;
+}
+
+const base = createTheme({
+  schema: { hui: schema },
+  tokens: { hui: toValues(cleanTheme) },
+});
+
+/** Nested references shared by all Harrhy presets. */
+export const tokens = base.token.hui;
+
+/** Extend a preset with a nested patch. References stay live in CSS. */
+export function extendTheme(
+  preset: Readonly<ThemeTokens>,
+  patch:
+    | Patch<typeof contract>
+    | ((token: typeof tokens) => Patch<typeof contract>),
+): ThemeTokens {
+  const next = { ...preset };
+  function apply(branch: Contract, values: object) {
+    for (const [key, node] of Object.entries(branch)) {
+      const value = Reflect.get(values, key);
+      if (value === undefined) continue;
+      if (isLeaf(node)) Object.assign(next, { [node[0]]: value });
+      else apply(node, value);
+    }
+  }
+  apply(contract, typeof patch === "function" ? patch(tokens) : patch);
+  return next;
+}
+
+function declarations(refs: object, values: object): Record<string, string> {
+  const result: Record<string, string> = {};
+  for (const [key, ref] of Object.entries(refs)) {
+    const value = Reflect.get(values, key);
+    if (typeof ref === "string") result[ref.slice(4, -1)] = value;
+    else Object.assign(result, declarations(ref, value));
+  }
+  return result;
+}
+
+export function themeStyles(theme: Readonly<ThemeTokens>) {
+  const hui = toValues(theme);
+  const compiled = base.extend({ tokens: { hui } });
+  // Keep aliases live in the nearest Remix scope instead of resolving them with raw().
+  return css(declarations(compiled.token.hui, hui));
+}
+
+export const graphiteTheme = extendTheme(cleanTheme, {
+  font: {
+    ui: "Inter, system-ui, sans-serif",
+  },
   canvas: "#f5f3f0",
   surface: "#fbfaf8",
   ink: "#1d1b19",
@@ -166,9 +340,13 @@ export const graphiteTheme = composeTheme(cleanTheme, {
   accent: "#1d1b19",
   focus: "#1d1b19",
   success: "#1f754d",
-  controlBorder: "#77716a",
-  panelRadius: "4px",
-  controlRadius: "4px",
+  control: {
+    border: "#77716a",
+    radius: "4px",
+  },
+  panel: {
+    radius: "4px",
+  },
   textSize: "15px",
 });
 
@@ -183,63 +361,92 @@ export const densityOverrides = {
 } as const satisfies Record<string, Partial<ThemeTokens>>;
 
 // Table treatment follows Radio room utility headers and fine desktop list rules.
-export const tactileTheme = composeTheme(cleanTheme, {
-  tableBorder: "#7b878c",
-  tableSurface: "#f8fbfb",
-  tableStripe: "#edf2f4",
-  tableTextSize: "13px",
-  tableCellPadding: "0.4375rem 0.625rem",
-  tableColumnBorder: "1px solid #dce4e7",
-  tableHeader: "#dce4e7",
-  tableHeaderImage: "linear-gradient(#f8fbfb, #dce4e7)",
-  tableHeaderShadow: "inset 0 1px #fff",
+export const tactileTheme = extendTheme(cleanTheme, {
+  table: {
+    border: "#7b878c",
+    surface: "#f8fbfb",
+    stripe: "#edf2f4",
+    textSize: "13px",
+    cellPadding: "0.4375rem 0.625rem",
+    columnBorder: "1px solid #dce4e7",
+    header: "#dce4e7",
+    headerImage: "linear-gradient(#f8fbfb, #dce4e7)",
+    headerShadow: "inset 0 1px #fff",
+  },
   canvas: "#edf5f5",
   surface: "#f9fdfb",
   elevated: "#ffffff",
   ink: "#203a3c",
   muted: "#466367",
   border: "#98b6b7",
-  controlBorder: "#587c81",
+  control: {
+    border: "#587c81",
+    radius: "3px",
+    shadow: "inset 0 1px 2px rgb(0 45 58 / 0.15)",
+  },
   hoverSurface: "#e2f1ee",
   selectedSurface: "#c7e9e7",
   selectedInk: "#173c42",
   disabledSurface: "#e7efed",
-  popupRadius: "5px",
-  popupPadding: "3px",
-  optionRadius: "2px",
+  popup: {
+    radius: "5px",
+    padding: "3px",
+  },
+  option: {
+    radius: "2px",
+  },
   accent: "#b5eff2",
   onAccent: "#173c42",
   focus: "#006579",
-  controlRadius: "3px",
-  panelRadius: "5px",
+  panel: {
+    radius: "5px",
+    image:
+      "repeating-linear-gradient(0deg, transparent 0 3px, rgb(35 94 99 / 0.045) 3px 4px)",
+  },
   borderWidth: "1px",
-  buttonWeight: "700",
-  panelImage:
-    "repeating-linear-gradient(0deg, transparent 0 3px, rgb(35 94 99 / 0.045) 3px 4px)",
-  buttonImage:
-    "linear-gradient(180deg, rgb(255 255 255 / 0.65), transparent 55%, rgb(0 45 58 / 0.08))",
-  buttonShadow: "inset 0 1px 0 #fff, 0 2px 0 #79989a",
-  controlShadow: "inset 0 1px 2px rgb(0 45 58 / 0.15)",
+  button: {
+    weight: "700",
+    image:
+      "linear-gradient(180deg, rgb(255 255 255 / 0.65), transparent 55%, rgb(0 45 58 / 0.08))",
+    shadow: "inset 0 1px 0 #fff, 0 2px 0 #79989a",
+  },
 });
 
 /** Artbin app/ui/styles.ts: flat archive-catalog surfaces, not neobrutalism. */
-export const brutalistTheme = composeTheme(cleanTheme, {
+export const brutalistTheme = extendTheme(cleanTheme, {
   canvas: "#f0f0f0",
   surface: "#ffffff",
   elevated: "#ffffff",
   ink: "#111111",
   muted: "#666666",
   border: "#cccccc",
-  controlBorder: "#888888",
+  control: {
+    border: "#888888",
+    height: "2.125rem",
+    padding: "0.4375rem 0.625rem",
+    textSize: "0.875rem",
+    radius: "0",
+  },
   hoverSurface: "#eeeeee",
   selectedSurface: "#dddddd",
   selectedInk: "#111111",
   disabledSurface: "#f0f0f0",
-  popupRadius: "0",
-  popupPadding: "4px",
-  optionRadius: "0",
-  buttonBorder: "#222222",
-  buttonPrimaryBorder: "#111111",
+  popup: {
+    radius: "0",
+    padding: "4px",
+  },
+  option: {
+    radius: "0",
+  },
+  button: {
+    border: "#222222",
+    primaryBorder: "#111111",
+    height: "2rem",
+    padding: "0.375rem 0.75rem",
+    textSize: "0.875rem",
+    weight: "400",
+    shadow: "none",
+  },
   accent: "#111111",
   onAccent: "#ffffff",
   focus: "#222222",
@@ -247,36 +454,35 @@ export const brutalistTheme = composeTheme(cleanTheme, {
   dangerSurface: "#fff0f0",
   success: "#008700",
   successSurface: "#f0fff0",
-  fontDisplay: '"Fraunces", Georgia, serif',
-  fontUi: '"IBM Plex Sans", Arial, sans-serif',
-  fontMono: '"IBM Plex Mono", "Courier New", monospace',
-  fontDetail: "var(--hui-font-mono)",
-  fontDisplayVariation: '"SOFT" 30, "WONK" 1',
-  fontDisplayOpticalSizing: "auto",
+  font: {
+    display: '"Fraunces", Georgia, serif',
+    ui: '"IBM Plex Sans", Arial, sans-serif',
+    mono: '"IBM Plex Mono", "Courier New", monospace',
+    detail: "var(--hui-font-mono)",
+    displayVariation: '"SOFT" 30, "WONK" 1',
+    displayOpticalSizing: "auto",
+  },
   lineHeight: "1.45",
   space: "0.625rem",
-  controlHeight: "2.125rem",
-  controlPadding: "0.4375rem 0.625rem",
-  controlTextSize: "0.875rem",
-  buttonHeight: "2rem",
-  buttonPadding: "0.375rem 0.75rem",
-  buttonTextSize: "0.875rem",
-  labelSize: "0.75rem",
-  labelWeight: "500",
-  labelTransform: "uppercase",
-  labelTracking: "0.025em",
-  fieldGap: "0.375rem",
-  controlRadius: "0",
-  panelRadius: "0",
-  panelPadding: "1rem",
+  label: {
+    size: "0.75rem",
+    weight: "500",
+    transform: "uppercase",
+    tracking: "0.025em",
+  },
+  field: {
+    gap: "0.375rem",
+  },
+  panel: {
+    radius: "0",
+    padding: "1rem",
+  },
   borderWidth: "1px",
-  buttonWeight: "400",
-  buttonShadow: "none",
   overlayShadow: "none",
 });
 
 /** Sluggers blue scorebook palette; private font assets are host-owned and opt-in. */
-export const sluggersTheme: Readonly<ThemeTokens> = composeTheme(cleanTheme, {
+export const sluggersTheme: Readonly<ThemeTokens> = extendTheme(cleanTheme, {
   colorScheme: "dark",
   canvas: "oklch(48.197% 0.17551 261.35)",
   surface: "#3b64a8",
@@ -284,7 +490,12 @@ export const sluggersTheme: Readonly<ThemeTokens> = composeTheme(cleanTheme, {
   ink: "#ffffff",
   muted: "#d6e3fa",
   border: "rgb(155 181 225 / 0.55)",
-  controlBorder: "#bacfed",
+  control: {
+    border: "#bacfed",
+    height: "36px",
+    textSize: "16px",
+    radius: "6px",
+  },
   hoverSurface: "rgb(142 170 215 / 0.2)",
   selectedSurface: "#486fb0",
   selectedInk: "#ffffff",
@@ -297,44 +508,30 @@ export const sluggersTheme: Readonly<ThemeTokens> = composeTheme(cleanTheme, {
   dangerSurface: "#58374d",
   success: "#a6f0c2",
   successSurface: "#234f53",
-  fontUi: '"SluggersCezanne", Arial, sans-serif',
-  fontDisplay: '"SluggersRodin", Arial, sans-serif',
-  fontDetail: '"SluggersCezanne", Arial, sans-serif',
+  font: {
+    ui: '"SluggersCezanne", Arial, sans-serif',
+    display: '"SluggersRodin", Arial, sans-serif',
+    detail: '"SluggersCezanne", Arial, sans-serif',
+  },
   textSize: "14px",
   lineHeight: "1.45",
-  controlHeight: "36px",
-  controlTextSize: "16px",
-  buttonHeight: "36px",
-  buttonTextSize: "14px",
-  controlRadius: "6px",
-  panelRadius: "12px",
-  tableCellPadding: "10px 12px",
-  tableHeader: "#3b64a8",
-  tableSurface: "#3b64a8",
-  tableContainerSurface: "transparent",
-  tableTextSize: "14px",
-  tableHeaderTextSize: "12px",
+  button: {
+    height: "36px",
+    textSize: "14px",
+  },
+  panel: {
+    radius: "12px",
+  },
+  table: {
+    cellPadding: "10px 12px",
+    header: "#3b64a8",
+    surface: "#3b64a8",
+    containerSurface: "transparent",
+    textSize: "14px",
+    headerTextSize: "12px",
+  },
   space: "10px",
 });
-
-function themeProperty(key: string) {
-  return `--hui-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
-}
-
-/** Typed references to the existing scoped CSS custom properties. */
-export const themeVar = Object.freeze(
-  Object.fromEntries(
-    Object.keys(cleanTheme).map((key) => [key, `var(${themeProperty(key)})`]),
-  ) as Record<keyof ThemeTokens, string>,
-);
-
-export function themeStyles(theme: Readonly<ThemeTokens>) {
-  return css(
-    Object.fromEntries(
-      Object.entries(theme).map(([key, value]) => [themeProperty(key), value]),
-    ),
-  );
-}
 
 const displayTypography = {
   fontFamily: "var(--hui-font-display)",

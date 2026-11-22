@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@pierre/highlights": "0.5.1",
+    "@pitlane/theme": "0.5.1",
     "@remix-run/ui": "0.13.1",
     "remix": "3.2.0"
   },

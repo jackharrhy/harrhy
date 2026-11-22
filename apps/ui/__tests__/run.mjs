@@ -41,14 +41,18 @@ if (!inside(root, store)) {
     "remix",
     "@remix-run/assert",
     "@remix-run/component",
+    "@remix-run/data-schema",
     "@remix-run/test",
     "@remix-run/ui",
+    "@pitlane/theme",
+    "@pierre/words",
   ]);
   const originals = new Map();
   const copies = new Map();
   function stage(file) {
     if (copies.has(file)) return copies.get(file);
-    if (!inside(store, file) || extname(file) !== ".js") return file;
+    if (!inside(store, file) || ![".js", ".mjs"].includes(extname(file)))
+      return file;
     // Copy only resolved JS modules in the browser suite's known packages.
     const parts = relative(store, file).split(sep);
     const index = parts.lastIndexOf("node_modules") + 1;
@@ -60,7 +64,7 @@ if (!inside(root, store)) {
       realpathSync(file) !== file
     )
       return file;
-    const copy = join(staging, `${copies.size}.js`);
+    const copy = join(staging, `${copies.size}${extname(file)}`);
     copyFileSync(file, copy);
     copies.set(file, copy);
     originals.set(copy, file);

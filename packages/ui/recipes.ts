@@ -1,5 +1,5 @@
 import { css } from "remix/component";
-import { themeVar } from "./theme.ts";
+import { tokens } from "./theme.ts";
 
 export const visuallyHiddenStyles = css({
   position: "absolute",
@@ -15,7 +15,7 @@ export const visuallyHiddenStyles = css({
 
 export const focusStyles = css({
   "&:focus-visible": {
-    outline: `2px solid ${themeVar.focus}`,
+    outline: `2px solid ${tokens.focus}`,
     outlineOffset: "3px",
   },
 });
@@ -26,32 +26,32 @@ export const buttonStyles = css({
   alignItems: "center",
   justifyContent: "center",
   gap: "0.5rem",
-  minHeight: themeVar.buttonHeight,
-  padding: themeVar.buttonPadding,
-  border: `${themeVar.borderWidth} solid ${themeVar.buttonBorder}`,
-  borderRadius: themeVar.controlRadius,
-  fontFamily: themeVar.fontUi,
+  minHeight: tokens.button.height,
+  padding: tokens.button.padding,
+  border: `${tokens.borderWidth} solid ${tokens.button.border}`,
+  borderRadius: tokens.control.radius,
+  fontFamily: tokens.font.ui,
   fontVariationSettings: "normal",
   fontOpticalSizing: "auto",
-  fontSize: themeVar.buttonTextSize,
-  fontWeight: themeVar.buttonWeight,
+  fontSize: tokens.button.textSize,
+  fontWeight: tokens.button.weight,
   lineHeight: "1.25",
-  backgroundColor: themeVar.surface,
-  backgroundImage: themeVar.buttonImage,
-  color: themeVar.ink,
-  boxShadow: themeVar.buttonShadow,
+  backgroundColor: tokens.surface,
+  backgroundImage: tokens.button.image,
+  color: tokens.ink,
+  boxShadow: tokens.button.shadow,
   textDecoration: "none",
   cursor: "pointer",
   textAlign: "center",
-  transition: `filter ${themeVar.motion}`,
+  transition: `filter ${tokens.motion}`,
   '&[data-variant="primary"]': {
-    borderColor: themeVar.buttonPrimaryBorder,
-    backgroundColor: themeVar.accent,
-    color: themeVar.onAccent,
+    borderColor: tokens.button.primaryBorder,
+    backgroundColor: tokens.accent,
+    color: tokens.onAccent,
   },
   '&[data-variant="danger"]': {
-    backgroundColor: themeVar.danger,
-    color: themeVar.onDanger,
+    backgroundColor: tokens.danger,
+    color: tokens.onDanger,
     backgroundImage: "none",
   },
   '&[data-variant="quiet"]': {
@@ -69,8 +69,8 @@ export const buttonStyles = css({
   "&:disabled, &[aria-disabled=true]": {
     cursor: "not-allowed",
     boxShadow: "none",
-    color: themeVar.muted,
-    backgroundColor: themeVar.disabledSurface,
+    color: tokens.muted,
+    backgroundColor: tokens.disabledSurface,
     backgroundImage: "none",
   },
 });
@@ -79,22 +79,22 @@ export const controlStyles = css({
   boxSizing: "border-box",
   width: "100%",
   minWidth: "0",
-  minHeight: themeVar.controlHeight,
-  padding: themeVar.controlPadding,
-  border: `${themeVar.borderWidth} solid ${themeVar.controlBorder}`,
-  borderRadius: themeVar.controlRadius,
-  background: themeVar.surface,
-  color: themeVar.ink,
+  minHeight: tokens.control.height,
+  padding: tokens.control.padding,
+  border: `${tokens.borderWidth} solid ${tokens.control.border}`,
+  borderRadius: tokens.control.radius,
+  background: tokens.surface,
+  color: tokens.ink,
   font: "inherit",
-  fontFamily: themeVar.fontUi,
-  fontSize: themeVar.controlTextSize,
+  fontFamily: tokens.font.ui,
+  fontSize: tokens.control.textSize,
   lineHeight: "1.4",
-  boxShadow: themeVar.controlShadow,
-  "&::placeholder": { color: themeVar.muted, opacity: 1 },
-  '&[aria-invalid="true"]': { borderColor: themeVar.danger },
+  boxShadow: tokens.control.shadow,
+  "&::placeholder": { color: tokens.muted, opacity: 1 },
+  '&[aria-invalid="true"]': { borderColor: tokens.danger },
   "&:disabled": {
-    color: themeVar.muted,
-    backgroundColor: themeVar.disabledSurface,
+    color: tokens.muted,
+    backgroundColor: tokens.disabledSurface,
     backgroundImage: "none",
     cursor: "not-allowed",
   },
@@ -105,29 +105,29 @@ export const checkStyles = css({
   flexShrink: 0,
   margin: 0,
   verticalAlign: "middle",
-  accentColor: themeVar.accent,
+  accentColor: tokens.accent,
 });
 export const fieldStyles = css({
   display: "grid",
-  gap: themeVar.fieldGap,
+  gap: tokens.field.gap,
   minWidth: "0",
 });
 export const labelStyles = css({
-  fontFamily: themeVar.fontDetail,
-  fontSize: themeVar.labelSize,
-  fontWeight: themeVar.labelWeight,
-  textTransform: themeVar.labelTransform,
-  letterSpacing: themeVar.labelTracking,
+  fontFamily: tokens.font.detail,
+  fontSize: tokens.label.size,
+  fontWeight: tokens.label.weight,
+  textTransform: tokens.label.transform,
+  letterSpacing: tokens.label.tracking,
 });
 export const descriptionStyles = css({
   margin: 0,
   fontSize: "0.875rem",
-  color: themeVar.muted,
+  color: tokens.muted,
 });
 export const errorStyles = css({
   margin: 0,
   fontSize: "0.875rem",
-  color: themeVar.danger,
+  color: tokens.danger,
 });
 export const panelStyles = css({
   padding: "var(--hui-panel-padding)",
