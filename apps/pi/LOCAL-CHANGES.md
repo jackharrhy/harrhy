@@ -6,5 +6,5 @@ Harrhy owns this source. Update this list when a change alters an intentional di
 - **Projects:** Keep the server-store tables and one-time legacy import marker. Empty imported tables are authoritative; `projects.json` must not resurrect deleted projects.
 - **Appearance:** Theme tint and custom sidebar branding are Harrhy-owned. The custom logo is not a guest-facing asset.
 - **Previews:** Keep the owner-only registered URL list and expiration handling, without session or worktree inventory.
-- **Automation:** Keep Goal, wakes, schedules and external stimuli. Preserve native admission, authorization and receipt identities. Atlas and Hermes remain optional user plugins.
+- **Automation:** Keep Goal, wakes, schedules and external stimuli. Preserve native admission, authorization and receipt identities. Atlas and Hermes remain optional user plugins. The optional `github-checks` plugin (GitHub check results as a stimulus source) is Harrhy-owned; the worker plugin API therefore exports `Subscriptions`.
 - **Runtime:** Keep the supervised launcher, host-owned plugin API identity, nested compatibility lock and opt-in HTTP proxy. Compare the local MCP recovery and skills discovery fixes against upstream before carrying a duplicate implementation forward.
