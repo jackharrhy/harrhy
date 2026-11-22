@@ -29,7 +29,7 @@ button:hover{background:var(--hover)}button:disabled{opacity:.45;cursor:default}
 :focus-visible{outline:1px solid var(--text);outline-offset:2px}
 .error{color:var(--bad)}`;
 
-// Same geometry and colours as src/web/PiLogo.tsx (canonical startup logo).
+// Same geometry and colours as src/web/Logo.tsx (canonical startup logo).
 const LOGO = `<svg viewBox="0 0 4 4" role="img" aria-label="Pi"><rect fill="rgb(228 138 122)" width="3" height="1"/><rect fill="rgb(228 138 122)" x="2" y="1" width="1" height="1"/><rect fill="rgb(79 142 179)" y="1" width="1" height="3"/><rect fill="rgb(79 142 179)" x="1" y="2" width="1" height="1"/><rect fill="rgb(234 182 93)" x="3" y="2" width="1" height="2"/></svg>`;
 
 // A framed page's stored theme is not its own: the CSP lets only the Radius shell frame p2's responses

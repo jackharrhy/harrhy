@@ -1,5 +1,5 @@
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
-import { PiLogo, useObject, useOwner, useReadable } from "@p2/app/v1/web";
+import { Logo, useObject, useOwner, useReadable } from "@p2/app/v1/web";
 import { type CSSProperties, useEffect, useId, useState } from "react";
 import { MAX_NAME_LENGTH, ThemeBranding } from "./theme-contract.ts";
 import "./theme.css";
@@ -40,18 +40,10 @@ export function useBaseTint(owner: boolean) {
 	}, [owner, logo]);
 }
 
-function BrandImage({ logo, compact = false }: { logo: string; compact?: boolean }) {
-	const [failed, setFailed] = useState(false);
-	return failed ? <PiLogo compact={compact} /> : (
-		<img className={`pi-logo ${compact ? "compact " : ""}custom-logo`} src={logo} alt="Instance logo"
-			onError={() => setFailed(true)} />
-	);
-}
-
 export function SidebarBrand() {
 	const owner = useOwner();
 	const logo = useReadable(useObject(ThemeBranding, owner ? {} : undefined)?.logo);
-	return owner && logo ? <BrandImage key={logo} logo={logo} compact /> : <PiLogo compact />;
+	return <Logo compact image={owner ? (logo ?? null) : null} pending={owner && logo === undefined} />;
 }
 
 // The picker uses sRGB, but we store only its hue angle; the theme owns lightness and chroma.
@@ -152,7 +144,7 @@ function OwnerThemeFields() {
 					onClick={() => void save(() => branding.setName({ name: null }, BACKGROUND_CONTEXT)).then(() => setDraftName(undefined))}>Reset name</button>
 			</div>
 			<div className="pi-theme-logo-preview">
-				{logo ? <BrandImage key={logo} logo={logo} /> : <PiLogo />}
+				<Logo image={logo} />
 				<span className="muted small">Current sidebar logo</span>
 			</div>
 			<label>

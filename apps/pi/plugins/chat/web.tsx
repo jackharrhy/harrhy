@@ -72,7 +72,7 @@ import {
 	openLayer,
 	openSidebar,
 	type PickedFile,
-	PiLogo,
+	Logo,
 	PlusIcon,
 	ReplyTo,
 	RevealEntry,
@@ -1935,7 +1935,7 @@ function NewSession() {
 					) : (
 						<div className="hero">
 							<div className="hero-title">
-								<PiLogo />
+								<Logo />
 								<h2>What should Pi do?</h2>
 							</div>
 							{/* The project the session joins, then where it starts: each opens its own picker. */}
