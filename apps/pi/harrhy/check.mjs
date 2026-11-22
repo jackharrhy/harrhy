@@ -69,6 +69,7 @@ sandbox(
     "--test",
     "--test-concurrency=1",
     "__tests__/p2/ui-exact-conversation.test.ts",
+    "__tests__/p2/ui-message-citation.test.ts",
     "__tests__/p2/ui-sidebar.test.ts",
     "__tests__/p2/ui-web-surface.test.ts",
     "__tests__/p2/ui-repositories.test.ts",

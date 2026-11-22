@@ -21,22 +21,11 @@ import { ProjectService, placeOn } from "../projects/contract.ts";
 import { Catalog, isThinkingLevel, type Session, SessionOperations } from "../sessions/contract.ts";
 import { Shares } from "../sharing/contract.ts";
 import { StatusStore } from "../status/contract.ts";
-import { CitationSend, ConversationBroker, Conversations, PeerConversation, type Query } from "./contract.ts";
+import { ConversationBroker, Conversations, PeerConversation, type Query } from "./contract.ts";
 
 // The server's side of peer conversations: the broker between session workers (a local object, so its references act
 // as the server, whom `PeerConversation` serves), and the workers' view of it, fenced by worker generation.
 export default defineFacet((host) => {
-	host.serve(CitationSend, ({ session }, principal, self) => {
-		if (!isOwner(principal)) throw forbidden("Only the owner can attach a citation");
-		const broker = self.get(ConversationBroker, {});
-		return {
-			variant: "owner",
-			members: {
-				send: (args, ctx) => broker.attach({ ...args, session }, ctx),
-			},
-		};
-	});
-
 	host.serve(ConversationBroker, (_params, self) => {
 		const catalog = self.get(Catalog, {});
 		const hosts = self.get(Hosts, {});
@@ -136,66 +125,68 @@ export default defineFacet((host) => {
 			return row;
 		};
 
+		const sendWithCitation = async (
+			sender: Session,
+			to: string,
+			message: string,
+			taskId: number,
+			ctx: Ctx,
+		) => {
+			const session = sender.id;
+			const { entryId, quote } = await (await holdPeer(session, ctx)).currentQuote(taskId, ctx);
+			const cite = { session, conversation: 1 as const, entryId };
+			const destination = await holdPeer(to, ctx);
+			// Holding the remote reference starts the worker but does not await its published PID.
+			const timeout = AbortSignal.timeout(10_000);
+			const states = await until(
+				hosts.workers,
+				(workers) => !!(workers[to]?.running && workers[to]?.pid) || !!workers[to]?.error,
+				withAbortSignal(AbortSignal.any([signalOf(ctx), timeout]), ctx),
+			).catch((error: unknown) => {
+				if (signalOf(ctx).aborted || !timeout.aborted) throw error;
+				throw forbidden("Citation destination worker is not ready; retry shortly");
+			});
+			const worker = states[to];
+			if (!worker?.running || !worker.pid) throw forbidden("Citation destination worker is not ready; retry shortly");
+			const { generation, pid } = worker;
+			// Complete the fenced admission independently of the sending worker's connection. If the
+			// worker RPC fails ambiguously, retain both reservations until that PID exits.
+			const scope = withoutAbortSignal(ctx);
+			const sessions = [session, to];
+			const token = randomUUID();
+			const reserved = await admission().reserveGroup(
+				sessions,
+				{ generation, pid },
+				token,
+				async () => {
+					for (const id of sessions) {
+						const side = id === session ? "source" : "destination";
+						if ((await catalog.get({ id }, scope)).archivedAt !== null)
+							throw forbidden(`Citation ${side} session is archived`);
+						if (await shares.isShared({ session: id }, scope))
+							throw forbidden(`Citation ${side} session has a share link or active guest grant`);
+					}
+					return true;
+				},
+				scope,
+			);
+			if (!reserved) throw forbidden("Citation admission is reserved by another operation; retry shortly");
+			// One receipt per source input and destination, including across tool retries.
+			const id = createHash("sha256").update(JSON.stringify([session, to, String(entryId), "turn"])).digest("hex");
+			const result = await destination.citationSend(
+				{
+					generation,
+					title: sender.title,
+					message,
+					citation: { id, cite, quote, destination: to },
+				},
+				scope,
+			);
+			await admission().releaseGroup(sessions, token, scope);
+			if (result.submissionId === null) throw forbidden("Citation destination busy or request conflicts");
+			return { citationId: id, submissionId: result.submissionId };
+		};
 		return {
-			attach: async ({ session, cite, to, message, requestId }, ctx) => {
-				if (cite.session !== session) throw forbidden("Citation source does not match the open session");
-				if (session === to) throw forbidden("Choose a different session for the citation destination");
-				if (!message.trim()) throw forbidden("Citation send requires a non-blank message");
-				const source = await holdPeer(session, ctx);
-				const quote = await source.quote(cite, ctx);
-				if (!quote) throw forbidden("Citation unavailable");
-				const destination = await holdPeer(to, ctx);
-				// Holding the remote reference starts the worker but does not await its published PID.
-				const timeout = AbortSignal.timeout(10_000);
-				const states = await until(
-					hosts.workers,
-					(workers) => !!(workers[to]?.running && workers[to]?.pid) || !!workers[to]?.error,
-					withAbortSignal(AbortSignal.any([signalOf(ctx), timeout]), ctx),
-				).catch((error: unknown) => {
-					if (signalOf(ctx).aborted || !timeout.aborted) throw error;
-					throw forbidden("Citation destination worker is not ready; retry shortly");
-				});
-				const worker = states[to];
-				if (!worker?.running || !worker.pid) throw forbidden("Citation destination worker is not ready; retry shortly");
-				const { generation, pid } = worker;
-				// Complete the fenced admission independently of the owner's connection. If the
-				// worker RPC fails ambiguously, retain both reservations until that PID exits.
-				const scope = withoutAbortSignal(ctx);
-				const sessions = [session, to];
-				const token = randomUUID();
-				const reserved = await admission().reserveGroup(
-					sessions,
-					{ generation, pid },
-					token,
-					async () => {
-						for (const id of sessions) {
-							const side = id === session ? "source" : "destination";
-							if ((await catalog.get({ id }, scope)).archivedAt !== null)
-								throw forbidden(`Citation ${side} session is archived`);
-							if (await shares.isShared({ session: id }, scope))
-								throw forbidden(`Citation ${side} session has a share link or active guest grant`);
-						}
-						return true;
-					},
-					scope,
-				);
-				if (!reserved) throw forbidden("Citation admission is reserved by another operation; retry shortly");
-				const id = createHash("sha256")
-					.update(JSON.stringify([session, to, requestId]))
-					.digest("hex");
-				const result = await destination.citationSend(
-					{
-						generation,
-						title: session,
-						message,
-						citation: { id, cite, quote, destination: to },
-					},
-					scope,
-				);
-				await admission().releaseGroup(sessions, token, scope);
-				if (result.submissionId === null) throw forbidden("Citation destination busy or request conflicts");
-				return { id, submissionId: result.submissionId };
-			},
 			query: async ({ source, requestId, query }, ctx) => {
 				const sender = await catalog.get({ id: source }, ctx);
 				if (sender.archivedAt !== null) throw forbidden("The sending session is archived");
@@ -280,7 +271,11 @@ export default defineFacet((host) => {
 				switch (query.action) {
 					case "send": {
 						if (!query.message.trim()) throw new Error("send needs a message");
-						const result = await send(recipient.id, query.message, query.followUp);
+						if (query.citationTaskId !== undefined && query.followUp)
+							throw forbidden("A citation cannot be queued; retry when the destination is idle");
+						const result = query.citationTaskId === undefined
+							? await send(recipient.id, query.message, query.followUp)
+							: await sendWithCitation(sender, recipient.id, query.message, query.citationTaskId, ctx);
 						return { action: "send", to: recipient.id, ...result };
 					}
 					case "answer":

@@ -1967,6 +1967,29 @@ button.diff-number:hover {
 .incoming-plain {
 	white-space: pre-wrap;
 }
+.citation-quote {
+	margin: var(--s2) 0 0;
+	padding: var(--s2) var(--s3);
+	background: var(--user);
+	border-radius: var(--radius);
+}
+.citation-quote figcaption {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--s1) var(--s3);
+	color: var(--muted);
+	font-size: var(--fs-sm);
+}
+.citation-quote figcaption button {
+	min-height: var(--row);
+	color: var(--text);
+	text-decoration: underline;
+}
+.citation-quote blockquote {
+	margin: var(--s1) 0 0;
+}
 .incoming-more {
 	min-height: var(--control-sm);
 	color: var(--muted);
