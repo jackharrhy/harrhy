@@ -1,14 +1,17 @@
+mod io_deadline;
 mod supervisor;
+
+use io_deadline::DeadlineStream;
 
 use anyhow::{Context, Result, bail, ensure};
 use serde::Deserialize;
 use std::{
     collections::{BTreeMap, BTreeSet},
     env, fs,
-    io::{BufRead, BufReader, Read, Write},
+    io::Write,
     os::unix::{
         fs::{FileTypeExt, MetadataExt},
-        net::{UnixListener, UnixStream},
+        net::UnixListener,
     },
     path::{Path, PathBuf},
     sync::{
@@ -170,20 +173,72 @@ impl Config {
     }
 }
 
+fn uid() -> u32 {
+    // SAFETY: geteuid has no preconditions.
+    unsafe { libc::geteuid() }
+}
+
+fn validate_directory(path: &Path, private: bool) -> Result<()> {
+    ensure!(
+        path.canonicalize()? == path,
+        "directory must use a canonical, non-symlink path: {}",
+        path.display()
+    );
+    let meta = fs::symlink_metadata(path)?;
+    let forbidden = if private { 0o077 } else { 0o022 };
+    ensure!(
+        meta.is_dir() && meta.uid() == uid() && meta.mode() & forbidden == 0,
+        "unsafe directory ownership or permissions: {}",
+        path.display()
+    );
+    for ancestor in path.ancestors().skip(1) {
+        let meta = fs::symlink_metadata(ancestor)?;
+        ensure!(
+            meta.is_dir()
+                && (meta.uid() == 0 || meta.uid() == uid())
+                && (meta.mode() & 0o022 == 0 || (meta.uid() == 0 && meta.mode() & 0o1000 != 0)),
+            "unsafe directory ancestor: {}",
+            ancestor.display()
+        );
+    }
+    Ok(())
+}
+
+fn remove_stale_socket(path: &Path) -> Result<()> {
+    match fs::symlink_metadata(path) {
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Ok(meta) => ensure!(
+            meta.file_type().is_socket() && meta.uid() == uid(),
+            "refusing to replace unowned or non-socket path: {}",
+            path.display()
+        ),
+        Err(err) => return Err(err.into()),
+    }
+    match DeadlineStream::unix(path, Duration::from_millis(250)) {
+        Err(err)
+            if matches!(
+                err.kind(),
+                std::io::ErrorKind::ConnectionRefused | std::io::ErrorKind::NotFound
+            ) =>
+        {
+            remove_socket(path)
+        }
+        _ => bail!(
+            "refusing to replace a socket that may be live: {}",
+            path.display()
+        ),
+    }
+}
+
 fn remove_socket(path: &Path) -> Result<()> {
     match fs::symlink_metadata(path) {
-        Ok(metadata) if metadata.file_type().is_socket() => Ok(fs::remove_file(path)?),
+        Ok(metadata) if metadata.file_type().is_socket() && metadata.uid() == uid() => {
+            Ok(fs::remove_file(path)?)
+        }
         Ok(_) => bail!("refusing to remove non-socket at {}", path.display()),
         Err(err) if err.kind() == std::io::ErrorKind::NotFound => Ok(()),
         Err(err) => Err(err.into()),
     }
-}
-
-fn line(input: impl Read, max: u64) -> Result<String> {
-    let mut line = String::new();
-    BufReader::new(input).take(max).read_line(&mut line)?;
-    ensure!(line.ends_with('\n'), "incomplete or oversized line");
-    Ok(line)
 }
 
 fn serve(runtime: &Path, state: &Path, config: Config) -> Result<()> {
@@ -198,16 +253,19 @@ fn serve(runtime: &Path, state: &Path, config: Config) -> Result<()> {
         {
             return Err(err.into());
         }
-        let meta = fs::symlink_metadata(dir)?;
-        // SAFETY: geteuid has no preconditions.
-        ensure!(
-            meta.is_dir() && meta.uid() == unsafe { libc::geteuid() } && meta.mode() & 0o077 == 0,
-            "runtime and state must be private directories owned by the daemon UID"
-        );
+        validate_directory(dir, true)?;
     }
-    let ingress_dir = config.ingress.parent().unwrap().canonicalize()?;
+    let ingress_dir = config
+        .ingress
+        .parent()
+        .context("ingress must have a parent")?;
+    validate_directory(ingress_dir, false)?;
     ensure!(
-        ingress_dir != runtime.canonicalize()? && ingress_dir != state.canonicalize()?,
+        runtime != state,
+        "state and runtime require separate directories"
+    );
+    ensure!(
+        ingress_dir != runtime && ingress_dir != state,
         "ingress requires its own directory"
     );
     if let Some(socket) = config
@@ -221,41 +279,49 @@ fn serve(runtime: &Path, state: &Path, config: Config) -> Result<()> {
             .canonicalize()
             .context("Harrhy UI socket parent must be provisioned")?;
         ensure!(
-            parent != ingress_dir
-                && parent != runtime.canonicalize()?
-                && parent != state.canonicalize()?,
+            parent != ingress_dir && parent != runtime && parent != state,
             "Harrhy UI upstream requires a separate socket directory"
         );
     }
-    let lock = fs::OpenOptions::new()
-        .write(true)
-        .create(true)
-        .truncate(false)
-        .open(state.join("daemon.lock"))?;
-    lock.try_lock().context("acquire exclusive state lock")?;
+    // Lock the directories themselves so different databases cannot share socket paths.
+    let locks = [
+        fs::File::open(state)?,
+        fs::File::open(runtime)?,
+        fs::File::open(ingress_dir)?,
+    ];
+    for (lock, name) in locks.iter().zip(["state", "runtime", "ingress"]) {
+        lock.try_lock()
+            .with_context(|| format!("acquire exclusive {name} lock"))?;
+    }
+    for socket in [
+        control.as_path(),
+        &runtime.join("admin.sock"),
+        &config.ingress,
+    ] {
+        remove_stale_socket(socket)?;
+    }
     let shutdown = Arc::new(AtomicBool::new(false));
     for signal in [libc::SIGTERM, libc::SIGINT] {
         signal_hook::flag::register(signal, Arc::clone(&shutdown))?;
     }
     let mut supervisor = Supervisor::new(config, runtime, state)?;
-    remove_socket(&control)?;
     let listener = UnixListener::bind(&control)?;
     let result = (|| -> Result<()> {
         listener.set_nonblocking(true)?;
         while !shutdown.load(Ordering::Relaxed) {
-            supervisor.reconcile()?;
             match listener.accept() {
-                Ok((mut stream, _)) => {
-                    let timeout = Some(Duration::from_millis(250));
-                    stream.set_read_timeout(timeout)?;
-                    stream.set_write_timeout(timeout)?;
-                    if let Ok(request) = line(&stream, 128) {
+                Ok((stream, _)) => {
+                    let mut stream = DeadlineStream::accepted(stream, Duration::from_millis(250));
+                    if let Ok(request) = stream.line(128) {
                         let reply = supervisor.command(&request)?;
+                        let mut stream = stream.with_timeout(Duration::from_millis(250));
                         let _ = writeln!(stream, "{reply}");
                     }
+                    supervisor.reconcile()?;
                 }
                 Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => {
-                    sleep(Duration::from_millis(250))
+                    supervisor.reconcile()?;
+                    sleep(Duration::from_millis(100));
                 }
                 Err(err) => return Err(err.into()),
             }
@@ -292,10 +358,12 @@ fn main() -> Result<()> {
             if matches!(command, ["status"])
                 || matches!(command, ["start" | "stop", app] if APPS.contains(app)) =>
         {
-            let mut stream = UnixStream::connect(Path::new(runtime).join("control.sock"))?;
-            stream.set_read_timeout(Some(Duration::from_secs(15)))?;
+            let mut stream = DeadlineStream::unix(
+                &Path::new(runtime).join("control.sock"),
+                Duration::from_secs(15),
+            )?;
             writeln!(stream, "{}", command.join(" "))?;
-            let reply: serde_json::Value = serde_json::from_str(&line(stream, 4096)?)?;
+            let reply: serde_json::Value = serde_json::from_str(&stream.line(4096)?)?;
             println!("{}", serde_json::to_string_pretty(&reply)?);
             ensure!(reply.get("error").is_none(), "control command failed");
             Ok(())

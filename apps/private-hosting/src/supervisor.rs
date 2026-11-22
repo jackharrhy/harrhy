@@ -1,5 +1,5 @@
-use super::{Config, line, remove_socket};
-use anyhow::{Result, ensure};
+use super::{Config, DeadlineStream, remove_socket};
+use anyhow::{Context, Result, ensure};
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
 use socket2::{Domain, Protocol, Socket, Type};
@@ -7,8 +7,8 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fs,
     io::{self, Write},
-    net::{SocketAddr, TcpStream},
-    os::unix::{fs::FileTypeExt, net::UnixStream, process::CommandExt},
+    net::SocketAddr,
+    os::unix::{fs::FileTypeExt, process::CommandExt},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     thread::sleep,
@@ -18,8 +18,8 @@ use std::{
 type Routes = BTreeSet<String>;
 const HEALTH_TIMEOUT: Duration = Duration::from_millis(250);
 
-fn http_ok(input: impl io::Read) -> Result<()> {
-    let response = line(input, 512)?;
+fn http_ok(mut input: DeadlineStream) -> Result<()> {
+    let response = input.line(512)?;
     let mut parts = response.split_ascii_whitespace();
     ensure!(
         matches!(parts.next(), Some("HTTP/1.0" | "HTTP/1.1")) && parts.next() == Some("200"),
@@ -29,10 +29,10 @@ fn http_ok(input: impl io::Read) -> Result<()> {
 }
 
 fn healthy(port: u16, path: &str, host: Option<&str>) -> Result<()> {
-    let mut conn =
-        TcpStream::connect_timeout(&SocketAddr::from(([127, 0, 0, 1], port)), HEALTH_TIMEOUT)?;
-    conn.set_read_timeout(Some(HEALTH_TIMEOUT))?;
-    conn.set_write_timeout(Some(HEALTH_TIMEOUT))?;
+    let mut conn = DeadlineStream::connect(
+        &SocketAddr::from(([127, 0, 0, 1], port)).into(),
+        HEALTH_TIMEOUT,
+    )?;
     write!(
         conn,
         "GET {path} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
@@ -49,9 +49,7 @@ fn healthy(port: u16, path: &str, host: Option<&str>) -> Result<()> {
 }
 
 fn healthy_socket(socket: &Path, host: &str) -> Result<()> {
-    let mut conn = UnixStream::connect(socket)?;
-    conn.set_read_timeout(Some(HEALTH_TIMEOUT))?;
-    conn.set_write_timeout(Some(HEALTH_TIMEOUT))?;
+    let mut conn = DeadlineStream::unix(socket, HEALTH_TIMEOUT)?;
     write!(
         conn,
         "GET /healthz HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n"
@@ -91,10 +89,16 @@ fn signal_group(child: &Child, signal: i32) -> io::Result<()> {
 
 fn stop(child: &mut Child, hard: bool) -> Result<()> {
     if !hard {
-        signal_group(child, libc::SIGTERM)?;
-        let deadline = Instant::now() + Duration::from_secs(2);
-        while !exited(child)? && Instant::now() < deadline {
-            sleep(Duration::from_millis(25));
+        let graceful = (|| -> Result<()> {
+            signal_group(child, libc::SIGTERM)?;
+            let deadline = Instant::now() + Duration::from_secs(2);
+            while Instant::now() < deadline && !exited(child)? {
+                sleep(Duration::from_millis(25));
+            }
+            Ok(())
+        })();
+        if let Err(error) = graceful {
+            eprintln!("graceful child shutdown failed: {error:#}");
         }
     }
     signal_group(child, libc::SIGKILL)?;
@@ -214,12 +218,16 @@ impl Supervisor {
     }
 
     fn close_proxy(&mut self) -> Result<()> {
-        if let Some(proxy) = &mut self.proxy {
-            stop(&mut proxy.child, true)?;
+        let stop_result = self.proxy.as_mut().map_or(Ok(()), |proxy| {
+            proxy.published = None;
+            stop(&mut proxy.child, true)
+        });
+        if stop_result.is_ok() {
+            self.proxy = None;
         }
-        self.proxy = None;
-        remove_socket(&self.admin)?;
-        remove_socket(&self.config.ingress)
+        let ingress = remove_socket(&self.config.ingress);
+        let admin = remove_socket(&self.admin);
+        cleanup_result([stop_result, ingress, admin])
     }
 
     fn publish(&mut self, ready: Routes) -> Result<()> {
@@ -253,15 +261,13 @@ impl Supervisor {
         }
         if !fs::symlink_metadata(&self.admin).is_ok_and(|m| m.file_type().is_socket()) {
             ensure!(
-                Instant::now() < proxy.admin_deadline,
+                proxy.published.is_none() && Instant::now() < proxy.admin_deadline,
                 "Caddy admin socket not ready"
             );
             return Ok(());
         }
         let body = serde_json::to_string(&self.caddy_config(&ready))?;
-        let mut conn = UnixStream::connect(&self.admin)?;
-        conn.set_read_timeout(Some(Duration::from_secs(2)))?;
-        conn.set_write_timeout(Some(Duration::from_secs(2)))?;
+        let mut conn = DeadlineStream::unix(&self.admin, Duration::from_secs(2))?;
         write!(
             conn,
             "POST /load HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
@@ -273,15 +279,46 @@ impl Supervisor {
         Ok(())
     }
 
+    fn apply_routes(&mut self, ready: Routes) -> Result<()> {
+        if let Err(error) = self.publish(ready) {
+            // An ambiguous /load may have committed; close before stopping any origins.
+            eprintln!("Caddy unavailable: {error:#}");
+            self.close_proxy()?;
+            self.proxy_retry = Instant::now() + Duration::from_secs(2);
+        }
+        Ok(())
+    }
+
+    fn retire(&mut self, names: Routes) -> Result<()> {
+        cleanup_result(names.into_iter().map(|name| {
+            let result = stop(&mut self.origins.get_mut(&name).unwrap().child, false);
+            if result.is_ok() {
+                self.origins.remove(&name);
+            }
+            result.with_context(|| format!("stop {name}"))
+        }))
+    }
+
+    fn withdraw_disabled(&mut self, wanted: &Routes) -> Result<()> {
+        if let Some(published) = self.proxy.as_ref().and_then(|p| p.published.as_ref())
+            && !published.is_subset(wanted)
+        {
+            self.apply_routes(published.intersection(wanted).cloned().collect())?;
+        }
+        self.retire(
+            self.origins
+                .keys()
+                .filter(|name| !wanted.contains(*name))
+                .cloned()
+                .collect(),
+        )
+    }
+
     pub(super) fn reconcile(&mut self) -> Result<()> {
         let wanted = self.wanted()?;
         let now = Instant::now();
-        let mut retire: Routes = self
-            .origins
-            .keys()
-            .filter(|name| !wanted.contains(*name))
-            .cloned()
-            .collect();
+        self.withdraw_disabled(&wanted)?;
+        let mut retire = Routes::new();
         let mut ready = Routes::new();
         for name in wanted {
             let spec = &self.config.apps[&name];
@@ -341,17 +378,8 @@ impl Supervisor {
                 }
             }
         }
-        if let Err(error) = self.publish(ready) {
-            // An ambiguous /load may have committed; close before stopping any origins.
-            eprintln!("Caddy unavailable: {error}");
-            self.close_proxy()?;
-            self.proxy_retry = Instant::now() + Duration::from_secs(2);
-        }
-        for name in retire {
-            stop(&mut self.origins.get_mut(&name).unwrap().child, false)?;
-            self.origins.remove(&name);
-        }
-        Ok(())
+        self.apply_routes(ready)?;
+        self.retire(retire)
     }
 
     pub(super) fn command(&mut self, command: &str) -> Result<Value> {
@@ -365,8 +393,10 @@ impl Supervisor {
                 )?;
                 if *action == "start" {
                     self.retries.remove(*name);
+                    self.reconcile()?;
+                } else {
+                    self.withdraw_disabled(&self.wanted()?)?;
                 }
-                self.reconcile()?;
             }
             _ => return Ok(json!({"error":"expected status or start/stop with a registered app"})),
         }
@@ -377,10 +407,21 @@ impl Supervisor {
     }
 
     pub(super) fn shutdown(&mut self) -> Result<()> {
-        self.close_proxy()?;
-        for origin in self.origins.values_mut() {
-            stop(&mut origin.child, false)?;
-        }
-        Ok(())
+        let proxy = self.close_proxy();
+        let origins = self.retire(self.origins.keys().cloned().collect());
+        cleanup_result([proxy, origins])
     }
+}
+
+fn cleanup_result(results: impl IntoIterator<Item = Result<()>>) -> Result<()> {
+    let mut first = Ok(());
+    for result in results {
+        if let Err(error) = result {
+            eprintln!("cleanup: {error:#}");
+            if first.is_ok() {
+                first = Err(error);
+            }
+        }
+    }
+    first
 }

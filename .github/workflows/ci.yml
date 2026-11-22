@@ -89,6 +89,24 @@ jobs:
           cache: true
       - run: pnpm install --frozen-lockfile --config.enable-global-virtual-store=false
       - run: pnpm run ci:preflight
+      - name: Prepare Private Hosting real-Caddy smoke
+        if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/private-hosting')
+        run: |
+          set -eu
+          rustup toolchain install 1.93.1 --profile minimal
+          caddy_dir="$(mktemp -d "$RUNNER_TEMP/private-hosting-caddy.XXXXXX")"
+          archive=caddy_2.10.2_linux_amd64.tar.gz
+          curl --fail --silent --show-error --location --max-time 60 \
+            "https://github.com/caddyserver/caddy/releases/download/v2.10.2/$archive" \
+            --output "$caddy_dir/$archive"
+          (
+            cd "$caddy_dir"
+            echo "747df7ee74de188485157a383633a1a963fd9233b71fbb4a69ddcbcc589ce4e2cc82dacf5dbbe136cb51d17e14c59daeb5d9bc92487610b0f3b93680b2646546  $archive" | sha512sum --check
+            tar -xzf "$archive" caddy
+          )
+          {
+            echo "HARRHY_PRIVATE_HOSTING_TEST_CADDY=$caddy_dir/caddy"
+          } >> "$GITHUB_ENV"
       - name: Install Pi isolated browser prerequisites
         if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/pi')
         run: |

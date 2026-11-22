@@ -144,6 +144,10 @@ fn open_websocket(socket: &Path) -> Result<BufReader<UnixStream>> {
 #[test]
 fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
     let Some(caddy) = env::var_os("HARRHY_PRIVATE_HOSTING_TEST_CADDY") else {
+        ensure!(
+            env::var_os("CI").is_none(),
+            "real Caddy is required in CI; set HARRHY_PRIVATE_HOSTING_TEST_CADDY"
+        );
         eprintln!("Skipping real Caddy + Go smoke: HARRHY_PRIVATE_HOSTING_TEST_CADDY is not set");
         return Ok(());
     };
@@ -254,6 +258,24 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
         !run().output()?.status.success(),
         "second writer acquired the database"
     );
+    for (run_dir, expected) in [
+        (&runtime, "runtime"),
+        (&root.join("another-runtime"), "ingress"),
+    ] {
+        let other = Command::new(BIN)
+            .arg("--runtime")
+            .arg(run_dir)
+            .args(["run", "--state"])
+            .arg(root.join("another-state"))
+            .arg("--config")
+            .arg(&config)
+            .output()?;
+        assert!(!other.status.success());
+        assert!(
+            String::from_utf8_lossy(&other.stderr).contains(&format!("exclusive {expected} lock"))
+        );
+        assert!(fetch("atlas.test", "404"), "incumbent socket was removed");
+    }
     fs::write(root.join("ready"), "")?;
     until(|| fetch("atlas.test", "200"))?;
     assert!(fetch("slides.test", "404"));
