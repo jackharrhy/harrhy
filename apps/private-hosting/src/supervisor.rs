@@ -28,15 +28,23 @@ fn http_ok(input: impl io::Read) -> Result<()> {
     Ok(())
 }
 
-fn healthy(port: u16, path: &str) -> Result<()> {
+fn healthy(port: u16, path: &str, host: Option<&str>) -> Result<()> {
     let mut conn =
         TcpStream::connect_timeout(&SocketAddr::from(([127, 0, 0, 1], port)), HEALTH_TIMEOUT)?;
     conn.set_read_timeout(Some(HEALTH_TIMEOUT))?;
     conn.set_write_timeout(Some(HEALTH_TIMEOUT))?;
     write!(
         conn,
-        "GET {path} HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        "GET {path} HTTP/1.1\r\nHost: {}\r\nConnection: close\r\n",
+        host.unwrap_or("localhost")
     )?;
+    if let Some(host) = host {
+        write!(
+            conn,
+            "X-Forwarded-Proto: https\r\nX-Forwarded-Host: {host}\r\n"
+        )?;
+    }
+    conn.write_all(b"\r\n")?;
     http_ok(conn)
 }
 
@@ -216,29 +224,31 @@ impl Supervisor {
     }
 
     pub(super) fn caddy_config(&self, ready: &Routes) -> Value {
-        let mut routes: Vec<_> = ready
-            .iter()
-            .map(|name| {
-                let spec = &self.config.apps[name];
-                let dial = match &spec.socket {
-                    Some(path) => format!("unix/{}", path.display()),
-                    None => format!("127.0.0.1:{}", spec.port),
-                };
-                let mut proxy = json!({
-                    "handler":"reverse_proxy", "upstreams":[{"dial":dial}],
-                    // Keep unrelated WebSockets alive during route changes. Caddy
-                    // still closes old-generation upgrades after this delay.
-                    "stream_close_delay":"30s",
-                });
-                if name == "slides" {
-                    // The private gateway terminates TLS; Slides validates its native auth origin.
-                    proxy["headers"] = json!({"request":{"set":{
-                        "X-Forwarded-Proto":["https"], "X-Forwarded-Host":[spec.host]
-                    }}});
-                }
-                json!({"match":[{"host":[spec.host]}], "terminal":true, "handle":[proxy]})
-            })
-            .collect();
+        // Slides layout and enrollment helpers are loopback-only.
+        let mut routes = Vec::new();
+        if ready.contains("slides") {
+            routes.push(json!({"match":[{"host":[self.config.apps["slides"].host],"path":["/_operator", "/_operator/*"]}],"terminal":true,"handle":[{"handler":"static_response","status_code":404}]}));
+        }
+        routes.extend(ready.iter().map(|name| {
+            let spec = &self.config.apps[name];
+            let dial = match &spec.socket {
+                Some(path) => format!("unix/{}", path.display()),
+                None => format!("127.0.0.1:{}", spec.port),
+            };
+            let mut proxy = json!({
+                "handler":"reverse_proxy", "upstreams":[{"dial":dial}],
+                // Keep unrelated WebSockets alive during route changes. Caddy
+                // still closes old-generation upgrades after this delay.
+                "stream_close_delay":"30s",
+            });
+            if name == "slides" {
+                // The private gateway terminates TLS; Slides validates its native auth origin.
+                proxy["headers"] = json!({"request":{"set":{
+                    "X-Forwarded-Proto":["https"], "X-Forwarded-Host":[spec.host]
+                }}});
+            }
+            json!({"match":[{"host":[spec.host]}], "terminal":true, "handle":[proxy]})
+        }));
         routes.push(json!({"handle":[{"handler":"static_response", "status_code":404}]}));
         let mut config = self.base.clone();
         config["apps"] = json!({"http":{"servers":{"private":{"listen":[format!("unix/{}|0660", self.config.ingress.display())], "automatic_https":{"disable":true}, "routes":routes}}}});
@@ -323,8 +333,8 @@ impl Supervisor {
                 }
                 continue;
             }
-            if name == "slides" {
-                if healthy(spec.port, "/").is_ok() {
+            if spec.adopted() {
+                if healthy(spec.port, "/", None).is_ok() {
                     ready.insert(name);
                 }
                 continue;
@@ -345,11 +355,21 @@ impl Supervisor {
             }
             if let Some(origin) = self.origins.get_mut(&name) {
                 if !origin.exited()?
-                    && healthy(spec.port, "/healthz").is_ok()
+                    && match &spec.readiness {
+                        Some(paths) => paths.iter().all(|path| {
+                            healthy(
+                                spec.port,
+                                path,
+                                (name == "slides").then_some(spec.host.as_str()),
+                            )
+                            .is_ok()
+                        }),
+                        None => healthy(spec.port, "/healthz", None).is_ok(),
+                    }
                     && spec
                         .companion
                         .as_ref()
-                        .is_none_or(|probe| healthy(probe.port, "/healthz").is_ok())
+                        .is_none_or(|probe| healthy(probe.port, "/healthz", None).is_ok())
                     && !origin.exited()?
                 {
                     origin.health_deadline = now + Duration::from_secs(20);
@@ -392,7 +412,7 @@ impl Supervisor {
         }
         let wanted = self.wanted()?;
         let published = self.proxy.as_ref().and_then(|p| p.published.as_ref());
-        let apps: BTreeMap<_, _> = self.config.apps.keys().map(|name| (name, json!({"host":self.config.apps[name].host,"enabled":wanted.contains(name),"running":self.origins.contains_key(name),"adopted":name=="slides" || self.config.apps[name].socket.is_some(),"published":published.is_some_and(|routes| routes.contains(name))}))).collect();
+        let apps: BTreeMap<_, _> = self.config.apps.keys().map(|name| (name, json!({"host":self.config.apps[name].host,"enabled":wanted.contains(name),"running":self.origins.contains_key(name),"adopted":self.config.apps[name].adopted(),"published":published.is_some_and(|routes| routes.contains(name))}))).collect();
         Ok(json!({"ingress_ready":published.is_some(),"apps":apps}))
     }
 

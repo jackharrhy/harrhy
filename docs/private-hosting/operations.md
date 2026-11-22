@@ -42,7 +42,11 @@ Provision an operator-owned immutable JSON registry outside the checkout. For ex
 }
 ```
 
-To adopt an existing Slides server, add `"slides": {"host": "slides.example.test", "port": 21394}` under `apps`. Only this fixed loopback port is accepted, with no launch fields. The daemon probes `GET /` for HTTP 200. Slides defaults enabled on first registration; explicit stop persists and only withdraws the route. The daemon never launches or signals the Slides process.
+A managed Slides spec uses normal `host`, `port`, `argv`, `cwd` and `env` fields plus `"readiness": ["/", "/position"]`. Point `argv` at the app-owned foreground launcher. It must pass the assigned `PORT` to qualified Celld as `--listen 127.0.0.1:$PORT`, with `--trust-forwarded-headers` and `--no-control-plane`; do not use `celld dev`. Keep the SQLite bucket, `CELLD_WATCH` directory, deck and media outside disposable output. Never start two nodes on the same bucket. The app owns serialized, debounced builds and deploys into that bucket. Use a private writable staging mirror for auth inputs, not the checkout. Keep the layout writer separate and private.
+
+Slides readiness and its Caddy upstream use the configured host and exact HTTPS forwarded origin. The daemon checks HTTP status; offline acceptance must also validate the `/position` state payload, preserved media and the native auth redirect. Caddy does not publish Slides’ `/_operator` paths.
+
+Until the managed launcher is qualified, the legacy `"slides": {"host": "slides.example.test", "port": 21394}` spec still adopts the existing process without signalling it. A managed spec and adoption cannot coexist. Both retain the same SQLite desired state; explicit stop persists.
 
 Use an absolute Node 26.13+ executable and installed Atlas workspace dependencies; keep its content and manifest external. `argv` is executed directly with no shell; the child receives a minimal PATH, registered `env`, and daemon-assigned `PORT`. Both hosts and backend ports must be distinct. Reserve ports for this unit alone; the daemon checks for an occupied port before launch but does not transfer a pre-bound descriptor to Atlas. Do not run competing port binders in the namespace. Registry changes require a managed daemon restart. Both apps must serve `GET /healthz` with 200 only when ready.
 

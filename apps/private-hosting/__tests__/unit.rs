@@ -52,8 +52,8 @@ fn regenerated_routes_restore_only_slides_forwarded_origin() -> Result<()> {
     let supervisor = Supervisor::new(serde_json::from_value(config)?, root, root)?;
     let config = supervisor.caddy_config(&supervisor.wanted()?);
     let routes = &config["apps"]["http"]["servers"]["private"]["routes"];
-    assert!(routes[0]["handle"][0].get("headers").is_none());
-    let slides = &routes[1];
+    assert!(routes[1]["handle"][0].get("headers").is_none());
+    let slides = &routes[2];
     assert_eq!(slides["match"][0]["host"], json!(["slides.test"]));
     assert_eq!(
         slides["handle"][0]["headers"]["request"]["set"],

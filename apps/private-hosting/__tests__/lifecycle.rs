@@ -36,6 +36,23 @@ fn atlas_fixture() -> Result<()> {
                 conn.write_all(b"HTTP/1.1 101 Switching Protocols\r\nConnection: Upgrade\r\nUpgrade: websocket\r\nSec-WebSocket-Accept: s3pPLMBiTxaQ9kYGzzhZRbK+xOo=\r\n\r\n")?;
                 until(|| Path::new("send-atlas-frame").exists())?;
                 conn.write_all(b"\x81\x05alive")?;
+            } else if req.starts_with("GET /position ") {
+                let mut headers = String::new();
+                while let Ok(n) = reader.read_line(&mut headers) {
+                    if n == 0 || headers.ends_with("\r\n\r\n") {
+                        break;
+                    }
+                }
+                let headers = headers.to_ascii_lowercase();
+                let ok = Path::new("position-ready").exists()
+                    && headers.contains("host: slides.test")
+                    && headers.contains("x-forwarded-host: slides.test")
+                    && headers.contains("x-forwarded-proto: https");
+                write!(
+                    conn,
+                    "HTTP/1.1 {}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    if ok { "200 OK" } else { "503 Unavailable" }
+                )?;
             } else if req.starts_with("GET /stream ") {
                 conn.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\ndata: opened\n\n")?;
                 until(|| Path::new("send-atlas-frame").exists())?;
@@ -159,6 +176,10 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
     fs::write(web_dir.join("ready"), "")?;
     let web = TcpListener::bind(("127.0.0.1", 0))?;
     let authority = TcpListener::bind(("127.0.0.1", 0))?;
+    let slides_port = TcpListener::bind(("127.0.0.1", 0))?;
+    let slides_dir = root.join("slides");
+    fs::create_dir(&slides_dir)?;
+    fs::write(slides_dir.join("ready"), "")?;
     let ui_socket = ui_dir.join("http.sock");
     let ui = UnixListener::bind(&ui_socket)?;
     std::thread::spawn(move || {
@@ -196,9 +217,10 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
         "go-demo":{"host":"demo.test","port":second.local_addr()?.port(),"argv":[demo],"cwd":root,"env":{}},
         "world":{"host":"world.test","port":web.local_addr()?.port(),"argv":fixture,"cwd":web_dir,"companion":{
             "port":authority.local_addr()?.port(),"argv":fixture,"cwd":authority_dir}},
+        "slides":{"host":"slides.test","port":slides_port.local_addr()?.port(),"argv":fixture,"cwd":slides_dir,"readiness":["/","/position"]},
         "harrhy-ui":{"host":"ui.test","socket":ui_socket}
     }}).to_string())?;
-    drop((first, second, web, authority));
+    drop((first, second, web, authority, slides_port));
     let base = || {
         let mut cmd = Command::new(BIN);
         cmd.arg("--runtime").arg(&runtime);
@@ -238,6 +260,19 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
     );
     fs::write(root.join("ready"), "")?;
     until(|| fetch("atlas.test", "200"))?;
+    assert!(fetch("slides.test", "404"));
+    fs::write(slides_dir.join("position-ready"), "")?;
+    until(|| fetch("slides.test", "200"))?;
+    let mut reply = String::new();
+    BufReader::new(request(&socket, "slides.test", "/position")?).read_line(&mut reply)?;
+    assert!(reply.starts_with("HTTP/1.1 200 "));
+    reply.clear();
+    BufReader::new(request(&socket, "slides.test", "/_operator/layout")?).read_line(&mut reply)?;
+    assert!(reply.starts_with("HTTP/1.1 404 "));
+    let slides_pid = fs::read_to_string(slides_dir.join("pid"))?;
+    let stopped = ctl(&["stop", "slides"])?;
+    assert_eq!(stopped["apps"]["slides"]["adopted"], false);
+    assert!(!Path::new("/proc").join(slides_pid).exists());
     assert_eq!(fs::metadata(&socket)?.permissions().mode() & 0o777, 0o660);
     assert!(fetch("unknown.test", "404"));
     assert!(fetch("demo.test", "404"));

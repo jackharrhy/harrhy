@@ -38,6 +38,7 @@ struct Spec {
     port: u16,
     socket: Option<PathBuf>,
     companion: Option<Companion>,
+    readiness: Option<Vec<String>>,
     #[serde(default)]
     argv: Vec<String>,
     #[serde(default)]
@@ -54,6 +55,12 @@ struct Companion {
     cwd: PathBuf,
     #[serde(default)]
     env: BTreeMap<String, String>,
+}
+
+impl Spec {
+    fn adopted(&self) -> bool {
+        self.argv.is_empty()
+    }
 }
 
 fn valid_launch(argv: &[String], cwd: &Path, env: &BTreeMap<String, String>) -> bool {
@@ -123,7 +130,8 @@ impl Config {
                         && spec.argv.is_empty()
                         && spec.cwd.as_os_str().is_empty()
                         && spec.env.is_empty()
-                        && spec.companion.is_none(),
+                        && spec.companion.is_none()
+                        && spec.readiness.is_none(),
                     "Harrhy UI is socket-only and has no launch spec"
                 );
                 continue;
@@ -132,13 +140,14 @@ impl Config {
                 spec.socket.is_none() && spec.port >= 1024 && ports.insert(spec.port),
                 "invalid or duplicate port for {name}"
             );
-            if name == "slides" {
+            if name == "slides" && spec.adopted() {
                 ensure!(
                     spec.port == 21394
                         && spec.argv.is_empty()
                         && spec.cwd.as_os_str().is_empty()
                         && spec.env.is_empty()
-                        && spec.companion.is_none(),
+                        && spec.companion.is_none()
+                        && spec.readiness.is_none(),
                     "slides requires port 21394 and no launch spec"
                 );
                 continue;
@@ -147,6 +156,28 @@ impl Config {
                 valid_launch(&spec.argv, &spec.cwd, &spec.env),
                 "invalid launch spec for {name}"
             );
+            if let Some(paths) = &spec.readiness {
+                ensure!(
+                    !paths.is_empty()
+                        && paths.len() <= 4
+                        && paths.iter().all(|path| path.starts_with('/')
+                            && !path.starts_with("//")
+                            && path.len() <= 128
+                            && path
+                                .bytes()
+                                .all(|b| b.is_ascii_alphanumeric() || b"/._-".contains(&b))),
+                    "invalid readiness paths for {name}"
+                );
+            }
+            if name == "slides" {
+                ensure!(
+                    spec.readiness
+                        .as_deref()
+                        .is_some_and(|paths| paths.iter().any(|p| p == "/")
+                            && paths.iter().any(|p| p == "/position")),
+                    "managed Slides requires / and /position readiness"
+                );
+            }
             match (&spec.companion, name.as_str()) {
                 (Some(companion), "world") => {
                     ensure!(
