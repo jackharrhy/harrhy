@@ -4,7 +4,7 @@
   "digestFormat": "SHA256 of sorted relative UTF-8 path + NUL + raw SHA256(file), excluding node_modules and dist",
   "trees": {
     "src": "993469b203f14fd2893f33913f0c0bac21c0331d5a86d6598121301daf98f92c",
-    "plugins": "913c5c58e322e8b7489af4468a9f6a59b82b74b80791714f0069ed59223f9a63",
+    "plugins": "89c6c56709b3b95a3052d88c9c69519e7ff0a2e2e09e337b92d8e3d6c25f1783",
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "c99c163ab8b58ecec775fe9caa8d1f775041f1ca3e02be71e7ba4ea98692e9b1",
     "docs": "d97c5a5a9418ab8a3216e5489a416f516f057e5f303297079e3f8d3713771ff3",
