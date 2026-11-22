@@ -116,7 +116,7 @@ function PeersSheet() {
 								·{" "}
 								{peer.state === "requested"
 									? peer.error
-										? "not accepted"
+										? "can't link"
 										: `waiting for ${peer.name}'s owner`
 									: peer.link === "up"
 										? "connected"

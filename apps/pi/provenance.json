@@ -8,11 +8,11 @@
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "c99c163ab8b58ecec775fe9caa8d1f775041f1ca3e02be71e7ba4ea98692e9b1",
     "docs": "d97c5a5a9418ab8a3216e5489a416f516f057e5f303297079e3f8d3713771ff3",
-    "__tests__/p2": "138e86b1f8b0b8d7f2f0702caff3af4d6bda7219d3b9bb902f5e77b834a1a3f1",
-    "__tests__/fixtures": "890dc801491d15ad4a2b48a4a2a55e437d7c6bcc5b7fa076d7ce35b31af5bc5f",
+    "__tests__/p2": "14803f3b46d0cfc7b4d7d1837bf065734068361d2ef9dba9bdac735883fb416e",
+    "__tests__/fixtures": "5fa7a0331b5316a058381a9ba883017066699448cf12e42b4a0d5a0b9389c5c6",
     "compat/packages": "03c4f5f9eb6c068805148c1f1e1efbc58317b684eec47a291e855fc239246c36",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "0d988d761300e9fd9bdb7331c389e0d8b9e8c664085265f6311a9c4df442a4df"
+    "integrations": "8e8cd8ce2f5efb457d3a1c5886f8ff6fdf316926e8e0fc0a42066af4a8bede67"
   },
   "adaptations": [
     {
