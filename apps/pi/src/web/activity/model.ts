@@ -1,8 +1,8 @@
 // A turn's activity: what the agent did between a person's message and its answer. Derived from the transcript's
 // items: `chatItems` keeps each response's thinking and text in the transcript, in their order, and turns each run of
 // consecutive tool calls into an activity item (a wheel in the chat, expandable steps in the right-hand panel). A turn's last text is its
-// answer, followed by the results meant for the person (artifacts, sent files). A result its tool shows
-// in place (an inline artifact) comes right after its call instead, splitting the run of calls around it. How much of
+// answer, followed by the results meant for the person (sent files). A result its tool shows
+// in place comes right after its call instead, splitting the run of calls around it. How much of
 // that shows in the transcript, and how much goes on the wheels, is settings.json's `detail` (`Detail`).
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { ComponentType } from "react";
@@ -83,7 +83,7 @@ export type ChatItem =
 			type: "results";
 			key: string;
 			/**
-			 * Calls whose result is for the person: an artifact, a sent file, an opened port. After the answer, those of
+			 * Calls whose result is for the person: a sent file, an opened port. After the answer, those of
 			 * the whole turn; in place, the one call before it (`ToolActivity.hasResult` says which).
 			 */
 			tools: ToolView[];
@@ -532,7 +532,6 @@ export type Kind =
 	| "edit"
 	| "script"
 	| "agent"
-	| "artifact"
 	| "file"
 	| "port"
 	| "message"
@@ -568,9 +567,8 @@ export type ToolActivity = {
 	 */
 	summary?: (count: number) => string;
 	/**
-	 * Whether a call made something for the person, shown by `Result`, and where: after the turn's answer (an artifact's
-	 * card, a sent file, an opened port), or in place, right after the call (an artifact the agent asked to show
-	 * inline: the run of calls splits around it). `false` or absent: nothing.
+	 * Whether a call made something for the person, shown by `Result`, and where: after the turn's answer (a sent file's
+	 * card, an opened port), or in place, right after the call (the run of calls splits around it). `false` or absent: nothing.
 	 */
 	hasResult?: (tool: ToolView) => ResultPlacement | false;
 	/** The call's inline detail; `NestedCalls` expands the calls it made in place. */
@@ -591,8 +589,7 @@ export type ToolActivity = {
 	/** What the detail of another call's call of this tool adds below its input and output (a link to what it made). */
 	CallDetail?: ComponentType<{ call: NestedCall }>;
 	/**
-	 * The call's result for the person, where `hasResult` places it; `inline`: in the chat (an inline artifact shows
-	 * itself too), not in a detail.
+	 * The call's result for the person, where `hasResult` places it; `inline`: in the chat, not in a detail.
 	 */
 	Result?: ComponentType<{ tool: ToolView; inline: boolean }>;
 };

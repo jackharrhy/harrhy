@@ -33,9 +33,9 @@ const TOOLS: ToolActivityTable = new Map<string, ToolActivity>([
 		},
 	],
 	[
-		"artifact",
+		"report",
 		{
-			summary: (count) => (count === 1 ? "made an artifact" : `made ${count} artifacts`),
+			summary: (count) => (count === 1 ? "made a report" : `made ${count} reports`),
 			hasResult: (tool) => (tool.details === undefined ? false : tool.args.inline === true ? "inline" : "after"),
 		},
 	],
@@ -77,9 +77,9 @@ const tool = (id: string, name: string, args: Record<string, unknown>, extra: Pa
 
 function turn(): Item[] {
 	const bash = tool("t1", "bash", { command: "npm test" }, { output: "ok\n1 passed" });
-	const artifact = tool(
+	const report = tool(
 		"t2",
-		"artifact",
+		"report",
 		{ name: "report" },
 		{ details: { name: "report", title: "Report", type: "html", version: 1 } },
 	);
@@ -95,7 +95,7 @@ function turn(): Item[] {
 			],
 			[bash],
 		),
-		response("a2", 3, [{ type: "toolCall", id: "t2", name: "artifact", arguments: { name: "report" } }], [artifact]),
+		response("a2", 3, [{ type: "toolCall", id: "t2", name: "report", arguments: { name: "report" } }], [report]),
 		response("a3", 4, [{ type: "text", text: "All **tests** pass." }]),
 	];
 }
@@ -110,7 +110,7 @@ test("a turn keeps its thought and texts in order; its consecutive calls are one
 	const activity = items[3] as Extract<(typeof items)[number], { type: "activity" }>;
 	assert.deepEqual(
 		activity.steps.map((step) => step.tool.name),
-		["bash", "artifact"],
+		["bash", "report"],
 	);
 	assert.equal(activity.working, false);
 	assert.deepEqual(activity.entryIds, [2, 3]);
@@ -128,14 +128,14 @@ test("a turn keeps its thought and texts in order; its consecutive calls are one
 	const results = items[5] as Extract<(typeof items)[number], { type: "results" }>;
 	assert.deepEqual(
 		results.tools.map((each) => each.name),
-		["artifact"],
+		["report"],
 	);
-	assert.equal(summary(activity.steps, TOOLS), "Ran a command, made an artifact");
+	assert.equal(summary(activity.steps, TOOLS), "Ran a command, made a report");
 });
 
 test("a result shown in place comes right after its call and splits the run of calls around it", () => {
 	const inline = (id: string) =>
-		tool(id, "artifact", { name: id, inline: true }, { details: { name: id, title: id, type: "html", version: 1 } });
+		tool(id, "report", { name: id, inline: true }, { details: { name: id, title: id, type: "html", version: 1 } });
 	const bash = (id: string) => tool(id, "bash", { command: `echo ${id}` });
 	const call = (each: ToolView): ToolCall => ({
 		type: "toolCall",
@@ -145,7 +145,7 @@ test("a result shown in place comes right after its call and splits the run of c
 	});
 	const card = tool(
 		"c1",
-		"artifact",
+		"report",
 		{ name: "card" },
 		{ details: { name: "card", title: "Card", type: "html", version: 1 } },
 	);
@@ -164,7 +164,7 @@ test("a result shown in place comes right after its call and splits the run of c
 					? `results:${item.tools.map((each) => each.id).join(",")}`
 					: item.type,
 		),
-		// The inline artifact's wheel holds the calls up to it; the card waits for the answer.
+		// The inline report's wheel holds the calls up to it; the card waits for the answer.
 		["user", "activity:b1,i1", "results:i1", "activity:b2,c1,b3", "answer", "results:c1"],
 	);
 	// The wheel after a result in place is keyed by it: the row that waited there while the agent worked.
@@ -519,7 +519,7 @@ test("settings.json's detail: how much of a turn shows in the transcript, the re
 	);
 	const wheel = one[1] as Activity;
 	assert.equal(wheel.key, "activity:u1");
-	assert.deepEqual(kinds(wheel), ["thought", "text", "bash", "artifact"]);
+	assert.deepEqual(kinds(wheel), ["thought", "text", "bash", "report"]);
 	assert.deepEqual(wheel.entryIds, [2, 3]);
 	// 2: the text in the transcript; the thought on the wheel before it, the calls on the one after.
 	const two = at(2);
@@ -535,7 +535,7 @@ test("settings.json's detail: how much of a turn shows in the transcript, the re
 		],
 	);
 	assert.deepEqual(kinds(two[1] as Activity), ["thought"]);
-	assert.deepEqual(kinds(two[3] as Activity), ["bash", "artifact"]);
+	assert.deepEqual(kinds(two[3] as Activity), ["bash", "report"]);
 	// 2 is the default: as without the setting.
 	const shape = (items: ReturnType<typeof at>) => items.map((item) => [item.type, item.key]);
 	assert.deepEqual(shape(chatItemsWith(turn(), false, true, TOOLS)), shape(two));
@@ -566,7 +566,7 @@ test("settings.json's detail: how much of a turn shows in the transcript, the re
 		writing.map((item) => item.type),
 		["user", "activity", "results"],
 	);
-	assert.deepEqual(kinds(writing[1] as Activity), ["thought", "text", "bash", "artifact", "text"]);
+	assert.deepEqual(kinds(writing[1] as Activity), ["thought", "text", "bash", "report", "text"]);
 	assert.equal((writing[1] as Activity).working, true);
 	assert.deepEqual(
 		at(1).map((item) => item.type),

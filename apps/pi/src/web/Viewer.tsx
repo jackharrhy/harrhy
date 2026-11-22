@@ -6,8 +6,7 @@ import { CloseIcon, DownloadIcon } from "./icons.tsx";
 import { Markdown } from "./Markdown.tsx";
 import { inPage } from "./navigation.ts";
 
-// One full-screen viewer for what a conversation hands the user: sent files today. It never executes anything (html
-// artifacts run in their own panes, plugins/artifacts).
+// One full-screen viewer for what a conversation hands the user: sent files today. It never executes anything.
 export type ViewerItem = { kind: "file"; file: DownloadInfo };
 /** Opens an item explicitly; tool updates and reconnects never open the viewer. */
 export const OpenViewer = createContext<(item: ViewerItem) => void>(() => {});

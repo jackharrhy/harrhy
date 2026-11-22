@@ -93,17 +93,14 @@ function Layout() {
 				}}
 			>
 				{draggingFiles && <div className="drop-overlay">Drop files to attach</div>}
-				{/* The chat (with the owner's notices below its top bar), as the workbench's first pane when a plugin lays
-				    out panes beside it (views); a sidebar rollup's or group's list (`Route.page`, the sessions plugin's)
-				    instead of the chat. */}
-				<Slot name="workbench">
-					<OwnerNotices />
-					{route.page !== undefined ? (
-						<Slot name="page" fallback={<div className="hero">No list pages</div>} />
-					) : (
-						<Slot name="main" fallback={<div className="hero">No chat plugin</div>} />
-					)}
-				</Slot>
+				{/* The chat (with the owner's notices below its top bar), or a sidebar rollup's or group's list
+				    (`Route.page`, the sessions plugin's) instead of the chat. */}
+				<OwnerNotices />
+				{route.page !== undefined ? (
+					<Slot name="page" fallback={<div className="hero">No list pages</div>} />
+				) : (
+					<Slot name="main" fallback={<div className="hero">No chat plugin</div>} />
+				)}
 			</main>
 			<div id="side-dock" className="side-dock" />
 			<Slot name="workspace-panel" />

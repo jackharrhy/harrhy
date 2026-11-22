@@ -1,5 +1,5 @@
 // The scope prompt's one call to a session: staging the scope block of a message about to be sent to one of its
-// conversations, so the views' send router carries it with that message (`MessageContexts`) and the transcript shows
+// conversations, so the scope prompt's send router carries it with that message and the transcript shows
 // only the person's text with a note.
 import { obj, str } from "@earendil-works/pi-schema";
 import { method, param, remote, sessionHost } from "@p2/app/v1";

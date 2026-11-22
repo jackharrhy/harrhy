@@ -14,13 +14,13 @@ export default defineFacet((host) => {
 			name: "counter",
 			namespace: {
 				name: "counter",
-				description: "The session's shared counter (the Counter view).",
-				instructions: "counter_add changes the count for everyone in the session; open the view with view_open.",
+				description: "The session's shared counter (the Counter sheet).",
+				instructions: "counter_add changes the count for everyone in the session; the person opens the sheet from the command menu (Counter).",
 			},
 			tools: [
 				defineP2Tool({
 					name: "counter_add",
-					description: "Adds `by` to the session's shared counter (the Counter view); returns the new count.",
+					description: "Adds `by` to the session's shared counter (the Counter sheet); returns the new count.",
 					parameters: obj({ by: int({ minimum: -100, maximum: 100 }) }),
 					replay: "unsafe",
 					// Out of the model's tool list: code mode's scripts call it. Leave it out to offer it to the model too.

@@ -2,7 +2,6 @@
 // agent's own words as they are), then a quiet extra such as a count.
 import type { ReactNode } from "react";
 import {
-	ArtifactIcon,
 	BotIcon,
 	CodeIcon,
 	ConversationIcon,
@@ -24,7 +23,6 @@ const ICONS: Record<Kind, () => ReactNode> = {
 	edit: () => <PencilIcon />,
 	script: () => <CodeIcon />,
 	agent: () => <BotIcon />,
-	artifact: () => <ArtifactIcon />,
 	file: () => <FileIcon />,
 	port: () => <PortIcon />,
 	message: () => <ConversationIcon />,

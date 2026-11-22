@@ -1,5 +1,5 @@
 // What the person points at, read from the page's DOM: the chain of things around a point (the sidebar, a rollup, a
-// group, a session; a pane, a file of the changes, a diff line; a message of the transcript), outermost first, each
+// group, a session; the chat, a diff line; a message of the transcript), outermost first, each
 // from attributes its plugin already renders. Nothing here changes the page.
 
 /** One thing the person may point at: its kind, a short label, the facts that name it, and its element. */
@@ -23,12 +23,9 @@ export function scopesAt(element: Element | null): ScopeLevel[] {
 /** The level `element` is, if any. */
 function levelOf(element: Element): ScopeLevel | undefined {
 	if (element.classList.contains("diff-line")) return diffLine(element);
-	const path = element.getAttribute("data-path");
-	if (path) return { kind: "file", label: path, data: { path }, element };
 	const entry = element.getAttribute("data-entry");
 	if (entry) return message(element, Number(entry));
-	const view = element.getAttribute("data-view-pane");
-	if (view) return pane(element, view);
+	if (element.hasAttribute("data-transcript-pane")) return { kind: "transcript", label: "Chat", data: {}, element };
 	const session = element.getAttribute("data-session");
 	if (session) {
 		const title = textOf(element.querySelector(".session-header .session-title"));
@@ -92,20 +89,6 @@ function messageText(element: Element): string {
 
 /** The parts of a transcript entry around what it says (Chat.tsx). */
 const MESSAGE_CHROME = "button, .speaker, .reply-quote, .message-actions, .bubble-files, .bubble-note, .incoming-head";
-
-/** A pane of the workbench: the chat, or a view with its kind, item and title (Workbench.tsx's attributes). */
-function pane(element: Element, view: string): ScopeLevel {
-	if (view === "transcript") return { kind: "transcript", label: "Chat", data: {}, element };
-	const kind = element.getAttribute("data-view-kind") ?? "";
-	const title = element.getAttribute("data-view-title") ?? "";
-	const item = element.getAttribute("data-view-item");
-	return {
-		kind: "view",
-		label: title || kind || "View",
-		data: { view, kind, title, ...(item === null ? {} : { item }) },
-		element,
-	};
-}
 
 /** An element's text on one line, cut at `limit` characters. */
 function textOf(element: Element | null, limit = 120): string {

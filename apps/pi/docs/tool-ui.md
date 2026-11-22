@@ -219,7 +219,7 @@ each call expands its own detail inline). A detail shows everything at once and 
 - `"after"`: after the turn's answer, with the turn's other results (`plugins/send-file`: the sent file's card;
   `plugins/ports`: the opened port's links).
 - `"inline"`: in place, right after the call's wheel; the run of calls splits around it, so the calls after it get a
-  wheel of their own (`plugins/artifacts` for `artifact_show`: the artifact's pane). A code-mode script's nested
+  wheel of their own. A code-mode script's nested
   calls place their results the same way, read from their name, arguments and status (a nested call has no
   `details`).
 
@@ -296,7 +296,7 @@ until expanded, from the tool's first string argument unless it knows the tool; 
 
 A result has two parts: `output`, the text the model reads, and `details`, JSON the model never sees. Put into
 `details` what the UI needs and should not parse out of text: counts, a diff (`edit`), a file's identity
-(`send_file`), the artifact a call acted on (`artifact_*`), the list of a script's calls (`codemode`). Both UIs get it as
+(`send_file`), the list of a script's calls (`codemode`). Both UIs get it as
 `tool.details` (web) and `result.details` (TUI); read it defensively (`detailsOf`, `record`), it is whatever the tool
 wrote, also in old transcripts. A running call has no `details` yet (`tool.status` is `pending` or `running`); a
 failed one usually has none. Arguments come as the model wrote them (`tool.args`), validated against `parameters`
