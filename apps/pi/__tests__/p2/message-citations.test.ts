@@ -138,7 +138,7 @@ it("sends and verifies the exact current owner input through the normal agent to
 	assert.match(results(await turn(sourceChat, another))[0]!, /destination session has a share link or active guest grant/);
 	await shared.disable({}, TEST);
 	const sourceSharing = await holdIn(owner, Sharing, { session: source }, "owner");
-	await sourceSharing.share({ email: "citation@example.com", mode: "view" }, TEST);
+	await sourceSharing.link({ mode: "view" }, TEST);
 	assert.match(results(await turn(sourceChat, another))[0]!, /source session has a share link or active guest grant/);
 	await sourceSharing.disable({}, TEST);
 
