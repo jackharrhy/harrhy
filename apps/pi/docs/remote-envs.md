@@ -87,7 +87,7 @@ starts, stops and deletes sandboxes, in the Envs sheet; plugins pick an existing
   serve --token …`. The launcher starts the sandbox's supervisor if needed (`p2-sandbox.mjs serve`, one process holding
   the VM; socket and log under `~/.pi/p2/sandbox/run/<key>/`, `<key>` being the sandbox's name prefixed by a hash of this
   p2 installation's machine and data directory), copies the daemon into the VM and passes its stdin and stdout through.
-  Tools, the workspace, terminals, uploads and `send_file` then work as on any remote environment. Hosts must be
+  Tools, the workspace, uploads and `send_file` then work as on any remote environment. Hosts must be
   Linux. Connections to a sandbox are keyed by its configuration and its host's: editing either opens new ones.
 - **Secrets:** per sandbox, in `<data>/sandbox-secrets.json` (0600, `plugins/envs/secrets.ts`; Envs sheet → the
   sandbox → Secrets, presets for GitHub, Radius, npm and any header). Each has a name (the VM's environment variable),
@@ -107,8 +107,7 @@ starts, stops and deletes sandboxes, in the Envs sheet; plugins pick an existing
   owner's Relocate moves a session out (the web UI asks first, also for a move to another sandbox). Confinement is decided per
   conversation from its current location and the environment's configured `type`, never its name:
   `conversationConfinement(harness.environments, id, ctx)` (`@p2/app/v1/worker`), backed by
-  `HarnessEnvironmentEntry.sandbox`. The `terminal` tool lists and drives only the session's terminals in the
-  caller's sandbox. Tools that run on the p2 machine or reach unconfined places (MCP, ports, conversations, …) are a
+  `HarnessEnvironmentEntry.sandbox`. Tools that run on the p2 machine or reach unconfined places (MCP, ports, conversations, …) are a
   session tool policy's job, not the location's.
 
 ## Data and execution
@@ -147,11 +146,6 @@ prompt admission. The message lists remote paths; inline images still read the p
 remains local; project instructions are read from the conversation's cwd ancestors, and skills from its machine's
 `~/.pi/p2/skills/` and `<cwd>/.pi/skills/`. Prompt watches run through
 the same environment; remote prompt loading is background work so an offline host does not block worker startup.
-
-The terminals plugin opens a terminal at the viewed conversation's location (the server reads it from the catalog
-and its subagent list) with the same SSH configuration/known-hosts file. The former
-`terminal-sessions.json` mapping is no longer read. Detached terminals still outlive server/worker restarts;
-Windows PTYs remain unsupported.
 
 Read/write remote sharing requires explicit confirmation in the UI and `remoteConfirmed: true` at link creation
 or reset, whenever the session or one of its subagents works on a remote environment. Guests with send access can

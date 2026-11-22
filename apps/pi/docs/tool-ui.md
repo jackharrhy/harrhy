@@ -308,7 +308,7 @@ Briefly; each is a keyed registry a facet contributes to (`docs/plugin-hooks.md`
 
 - **Web slots** (`Slots`, `src/runtime/web-core.ts`): components by slot name, e.g. `composer:<name>` (chips beside
   the composer, a `SlotList` by prefix), `sidebar-actions:<name>`, `session-actions`, `session-options`,
-  `envs-actions:<name>`, `chat-attribution`, `chat-content`, `chat-bottom` (the terminal below the chat).
+  `envs-actions:<name>`, `chat-attribution`, `chat-content`.
 - **Composer expanders** (`ComposerExpanders`, `src/runtime/composer.ts`): rewrite the composer's text before it is
   sent (the prompt plugin expands `/template` and `/skill:`).
 - **Sheets**: a component in a slot opens a route layer with `openLayer({ kind: "sheet", name, locator })` and

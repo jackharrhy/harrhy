@@ -21,8 +21,6 @@ export function showWorkspaceTab(nav: Navigation, tab: WorkspaceTab): void {
 		tab,
 		directory: current.directory,
 		...(current.search ? { search: current.search } : {}),
-		...(current.terminal ? { terminal: current.terminal } : {}),
-		...(tab === "terminal" ? { startTerminal: true } : {}),
 	};
 	void nav.reset(
 		(entry) => entry.workspace !== undefined && entry.layers.length === 0,

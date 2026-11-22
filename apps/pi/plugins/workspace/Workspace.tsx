@@ -13,8 +13,6 @@ import {
 	RefreshIcon,
 	routeKey,
 	SearchIcon,
-	Slot,
-	TerminalIcon,
 	upperFirst,
 	useDragSize,
 	usePointerKind,
@@ -173,7 +171,6 @@ export function WorkspacePanel({
 	cwd,
 	where,
 	label,
-	owner,
 	onSend,
 }: {
 	workspace: Held<typeof Workspace> | undefined;
@@ -191,8 +188,6 @@ export function WorkspacePanel({
 	where?: string;
 	/** A location as people read it: the header shows where the workspace is really open once it answered. */
 	label?: (location: Location) => string;
-	/** Terminals are a shell on the session's machine: only the owner gets them. */
-	owner: boolean;
 	/** Deliver review comments as the user's next message; absent for viewers who cannot send. */
 	onSend?: (text: string) => Promise<void>;
 }) {
@@ -650,7 +645,6 @@ export function WorkspacePanel({
 
 	const rootName = cwd.replace(/\/+$/, "").split("/").pop() || "/";
 
-	const terminal = tab === "terminal" && owner && !selection;
 	// The open file: in place of the list, or beside it when split.
 	let fileBody: ReactNode;
 	if (selection) {
@@ -704,7 +698,7 @@ export function WorkspacePanel({
 		);
 	}
 	let body: ReactNode;
-	if (!terminal && !attached && unavailable !== undefined) {
+	if (!attached && unavailable !== undefined) {
 		body = (
 			<>
 				<p className="notice error workspace-note">The workspace could not be opened: {unavailable}</p>
@@ -715,8 +709,6 @@ export function WorkspacePanel({
 				)}
 			</>
 		);
-	} else if (terminal) {
-		body = <Slot name="workspace-terminal" />;
 	} else if (selection && !split) {
 		body = fileBody;
 	} else if (tab === "files") {
@@ -1216,7 +1208,6 @@ export function WorkspacePanel({
 								["changes", "Changes", <DiffIcon key="icon" />, changes.length],
 								["search", "Search", <SearchIcon key="icon" size={20} />, 0],
 								["comments", "Comments", <CommentIcon key="icon" />, comments.length],
-								...(owner ? [["terminal", "Terminal", <TerminalIcon key="icon" size={20} />, 0] as const] : []),
 							] as const
 						).map(([id, label, icon, count]) => (
 							<button
@@ -1235,17 +1226,15 @@ export function WorkspacePanel({
 					<span className="spacer workspace-location" title={shownWhere}>
 						{shownWhere}
 					</span>
-					{!terminal && (
-						<button
-							type="button"
-							className="icon-button"
-							onClick={() => setVersion((current) => current + 1)}
-							aria-label="Refresh"
-							title="Refresh"
-						>
-							<RefreshIcon />
-						</button>
-					)}
+					<button
+						type="button"
+						className="icon-button"
+						onClick={() => setVersion((current) => current + 1)}
+						aria-label="Refresh"
+						title="Refresh"
+					>
+						<RefreshIcon />
+					</button>
 					<button
 						type="button"
 						className="icon-button"
@@ -1255,8 +1244,8 @@ export function WorkspacePanel({
 						<CloseIcon />
 					</button>
 				</header>
-				<div className={`workspace-body ${terminal ? "terminal-body" : ""}`} ref={scroller}>
-					{moveNote && !terminal && <p className="notice workspace-note">{moveNote}</p>}
+				<div className="workspace-body" ref={scroller}>
+					{moveNote && <p className="notice workspace-note">{moveNote}</p>}
 					{body}
 				</div>
 				{comments.length > 0 && (

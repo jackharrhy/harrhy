@@ -48,7 +48,7 @@ export interface ReconnectOptions {
 	canRetry(): Promise<boolean>;
 	/**
 	 * Replace an open socket after this long without a message, at any time, not only on wake. For sockets whose own
-	 * protocol has no timeout (the terminal's); chord links time out by themselves.
+	 * protocol has no timeout; chord links time out by themselves.
 	 */
 	silenceTimeoutMs?: number;
 	environment: ReconnectEnvironment;

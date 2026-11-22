@@ -3,13 +3,13 @@
   "commonAncestor": "ac78a6068b38774fceb5157c8f9e27fba9da6471",
   "digestFormat": "SHA256 of sorted relative UTF-8 path + NUL + raw SHA256(file), excluding node_modules and dist",
   "trees": {
-    "src": "d4f21635012074bca086f35c79a0f80721ae400003d22a54b3cb3e15ae4bba96",
-    "plugins": "43e0f05ac50dbb3f19ad3b0c5e6005bece0aa96ea30efcc6016fdef72aced911",
+    "src": "c3ec959c0150dcb18c68f4be54627e2e530d2a74ec155ad34f0c8222711dc6d8",
+    "plugins": "d5ad4b84f553683bbdb6c195a0a568ce415f0ae73b4a286ace464528522b7db2",
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "c99c163ab8b58ecec775fe9caa8d1f775041f1ca3e02be71e7ba4ea98692e9b1",
-    "docs": "692ed6b85969d9ed1ec5b17a47966644c26ed4bdb066e7754c1bb89772888a93",
-    "__tests__/p2": "4d1a1045d2ea6241879585069a475f76bedcf0c1e8d4228bd8e651de565b3eae",
-    "__tests__/fixtures": "ffd257c305f4cd5479d72eca8eb1a02b1e6c673ae179eb1e89586348edd63a55",
+    "docs": "be32577ce85dba976d4f2281c68b5599c1e3de3df8072b3862ea600f7d254d0d",
+    "__tests__/p2": "6847e4da5dda8079f457b457de4f1ea480cab97a395ca4390717858aae582eee",
+    "__tests__/fixtures": "26d22afb9659e8e533ffbb5aaf43de6c55f0cd4b53b9975635465f36588db6d2",
     "compat/packages": "03c4f5f9eb6c068805148c1f1e1efbc58317b684eec47a291e855fc239246c36",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
     "integrations": "e4efefb78c29aeb02e32b9efafddd2ffad4ecf9e20ca596165d43db58a60622f"
@@ -24,11 +24,6 @@
       "path": "src/source-resolver.ts",
       "source": "apps/p2/src/source-resolver.ts",
       "baselineSha256": "c13e3d699de4ac5481b8f6f115b58b7f1c3ace50311f5f9dd14f6b4b4baf2a45"
-    },
-    {
-      "path": "plugins/terminals/daemon.ts",
-      "source": "apps/p2/plugins/terminals/daemon.ts",
-      "baselineSha256": "9d263352d0910f2aeebb16d0c3125659cb5c960544c23393ec23b1f12f96cb1a"
     },
     {
       "path": "__tests__/p2/web-sources.test.ts",

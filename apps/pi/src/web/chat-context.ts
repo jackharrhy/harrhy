@@ -15,8 +15,6 @@ export const OpenPeerConversation = createContext<((sessionId: string) => void) 
 export const WorkingDirectory = createContext<string | undefined>(undefined);
 /** Opens a cwd-relative file in the workspace panel; absent when the viewer has no workspace access. */
 export const OpenWorkspaceFile = createContext<((path: string, line?: number) => void) | undefined>(undefined);
-/** Shows one of the session's terminals in the terminal panel (owner only: guests have none). */
-export const OpenTerminal = createContext<((terminalId: string) => void) | undefined>(undefined);
 /** Download and artifact locators are scoped to the containing session, including child views. */
 export const SessionId = createContext<string | undefined>(undefined);
 /** Starts a reply to an entry; absent while the conversation accepts no replies (chat-mode turns them on). */

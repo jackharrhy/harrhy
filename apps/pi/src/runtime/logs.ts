@@ -410,9 +410,9 @@ export function persistLogSource(source: string, path: string, store = processLo
 	};
 }
 
-/** Start a detached host's bounded log publication (terminal host or dev supervisor). */
+/** Start a detached host's bounded log publication (the dev supervisor). */
 export function capturePublishedLogs(
-	source: "terminals" | "dev",
+	source: "dev",
 	directory: string,
 	options: { inTests?: boolean } = {},
 ): () => Promise<void> {
@@ -426,7 +426,7 @@ export function capturePublishedLogs(
 	const fatal = (error: Error): void => processLogs.append(source, "error", error.stack ?? error.message);
 	process.on("uncaughtExceptionMonitor", fatal);
 	// Node's default fatal-error printer runs before exit. A synchronous final snapshot retains that stack,
-	// and explicit process.exit (terminal idle timeout) cannot skip the last buffered lines.
+	// and explicit process.exit cannot skip the last buffered lines.
 	const exiting = (): void => {
 		stop();
 		try {

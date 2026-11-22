@@ -39,7 +39,7 @@ export default defineFacet((host) =>
 ```
 
 A plugin that needs state, resources or other objects serves its own object of lifetime "host" and registers from its factory
-(e.g. `plugins/codemode/worker.ts:39-60`, `plugins/terminals/server.ts:10-30`).
+(e.g. `plugins/codemode/worker.ts:39-60`).
 
 Registries are plain descriptors (`defineRegistry`, `packages/chord/src/old/registry.ts:11`):
 
@@ -109,7 +109,7 @@ contracts and factories are the enforcement.
 | Registry | Key → value | Consulted | Used by | Notes |
 | --- | --- | --- | --- | --- |
 | `Routes` | `"METHOD /path"` or `"METHOD /prefix/*"` → `(req, res, {principal, origin}, ctx)` | after host paths, longest prefix wins (`src/hosts/server.ts:459`, `src/runtime/server.ts:124`) | files, artifacts, workspace, sharing, devices | Handler authorizes itself; `principal` may be `undefined` (stranger), owner, guest. |
-| `Upgrades` | exact path → `(req, socket, head, principal, ctx)` | WebSocket upgrades other than `/chord` (`src/hosts/server.ts`) | terminals `/terminal` (`plugins/terminals/server.ts:22`) | Only authenticated principals reach it. |
+| `Upgrades` | exact path → `(req, socket, head, principal, ctx)` | WebSocket upgrades other than `/chord` (`src/hosts/server.ts`) | none at present | Only authenticated principals reach it. |
 | `Authenticators` | name → `(req, origin, ctx) => principal` | every request; first owner wins, else first principal (`src/hosts/server.ts:343-355`) | devices (owner cookie), sharing (guest cookie) | |
 | `RequestResolvers` | name → `(req, ctx) => {principal, origin}` | before Host checks (`src/hosts/server.ts:357`) | radius, devices | Trusted transports only. |
 | `SessionAccess` | name → `(principal, session, ctx) => boolean` | `mayReach`: worker routes, files (`src/runtime/server.ts:158-165`) | sharing (`plugins/sharing/server.ts:332`) | Any yes admits a non-owner. |
@@ -134,7 +134,7 @@ Reserved host endpoints are `/health`, `/__p2_dev`, `/__p2_tui[/<hash>.mjs]` and
 
 - **Logs:** `processLogs` (`src/runtime/logs.ts:196`) is a process global: `append(source, level, text)`,
   `notice(source, message)` (error-level owner notice, one per source, `:157-164`), `redactor.addSecret/addDirectory`
-  (models, login, radius use it), `persistLogSource`/`capturePublishedLogs` for detached processes (terminals).
+  (models, login, radius use it), `persistLogSource`/`capturePublishedLogs` for detached processes (the dev supervisor).
   Worker stderr lines starting `p2 worker:` become notices (`src/runtime/server.ts:335-343`).
 - **Notices:** surfaced by the logs plugin's owner-only `LogNotices` (`plugins/logs/contract.ts:24`), rendered by the
   core web lane (`src/web/OwnerNotices.tsx:30-31`) and the logs TUI facet. There is no tone, action or dismiss API for
@@ -231,15 +231,13 @@ self.register(SendRouters, {
 | `sidebar` | `src/web/AppLayout.tsx:21` | single | sessions |
 | `main` | `src/web/AppLayout.tsx:60` | single | chat |
 | `workspace-panel` | `src/web/AppLayout.tsx:62` | single | workspace |
-| `artifact-actions`, `terminal-actions`, `workspace-actions`, `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | artifacts, terminals, workspace, sessions, sharing |
+| `artifact-actions`, `workspace-actions`, `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | artifacts, workspace, sessions, sharing |
 | `composer:*` | `plugins/chat/web.tsx:925` (`SlotList`) | list | chat-mode |
-| `chat-bottom` | `plugins/chat/web.tsx:934` | single | terminals |
 | `chat-content` | `plugins/chat/web.tsx:1133` | wrapper (gets `children`) | artifacts (card contexts, the sent-file viewer, the artifacts side panel) |
 | `chat-attribution` | `plugins/chat/web.tsx:1134` | wrapper | conversations |
 | `sidebar-actions:*` | `plugins/sessions/web.tsx` (`SlotList`) | list: icon buttons before the theme switch | settings |
 | `sidebar-start:*` | `plugins/sessions/web.tsx` (`SlotList`) | list: rows (list items) before "New session" | familiar |
 | `envs-actions:*` | `plugins/envs/EnvsPanel.tsx:524` (`SlotList`) | list | ports |
-| `workspace-terminal` | `src/web/Workspace.tsx:730` | single | terminals |
 | `workbench` | `src/web/AppLayout.tsx` | wrapper (gets the `main` slot as `children`) | views |
 | `view-actions` | chat top bar, `plugins/chat/web.tsx` | single | views |
 

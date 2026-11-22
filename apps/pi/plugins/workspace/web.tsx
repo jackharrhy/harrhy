@@ -9,7 +9,6 @@ import {
 	useComposerState,
 	useNavigation,
 	useObject,
-	useOwner,
 	useReadable,
 	useRoute,
 	useStatus,
@@ -48,7 +47,6 @@ function WorkspaceButton() {
 function WorkspacePanel() {
 	const route = useRoute(),
 		nav = useNavigation();
-	const owner = useOwner();
 	const canWrite = useCanWrite(route.session);
 	// Retry opens the workspace again: a new panel holds a new reference.
 	const [attempt, setAttempt] = useState(0);
@@ -59,7 +57,6 @@ function WorkspacePanel() {
 			onRetry={() => setAttempt((current) => current + 1)}
 			session={route.session}
 			conversation={route.conversation}
-			owner={owner}
 			nav={nav}
 			route={route.workspace}
 		/>
@@ -68,7 +65,6 @@ function WorkspacePanel() {
 function NativePanel({
 	session,
 	conversation,
-	owner,
 	nav,
 	route,
 	onRetry,
@@ -76,7 +72,6 @@ function NativePanel({
 	onRetry: () => void;
 	session: string;
 	conversation: number;
-	owner: boolean;
 	nav: Navigation;
 	route: WorkspaceRoute;
 }) {
@@ -116,7 +111,6 @@ function NativePanel({
 			conversationId={conversation}
 			cwd={cwd}
 			{...(location ? { where: locationLabel(location.env, location.cwd) } : {})}
-			owner={owner}
 			onSend={async (text) => {
 				try {
 					const writer = liveIn(chat, "participant");

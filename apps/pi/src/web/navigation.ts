@@ -10,7 +10,7 @@ import { panelsFor, rememberPanels } from "./session-panels.ts";
 // Adapted from Pi Mobile: independent browser-only navigation, no app imports.
 // Plugins own named modal locators; the runtime owns the stack and Back behavior.
 export type Layer = { kind: "drawer" } | { kind: "sheet" | "viewer"; name: string; locator?: string };
-export type WorkspaceTab = "files" | "changes" | "search" | "comments" | "terminal";
+export type WorkspaceTab = "files" | "changes" | "search" | "comments";
 export type WorkspaceFileRoute = { path: string; view: "changes" | "file" | "preview"; line?: number; commit?: string };
 export type WorkspaceRoute = {
 	tab: WorkspaceTab;
@@ -18,8 +18,6 @@ export type WorkspaceRoute = {
 	file?: WorkspaceFileRoute;
 	commit?: string;
 	search?: { text: string; include?: string; exclude?: string };
-	terminal?: string;
-	startTerminal?: boolean;
 };
 export type WorkspaceLocation = WorkspaceRoute;
 /**
@@ -44,8 +42,6 @@ export type Route = {
 	activity?: { row: string; step?: string };
 	/** A plugin's panel shown in the side panel, by its name; never together with `activity`. */
 	panel?: string;
-	terminal?: string;
-	startTerminal?: boolean;
 };
 
 export const HOME: Route = { conversation: 1, layers: [] };
@@ -55,8 +51,8 @@ export const NEW_SESSION: Route = { newSession: true, conversation: 1, layers: [
 
 /**
  * Another conversation, with no modal layers, and with its session's panels (session-panels.ts): within the open
- * session the open ones stay (the workspace on the same tab at the new working tree's root, the same terminal); another
- * session gets the panels it last had on this device, none if it never had any. A terminal never starts on its own.
+ * session the open ones stay (the workspace on the same tab at the new working tree's root); another
+ * session gets the panels it last had on this device, none if it never had any.
  */
 export function conversationRoute(current: Route, session: string | undefined, conversation = 1): Route {
 	return {

@@ -12,6 +12,7 @@ at that commit.
 | Discord | `16e22a10` | `plugins/discord` |
 | Telemetry panel | `16e22a10` | `plugins/telemetry` |
 | Terminal UI | `48c0ac80` | `src/tui`, `src/hosts/tui*`, `src/runtime/tui*`, `src/api/v1/tui.ts`, every plugin's `tui*.ts`, `plugins/quiet-tools`, `docs/p2-tui-port.md` |
+| Web terminal | `46d6b3a9` | `plugins/terminals` (including `vendor/ghostty`), the workspace's Terminal tab, the bottom terminal panel and its CSS |
 
 Paths are under `apps/pi/`.
 
@@ -97,3 +98,35 @@ Worth keeping in mind:
   members, which nothing reads now.
 - Left on a machine that ran it, read by nothing now: the launcher's `~/.pi/p2-tui/` (preferences and saved sign-in
   cookies) and `<data>/tui.json`.
+
+## Web terminal
+
+Shells in the browser, owner only. The `terminals` plugin opened a terminal at the viewed conversation's location (local,
+SSH or sandbox) and the agent drove the same terminals with a `terminal` tool. About 5,600 lines plus the wasm.
+
+- A detached terminal host (`main.ts`, started by `detached.ts`; one per data dir, behind a process lock) owned the
+  PTYs through the `pi-env` daemon, so shells outlived server and worker restarts. It exited after ten minutes with no
+  terminals and no clients, kept a headless libghostty-vt copy of each screen for reconnecting browsers, and published
+  its logs as `<data>/terminals.logs.json` for the Logs sheet.
+- The server side (`server.ts`, `service.ts`, `contract.ts`) served the owner-only `Terminals` object per session and
+  view and a `/terminal` WebSocket for bytes; control was Chord. The page (`Terminal.tsx`, `web.tsx`) drew libghostty-vt
+  (`vendor/ghostty`, MIT, `ghostty-vt.wasm`) into DOM rows with its own selection, scrolling, IME and clipboard
+  handling, a row of keys phones lack, tabs per terminal, and a placement either below the chat or as the workspace's
+  Terminal tab.
+- The `terminal` tool (`tool.ts`, `commands.ts`) took tmux commands as argv (`new-session`, `send-keys`, `capture-pane`,
+  `wait-for` and the like) on the session's terminals, replay-safe across restarts, with its own transcript block
+  (`activity.tsx`). It was a deferred tool, reachable through code mode or `tool_search`.
+- Around it: the top bar's Terminal button, the command menu's terminal commands, `OpenTerminal` (a transcript block
+  opened its terminal), the `terminal`/`startTerminal` route fields and their per-device memory, the `terminal-actions`,
+  `chat-bottom` and `workspace-terminal` slots, `.terminal-*` styles, the `.wasm` asset loader and `?url` import in the
+  test bundler, the page CSP's `wasm-unsafe-eval`, and the "Terminal host" log source.
+
+Worth keeping in mind:
+
+- The agent still has `bash`, which runs one command to completion. Nothing now gives it a long-lived interactive
+  shell, a way to watch a dev server's output, or something to drive a REPL; that was the `terminal` tool.
+- Still in the tree: `pi-env`'s `openTerminal` and the daemon's PTY support (`compat/packages/env`), which nothing in
+  the app calls now, and `silenceTimeoutMs` in `src/web/reconnect.ts`, which only the terminal's socket used.
+- Left on a machine that ran it, read by nothing now: `<data>/terminals.logs.json`, the host's socket
+  (`p2-<key>-t.sock` in the temp directory) and the browser's remembered terminal placement. A terminal host started
+  before the upgrade keeps running until its ten idle minutes pass or it is killed, since it was detached.

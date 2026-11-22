@@ -7,7 +7,7 @@
 // Anywhere on the sheet, as iOS's sheets: the top edge (grip and header) always; the content when it is scrolled to its
 // top, else the drag scrolls it, and once it reaches its top the same finger goes on pulling the sheet down. The grip
 // and header take no browser gestures (`touch-action: none` in style.css), so their moves are always cancelable. Text
-// fields and elements that take touches themselves (`touch-action: none`: a terminal, a wheel) keep theirs.
+// fields and elements that take touches themselves (`touch-action: none`: a wheel) keep theirs.
 import { type RefObject, useEffect, useRef } from "react";
 import { FLING, SETTLE_EASING, settleDuration, trackDrags } from "./drag-gesture.ts";
 

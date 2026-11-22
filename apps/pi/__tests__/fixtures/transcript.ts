@@ -10,7 +10,6 @@ import { historyActivities } from "../../plugins/history/activity.tsx";
 import { powershellActivity } from "../../plugins/powershell/activity.tsx";
 import { sendFileActivity } from "../../plugins/send-file/activity.tsx";
 import { subagentActivity } from "../../plugins/subagents/activity.tsx";
-import { terminalActivity } from "../../plugins/terminals/activity.tsx";
 import { VIEW_ACTIVITIES } from "../../plugins/views/activity.tsx";
 import type { Detail, ToolActivityTable } from "../../src/web/activity/model.ts";
 import { Messages, rowEstimates, transcriptRows } from "../../src/web/Chat.tsx";
@@ -31,7 +30,6 @@ export const PLUGIN_TOOLS: ToolActivityTable = new Map(
 		powershell: powershellActivity,
 		send_file: sendFileActivity,
 		subagent: subagentActivity,
-		terminal: terminalActivity,
 	}),
 );
 

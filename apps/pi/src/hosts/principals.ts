@@ -102,7 +102,7 @@ export function contentSecurityPolicy(nonce: string, origin: RequestOrigin | und
 	const socketOrigin = origin?.origin.replace(/^http/, "ws") ?? "";
 	return [
 		"default-src 'none'",
-		`script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval'`,
+		`script-src 'self' 'nonce-${nonce}'`,
 		`connect-src 'self' ${socketOrigin}`.trimEnd(),
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: blob:",
