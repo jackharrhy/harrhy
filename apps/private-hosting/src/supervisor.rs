@@ -1,4 +1,4 @@
-use super::{Config, Spec, line, remove_socket};
+use super::{Config, line, remove_socket};
 use anyhow::{Result, ensure};
 use rusqlite::{Connection, params};
 use serde_json::{Value, json};
@@ -129,50 +129,8 @@ fn launch(port: u16, argv: &[String], cwd: &Path, env: &BTreeMap<String, String>
 }
 
 struct Origin {
-    children: Vec<Child>,
+    child: Child,
     health_deadline: Instant,
-}
-impl Origin {
-    fn launch(spec: &Spec, now: Instant) -> Result<Self> {
-        let mut children = Vec::new();
-        if let Some(companion) = &spec.companion {
-            children.push(launch(
-                companion.port,
-                &companion.argv,
-                &companion.cwd,
-                &companion.env,
-            )?);
-        }
-        match launch(spec.port, &spec.argv, &spec.cwd, &spec.env) {
-            Ok(child) => children.push(child),
-            Err(error) => {
-                for child in &mut children {
-                    stop(child, true)?;
-                }
-                return Err(error);
-            }
-        }
-        Ok(Self {
-            children,
-            health_deadline: now + Duration::from_secs(20),
-        })
-    }
-
-    fn exited(&self) -> Result<bool> {
-        for child in &self.children {
-            if exited(child)? {
-                return Ok(true);
-            }
-        }
-        Ok(false)
-    }
-
-    fn stop(&mut self) -> Result<()> {
-        for child in self.children.iter_mut().rev() {
-            stop(child, false)?;
-        }
-        Ok(())
-    }
 }
 
 struct Proxy {
@@ -342,9 +300,15 @@ impl Supervisor {
             if !self.origins.contains_key(&name)
                 && self.retries.get(&name).is_none_or(|retry| now >= *retry)
             {
-                match Origin::launch(spec, now) {
-                    Ok(origin) => {
-                        self.origins.insert(name.clone(), origin);
+                match launch(spec.port, &spec.argv, &spec.cwd, &spec.env) {
+                    Ok(child) => {
+                        self.origins.insert(
+                            name.clone(),
+                            Origin {
+                                child,
+                                health_deadline: now + Duration::from_secs(20),
+                            },
+                        );
                     }
                     Err(error) => {
                         eprintln!("{name}: launch failed: {error}");
@@ -354,7 +318,7 @@ impl Supervisor {
                 }
             }
             if let Some(origin) = self.origins.get_mut(&name) {
-                if !origin.exited()?
+                if !exited(&origin.child)?
                     && match &spec.readiness {
                         Some(paths) => paths.iter().all(|path| {
                             healthy(
@@ -366,15 +330,11 @@ impl Supervisor {
                         }),
                         None => healthy(spec.port, "/healthz", None).is_ok(),
                     }
-                    && spec
-                        .companion
-                        .as_ref()
-                        .is_none_or(|probe| healthy(probe.port, "/healthz", None).is_ok())
-                    && !origin.exited()?
+                    && !exited(&origin.child)?
                 {
                     origin.health_deadline = now + Duration::from_secs(20);
                     ready.insert(name);
-                } else if origin.exited()? || now >= origin.health_deadline {
+                } else if exited(&origin.child)? || now >= origin.health_deadline {
                     self.retries
                         .insert(name.clone(), now + Duration::from_secs(5));
                     retire.insert(name);
@@ -388,7 +348,7 @@ impl Supervisor {
             self.proxy_retry = Instant::now() + Duration::from_secs(2);
         }
         for name in retire {
-            self.origins.get_mut(&name).unwrap().stop()?;
+            stop(&mut self.origins.get_mut(&name).unwrap().child, false)?;
             self.origins.remove(&name);
         }
         Ok(())
@@ -419,7 +379,7 @@ impl Supervisor {
     pub(super) fn shutdown(&mut self) -> Result<()> {
         self.close_proxy()?;
         for origin in self.origins.values_mut() {
-            origin.stop()?;
+            stop(&mut origin.child, false)?;
         }
         Ok(())
     }

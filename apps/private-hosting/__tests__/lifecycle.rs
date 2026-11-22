@@ -167,15 +167,12 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
     let runtime = root.join("run");
     let state = root.join("state");
     let config = root.join("config.json");
-    let web_dir = root.join("world-web");
-    let authority_dir = root.join("world-authority");
+    let world_dir = root.join("world");
     let ui_dir = root.join("ui");
-    for dir in [&web_dir, &authority_dir, &ui_dir] {
+    for dir in [&world_dir, &ui_dir] {
         fs::create_dir(dir)?;
     }
-    fs::write(web_dir.join("ready"), "")?;
-    let web = TcpListener::bind(("127.0.0.1", 0))?;
-    let authority = TcpListener::bind(("127.0.0.1", 0))?;
+    let world = TcpListener::bind(("127.0.0.1", 0))?;
     let slides_port = TcpListener::bind(("127.0.0.1", 0))?;
     let slides_dir = root.join("slides");
     fs::create_dir(&slides_dir)?;
@@ -215,12 +212,11 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
         &config, json!({"caddy":Path::new(&caddy),"ingress":socket,"apps":{
         "atlas":{"host":"atlas.test","port":first.local_addr()?.port(),"argv":[env::current_exe()?,"--exact","atlas_fixture","--ignored"],"cwd":root,"env":{}},
         "go-demo":{"host":"demo.test","port":second.local_addr()?.port(),"argv":[demo],"cwd":root,"env":{}},
-        "world":{"host":"world.test","port":web.local_addr()?.port(),"argv":fixture,"cwd":web_dir,"companion":{
-            "port":authority.local_addr()?.port(),"argv":fixture,"cwd":authority_dir}},
+        "world":{"host":"world.test","port":world.local_addr()?.port(),"argv":fixture,"cwd":world_dir},
         "slides":{"host":"slides.test","port":slides_port.local_addr()?.port(),"argv":fixture,"cwd":slides_dir,"readiness":["/","/position"]},
         "harrhy-ui":{"host":"ui.test","socket":ui_socket}
     }}).to_string())?;
-    drop((first, second, web, authority, slides_port));
+    drop((first, second, world, slides_port));
     let base = || {
         let mut cmd = Command::new(BIN);
         cmd.arg("--runtime").arg(&runtime);
@@ -287,22 +283,22 @@ fn caddy_managed_and_adopted_lifecycles() -> Result<()> {
         "adopted origin was closed"
     );
     ctl(&["start", "world"])?;
-    until(|| authority_dir.join("pid").is_file() && web_dir.join("pid").is_file())?;
-    assert!(fetch("world.test", "404"), "world routed before both ready");
-    fs::write(authority_dir.join("ready"), "")?;
+    until(|| world_dir.join("pid").is_file())?;
+    assert!(fetch("world.test", "404"), "world routed before ready");
+    fs::write(world_dir.join("ready"), "")?;
     until(|| fetch("world.test", "200"))?;
-    let old_web = fs::read_to_string(web_dir.join("pid"))?;
-    let authority_pid: i32 = fs::read_to_string(authority_dir.join("pid"))?.parse()?;
-    // SAFETY: the fixture reports the PID of the disposable authority.
-    assert_eq!(unsafe { libc::kill(authority_pid, libc::SIGKILL) }, 0);
+    let old_world = fs::read_to_string(world_dir.join("pid"))?;
+    let world_pid: i32 = old_world.parse()?;
+    // SAFETY: the fixture reports the PID of the disposable World process.
+    assert_eq!(unsafe { libc::kill(world_pid, libc::SIGKILL) }, 0);
     until(|| fetch("world.test", "404"))?;
     until(|| fetch("world.test", "200"))?;
-    let new_web = fs::read_to_string(web_dir.join("pid"))?;
-    assert_ne!(old_web, new_web);
-    assert!(!Path::new("/proc").join(old_web).exists());
+    let new_world = fs::read_to_string(world_dir.join("pid"))?;
+    assert_ne!(old_world, new_world);
+    assert!(!Path::new("/proc").join(old_world).exists());
     ctl(&["stop", "world"])?;
     until(|| fetch("world.test", "404"))?;
-    assert!(!Path::new("/proc").join(new_web).exists());
+    assert!(!Path::new("/proc").join(new_world).exists());
     let mut atlas_ws = open_websocket(&socket)?;
     let mut atlas_events = open_events(&socket, "atlas.test")?;
     let mut go_events = open_events(&socket, "demo.test")?;

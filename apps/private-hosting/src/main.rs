@@ -37,21 +37,10 @@ struct Spec {
     #[serde(default)]
     port: u16,
     socket: Option<PathBuf>,
-    companion: Option<Companion>,
     readiness: Option<Vec<String>>,
     #[serde(default)]
     argv: Vec<String>,
     #[serde(default)]
-    cwd: PathBuf,
-    #[serde(default)]
-    env: BTreeMap<String, String>,
-}
-
-#[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
-struct Companion {
-    port: u16,
-    argv: Vec<String>,
     cwd: PathBuf,
     #[serde(default)]
     env: BTreeMap<String, String>,
@@ -130,7 +119,6 @@ impl Config {
                         && spec.argv.is_empty()
                         && spec.cwd.as_os_str().is_empty()
                         && spec.env.is_empty()
-                        && spec.companion.is_none()
                         && spec.readiness.is_none(),
                     "Harrhy UI is socket-only and has no launch spec"
                 );
@@ -146,7 +134,6 @@ impl Config {
                         && spec.argv.is_empty()
                         && spec.cwd.as_os_str().is_empty()
                         && spec.env.is_empty()
-                        && spec.companion.is_none()
                         && spec.readiness.is_none(),
                     "slides requires port 21394 and no launch spec"
                 );
@@ -177,21 +164,6 @@ impl Config {
                             && paths.iter().any(|p| p == "/position")),
                     "managed Slides requires / and /position readiness"
                 );
-            }
-            match (&spec.companion, name.as_str()) {
-                (Some(companion), "world") => {
-                    ensure!(
-                        companion.port >= 1024 && ports.insert(companion.port),
-                        "invalid or duplicate World authority port"
-                    );
-                    ensure!(
-                        valid_launch(&companion.argv, &companion.cwd, &companion.env),
-                        "invalid World authority launch spec"
-                    );
-                }
-                (None, "world") => bail!("World requires an authority companion"),
-                (Some(_), _) => bail!("only World accepts a companion launch spec"),
-                _ => {}
             }
         }
         Ok(config)

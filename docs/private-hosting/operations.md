@@ -12,7 +12,7 @@ Private Hosting serves operator-registered `atlas` and `go-demo` apps and suppor
 
 ## Registry and invocation
 
-See [World and Harrhy UI](world-and-ui.md) for the optional paired runtime and private Unix-socket adoption contracts.
+See [World and Harrhy UI](world-and-ui.md) for the optional World launcher and private Unix-socket adoption contracts.
 
 Provision an operator-owned immutable JSON registry outside the checkout. For example (fictional paths and hosts):
 
@@ -69,4 +69,4 @@ Caddy 2.10.2 reloads all handlers even when only one route changes. A 30-second 
 
 ## Acceptance before any cutover
 
-Use synthetic state and content first. Confirm gateway authorization for each exact host and a negative test for unknown/mismatched hosts, rejection of direct backend/admin access from outside the unit, socket permissions after replacement, and managed cleanup after daemon SIGKILL. Verify persistent Atlas stop and Go's boot-off policy. The application smoke exercises real Caddy and Go with synthetic Atlas, paired World processes, and a Unix-socket UI origin; it does not validate the Infra gateway, unit, or actual Atlas installation.
+Use synthetic state and content first. Confirm gateway authorization for each exact host and a negative test for unknown/mismatched hosts, rejection of direct backend/admin access from outside the unit, socket permissions after replacement, and managed cleanup after daemon SIGKILL. Verify persistent Atlas stop and Go's boot-off policy. The application smoke exercises real Caddy and Go with synthetic Atlas, a single managed World origin, and a Unix-socket UI origin; it does not validate the Infra gateway, unit, or actual Atlas installation.

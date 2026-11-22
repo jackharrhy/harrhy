@@ -1,42 +1,33 @@
 # World and Harrhy UI hosting
 
-These optional registrations start disabled. Use the existing Private Hosting service and control socket; do not install separate systemd units for World's web and authority processes. Infra owns exact-host authentication, TLS, and the cutover window.
+These optional registrations start disabled. Use the existing Private Hosting daemon and control socket. Infra owns exact-host authentication, TLS and cutover.
 
 ## World
 
-Follow the [World build and Celld deployment contract](../../apps/world/README.md) at the selected revision. Use Node 26 and the repository's pinned pnpm, `pnpm install --frozen-lockfile`, and `pnpm --filter @harrhy/world run build`. Verify the selected Celld binary with `node scripts/celld-runtime.mjs verify "$CELLD_BIN"`. Deploy the Worker from the same revision into a dedicated persistent SQLite bucket before starting the pair. Use `CELLD_VAR_HARRHY_WORLD_ORIGIN=https://world.pi.jackharrhy.dev` for the deploy and the exact same origin for the frontend. Never use the hosting state database for the World bucket.
+Follow the [World build and Celld contract](../../apps/world/README.md) on the selected revision. Use Node 26 and the pinned pnpm to install with `--frozen-lockfile` and build with `pnpm --filter @harrhy/world run build`. Verify the qualified binary with `node scripts/celld-runtime.mjs verify "$CELLD_BIN"`. Deploy `apps/world` into its own persistent SQLite bucket with `CELLD_VAR_HARRHY_WORLD_ORIGIN=https://world.pi.jackharrhy.dev` and the built app’s esbuild path in `CELLD_ESBUILD`. Node is needed to build, not to serve. Never reuse the hosting state database as the World bucket.
 
-Example `apps.world` registry entry (replace paths and reserve both ports):
+Example `apps.world` entry (replace paths and reserve the loopback port):
 
 ```json
 {
   "host": "world.pi.jackharrhy.dev",
   "port": 3189,
-  "argv": ["/usr/bin/node", "dist/server/index.js"],
+  "argv": [
+    "/srv/celld/bin/celld",
+    "--bucket",
+    "sqlite:///var/lib/world/objects.sqlite3",
+    "--listen",
+    "127.0.0.1:3189",
+    "--no-control-plane"
+  ],
   "cwd": "/srv/harrhy/apps/world",
-  "env": {
-    "HARRHY_WORLD_PORT": "3189",
-    "HARRHY_WORLD_ORIGIN": "https://world.pi.jackharrhy.dev",
-    "HARRHY_WORLD_UPSTREAM": "http://127.0.0.1:3188"
-  },
-  "companion": {
-    "port": 3188,
-    "argv": [
-      "/srv/celld/bin/celld",
-      "--bucket",
-      "sqlite:///var/lib/world/objects.sqlite3",
-      "--listen",
-      "127.0.0.1:3188",
-      "--no-control-plane"
-    ],
-    "cwd": "/srv/harrhy/apps/world"
-  }
+  "env": { "CELLD_WATCH": "/var/lib/world/runtime" }
 }
 ```
 
-The daemon launches the authority first and then Node, with distinct loopback ports in the existing private namespace. Both processes must answer `GET /healthz` with 200 before Caddy publishes the Node route. The authority has no Caddy route. An exit withdraws the route and restarts the pair; stop withdraws before signalling either process. Restarts do not restore in-memory matches.
+Keep the explicit Celld listener port equal to the registered port. One foreground Celld process serves the shell, assets, BSP, health and `/room` WebSocket from the private namespace. Caddy publishes it only after `/healthz` returns 200. Restarts do not restore in-memory matches.
 
-Before cutover, qualify a disposable bucket and check that `/healthz` reports ready with the expected map and revision, `/maps/hall.bsp` serves the matching map, and `/room` carries a real WebSocket hello and reconnect through Node and the protected gateway. The daemon checks readiness status, not the contents of the payload or the browser session.
+Before cutover, use a disposable bucket to check the readiness map and revision, `/maps/hall.bsp`, and a real `/room` hello and reconnect on the exact browser origin. Run the app’s surface and live-pool checks described in its README. The daemon checks readiness status, not the payload or player session.
 
 ## Harrhy UI
 
