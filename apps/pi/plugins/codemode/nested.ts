@@ -1,4 +1,4 @@
-// A script's calls of other tools as the chat and the terminal show them (web.tsx, tui.ts): while it runs, Durable's
+// A script's calls of other tools as the chat shows them (web.tsx): while it runs, Durable's
 // live nested slots (`tool.calls`, internal tools by their script name); once settled, the final list its result keeps
 // in `details.calls` (Durable's `CodemodeToolDetails`).
 import { isInterruptedError } from "@p2/app/v1";

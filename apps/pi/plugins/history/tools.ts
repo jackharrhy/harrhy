@@ -19,9 +19,9 @@ import type { Context, JsonValue } from "@p2/app/v1";
 import { agentMessage, literal, messageData, peerMessage, SHELL_ENTRY, shellData } from "@p2/app/v1";
 import type { HistoryHits } from "../search/contract.ts";
 
-export const HISTORY_SEARCH = "history_search";
-export const HISTORY_READ = "history_read";
-export const HISTORY_HANDOFF = "history_handoff";
+const HISTORY_SEARCH = "history_search";
+const HISTORY_READ = "history_read";
+const HISTORY_HANDOFF = "history_handoff";
 
 /** At most this much text per `history_read` call (about 12k tokens); later entries are cut. */
 export const READ_BUDGET = 50_000;

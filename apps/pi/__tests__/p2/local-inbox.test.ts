@@ -68,7 +68,7 @@ it(
       await rotate(credential);
       assert.equal((await http(server.port, inboxPath + "/targets")).status, 401);
       assert.equal((await targets({ Authorization: "Bearer " + "b".repeat(64) })).status, 401);
-      assert.equal((await http(server.port, "/__p2_tui", { headers })).status, 401);
+      assert.equal((await http(server.port, "/__p2_dev", { headers })).status, 403);
 
       assert.equal(
         (await send({ eventId: "no-default-yet", text: "Do not create a Familiar" })).status,

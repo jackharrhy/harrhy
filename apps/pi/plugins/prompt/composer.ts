@@ -1,5 +1,5 @@
-// The web composer's expander for prompt templates and skills (p2-tui-port.md 10.8): `/name args` and
-// `/skill:name args` are expanded on the session worker before a send, as in the TUI.
+// The web composer's expander for prompt templates and skills: `/name args` and `/skill:name args` are expanded on
+// the session worker before a send.
 import { BACKGROUND_CONTEXT, ComposerExpanders, defineFacet } from "@p2/app/v1";
 import { PromptResources } from "./contract.ts";
 

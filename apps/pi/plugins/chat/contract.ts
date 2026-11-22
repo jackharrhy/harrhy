@@ -101,7 +101,6 @@ export const LiveShellSchema = obj({
 export type LiveShell = Static<typeof LiveShellSchema>;
 /** The conversation's user shell command; null when none. */
 export const ShellStateSchema = union([LiveShellSchema, nul()]);
-export type ShellState = Static<typeof ShellStateSchema>;
 /** pi's text when a second command is started while one runs (interactive-mode `isBashRunning`). */
 export const SHELL_BUSY = "A bash command is already running. Press Esc to cancel it first.";
 export const ShellSchema = obj({

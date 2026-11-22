@@ -105,8 +105,7 @@ function DevicesSheet({ service }: { service: Held<typeof Devices> | undefined }
 						<>
 							<p className="muted small">
 								This signs out every device and every browser on the host, including this one, and invalidates
-								outstanding owner links. TUIs on the host sign in again by themselves. Already-running agent
-								work is not stopped.
+								outstanding owner links. Already-running agent work is not stopped.
 							</p>
 							<button
 								type="button"

@@ -9,14 +9,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import WebSocket from "ws";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { LogNotices, Logs } from "../../plugins/logs/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
 import { Views } from "../../plugins/views/contract.ts";
 import { type P2Server, startServer } from "../../src/hosts/server.ts";
-import { LINK_CLIENTS, STALE_PAGE_CODE } from "../../src/runtime/stale-page.ts";
+import { STALE_PAGE_CODE } from "../../src/runtime/stale-page.ts";
 import { Browser, browserTests, COMPOSER } from "./browser.ts";
 import { clientHost, holdIn, type LocalOwner, localOwner, poll, until, webAssets } from "./helpers.ts";
 
@@ -156,19 +155,6 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 			assert.equal(await closeOf(""), STALE_PAGE_CODE);
 			await told(/web bundle unnamed: from before/);
 			assert.equal(await closeOf("?client=nobody"), STALE_PAGE_CODE);
-			for (const client of LINK_CLIENTS.filter((client) => client !== "script")) {
-				// The script client already proved it could hold Logs above. Require a real reply for the others too.
-				const socket = new WebSocket(`ws://127.0.0.1:${port}/chord?client=${client}`, {
-					headers: { Cookie: owner.cookie },
-				});
-				const link = clientHost(socket);
-				try {
-					const ref = link.hold(Logs, { source: "stale-pages" }, BACKGROUND_CONTEXT);
-					await until(ref.state, (state) => state.kind === "live");
-				} finally {
-					await link.close(BACKGROUND_CONTEXT);
-				}
-			}
 			// The page reloads by itself: nothing for the owner to act on, so no notice.
 			assert.equal(
 				notices.notices.value.some((each) => each.source === "stale-pages"),

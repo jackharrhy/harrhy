@@ -130,7 +130,7 @@ function stateAs<T>(as: (row: Session) => T) {
 const SAME_ARGS = { args: <T>(old: T) => old };
 
 /**
- * Older `Sessions` consumers (a page or TUI loaded before a deploy, a worker not restarted yet) read rows mapped
+ * Older `Sessions` consumers (a page loaded before a deploy, a worker not restarted yet) read rows mapped
  * back; their `treeSelf` branches (v4's labels are text, none has a `parent`) are taken as they are. Before 6 none sees
  * `operations`.
  */

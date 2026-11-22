@@ -9,7 +9,8 @@ start with `packages/`. "Owner/guest" says which principals reach a hook's effec
 that the server or the visitor's process runs.
 
 How plugins are loaded (and the planned single pipeline) is in [plugin-loading.md](plugin-loading.md). How to write
-one, step by step: Chord's [tutorial](../../../packages/chord/docs/tutorial/). TUI design: [p2-tui-port.md](p2-tui-port.md) §6-7.
+one, step by step: Chord's [tutorial](../../../packages/chord/docs/tutorial/). The terminal UI (section 5 and the TUI
+rows and comparisons elsewhere) is [removed](../../../docs/pi-removed-features.md#terminal-ui).
 
 ## 1. Cross-cutting
 
@@ -385,7 +386,7 @@ actions can be requested; `K` actions fire on the visitor's own key and may ask 
    (`chat-content`, `chat-attribution`) admit one plugin each.
 7. **Slots as lifecycle.** TUI plugins register invisible `service:*` / `widget-above:*` slots to get a per-runtime
    object, then find it with `ctx.surface(name)` (`plugins/prompt/tui.ts:74-80`, `plugins/models/tui.ts:116-118`).
-   The designed `widget-above`/`widget-below` rendering (`docs/p2-tui-port.md` §7.2) does not exist.
+   The designed `widget-above`/`widget-below` rendering does not exist.
 8. **The chat surface as API.** TUI plugins import `ChatSurface` and call its methods (`toolViews`, `setCanReply`);
    web plugins use `useComposerState()` from `src/web`. Neither is a declared contract.
 9. **Core knows plugins.** `Route` has `workspace`/`terminal`
