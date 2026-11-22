@@ -12,7 +12,6 @@ import { BACKGROUND_CONTEXT, type Context } from "@earendil-works/chord/context"
 import { createPlugins, type Plugins, type PluginsError } from "@earendil-works/chord/plugins";
 import { WEB_PREFIX } from "@earendil-works/chord/surfaces";
 import * as cronParser from "cron-parser";
-import * as discordJs from "discord.js";
 import * as api from "../api/v1/index.ts";
 import * as apiNode from "../api/v1/node.ts";
 import * as apiServer from "../api/v1/server.ts";
@@ -38,14 +37,13 @@ export const API = { name: "@p2/app", versions: ["v1"] } as const;
 
 /**
  * The host packages of server facets: the API's kind-neutral, Node and server modules, the shared packages, and
- * cron-parser and discord.js (recurring prompts and the Discord bot; plugins cannot bundle hoisted app packages).
+ * cron-parser (recurring prompts; plugins cannot bundle hoisted app packages).
  */
 export const SERVER_PACKAGES = {
 	"@p2/app/v1": api,
 	"@p2/app/v1/node": apiNode,
 	"@p2/app/v1/server": apiServer,
 	"cron-parser": cronParser,
-	"discord.js": discordJs,
 	...SHARED_PACKAGES,
 };
 

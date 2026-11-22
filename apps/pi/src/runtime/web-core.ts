@@ -24,7 +24,7 @@ export type SettingsSection = {
 	readonly order: number;
 	/** Renders the plugin's sheet while the route opens it, as a page of the window or on its own; always mounted. */
 	readonly Sheet: ComponentType;
-	/** Wraps the entry, rendering it only while the section is available (Voice: with a speech service). */
+	/** Wraps the entry, rendering it only while the section is available. */
 	readonly Shown?: ComponentType<{ children: ReactNode }>;
 };
 

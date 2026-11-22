@@ -104,7 +104,7 @@ export function Slot({
 
 /**
  * Renders every component registered as `<prefix>:<name>`, in registration order. Several plugins contribute to one
- * place this way, e.g. `composer:voice` and `composer:chat-mode`.
+ * place this way, e.g. `composer:chat-mode`.
  */
 export function SlotList({ prefix }: { prefix: string }) {
 	const table = useRegistry(Slots);
