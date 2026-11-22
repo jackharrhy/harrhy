@@ -224,6 +224,15 @@ it(
 	},
 );
 
+it("says so when the other SSH server refuses port forwarding", { timeout: 60_000 }, async (t) => {
+	const { peers } = await twoPis(t);
+	const [candidate] = await peers.a.find({ target: "jack@noforward" }, TEST);
+	await peers.a.request({ target: "jack@noforward", candidate: candidate! }, TEST);
+	const [refused] = await until(peers.a.peers, (list) => list[0]?.error !== undefined);
+	assert.match(refused!.error!, /does not allow port forwarding/);
+	assert.equal(peers.b.incoming.value.length, 0);
+});
+
 it("lets only the owner see peers", { timeout: 30_000 }, async (t) => {
 	const { a } = await twoPis(t);
 	const guest = a.as({

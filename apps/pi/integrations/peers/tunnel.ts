@@ -46,6 +46,19 @@ const accepts = (port: number) =>
 		socket.once("error", () => resolve(false));
 	});
 
+/**
+ * A refused forward reaches the caller as a reset connection. SSH says why on its own stderr: the other machine's SSH
+ * server, usually through an authorized_keys option such as `restrict`, does not let this login forward ports.
+ */
+function explain(
+	problem: string | undefined,
+	stderr: string,
+): string | undefined {
+	if (stderr.includes("administratively prohibited"))
+		return "The other machine's SSH server does not allow port forwarding for this login (its authorized_keys entry needs port-forwarding, permitopen and permitlisten)";
+	return problem;
+}
+
 const wait = (ms: number) =>
 	new Promise<void>((resolve) => setTimeout(resolve, ms).unref());
 
@@ -127,7 +140,7 @@ export function openTunnel(options: TunnelOptions) {
 				upAt = Date.now();
 				set("up");
 			} else {
-				set("down", problem ?? reason());
+				set("down", explain(problem, stderr.join("")) ?? reason());
 				running.kill();
 			}
 		}

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A stand-in for `ssh` in tests: both "machines" are this one. A command runs locally; -N with -L/-R forwards TCP between
-// loopback ports until it is killed. Targets ending in @unknown or @denied fail as SSH would.
+// loopback ports until it is killed. Targets ending in @unknown or @denied fail as SSH would; @noforward refuses every forwarded connection.
 import { spawn } from "node:child_process";
 import { connect, createServer } from "node:net";
 
@@ -25,6 +25,11 @@ if (command) {
 		if (args[index] !== "-L" && args[index] !== "-R") continue;
 		const [, listen, , to] = (args[index + 1] ?? "").split(":");
 		createServer((client) => {
+			if (target.endsWith("@noforward")) {
+				console.error("channel 1: open failed: administratively prohibited: open failed");
+				client.destroy();
+				return;
+			}
 			const upstream = connect({ host: "127.0.0.1", port: Number(to) });
 			client.pipe(upstream).pipe(client);
 			client.on("error", () => upstream.destroy());
