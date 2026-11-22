@@ -13,7 +13,7 @@
     "__tests__/fixtures": "bd04039ff7a82af872c0492282b68b642d9c694a431b679ea13889ce81a944e5",
     "compat/packages": "03c4f5f9eb6c068805148c1f1e1efbc58317b684eec47a291e855fc239246c36",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "cf8ba1c6143d227c454499b31d408b032cf8b6f3a66a25759791b72c3ac18f26"
+    "integrations": "5717b7f285ff05ecbf7a7dff2e3ad70b91888fbdea81efdcca212f35d5f12800"
   },
   "adaptations": [
     {

@@ -27,15 +27,19 @@ Write `<P2_DATA_DIR>/github-checks.json` (mode 0600), read afresh on every poll:
 
 - `repos` is required: the repositories Pi may watch, as `owner/name` or `owner/*` (case-insensitive). The agent's tool
   refuses any other repository, and a subscription made another way for one is not watched.
-- The token comes from `token` when it is set. Otherwise Pi runs `gh auth token` (`ghPath` names the command; the server's
-  PATH must find it) at startup, keeps the answer for an hour, and asks again after GitHub refuses it. That is the easy
-  way to read private repositories with the login you already have, but that token is usually broad (it can write).
-  A fine-grained token with read access to Metadata, Pull requests, Checks and Commit statuses is narrower; put it in
-  `token`.
+- The token comes from `token` when it is set. Otherwise Pi runs `gh auth token --hostname <host>` (the web host of
+  `apiBase`: `github.com` for the default) the first time it needs one, keeps the answer for an hour, asks again after
+  GitHub refuses it, and keeps the old one if `gh` fails later. `ghPath` names the command; the server's PATH must find
+  it (under a macOS LaunchAgent that usually means a full path). That is the easy way to read private repositories with
+  the login you already have, but that token is usually broad (it can write). A fine-grained token with read access to
+  Metadata, Pull requests, Checks and Commit statuses is narrower; put it in `token`. `github-checks.json` is as
+  sensitive as shell access, since `ghPath` runs a program as the server's user.
 - Optional timings, in milliseconds: `pollMs` (how often to look while checks run; default 15000), `idleMs` (how often to
   look at a finished branch or open pull request that may get a new commit; 60000), `settleMs` (how long the finished
   checks must stay the same before they are reported; 20000) and `graceMs` (how long to wait for a new commit's first
-  check before saying that none ran; 60000). `apiBase` is for GitHub Enterprise (https, or http on loopback).
+  check before saying that none ran; 60000) and `lingerMs` (how long to keep looking at a pinned commit or closed pull
+  request after its checks last changed, for a later stage or a re-run; 600000). `apiBase` is for GitHub Enterprise
+  (https, or http on loopback).
 
 ## What a subscription watches
 
@@ -55,9 +59,11 @@ An event is identified by the commit, the result and which runs finished. Pollin
 event. A re-run, or a check added later, is a different set of runs and reports again, so a commit can report more than
 once. Checks run in stages can look finished between stages; `settleMs` covers a short gap, not a long one.
 
-A pinned commit and a closed pull request stop being looked at once they have reported, and so does a subscription that
-cannot work (a repository outside `repos`, a pull request or branch GitHub does not know): that is logged once. A
-reopened pull request is not followed again. Finished subscriptions stay listed and enabled.
+A pinned commit and a closed pull request keep being looked at until their checks have been quiet for `lingerMs`, then
+stop; a reopened pull request is not followed again. A subscription GitHub or the allowlist refuses (a repository outside
+`repos`, a pull request or branch GitHub does not know, a private repository the token cannot see, a session that may
+not be written to) is logged once and asked about again in an hour, and at once when `repos`, `apiBase` or the token
+change. Finished subscriptions stay listed and enabled; stopping one and watching it again reports its current state.
 
 The event text names the failing checks with their links (at most 20), and says that check names and links come from
 the repository and are untrusted data, not instructions.
@@ -66,7 +72,9 @@ the repository and are untrusted data, not instructions.
 
 The agent has `github_checks_watch` (`repo`, one of `pr`, `branch` or `commit`, optional `notify` and `only`),
 `github_checks_list` and `github_checks_stop`. They are not available in locked sessions. The tool asks the server to
-check the allowlist and that GitHub knows the target before it subscribes, and fails with the reason if not. Watching the
+check the allowlist and that GitHub knows the target (for a commit, that its checks can be read) before it subscribes,
+and fails with the reason if not. Any session's agent can use this to learn whether a pull request or branch exists in
+an allowed repository. Watching the
 same thing again from the same conversation returns the same subscription.
 
 The owner can create a subscription for any session with `Subscriptions`' `createTarget`
