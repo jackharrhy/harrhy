@@ -1,4 +1,5 @@
 import { css } from "remix/component";
+import { themeVar } from "./theme.ts";
 
 export const visuallyHiddenStyles = css({
   position: "absolute",
@@ -14,7 +15,7 @@ export const visuallyHiddenStyles = css({
 
 export const focusStyles = css({
   "&:focus-visible": {
-    outline: "2px solid var(--hui-focus)",
+    outline: `2px solid ${themeVar.focus}`,
     outlineOffset: "3px",
   },
 });
@@ -25,32 +26,32 @@ export const buttonStyles = css({
   alignItems: "center",
   justifyContent: "center",
   gap: "0.5rem",
-  minHeight: "var(--hui-button-height)",
-  padding: "var(--hui-button-padding)",
-  border: "var(--hui-border-width) solid var(--hui-button-border)",
-  borderRadius: "var(--hui-control-radius)",
-  fontFamily: "var(--hui-font-ui)",
+  minHeight: themeVar.buttonHeight,
+  padding: themeVar.buttonPadding,
+  border: `${themeVar.borderWidth} solid ${themeVar.buttonBorder}`,
+  borderRadius: themeVar.controlRadius,
+  fontFamily: themeVar.fontUi,
   fontVariationSettings: "normal",
   fontOpticalSizing: "auto",
-  fontSize: "var(--hui-button-text-size)",
-  fontWeight: "var(--hui-button-weight)",
+  fontSize: themeVar.buttonTextSize,
+  fontWeight: themeVar.buttonWeight,
   lineHeight: "1.25",
-  backgroundColor: "var(--hui-surface)",
-  backgroundImage: "var(--hui-button-image)",
-  color: "var(--hui-ink)",
-  boxShadow: "var(--hui-button-shadow)",
+  backgroundColor: themeVar.surface,
+  backgroundImage: themeVar.buttonImage,
+  color: themeVar.ink,
+  boxShadow: themeVar.buttonShadow,
   textDecoration: "none",
   cursor: "pointer",
   textAlign: "center",
-  transition: "filter var(--hui-motion)",
+  transition: `filter ${themeVar.motion}`,
   '&[data-variant="primary"]': {
-    borderColor: "var(--hui-button-primary-border)",
-    backgroundColor: "var(--hui-accent)",
-    color: "var(--hui-on-accent)",
+    borderColor: themeVar.buttonPrimaryBorder,
+    backgroundColor: themeVar.accent,
+    color: themeVar.onAccent,
   },
   '&[data-variant="danger"]': {
-    backgroundColor: "var(--hui-danger)",
-    color: "var(--hui-on-danger)",
+    backgroundColor: themeVar.danger,
+    color: themeVar.onDanger,
     backgroundImage: "none",
   },
   '&[data-variant="quiet"]': {
@@ -68,8 +69,8 @@ export const buttonStyles = css({
   "&:disabled, &[aria-disabled=true]": {
     cursor: "not-allowed",
     boxShadow: "none",
-    color: "var(--hui-muted)",
-    backgroundColor: "var(--hui-disabled-surface)",
+    color: themeVar.muted,
+    backgroundColor: themeVar.disabledSurface,
     backgroundImage: "none",
   },
 });
@@ -78,22 +79,22 @@ export const controlStyles = css({
   boxSizing: "border-box",
   width: "100%",
   minWidth: "0",
-  minHeight: "var(--hui-control-height)",
-  padding: "var(--hui-control-padding)",
-  border: "var(--hui-border-width) solid var(--hui-control-border)",
-  borderRadius: "var(--hui-control-radius)",
-  background: "var(--hui-surface)",
-  color: "var(--hui-ink)",
+  minHeight: themeVar.controlHeight,
+  padding: themeVar.controlPadding,
+  border: `${themeVar.borderWidth} solid ${themeVar.controlBorder}`,
+  borderRadius: themeVar.controlRadius,
+  background: themeVar.surface,
+  color: themeVar.ink,
   font: "inherit",
-  fontFamily: "var(--hui-font-ui)",
-  fontSize: "var(--hui-control-text-size)",
+  fontFamily: themeVar.fontUi,
+  fontSize: themeVar.controlTextSize,
   lineHeight: "1.4",
-  boxShadow: "var(--hui-control-shadow)",
-  "&::placeholder": { color: "var(--hui-muted)", opacity: 1 },
-  '&[aria-invalid="true"]': { borderColor: "var(--hui-danger)" },
+  boxShadow: themeVar.controlShadow,
+  "&::placeholder": { color: themeVar.muted, opacity: 1 },
+  '&[aria-invalid="true"]': { borderColor: themeVar.danger },
   "&:disabled": {
-    color: "var(--hui-muted)",
-    backgroundColor: "var(--hui-disabled-surface)",
+    color: themeVar.muted,
+    backgroundColor: themeVar.disabledSurface,
     backgroundImage: "none",
     cursor: "not-allowed",
   },
@@ -104,29 +105,29 @@ export const checkStyles = css({
   flexShrink: 0,
   margin: 0,
   verticalAlign: "middle",
-  accentColor: "var(--hui-accent)",
+  accentColor: themeVar.accent,
 });
 export const fieldStyles = css({
   display: "grid",
-  gap: "var(--hui-field-gap)",
+  gap: themeVar.fieldGap,
   minWidth: "0",
 });
 export const labelStyles = css({
-  fontFamily: "var(--hui-font-detail)",
-  fontSize: "var(--hui-label-size)",
-  fontWeight: "var(--hui-label-weight)",
-  textTransform: "var(--hui-label-transform)",
-  letterSpacing: "var(--hui-label-tracking)",
+  fontFamily: themeVar.fontDetail,
+  fontSize: themeVar.labelSize,
+  fontWeight: themeVar.labelWeight,
+  textTransform: themeVar.labelTransform,
+  letterSpacing: themeVar.labelTracking,
 });
 export const descriptionStyles = css({
   margin: 0,
   fontSize: "0.875rem",
-  color: "var(--hui-muted)",
+  color: themeVar.muted,
 });
 export const errorStyles = css({
   margin: 0,
   fontSize: "0.875rem",
-  color: "var(--hui-danger)",
+  color: themeVar.danger,
 });
 export const panelStyles = css({
   padding: "var(--hui-panel-padding)",

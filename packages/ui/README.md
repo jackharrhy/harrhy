@@ -163,3 +163,5 @@ The behavior design was compared with Vercel UI SDK at immutable commit `220c1a0
 ## Checks
 
 From the root, `npm ci`, then `npm run check --workspace @harrhy/ui`. Checks typecheck actual Remix props, render SSR form/field/theme/dialog/tab contracts, and retain legacy action compatibility tests. `npm run check --workspace @harrhy/ui-app` checks the consuming browser fixture, keyboard and responsive behavior. Run Auth and Ref checks for package changes. Automated checks do not establish assistive-technology or WCAG conformance.
+
+`themeVar` from `@harrhy/ui/theme` references the existing scoped CSS variables. For example, `css({ borderColor: themeVar.controlBorder })` catches misspelled token names without changing theme composition or validating CSS values.

@@ -317,13 +317,21 @@ export const sluggersTheme: Readonly<ThemeTokens> = composeTheme(cleanTheme, {
   space: "10px",
 });
 
+function themeProperty(key: string) {
+  return `--hui-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+}
+
+/** Typed references to the existing scoped CSS custom properties. */
+export const themeVar = Object.freeze(
+  Object.fromEntries(
+    Object.keys(cleanTheme).map((key) => [key, `var(${themeProperty(key)})`]),
+  ) as Record<keyof ThemeTokens, string>,
+);
+
 export function themeStyles(theme: Readonly<ThemeTokens>) {
   return css(
     Object.fromEntries(
-      Object.entries(theme).map(([key, value]) => [
-        `--hui-${key.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`,
-        value,
-      ]),
+      Object.entries(theme).map(([key, value]) => [themeProperty(key), value]),
     ),
   );
 }
