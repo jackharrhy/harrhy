@@ -33,14 +33,12 @@ sensitive as shell access, since `ghPath` runs a program as the server's user.
 {
   "token": "<a narrower GitHub token>",
   "ghPath": "/opt/homebrew/bin/gh",
-  "apiBase": "https://api.github.com",
-  "repos": ["owner/name"]
+  "apiBase": "https://api.github.com"
 }
 ```
 
 - `token` replaces the `gh` login. A fine-grained token with read access to Metadata, Pull requests, Checks and Commit
   statuses is narrower.
-- `repos` adds repositories to the owner's list (for a fixed deployment).
 - Timings, in milliseconds: `pollMs` (how often to look while checks run; default 15000), `idleMs` (how often to look at
   a finished branch or open pull request that may get a new commit; 60000), `settleMs` (how long the finished checks must
   stay the same before they are reported; 20000), `graceMs` (how long to wait for a new commit's first check before
@@ -67,9 +65,9 @@ event. A re-run, or a check added later, is a different set of runs and reports 
 once. Checks run in stages can look finished between stages; `settleMs` covers a short gap, not a long one.
 
 A pinned commit and a closed pull request keep being looked at until their checks have been quiet for `lingerMs`, then
-stop; a reopened pull request is not followed again. A subscription GitHub or the allowlist refuses (a repository outside
-`repos`, a pull request or branch GitHub does not know, a private repository the token cannot see, a session that may
-not be written to) is logged once and asked about again in an hour, and at once when `repos`, `apiBase` or the token
+stop; a reopened pull request is not followed again. A subscription GitHub or the allowlist refuses (a repository the owner has not
+allowed, a pull request or branch GitHub does not know, a private repository the token cannot see, a session that may
+not be written to) is logged once and asked about again in an hour, and at once when the allowed list, `apiBase` or the token
 change. Finished subscriptions stay listed and enabled; stopping one and watching it again reports its current state.
 
 The event text names the failing checks with their links (at most 20), and says that check names and links come from
@@ -81,8 +79,7 @@ The agent has `github_checks_watch` (`repo`, one of `pr`, `branch` or `commit`, 
 `github_checks_list` and `github_checks_stop`. They are not available in locked sessions. The tool asks the server to
 check the allowlist and that GitHub knows the target (for a commit, that its checks can be read) before it subscribes,
 and fails with the reason if not. Any session's agent can use this to learn whether a pull request or branch exists in
-an allowed repository. Watching the
-same thing again from the same conversation returns the same subscription.
+an allowed repository. Watching the same thing again from the same conversation returns the same subscription.
 
 The owner can create a subscription for any session with `Subscriptions`' `createTarget`
 (`source: { id: "github.checks", version: 1 }`); see [external stimuli](../../docs/external-stimuli.md).

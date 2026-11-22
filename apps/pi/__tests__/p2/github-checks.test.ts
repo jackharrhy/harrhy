@@ -361,7 +361,7 @@ it("keeps the owner's allowed repositories, refuses bad ones, and says whether t
 	const h = await harness(fake, { token: TOKEN }, []);
 	try {
 		assert.deepEqual(h.settings.repos.value, []);
-		for (const repo of ["acme", "acme/..", "../site", "https://github.com/acme/site", "a/b/c", ""])
+		for (const repo of ["acme", "acme/..", "../site", "https://github.com/acme/site", "a/b/c", "", "*/x", "a/*/b", "a/ b", "a/x*"])
 			await assert.rejects(h.settings.allow({ repo }, TEST), /owner\/name/, repo);
 		await h.settings.allow({ repo: " Acme/Site " }, TEST);
 		await h.settings.allow({ repo: "acme/site" }, TEST);
@@ -369,6 +369,13 @@ it("keeps the owner's allowed repositories, refuses bad ones, and says whether t
 		assert.deepEqual(h.settings.repos.value, ["Acme/Site", "other/*"], "trimmed, and not listed twice");
 		await h.settings.remove({ repo: "ACME/site" }, TEST);
 		assert.deepEqual(h.settings.repos.value, ["other/*"]);
+		// The list has a size: the 257th name is refused, and the list is unchanged.
+		for (let index = 0; index < 255; index++) await h.settings.allow({ repo: `owner${index}/name` }, TEST);
+		assert.equal(h.settings.repos.value.length, 256);
+		await assert.rejects(h.settings.allow({ repo: "one/more" }, TEST), /At most 256/);
+		await h.settings.allow({ repo: "OTHER/*" }, TEST);
+		assert.equal(h.settings.repos.value.length, 256, "a name already listed is not a new one");
+		for (let index = 0; index < 255; index++) await h.settings.remove({ repo: `owner${index}/name` }, TEST);
 		assert.deepEqual(await h.settings.checkLogin({}, TEST), { ok: true, message: "Reading GitHub as octo-owner" });
 		fake.token = "someone-elses-token";
 		const refused = await h.settings.checkLogin({}, TEST);

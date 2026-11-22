@@ -10,7 +10,7 @@ import {
 	useReadable,
 	useSheet,
 } from "@p2/app/v1/web";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { GithubChecksSettings } from "./contract.ts";
 
 const NO_AUTOCORRECT = { autoCapitalize: "off", autoCorrect: "off", spellCheck: false } as const;
@@ -19,6 +19,7 @@ function GithubSheet() {
 	const settings = useObject(GithubChecksSettings, {});
 	const repos = useReadable(settings?.repos);
 	const [repo, setRepo] = useState("");
+	const input = useRef<HTMLInputElement>(null);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string>();
 	const [login, setLogin] = useState<{ ok: boolean; message: string }>();
@@ -33,8 +34,8 @@ function GithubSheet() {
 		<Sheet title="GitHub" onClose={closeLayers}>
 			<p className="muted small">
 				Agents can watch the checks of a pull request, branch or commit and be woken when they finish. They can watch
-				only the repositories listed here. Pi reads GitHub with the login of the <code>gh</code> command on this
-				machine.
+				only the repositories listed here. Pi reads GitHub with the login of the <code>gh</code> command on the Pi
+				server.
 			</p>
 			<div className="list">
 				<span className="label">Allowed repositories</span>
@@ -45,8 +46,14 @@ function GithubSheet() {
 						<button
 							type="button"
 							className="text-action"
+							aria-label={`Remove ${name}`}
 							disabled={busy}
-							onClick={() => run(() => settings?.remove({ repo: name }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
+							onClick={() =>
+								run(
+									() => settings?.remove({ repo: name }, BACKGROUND_CONTEXT) ?? Promise.resolve(),
+									() => input.current?.focus(),
+								)
+							}
 						>
 							Remove
 						</button>
@@ -64,6 +71,7 @@ function GithubSheet() {
 					}}
 				>
 					<input
+						ref={input}
 						className="input"
 						aria-label="Repository"
 						placeholder="owner/name or owner/*"
@@ -71,7 +79,7 @@ function GithubSheet() {
 						onChange={(event) => setRepo(event.target.value)}
 						{...NO_AUTOCORRECT}
 					/>
-					<button type="submit" className="button" disabled={busy || !repo.trim()}>
+					<button type="submit" className="button" disabled={busy || !settings || !repo.trim()}>
 						Allow
 					</button>
 				</form>
@@ -92,7 +100,11 @@ function GithubSheet() {
 					>
 						Check GitHub login
 					</button>
-					{login && <span className={login.ok ? "muted small" : "error small"}>{login.message}</span>}
+					{login && (
+						<span role="status" className={login.ok ? "muted small" : "error small"}>
+							{login.message}
+						</span>
+					)}
 				</div>
 			</div>
 			{error && (

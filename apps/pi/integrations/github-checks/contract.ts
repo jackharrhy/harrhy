@@ -1,5 +1,5 @@
-// What a `github.checks` subscription and its events are, and the agent's way to probe a watch. Descriptions only: the
-// rules are in checks.ts. Shared by the server (the source, the poller) and the worker (the agent's tools).
+// What a `github.checks` subscription and its events are, the agent's way to probe a watch, and the owner's settings.
+// Descriptions only: the rules are in checks.ts. Shared by the server, the worker (the agent's tools) and the web facet.
 import { arr, bool, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { literal, method, remote, serverHost } from "@p2/app/v1";
 

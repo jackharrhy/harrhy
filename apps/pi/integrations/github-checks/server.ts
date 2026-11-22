@@ -41,8 +41,6 @@ const ConfigSchema = obj({
 	token: opt(str({ minLength: 20 })),
 	/** The `gh` command whose `auth token` supplies the token when `token` is absent (default `gh`). */
 	ghPath: opt(str({ minLength: 1, maxLength: 1024 })),
-	/** More repositories Pi may watch, besides those the owner allowed in Settings: `owner/name` or `owner/*`. */
-	repos: opt(arr(str({ minLength: 1, maxLength: 200 }), { maxItems: 64 })),
 	apiBase: opt(str({ minLength: 1, maxLength: 2048 })),
 	/** How often to look while checks run or have not started (ms; default 15000). */
 	pollMs: opt(int({ minimum: 20, maximum: 300_000 })),
@@ -76,8 +74,12 @@ const RETRY_MAX_MS = 300_000;
 const REFUSED_RETRY_MS = 3_600_000;
 const run = promisify(execFile);
 
-/** The repositories the owner allowed: the list of Settings › GitHub, kept in the server's store. */
-const RepoList = obj({ repos: arr(str({ maxLength: 200 }), { maxItems: 256 }) });
+/**
+ * The repositories the owner allowed: the list of Settings › GitHub, kept in the server's store. Changing this schema
+ * needs `version: 2` and a `migrate`, or the object fails to load where version 1 is stored.
+ */
+const MAX_REPOS = 256;
+const RepoList = obj({ repos: arr(str({ maxLength: 200 }), { maxItems: MAX_REPOS }) });
 const Allowed = defineState("p2.github-checks-allowed", {
 	version: 1,
 	schema: RepoList,
@@ -124,7 +126,7 @@ async function readSettings(ctx: Ctx): Promise<Settings> {
 	return {
 		token: value.token,
 		ghPath: value.ghPath ?? "gh",
-		repos: [...allowed, ...(value.repos ?? [])],
+		repos: allowed,
 		apiBase,
 		pollMs: value.pollMs ?? 15_000,
 		idleMs: value.idleMs ?? 60_000,
@@ -142,12 +144,15 @@ function ghHostname(apiBase: string): string {
 /** The settings and a client for them; the token comes from the config or, kept for an hour, from `gh auth token`. */
 function createAccess() {
 	let fetched: { key: string; value: string; at: number } | undefined;
+	let failed: { key: string; at: number; error: Error } | undefined;
 	let asking: { key: string; token: Promise<string> } | undefined;
 	let client: { key: string; github: GithubClient } | undefined;
 	const ghToken = (command: string, hostname: string): Promise<string> => {
 		const key = `${command}\n${hostname}`;
 		if (fetched?.key === key && Date.now() - fetched.at < TOKEN_TTL_MS) return Promise.resolve(fetched.value);
 		if (asking?.key === key) return asking.token;
+		// `gh` just failed: say so again for a minute without running it again.
+		if (failed?.key === key && Date.now() - failed.at < 60_000) return Promise.reject(failed.error);
 		const attempt = (async () => {
 			try {
 				const { stdout } = await run(command, ["auth", "token", "--hostname", hostname], {
@@ -158,6 +163,7 @@ function createAccess() {
 				if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) throw new Error("`gh auth token` did not return a token");
 				processLogs.redactor.addSecret(token);
 				fetched = { key, value: token, at: Date.now() };
+				failed = undefined;
 				return token;
 			} catch (error) {
 				// A token that was good an hour ago is probably still good: keep using it when `gh` fails now.
@@ -166,12 +172,16 @@ function createAccess() {
 					fetched.at = Date.now() - TOKEN_TTL_MS + 300_000;
 					return fetched.value;
 				}
-				if (error instanceof Error && error.message.startsWith("`gh auth token`")) throw error;
-				throw new Error(
-					(error as NodeJS.ErrnoException).code === "ENOENT"
-						? `\`${command}\` not found: set \`ghPath\` to its full path, or set \`token\``
-						: "No GitHub token: set `token` in github-checks.json, or sign in with `gh auth login`",
-				);
+				const reason =
+					error instanceof Error && error.message.startsWith("`gh auth token`")
+						? error
+						: new Error(
+								(error as NodeJS.ErrnoException).code === "ENOENT"
+									? `\`${command}\` not found: set \`ghPath\` to its full path, or set \`token\``
+									: "No GitHub token: set `token` in github-checks.json, or sign in with `gh auth login`",
+							);
+				failed = { key, at: Date.now(), error: reason };
+				throw reason;
 			} finally {
 				if (asking?.key === key) asking = undefined;
 			}
@@ -224,7 +234,9 @@ export default defineFacet((host) => {
 			repos: deriveTyped(self, [state], ([value]) => value.repos),
 			allow: async ({ repo }, ctx) => {
 				await state.change((draft) => {
-					if (!draft.repos.some((have) => have.toLowerCase() === repo.toLowerCase())) draft.repos.push(repo);
+					if (draft.repos.some((have) => have.toLowerCase() === repo.toLowerCase())) return;
+					if (draft.repos.length >= MAX_REPOS) throw invalid("args", `At most ${MAX_REPOS} repositories`);
+					draft.repos.push(repo);
 				}, ctx);
 				return null;
 			},
@@ -298,7 +310,7 @@ export default defineFacet((host) => {
 				} catch (error) {
 					if (signal.aborted) break;
 					const message = error instanceof Error ? error.message : String(error);
-					// Not configured is normal when the plugin is installed first; say each problem once.
+					// Say each problem once (a missing `gh` login, a broken config file).
 					if (message !== problem) console.error(`p2 github-checks: ${message}`);
 					problem = message;
 					wait = 3_000;
@@ -311,6 +323,15 @@ export default defineFacet((host) => {
 
 /** One look at every watched subscription that is due; returns how long to wait until the next one is. */
 async function pass(ctx: Ctx, access: Access, states: States): Promise<number> {
+	const store = await ctx.get(WakeStore, {});
+	const subscriptions = (await store.subscriptions({}, ctx)).filter(
+		(row) => row.enabled && row.source.id === SOURCE_ID && row.source.version === SOURCE_VERSION,
+	);
+	// Nothing to watch: no settings to read, no `gh` to ask. Look again soon, so a new watch is not kept waiting.
+	if (subscriptions.length === 0) {
+		states.clear();
+		return 3_000;
+	}
 	const { settings, github } = await access.get(ctx);
 	// What decides whether a watch is allowed or can be read: when it changes, what failed before may work now.
 	const environment = JSON.stringify([settings.repos, settings.apiBase, settings.token, github.key]);
@@ -318,10 +339,6 @@ async function pass(ctx: Ctx, access: Access, states: States): Promise<number> {
 		states.clear();
 		states.environment = environment;
 	}
-	const store = await ctx.get(WakeStore, {});
-	const subscriptions = (await store.subscriptions({}, ctx)).filter(
-		(row) => row.enabled && row.source.id === SOURCE_ID && row.source.version === SOURCE_VERSION,
-	);
 	const live = new Set(subscriptions.map((row) => row.id));
 	for (const id of states.keys()) if (!live.has(id)) states.delete(id);
 	const signal = signalOf(ctx);
