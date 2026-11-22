@@ -1,5 +1,17 @@
-import { arr, bool, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
-import { literal, local, method, param, propertiesOf, remote, serverHost, sessionHost } from "@p2/app/v1";
+import { arr, bool, int, nul, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import {
+	Citation,
+	CitationId,
+	CitationQuote,
+	literal,
+	local,
+	method,
+	param,
+	propertiesOf,
+	remote,
+	serverHost,
+	sessionHost,
+} from "@p2/app/v1";
 import { ProjectSchema } from "../projects/contract.ts";
 
 /** A session ID as the tool takes it (`to`). */
@@ -7,11 +19,14 @@ const To = str({ minLength: 1, maxLength: 200 });
 
 export const QuerySchema = union([
 	obj({ action: literal("list") }),
+	obj({ action: literal("citation"), id: CitationId }),
 	obj({
 		action: literal("send"),
 		to: To,
 		message: str({ minLength: 1, maxLength: 32768 }),
 		followUp: opt(bool()),
+		/** From the executing tool, not model arguments. Only present for an opted-in send. */
+		citationTaskId: opt(int({ minimum: 1 })),
 	}),
 	obj({ action: literal("answer"), to: To }),
 	/**
@@ -58,9 +73,16 @@ const ReplySchema = union([
 		/** The owner's projects (`projects.json`): where each lives, by environment (null: this device). */
 		projects: arr(ProjectSchema),
 	}),
-	obj({ action: literal("send"), to: str(), submissionId: num() }),
+	obj({ action: literal("send"), to: str(), submissionId: num(), citationId: opt(CitationId) }),
+	obj({ action: literal("citation"), citation: union([Citation, nul()]) }),
 	obj({ action: literal("answer"), to: str(), ...propertiesOf(AnswerSchema) }),
-	obj({ action: literal("create"), to: str(), title: str(), env: union([str(), nul()]), cwd: str() }),
+	obj({
+		action: literal("create"),
+		to: str(),
+		title: str(),
+		env: union([str(), nul()]),
+		cwd: str(),
+	}),
 	/** `stopped`: a run was in progress. */
 	obj({ action: literal("stop"), to: str(), stopped: bool() }),
 	obj({ action: literal("archive"), to: str() }),
@@ -71,7 +93,7 @@ export type Reply = Static<typeof ReplySchema>;
 /** Server-local broker. Sender identity comes from the authenticated worker, never the prompt text. */
 export const ConversationBroker = local("p2.conversation-broker", {
 	/** 2: no `origin`. */
-	version: 2,
+	version: 4,
 	params: {},
 	members: {
 		query: method(obj({ source: str(), requestId: str(), query: QuerySchema }), ReplySchema),
@@ -86,7 +108,7 @@ export const Conversations = remote("p2.conversations", {
 	 * `list` gives each session's location and project, and the projects. 5: no `origin` (p2 has no per-turn
 	 * authority). Only workers hold it, and they reload with the server: no `accepts`.
 	 */
-	version: 5,
+	version: 7,
 	params: {},
 	hostAddress: serverHost,
 	variants: {
@@ -108,7 +130,7 @@ export const Conversations = remote("p2.conversations", {
 /** Server-to-worker ingress; the server has already authorized and attributed the sender. */
 export const PeerConversation = remote("p2.peer-conversation", {
 	/** 2: `stop`. 3: no `origin`. Only the server holds it, and workers reload with it: no `accepts`. */
-	version: 3,
+	version: 5,
 	params: { session: param.str() },
 	hostAddress: sessionHost,
 	variants: {
@@ -124,6 +146,17 @@ export const PeerConversation = remote("p2.peer-conversation", {
 					}),
 					obj({ submissionId: num() }),
 				),
+				currentQuote: method(int({ minimum: 1 }), obj({ entryId: int({ minimum: 1 }), quote: CitationQuote })),
+				citationSend: method(
+					obj({
+						generation: int(),
+						title: str(),
+						message: str(),
+						citation: Citation,
+					}),
+					obj({ submissionId: union([num(), nul()]) }),
+				),
+				citation: method(CitationId, union([Citation, nul()])),
 				answer: method(undefined, AnswerSchema),
 				/** Stops the main conversation's run (as Stop in the chat); `stopped`: one was in progress. */
 				stop: method(undefined, obj({ stopped: bool() })),

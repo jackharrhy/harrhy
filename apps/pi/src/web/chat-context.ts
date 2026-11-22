@@ -9,8 +9,8 @@ export const ToolActivityContext = createContext<ToolActivityTable>(new Map());
 export const OpenConversation = createContext<(conversationId: number) => void>(() => {});
 /** The session's one-shot agents: conversation by the nested call ID that ran them (`<script call ID>/c<n>`). */
 export const OneShotAgents = createContext<ReadonlyMap<string, number>>(new Map());
-/** Owner-only navigation to another session's root; absent for guest views. */
-export const OpenPeerConversation = createContext<((sessionId: string) => void) | undefined>(undefined);
+/** Owner-only navigation to another session or an exact message there; absent for guest views. */
+export const OpenPeerConversation = createContext<((sessionId: string, message?: { conversation: number; entryId: number }) => void) | undefined>(undefined);
 /** Tool paths are displayed relative to the containing session's working directory. */
 export const WorkingDirectory = createContext<string | undefined>(undefined);
 /** Opens a cwd-relative file in the workspace panel; absent when the viewer has no workspace access. */

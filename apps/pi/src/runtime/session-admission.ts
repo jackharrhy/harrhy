@@ -1,21 +1,46 @@
 import { randomUUID } from "node:crypto";
 import { defineRegistry, defineState, local } from "@earendil-works/chord";
 import type { Context } from "@earendil-works/chord/context";
-import { int, obj, type Static, str } from "@earendil-works/pi-schema";
+import { compile, int, obj, opt, type Static, str } from "@earendil-works/pi-schema";
 import { type FacetHost, forbidden, nativeOf, type Self, serveNative } from "./chord.ts";
 import { record } from "./schema.ts";
 
-const Reservation = obj({ epoch: str(), generation: int(), pid: int({ minimum: 1 }), token: str() });
+const Reservation = obj({
+	group: opt(str()),
+	epoch: str(),
+	generation: int(),
+	pid: int({ minimum: 1 }),
+	token: str(),
+});
 type Reservation = Static<typeof Reservation>;
+const ReservationState = obj({ sessions: record(Reservation) });
+const reservationState = compile(ReservationState);
 const Reservations = defineState("reservations", {
-	version: 1,
-	schema: obj({ sessions: record(Reservation) }),
+	version: 2,
+	schema: ReservationState,
 	initial: () => ({ sessions: {} }),
+	migrate: (old, from) => {
+		// Both shipped version-1 shapes are valid: older reservations have no group.
+		if (from === 1 && reservationState.check(old)) return old;
+		throw new Error(`Invalid persisted reservations version ${from}`);
+	},
 	persist: true,
 	checkpointWhen: () => true,
 });
-const Admission = local("p2.session-admission", { version: 1, params: {}, members: {} });
+const Admission = local("p2.session-admission", {
+	version: 1,
+	params: {},
+	members: {},
+});
 type AdmissionGate = {
+	reserveGroup(
+		sessions: readonly string[],
+		worker: Pick<Reservation, "generation" | "pid">,
+		token: string,
+		eligible: () => Promise<boolean>,
+		ctx: Context,
+	): Promise<boolean>;
+	releaseGroup(sessions: readonly string[], token: string, ctx: Context): Promise<void>;
 	mutate<T>(session: string, commit: () => Promise<T>, ctx: Context): Promise<T>;
 	reserve(
 		session: string,
@@ -54,12 +79,48 @@ export function serveSessionAdmission(host: FacetHost): void {
 			reservations.change((draft) => {
 				delete draft.sessions[`session|${session}`];
 			}, ctx);
+		const across = <T>(sessions: readonly string[], run: () => Promise<T>): Promise<T> => {
+			const [session, ...rest] = sessions;
+			return session === undefined ? run() : exclusive(session, () => across(rest, run));
+		};
 		self.contribute(AdmissionNative, {
+			reserveGroup: (sessions, worker, token, eligible, ctx) =>
+				across(sessions, async () => {
+					for (const session of sessions) {
+						const prior = reservations.value.sessions[`session|${session}`];
+						if (prior && !exited(prior.pid)) return false;
+					}
+					if (!(await eligible())) return false;
+					await reservations.change((draft) => {
+						for (const session of sessions)
+							draft.sessions[`session|${session}`] = {
+								epoch,
+								...worker,
+								token,
+								group: token,
+							};
+					}, ctx);
+					return true;
+				}),
+			releaseGroup: (sessions, token, ctx) =>
+				across(sessions, async () => {
+					await reservations.change((draft) => {
+						for (const session of sessions) {
+							const key = `session|${session}`;
+							if (draft.sessions[key]?.group === token) delete draft.sessions[key];
+						}
+					}, ctx);
+				}),
 			mutate: (session, commit, ctx) =>
 				exclusive(session, async () => {
 					const prior = reservations.value.sessions[`session|${session}`];
 					if (prior) {
-						if (!exited(prior.pid)) throw forbidden("A goal step is being admitted; retry shortly");
+						if (!exited(prior.pid))
+							throw forbidden(
+								prior.group
+									? "A citation is being admitted; retry shortly"
+									: "A goal step is being admitted; retry shortly",
+							);
 						await clear(session, ctx);
 					}
 					return commit();
@@ -69,18 +130,23 @@ export function serveSessionAdmission(host: FacetHost): void {
 					? Promise.resolve(false)
 					: exclusive(session, async () => {
 							const prior = reservations.value.sessions[`session|${session}`];
+							if (prior?.group && !exited(prior.pid)) return false;
 							if (prior?.epoch === epoch && prior.generation === worker.generation) return false;
 							// An authenticated successor reached the server only after taking the same per-session process lock.
 							if (prior) await clear(session, ctx);
 							if (!(await eligible())) return false;
 							await reservations.change((draft) => {
-								draft.sessions[`session|${session}`] = { epoch, ...worker, token };
+								draft.sessions[`session|${session}`] = {
+									epoch,
+									...worker,
+									token,
+								};
 							}, ctx);
 							return true;
 						}),
 			release: async (session, generation, token, ctx) => {
 				const prior = reservations.value.sessions[`session|${session}`];
-				if (prior?.epoch !== epoch || prior.generation !== generation || prior.token !== token) return;
+				if (prior?.group || prior?.epoch !== epoch || prior.generation !== generation || prior.token !== token) return;
 				await exclusive(session, () => clear(session, ctx));
 			},
 		});

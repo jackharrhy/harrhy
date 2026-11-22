@@ -1,7 +1,10 @@
 import { BACKGROUND_CONTEXT, contribute, defineFacet, liveIn } from "@p2/app/v1";
 import {
+	conversationRoute,
+	getNavigation,
 	navigate,
 	OpenPeerConversation,
+	requestReveal,
 	Slots,
 	ToolActivities,
 	useComposerState,
@@ -20,18 +23,25 @@ function Attribution({ children }: { children?: ReactNode }) {
 	// As Pi Mobile: peer labels link only while connected; errors go to the app's toast.
 	const connected = useConnected();
 	const { setError, fail } = useComposerState();
-	const open = (session: string): void => {
+	const open = (session: string, message?: { conversation: number; entryId: number }): void => {
 		const current = listed.find((entry) => entry.id === session);
 		if (!current) {
 			setError("The source conversation is unavailable");
 			return;
 		}
-		if (current.archivedAt === null) navigate({ session });
+		const show = () => {
+			if (!message) return navigate({ session });
+			requestReveal(session, message.conversation, message.entryId);
+			void getNavigation().closeThenPush((route) => ({
+				...conversationRoute(route, session, message.conversation), exactConversation: true,
+			}));
+		};
+		if (current.archivedAt === null) show();
 		// An archived source opens once restored (the view refuses an archived session).
 		else
 			void owner
 				?.restore({ id: session }, BACKGROUND_CONTEXT)
-				.then(() => navigate({ session }))
+				.then(show)
 				.catch(fail);
 	};
 	return (
