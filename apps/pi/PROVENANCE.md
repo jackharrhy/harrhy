@@ -2,7 +2,7 @@
 
 Customized source: `jackharrhy/pi`, exact clean commit `c4c9758f059acef538e700bb86ac451fca8b9c16`, independently attested by the live operator. Source was extracted from Git objects, not copied from private runtime directories. The investigated upstream/custom common ancestor is `ac78a6068b38774fceb5157c8f9e27fba9da6471`. See [UPSTREAM.md](UPSTREAM.md) for the path map and update process.
 
-App runtime, plugins, public assets, original scripts and voice sidecar live directly in this app. Nine shared compatibility packages retain their original package names and internal topology under `compat/packages/`. Their source and native build inputs are local; no external app fork, custom published artifact, source-fetching build or opaque archive is required. Compatibility packages remain app-owned implementation inputs, not new independent Harrhy products.
+App runtime, plugins, public assets, and original scripts live directly in this app. Nine shared compatibility packages retain their original package names and internal topology under `compat/packages/`. Their source and native build inputs are local; no external app fork, custom published artifact, source-fetching build or opaque archive is required. Compatibility packages remain app-owned implementation inputs, not new independent Harrhy products.
 
 `provenance.json` pins SHA-256 tree digests of retained source, guides, focused tests and public catalog. Its digest format is explicit and checked by `__tests__/provenance.test.mjs`. It also records the baseline hashes of the five changed retained implementation/test files:
 

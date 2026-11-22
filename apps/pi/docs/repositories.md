@@ -1,6 +1,6 @@
 # Previews
 
-Open **Views → Open plugin view → Previews** to see registered preview URLs. The pane requires a live owner connection. Its placement is device-local; it never creates a shared View or adds preview data to message context. The internal pane key remains `repositories` so existing placement still works.
+Open **Previews** from the command menu to see registered preview URLs. The sheet requires a live owner connection and never adds preview data to message context.
 
 The list reads existing p2 forwards, optional Infra leases and allowlisted private static routes, and explicit owner declarations. Records without a URL are omitted. Expired links remain visible but cannot be opened from the list. Unknown expiry is distinct from no expiry. Neither registration nor expiry says anything about whether the service is running or reachable.
 

@@ -1,5 +1,7 @@
 # Functionality map: sessions, sharing and guests, devices and owner access, status and presence, search, subagents, provider logins
 
+> **Historical.** This table inventories p2 as it was when it was written. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 **Legend.**
 - Durability: E ephemeral · R until restart · P persisted · T transcript-bound (forks and rewinds with history).
 - Who: O owner · Gr guest read · Gw guest write · W worker · S system.

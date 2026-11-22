@@ -12,7 +12,7 @@ built-in plugins could be changed, only by owner-started turns, and only in dev 
 
 1. **The user plugin root**, `<data>/plugins/` (`userPluginsDirectory`, `src/runtime/host-dirs.ts`), is a second
    Chord plugins root after `apps/p2/plugins/` (`createP2Plugins`, `src/hosts/plugins.ts`). It is loaded and watched
-   like the built-in root on the server, every worker, the web and the TUI bundles. A built-in wins a name clash
+   like the built-in root on the server, every worker and the web bundle. A built-in wins a name clash
    (`listRoots`: the first root wins; discovery reports the clash). The server creates the directory at start (mode
    0700). User plugins import p2 only through `@p2/app/v1` and its per-kind modules; the bundles resolve `react` and
    the other host packages from the app's and the repository's `node_modules` (`common.nodePaths`,
@@ -26,7 +26,7 @@ built-in plugins could be changed, only by owner-started turns, and only in dev 
    - `requested`, else every dirty plugin plus every plugin of the user root (an unchanged one keeps its digest, so
      its hosts keep it as it is: an apply never depends on the watcher having seen the last write; a directory not
      discovered yet is waited for once);
-   - one `rebuild`: Chord's build (web facets included), then the TUI bundle. Any failure stops before the rollout, so
+   - one `rebuild`: Chord's build (web facets included), Any failure stops before the rollout, so
      the old code stays; the rollout ends with the web surface's step, which pages apply in place;
    - per plugin: `applied`, `removed`, `failed` (the build's esbuild errors as `<kind>: file:line:column: message`,
      or a host's load error), `refused` (unknown, or a discovery problem: an invalid `package.json`, a built-in's

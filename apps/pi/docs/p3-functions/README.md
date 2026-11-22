@@ -1,5 +1,7 @@
 # p3 functionality map
 
+> **Historical.** This map inventories p2 as it was when it was written. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 What the app must do, independent of p2's plugin layout. Step 1 of deriving p3's objects (`../redesign-decisions.md`).
 The detailed tables per area are in this directory: `conversations.md`, `sessions-access.md`,
 `environments-workspace.md`, `models-prompt-shells.md`, `core.md`. This page condenses them.

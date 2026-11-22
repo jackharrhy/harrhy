@@ -1,5 +1,7 @@
 # Core runtime, hosts and UI shells
 
+> **Historical.** This table inventories p2 as it was when it was written. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 | domain | function (plain words) | data it needs or produces (what, roughly how big) | durability | who may see or do it | where it must be available | depends on (other functions) |
 |---|---|---|---|---|---|---|
 | sessions | Browse sessions grouped by execution machine and directory | Session summaries; titles, locations, timestamps, pin/archive flags | persisted metadata; ephemeral grouping | owner; guests see their shared session | web; server supplies summaries | session catalog, access, worker status |

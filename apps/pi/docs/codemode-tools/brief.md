@@ -1,5 +1,7 @@
 # Code mode with many tools: brief
 
+> **Historical.** This is a design brief from when the `artifact` tools and the Radius MCP server existed. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 For Armin. Mario and Claude, 2026-11-12. Durable (`packages/durable/src/codemode/`) and the coding agent
 (`packages/coding-agent/src/extensions/codemode/`) share the design below; nothing proposed here is built.
 

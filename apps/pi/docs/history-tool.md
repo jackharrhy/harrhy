@@ -94,13 +94,13 @@ All three are registered by a new plugin `plugins/history/` (worker facet) as on
 ## 5. UI
 
 On the web each call is a step of its turn's activity (`src/web/activity/`: its label in `model.ts`, its detail in
-`Detail.tsx`); TUI cards are in the plugin's `tui.ts` (as `send-file`/`artifacts`).
+`Detail.tsx`).
 
-| Tool | Web step | TUI card |
-| --- | --- | --- |
-| `history_search` | the query; a list of hits (role, author, snippet, entry id); a hit is clickable and reveals the entry in the transcript (the existing `revealEntry`, loading older history pages if needed) | query, hit count; expanded: hit lines with entry ids |
-| `history_read` | mode and range ("10 entries before the handoff"); collapsed list of the entries read, each clickable to reveal it | mode, count, `truncated` marker; expanded: the entry lines |
-| `history_handoff` | the handoff text (collapsible, markdown) and the line "New context started; earlier history stays searchable" | the same, collapsed by default |
+| Tool | Web step |
+| --- | --- |
+| `history_search` | the query; a list of hits (role, author, snippet, entry id); a hit is clickable and reveals the entry in the transcript (the existing `revealEntry`, loading older history pages if needed) |
+| `history_read` | mode and range ("10 entries before the handoff"); collapsed list of the entries read, each clickable to reveal it |
+| `history_handoff` | the handoff text (collapsible, markdown) and the line "New context started; earlier history stays searchable" |
 
 - The `pi.reset` marker that follows a handoff already renders in the transcript; it gets the note "handoff" when its
   model message came from `history_handoff`.
@@ -124,7 +124,6 @@ On the web each call is a step of its turn's activity (`src/web/activity/`: its 
 | `plugins/history/` (worker facet, three tools, prompt section) | 3 | 350–500 |
 | search plugin: worker query method and SQL bounds | 2 | 100–150 |
 | web cards (`src/web/Chat.tsx`) | 1 | 100–150 |
-| TUI cards (`plugins/history/tui.ts`) | 1 | 80–120 |
 | subagent tool selections | 1 | ~10 |
 | total | ~8 | ~650–950 |
 
