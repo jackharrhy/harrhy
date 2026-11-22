@@ -32,7 +32,7 @@ export default defineFacet((host) => {
 				defineP2Tool({
 					name: "github_checks_watch",
 					description:
-						"Watch the GitHub checks (Actions and commit statuses) of a pull request, branch or commit and wake this conversation when they finish, passed or failed, so there is no need to poll. Give exactly one of `pr`, `branch` or `commit`. A pull request or branch is followed: when a newer commit's checks finish, that result is reported too (a commit replaced before its checks finish is not). A commit reports once. The repository must be one the owner allowed; this fails if it is not or if GitHub does not know the target. Returns the watch.",
+						"Watch the GitHub checks (Actions and commit statuses) of a pull request, branch or commit and wake this conversation when they finish, passed or failed, so there is no need to poll. Give exactly one of `pr`, `branch` or `commit`. A pull request or branch is followed: when a newer commit's checks finish, that result is reported too (a commit replaced before its checks finish is not). A commit reports its result, and again if a later stage or a re-run changes it shortly after. The repository must be one the owner allowed; this fails if it is not or if GitHub does not know the target. Returns the watch.",
 					parameters: obj({
 						repo: str({ description: "owner/name" }),
 						pr: opt(int({ minimum: 1 })),

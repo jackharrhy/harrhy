@@ -37,7 +37,7 @@ Write `<P2_DATA_DIR>/github-checks.json` (mode 0600), read afresh on every poll:
 - Optional timings, in milliseconds: `pollMs` (how often to look while checks run; default 15000), `idleMs` (how often to
   look at a finished branch or open pull request that may get a new commit; 60000), `settleMs` (how long the finished
   checks must stay the same before they are reported; 20000) and `graceMs` (how long to wait for a new commit's first
-  check before saying that none ran; 60000) and `lingerMs` (how long to keep looking at a pinned commit or closed pull
+  check before saying that none ran; 60000), and `lingerMs` (how long to keep looking at a pinned commit or closed pull
   request after its checks last changed, for a later stage or a re-run; 600000). `apiBase` is for GitHub Enterprise
   (https, or http on loopback).
 
@@ -46,7 +46,7 @@ Write `<P2_DATA_DIR>/github-checks.json` (mode 0600), read afresh on every poll:
 The subscription's config is `{ repo, ref, notify?, only? }`:
 
 - `ref` is `{ kind: "pr", number }` (the pull request's head), `{ kind: "branch", name }` (the branch tip, so `main`
-  works) or `{ kind: "commit", sha }` (one commit, reported once).
+  works) or `{ kind: "commit", sha }` (one commit; a later stage or a re-run shortly after reports again).
 - `notify: "failure"` says nothing about a green commit. The default is `all`.
 - `only` limits the checks that count, by name (a job's name or a status context). Pi waits for a named check that has
   not appeared yet while the commit is new or other checks still run.

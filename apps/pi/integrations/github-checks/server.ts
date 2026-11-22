@@ -97,24 +97,23 @@ async function readSettings(ctx: Ctx): Promise<Settings> {
 
 /** The host `gh auth token` is asked about: the web host of the API (`api.github.com` is `github.com`). */
 function ghHostname(apiBase: string): string {
-	const { hostname } = new URL(apiBase);
-	return hostname === "api.github.com" ? "github.com" : hostname;
+	return new URL(apiBase).hostname.replace(/^api\./, "");
 }
 
 /** The settings and a client for them; the token comes from the config or, kept for an hour, from `gh auth token`. */
 function createAccess() {
 	let fetched: { key: string; value: string; at: number } | undefined;
-	let asking: Promise<string> | undefined;
+	let asking: { key: string; token: Promise<string> } | undefined;
 	let client: { key: string; github: GithubClient } | undefined;
-	const ghToken = (command: string, hostname: string, signal: AbortSignal): Promise<string> => {
+	const ghToken = (command: string, hostname: string): Promise<string> => {
 		const key = `${command}\n${hostname}`;
 		if (fetched?.key === key && Date.now() - fetched.at < TOKEN_TTL_MS) return Promise.resolve(fetched.value);
-		asking ??= (async () => {
+		if (asking?.key === key) return asking.token;
+		const attempt = (async () => {
 			try {
 				const { stdout } = await run(command, ["auth", "token", "--hostname", hostname], {
 					timeout: 10_000,
 					maxBuffer: 8192,
-					signal,
 				});
 				const token = stdout.trim();
 				if (!/^[A-Za-z0-9_-]{20,}$/.test(token)) throw new Error("`gh auth token` did not return a token");
@@ -123,7 +122,11 @@ function createAccess() {
 				return token;
 			} catch (error) {
 				// A token that was good an hour ago is probably still good: keep using it when `gh` fails now.
-				if (fetched?.key === key) return fetched.value;
+				if (fetched?.key === key) {
+					// Try `gh` again in a few minutes, not on every pass.
+					fetched.at = Date.now() - TOKEN_TTL_MS + 300_000;
+					return fetched.value;
+				}
 				if (error instanceof Error && error.message.startsWith("`gh auth token`")) throw error;
 				throw new Error(
 					(error as NodeJS.ErrnoException).code === "ENOENT"
@@ -131,10 +134,11 @@ function createAccess() {
 						: "No GitHub token: set `token` in github-checks.json, or sign in with `gh auth login`",
 				);
 			} finally {
-				asking = undefined;
+				if (asking?.key === key) asking = undefined;
 			}
 		})();
-		return asking;
+		asking = { key, token: attempt };
+		return attempt;
 	};
 	return {
 		/** The next read asks `gh` again (GitHub refused the token). */
@@ -143,7 +147,7 @@ function createAccess() {
 		},
 		async get(ctx: Ctx): Promise<{ settings: Settings; github: GithubClient }> {
 			const settings = await readSettings(ctx);
-			const token = settings.token ?? (await ghToken(settings.ghPath, ghHostname(settings.apiBase), signalOf(ctx)));
+			const token = settings.token ?? (await ghToken(settings.ghPath, ghHostname(settings.apiBase)));
 			const key = `${settings.apiBase}\n${token}`;
 			if (client?.key !== key) client = { key, github: githubClient({ token, apiBase: settings.apiBase }) };
 			return { settings, github: client.github };
@@ -154,7 +158,7 @@ type Access = ReturnType<typeof createAccess>;
 /** The subscriptions' states, and what the settings were when they were made. */
 type States = Map<string, State> & { environment: string | undefined };
 
-/** A subscription that will not become watchable by asking again. */
+/** A subscription GitHub or the allowlist refuses: asked about again only after a long wait. */
 class Permanent extends Error {}
 
 /** What the poller remembers of one subscription (lost on restart: a published event is found again by its ID). */
@@ -166,7 +170,7 @@ type State = {
 	instance?: string;
 	doneAt?: number;
 	lastEventId?: string;
-	/** No more looking until the subscription changes: a commit or closed pull request that reported, or a bad watch. */
+	/** No more looking until the subscription changes: a pinned commit or closed pull request that has been quiet. */
 	finished: boolean;
 	nextAt: number;
 	failures: number;
@@ -272,6 +276,9 @@ async function pass(ctx: Ctx, access: Access, states: States): Promise<number> {
 			state.lastError = message;
 		}
 	}
+	// While GitHub asks to wait, rows that were skipped are still due: wait out the pause instead of spinning.
+	const paused = github.pausedUntil() - Date.now();
+	if (paused > 0) return Math.min(paused, 5_000);
 	const due = [...states.values()].filter((state) => !state.finished).map((state) => state.nextAt);
 	// With nothing to do, look at the subscriptions again soon: a new watch should not wait for the last wait.
 	return due.length === 0 ? 3_000 : Math.min(Math.max(0, Math.min(...due) - Date.now()), 5_000);
