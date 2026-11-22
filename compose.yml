@@ -409,6 +409,22 @@ services:
     networks:
       - web
 
+  world:
+    build:
+      context: .
+      dockerfile: apps/world/Dockerfile
+    environment:
+      CELLD_VAR_HARRHY_WORLD_ORIGIN: ${HARRHY_WORLD_ORIGIN:-http://world.localhost}
+    volumes:
+      - world-data:/app/.celld
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.world.rule: "Host(`world.localhost`)"
+      traefik.http.routers.world.entrypoints: web
+      traefik.http.services.world.loadbalancer.server.port: "44100"
+    networks:
+      - web
+
   worldview:
     build:
       context: .
@@ -528,6 +544,7 @@ volumes:
   pool-data:
   ref-data:
   radio-data:
+  world-data:
   maps-data:
   maps-collaboration-data:
   maps-service-data:

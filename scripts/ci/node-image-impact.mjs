@@ -26,6 +26,7 @@ export const runtimeApps = [
   "harry-sluggers",
   "ref",
   "radio",
+  "world",
   "worldview",
   "maps-collaboration",
   "burger",
