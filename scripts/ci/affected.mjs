@@ -46,6 +46,7 @@ export function selectChecks(paths, workspaces) {
       for (const name of [
         "@harrhy/ref",
         "@harrhy/radio",
+        "@harrhy/world",
         "@harrhy/worldview",
         "@harrhy/maps-collaboration",
         "@harrhy/4orm",

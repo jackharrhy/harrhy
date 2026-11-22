@@ -15,6 +15,7 @@ Docker cannot read a local JSON file in `FROM`, so four Dockerfiles repeat its i
 | Radio | Dockerfile default; `dev.jackharrhy.radio.celld-image` label |
 | Worldview UI | Dockerfile default; `dev.jackharrhy.worldview.celld-image` label |
 | Maps collaboration | Dockerfile default; `dev.jackharrhy.maps-collaboration.celld-image` label |
+| World (native) | [Local build and verification](../apps/world/README.md) use the common binary SHA-256 |
 | Native 4orm preview | Operator-managed `CELLD_BIN`, verified against the common binary SHA-256 |
 | Ref and Radio CI integration | Extract the common image, verify its binary SHA-256, then run isolated checks |
 
