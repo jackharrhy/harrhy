@@ -220,15 +220,11 @@ it("recovers interrupted native admissions across restart and grant changes", { 
 					Shares,
 					(_params, _principal, self) => ({
 						links: self.state([]),
-						people: self.state([]),
-						emails: self.state([]),
 						authenticate: async () => null,
-						authenticateEmail: async () => null,
 						isShared: async () => false,
 						grant: async () => null,
 						active: async () => null,
 						link: async () => null,
-						share: async () => null,
 						remove: async () => null,
 						disableSession: async () => {
 							throw new Error("unused");

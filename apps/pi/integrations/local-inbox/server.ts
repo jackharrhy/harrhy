@@ -208,8 +208,6 @@ export default defineFacet((host) => {
 function directLoopback(request: IncomingMessage, origin: Parameters<RouteHandler>[2]["origin"]) {
   return (
     !origin.remote &&
-    origin.relayShellOrigin === undefined &&
-    origin.relayUser === undefined &&
     request.socket.remoteAddress === "127.0.0.1" &&
     !Object.keys(request.headers).some(
       (key) =>

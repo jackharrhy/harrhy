@@ -447,7 +447,7 @@ function SettingsSection({ id }: { id: OwnSection }) {
 }
 
 /**
- * The server's name, as Radius and the other places that show this server name it. Empty is the device's name (the
+ * The server's name, as the places that show this server name it. Empty is the device's name (the
  * placeholder, as of the server's start).
  */
 function ServerNameSetting({ onError }: { onError: (reason: unknown) => void }) {

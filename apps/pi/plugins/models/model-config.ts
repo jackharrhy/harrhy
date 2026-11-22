@@ -300,7 +300,6 @@ const ProviderConfigSchema = obj(
 		baseUrl: opt(str({ minLength: 1 })),
 		apiKey: opt(str({ minLength: 1 })),
 		api: opt(str({ minLength: 1 })),
-		oauth: opt(literal("radius")),
 		headers: opt(record(str())),
 		compat: opt(ProviderCompatSchema),
 		authHeader: opt(bool()),

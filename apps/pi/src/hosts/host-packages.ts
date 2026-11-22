@@ -9,8 +9,6 @@ import * as openaiResponses from "@earendil-works/pi-ai/api/openai-responses.laz
 import * as piAiModels from "@earendil-works/pi-ai/models";
 import * as allProviders from "@earendil-works/pi-ai/providers/all";
 import * as fauxProvider from "@earendil-works/pi-ai/providers/faux";
-import * as radiusProvider from "@earendil-works/pi-ai/providers/radius";
-import * as radiusConfig from "@earendil-works/pi-ai/providers/radius-config";
 import * as piCodemode from "@earendil-works/pi-codemode";
 import * as piDurable from "@earendil-works/pi-durable";
 import * as durableCodemode from "@earendil-works/pi-durable/codemode";
@@ -41,8 +39,6 @@ export const SHARED_PACKAGES = {
 	"@earendil-works/pi-ai/models": piAiModels,
 	"@earendil-works/pi-ai/providers/all": allProviders,
 	"@earendil-works/pi-ai/providers/faux": fauxProvider,
-	"@earendil-works/pi-ai/providers/radius": radiusProvider,
-	"@earendil-works/pi-ai/providers/radius-config": radiusConfig,
 	"@earendil-works/pi-codemode": piCodemode,
 	"@earendil-works/pi-durable": piDurable,
 	"@earendil-works/pi-durable/codemode": durableCodemode,

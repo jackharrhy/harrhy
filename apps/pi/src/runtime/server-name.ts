@@ -6,7 +6,7 @@ import { nul, obj, str, union } from "@earendil-works/pi-schema";
 import { serverHost } from "./chord.ts";
 
 /**
- * Longest server name, in characters, as Radius stores it (`MAX_SERVER_NAME_LENGTH`): a DNS label (63), so a host
+ * Longest server name, in characters (`MAX_SERVER_NAME_LENGTH`): a DNS label (63), so a host
  * name is never cut. Linux 64, Windows 15, Kubernetes and cloud VMs 63; only a macOS computer name can be longer.
  */
 export const MAX_SERVER_NAME_LENGTH = 63;

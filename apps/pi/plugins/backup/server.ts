@@ -1,7 +1,7 @@
 // The server's backup (`src/runtime/backup.ts`): holds the backup remote, uploads the server's own store, gives each
 // session's worker the remote for its own store (`BackupRemote`: slot bodies streamed through here in chunks), and
 // keeps every store's last reported status. Inert while backup is not configured (`P2_BACKUP_DIR` for a folder,
-// `P2_BACKUP=<name>` for a plugin's target such as `radius`, `BackupTargets`).
+// `P2_BACKUP=<name>` for a plugin's target, `BackupTargets`).
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import {

@@ -352,7 +352,7 @@ function KeySection({
 			</div>
 			{!valid && <p className="muted small">Enter the environment's name first; the key is stored under it.</p>}
 			<p className="muted small">
-				Uploads pass through your tunnel or relay. Use a trusted transport for private keys.
+				Uploads pass through your tunnel. Use a trusted transport for private keys.
 			</p>
 			{error && (
 				<p className="notice error" role="alert">

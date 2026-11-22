@@ -83,7 +83,6 @@ it(
 		const locks = await holdIn(owner, SessionLock, {}, "owner");
 		const lock = { mcp: [], projectMcp: false, instructions: false, capabilities: [] };
 		const reserve = () => goal.reserve({ token: randomUUID() }, TEST);
-		const share = () => sharing.share({ email: "goal-test@example.com", mode: "view" }, TEST);
 		const link = () => sharing.link({ mode: "view" }, TEST);
 		const setLock = () => locks.set({ session, lock }, TEST);
 		const archive = () => sessions.archive({ id: session }, TEST);
@@ -94,7 +93,7 @@ it(
 		finish.resolve();
 		await writing;
 
-		for (const write of [share, link, setLock]) {
+		for (const write of [link, setLock]) {
 			await write();
 			assert.equal(await reserve(), false);
 			await sharing.disable({}, TEST);
@@ -110,7 +109,7 @@ it(
 		await rejected;
 		const reconnected = await holdIn(fixture.as(principal), GoalEligibility, {}, "worker");
 		await reconnected.releaseReservation({ token: randomUUID() }, TEST);
-		for (const write of [share, link, setLock, archive]) await assert.rejects(write(), /goal step is being admitted/);
+		for (const write of [link, setLock, archive]) await assert.rejects(write(), /goal step is being admitted/);
 		await otherSharing.link({ mode: "view" }, TEST);
 		await reconnected.releaseReservation({ token }, TEST);
 		await archive();

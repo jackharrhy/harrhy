@@ -14,7 +14,6 @@ import { useDiscord } from "./held.ts";
 const NO_AUTOCORRECT = { autoCapitalize: "off", autoCorrect: "off", spellCheck: false } as const;
 
 const CAPABILITY_LABELS: Record<LockCapability, string> = {
-	ports: "Forward ports",
 	conversations: "Message other sessions",
 };
 

@@ -36,8 +36,8 @@ export const LinkRows = defineTable("links", {
 });
 
 /**
- * A guest: a browser that joined through links (`secretHash` of its cookie), or a person the owner shared with by
- * email (`email`, normalized; Radius authenticates them). Never both.
+ * A guest: a browser that joined through links (`secretHash` of its cookie). `email` is unused: an earlier way to
+ * share, by email, no longer exists.
  */
 export const GuestRows = defineTable("guests", {
 	version: 1,
@@ -53,7 +53,7 @@ export const GuestRows = defineTable("guests", {
 	indexes: { by_name: ["name"] },
 });
 
-/** What one guest may do in one session. `linkId` is the link it joined through; absent when shared by email. */
+/** What one guest may do in one session. `linkId` is the link it joined through. */
 export const GrantRows = defineTable("grants", {
 	version: 1,
 	columns: {
@@ -80,11 +80,10 @@ export type GrantStored = RowsOf<GrantTable>;
 export type GuestRow = {
 	readonly id: string;
 	readonly name: string;
-	readonly email: string | null;
 	readonly revision: number;
 };
 
-/** What one guest may do in one session. `linkId` is the link it joined through; null when shared by email. */
+/** What one guest may do in one session. `linkId` is the link it joined through. */
 export type GrantRow = {
 	readonly session: string;
 	readonly mode: ShareMode;
@@ -92,22 +91,6 @@ export type GrantRow = {
 	readonly removed: boolean;
 	readonly grantedAt: number;
 };
-
-/** A session shared with a person by email; `name` is their email as the owner wrote it. */
-export type PersonRow = {
-	readonly id: string;
-	readonly name: string;
-	readonly session: string;
-	readonly mode: ShareMode;
-};
-
-/** A grant to a person by email that is not removed: the email (normalized) and the session. */
-export type EmailGrant = { readonly email: string; readonly session: string };
-
-/** The emails of `grants` on sessions `open` accepts, each once, sorted. */
-export function openEmails(grants: readonly EmailGrant[], open: (session: string) => boolean): string[] {
-	return [...new Set(grants.filter((grant) => open(grant.session)).map((grant) => grant.email))].sort();
-}
 
 /** Thrown for join failures the guest may see. */
 export class JoinError extends Error {}
@@ -121,7 +104,6 @@ function modeOf(mode: string): ShareMode {
 const guestOf = (row: GuestStored): GuestRow => ({
 	id: row.id,
 	name: row.name,
-	email: row.email ?? null,
 	revision: row.revision,
 });
 
@@ -138,25 +120,6 @@ export function sortedLinks(rows: readonly LinkStored[]): ShareLink[] {
 	return rows
 		.map((row) => ({ id: row.id, session: row.session.params.id, mode: modeOf(row.mode), token: row.token }))
 		.sort((a, b) => a.session.localeCompare(b.session) || MODES.indexOf(a.mode) - MODES.indexOf(b.mode));
-}
-
-/** The people of `grants` (shared by email, not removed) with their guests, by name. */
-export function peopleOf(grants: readonly GrantStored[], guests: ReadonlyMap<string, GuestStored>): PersonRow[] {
-	return grants
-		.flatMap((grant) => {
-			const guest = guests.get(grant.guest);
-			if (grant.removed || guest?.email === undefined) return [];
-			return [{ id: guest.id, name: guest.name, session: grant.session.params.id, mode: modeOf(grant.mode) }];
-		})
-		.sort((a, b) => a.name.localeCompare(b.name));
-}
-
-/** The email grants of `grants` (shared by email, not removed). */
-export function emailGrantsOf(grants: readonly GrantStored[], guests: ReadonlyMap<string, GuestStored>): EmailGrant[] {
-	return grants.flatMap((grant) => {
-		const email = guests.get(grant.guest)?.email;
-		return grant.removed || email === undefined ? [] : [{ email, session: grant.session.params.id }];
-	});
 }
 
 /** The share tables of `Shares` and its transactions. */
@@ -196,13 +159,6 @@ export class ShareStore {
 		if (!id || !secret || secret.length !== 64) return undefined;
 		const row = await this.#t.guests.get({ id }, context);
 		return row !== undefined && row.secretHash === hash(secret) ? guestOf(row) : undefined;
-	}
-
-	/** The guest of a normalized email. */
-	async guestOfEmail(email: string, context: Context): Promise<GuestRow | undefined> {
-		for await (const row of this.#t.guests.rows(query(GuestRows), context))
-			if (row.email === email) return guestOf(row);
-		return undefined;
 	}
 
 	/** A guest's grants, removed ones included. */
@@ -336,27 +292,6 @@ export class ShareStore {
 		}, context);
 	}
 
-	/**
-	 * Shares `session` with the person of `email` (normalized; `name` is how the owner wrote it), creating their guest
-	 * first, and gives a removed person access again. Returns the guest and whether an existing guest changed.
-	 */
-	share(
-		session: string,
-		email: string,
-		name: string,
-		mode: ShareMode,
-		context: Context,
-	): Promise<{ guest: string; changed: boolean }> {
-		return this.#t.tx(async (tx) => {
-			const existing = await this.#guestOfEmail(tx, email);
-			const id = existing?.id ?? randomUUID();
-			if (!existing) tx.put(this.#t.guests, { id, name, email, revision: 1, lastSeen: 0 });
-			this.#grant(tx, id, session, mode, null);
-			if (existing) await this.#bump(tx, id);
-			return { guest: id, changed: existing !== undefined };
-		}, context);
-	}
-
 	seen(id: string, context: Context): Promise<void> {
 		return this.#t.tx(async (tx) => {
 			const guest = await tx.get(this.#t.guests, { id });
@@ -378,11 +313,6 @@ export class ShareStore {
 	async #bump(tx: Tx, id: string): Promise<void> {
 		const guest = await tx.get(this.#t.guests, { id });
 		if (guest !== undefined) tx.put(this.#t.guests, { ...guest, revision: guest.revision + 1 });
-	}
-
-	async #guestOfEmail(tx: Tx, email: string): Promise<GuestStored | undefined> {
-		for await (const row of tx.rows(this.#t.guests, query(GuestRows))) if (row.email === email) return row;
-		return undefined;
 	}
 
 	async #uniqueName(tx: Tx, requested: string): Promise<string> {

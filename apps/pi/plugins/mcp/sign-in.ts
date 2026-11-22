@@ -1,6 +1,6 @@
 // MCP OAuth sign-ins, a native of the manager: the auth provider every OAuth HTTP connection sends its tokens with, and
 // the sign-in flows, one per server at a time. A flow redirects the browser either to a loopback callback server on the
-// p2 host (the browser runs there) or to p2's own `/mcp/callback` route (the browser reaches p2 through Radius or a
+// p2 host (the browser runs there) or to p2's own `/mcp/callback` route (the browser reaches p2 through a
 // public host); the final redirect URL pasted by the owner always completes it too. Flows live in memory: a restart
 // forgets them, the stored tokens stay.
 

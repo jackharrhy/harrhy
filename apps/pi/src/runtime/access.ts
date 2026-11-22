@@ -9,9 +9,7 @@ const Mode = union([literal("view"), literal("full")]);
 
 /**
  * A guest's grant: every session shared with it (`sessions`), and the one it lands in (`session`, shared or joined
- * last) with that session's `mode`. `email` is set for a person Radius verified; otherwise the name is self-chosen.
- * `sessions` is optional so that servers which share one session per guest (Radius Cloud Brain's copy of this
- * contract) still serve the same UI; read modes through `grantMode`.
+ * last) with that session's `mode`. The name is self-chosen. `sessions` is optional; read modes through `grantMode`.
  */
 export const GrantSchema = obj({
 	id: str(),
@@ -19,7 +17,6 @@ export const GrantSchema = obj({
 	session: str(),
 	mode: Mode,
 	sessions: opt(record(Mode)),
-	email: opt(str()),
 });
 export type Grant = Static<typeof GrantSchema>;
 

@@ -99,7 +99,7 @@ export class Logins {
 
 	private prompt(attempt: Attempt, input: AuthPrompt, whole: AbortSignal): Promise<string> {
 		const signal = input.signal ? AbortSignal.any([whole, input.signal]) : whole;
-		// pi-ai's method selectors use device_code (Codex) or device-code (Radius).
+		// pi-ai's method selectors use device_code (Codex) or device-code.
 		// Other selectors (accounts, organizations, etc.) still require the owner's answer.
 		if (attempt.remote && input.type === "select") {
 			const deviceCode = input.options.find((option) => /^device[-_]code$/.test(option.id));

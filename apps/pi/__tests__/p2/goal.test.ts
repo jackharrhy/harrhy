@@ -59,7 +59,7 @@ it(
 				/current main/,
 			);
 			const sharing = await holdIn(owner, Sharing, { session }, "owner");
-			await sharing.share({ email: "fixture@example.com", mode: "view" }, TEST);
+			await sharing.link({ mode: "view" }, TEST);
 			await assert.rejects(goal.start({ ...target, objective: "UI parity fixture", limit: 2 }, TEST), /private/);
 			await sharing.disable({}, TEST);
 			await goal.start({ ...target, objective: "UI parity fixture", limit: 2 }, TEST);
@@ -266,7 +266,7 @@ it("runs two native steps from a typed TUI command and reports completion", { ti
 		await shareStep.promise;
 		assert.equal((await goal.status(target, TEST))?.pending, true);
 		const sharing = await holdIn(owner, Sharing, { session }, "owner");
-		await sharing.share({ email: "preview@example.com", mode: "view" }, TEST);
+		await sharing.link({ mode: "view" }, TEST);
 		finishShareStep.resolve();
 		await poll(async () => (await goal.status(target, TEST))?.phase === "paused", 5000, "shared goal stopped");
 		assert.equal((await goal.status(target, TEST))?.steps, 1);

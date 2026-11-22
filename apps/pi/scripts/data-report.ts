@@ -1,6 +1,6 @@
 // A read-only report of what a p2 data directory holds, to check that nothing was lost across a deploy that changes
 // no data (the move to Chord v2) or across `npm run migrate-data` (it reads either layout): sessions with their conversations and newest entries, subagents, shares, artifacts,
-// uploads and downloads, and the names of environments and port forwards. Never secrets: no tokens, cookies, keys,
+// uploads and downloads, and the names of environments. Never secrets: no tokens, cookies, keys,
 // forward addresses or message text. Every SQLite file is opened read-only, so it runs beside a live server.
 //
 //   node --import ./src/source.ts scripts/data-report.ts [--data <dir>] > before.json
@@ -34,7 +34,6 @@ export type SessionReport = {
 export type DataReport = {
 	readonly sessions: Readonly<Record<string, SessionReport>>;
 	readonly envs: readonly string[];
-	readonly forwards: readonly { readonly port: number; readonly name?: string; readonly public: boolean }[];
 };
 
 /** Reports the data directory `dataDir`. */
@@ -72,13 +71,6 @@ export function dataReport(dataDir: string): DataReport {
 	return {
 		sessions,
 		envs: Object.keys(jsonFile(join(dataDir, "envs.json")) ?? {}).sort(),
-		forwards: Object.values((jsonFile(join(dataDir, "forwards.json")) ?? {}) as Record<string, StoredForward>)
-			.map((forward) => ({
-				port: forward.port,
-				...(forward.name === undefined ? {} : { name: forward.name }),
-				public: forward.public === true,
-			}))
-			.sort((a, b) => a.port - b.port),
 	};
 }
 
@@ -91,7 +83,6 @@ type StoredChild = {
 	readonly location?: { readonly env: string | null; readonly cwd: string };
 };
 
-type StoredForward = { readonly port: number; readonly name?: string; readonly public?: boolean };
 
 type Row = Record<string, unknown>;
 

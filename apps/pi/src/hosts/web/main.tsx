@@ -1,8 +1,7 @@
 // The page's start code, the web surface's base bundle (built by Chord's `webSurface` from entry.ts): Chord's
 // `startPage` with p2's API modules for the plugins' web scripts, p2's core facet and look (`themes: false`: p2's
 // stylesheet and theme switch), its connection state and error reports, and the React root. A page p2 serves follows
-// the server's scripts (a plugin's change applies in place; a new base bundle reloads the page); Radius Cloud Brain's
-// page (built offline by scripts/cloud-bundle.ts, its Chord URL in `#root`'s `data-pi-bootstrap`) is static.
+// the server's scripts (a plugin's change applies in place; a new base bundle reloads the page).
 import * as schema from "@earendil-works/pi-schema";
 import * as React from "react";
 import * as jsx from "react/jsx-runtime";
@@ -19,11 +18,9 @@ import type { Host } from "../../runtime/chord.ts";
 import { SERVER_PART_LIMITS } from "../../runtime/link-limits.ts";
 import type { P2Principal } from "../../runtime/principals.ts";
 import { whenLive } from "../../runtime/refs.ts";
-import type { LinkClient } from "../../runtime/stale-page.ts";
-import { getNavigation, HostContext, Slot, setConnected, setShareEnded, webCoreFacet } from "../../runtime/web.tsx";
+import { HostContext, Slot, setConnected, setShareEnded, webCoreFacet } from "../../runtime/web.tsx";
 import { AppBoundary, reportClientError, startErrorReports } from "../../web/app-boundary.tsx";
-import { startShellBridge } from "../../web/shell-bridge.ts";
-import { shellTheme, startTheme } from "../../web/theme.ts";
+import { startTheme } from "../../web/theme.ts";
 import type { WEB_PACKAGES } from "./packages.ts";
 
 /** The modules the plugins' web scripts import (`WEB_PACKAGES`), one instance each: this page's. */
@@ -47,37 +44,16 @@ const shareHasEnded = (): Promise<boolean> =>
 		() => false,
 	);
 
-/**
- * Radius Cloud Brain's page: the Chord URL Radius gives it (`#root`'s `data-pi-bootstrap`), naming this client (p2
- * refuses a link naming neither its base bundle nor its client: src/runtime/stale-page.ts); none on p2's own pages.
- */
-function cloudChordUrl(): string | undefined {
-	const given = document.getElementById("root")?.dataset.piBootstrap;
-	if (given === undefined) return undefined;
-	const { chordUrl } = JSON.parse(given) as { chordUrl?: unknown };
-	if (typeof chordUrl !== "string") throw new Error("Radius gave this page no Chord URL");
-	const url = new URL(chordUrl, location.href);
-	url.searchParams.set("client", "cloud" satisfies LinkClient);
-	return url.href;
-}
-
 /** Starts the page. */
 export function startP2Page(): void {
-	const cloud = cloudChordUrl();
 	// The base bundle this page runs: its links name it, so p2 refuses an old page's link (server.ts `stalePage`).
 	const base = (globalThis as { readonly chordPage?: { readonly base: string } }).chordPage?.base ?? "";
-	const url =
-		cloud ??
-		`${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/chord?web=${encodeURIComponent(base)}`;
+	const url = `${location.protocol === "https:" ? "wss" : "ws"}://${location.host}/chord?web=${encodeURIComponent(base)}`;
 	/** Whether this page is a guest's (from its Access object); a guest's ended share stops the reconnects. */
 	let guest = false;
 	// The app starts without the network once it was opened (public/sw.js); conversations are kept separately.
-	if (cloud === undefined && "serviceWorker" in navigator)
-		void navigator.serviceWorker.register("/sw.js").catch(() => {});
+	if ("serviceWorker" in navigator) void navigator.serviceWorker.register("/sw.js").catch(() => {});
 	startTheme();
-	// Through Radius, the shell's URL follows the app's, links open the shell and the theme is the shell's (no-op
-	// elsewhere).
-	startShellBridge(getNavigation(), shellTheme);
 	startErrorReports();
 	const element = document.getElementById("root");
 	if (!element) throw new Error("Missing application root");
@@ -90,7 +66,6 @@ export function startP2Page(): void {
 		// An owner's page (the server marks it: it admits owners' telemetry only) records its spans and sends them to the
 		// server's store every 3 s and when hidden.
 		...(element.dataset.p2Telemetry === "on" ? { telemetry: true } : {}),
-		...(cloud === undefined ? {} : { follow: false }),
 		canRetry: async () => {
 			if (!guest || !(await shareHasEnded())) return true;
 			setShareEnded(true);

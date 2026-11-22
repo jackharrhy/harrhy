@@ -103,7 +103,7 @@ export const BackupRemote = remote("p2.backup-remote", {
 });
 
 /**
- * Backup targets plugins offer, by name (`P2_BACKUP=<name>`): `radius` from the Radius plugin. `open` gives the target
+ * Backup targets plugins offer, by name (`P2_BACKUP=<name>`). `open` gives the target
  * once it can be used, or throws why it cannot (not signed in): the backup retries it, slowly. The backup plugin owns
  * the registry; a plugin that is not loaded offers nothing.
  */

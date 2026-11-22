@@ -1,4 +1,4 @@
-// Project glyphs: a 3x3 identicon in the Radius mark's four colors, hashed from a project's path. Pure and browser-safe:
+// Project glyphs: a 3x3 identicon in four colors, hashed from a project's path. Pure and browser-safe:
 // the sidebar draws it inline, `/glyph.svg` (server.ts) serves it as a file. It is the "Tiles, 3x3" generator of the
 // project-glyphs prototype with its recommended settings (loose masks, rich shapes, four mirror axes, color regions,
 // calm tone), drawing the same glyph for the same seed. Every glyph is mirror-symmetric, so none is a pinwheel (a
@@ -35,7 +35,7 @@ export function glyphSvg(glyph: Glyph, size: number): string {
 	return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 3 3">${paths}</svg>`;
 }
 
-/** Coral, blue, gold, teal: the Radius mark (`RadiusWordMark.tsx` in Radius). */
+/** Coral, blue, gold, teal. */
 const PALETTE = ["#f09082", "#4d9abf", "#f1be58", "#83ccd2"];
 
 const N = 3;

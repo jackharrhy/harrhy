@@ -1,7 +1,7 @@
 // A turn's activity: what the agent did between a person's message and its answer. Derived from the transcript's
 // items: `chatItems` keeps each response's thinking and text in the transcript, in their order, and turns each run of
 // consecutive tool calls into an activity item (a wheel in the chat, expandable steps in the right-hand panel). A turn's last text is its
-// answer, followed by the results meant for the person (artifacts, sent files, opened ports). A result its tool shows
+// answer, followed by the results meant for the person (artifacts, sent files). A result its tool shows
 // in place (an inline artifact) comes right after its call instead, splitting the run of calls around it. How much of
 // that shows in the transcript, and how much goes on the wheels, is settings.json's `detail` (`Detail`).
 import type { AssistantMessage } from "@earendil-works/pi-ai";

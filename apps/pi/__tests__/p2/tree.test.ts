@@ -145,9 +145,9 @@ describe("/tree (fake provider)", () => {
 	it("gives a branch the main agent's tools", async () => {
 		const tree = await (await treeRef()).tree(BACKGROUND_CONTEXT);
 		const chat = await chatOf(tree.main);
-		await chat.send({ text: 'ports {"action":"list"}', requestId: "ports" }, BACKGROUND_CONTEXT);
-		const view = await until(chat.view, (next) => toolResults(next).some((result) => result.toolName === "ports"));
-		const result = toolResults(view).find((each) => each.toolName === "ports");
+		await chat.send({ text: 'conversations {"action":"list"}', requestId: "tools" }, BACKGROUND_CONTEXT);
+		const view = await until(chat.view, (next) => toolResults(next).some((result) => result.toolName === "conversations"));
+		const result = toolResults(view).find((each) => each.toolName === "conversations");
 		assert.equal(result?.isError, false, JSON.stringify(result?.content));
 		chat.release();
 		await idle();

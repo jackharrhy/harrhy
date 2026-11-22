@@ -1,5 +1,5 @@
-// The pages' base bundle (Chord's web surface): its entry and how its packages resolve, one definition for the server,
-// the Cloud Brain build (scripts/cloud-bundle.ts) and the test that it reads no package's `dist/`.
+// The pages' base bundle (Chord's web surface): its entry and how its packages resolve, one definition for the server
+// and the test that it reads no package's `dist/`.
 
 import { fileURLToPath } from "node:url";
 import type { BaseResolution } from "@earendil-works/chord/surfaces";

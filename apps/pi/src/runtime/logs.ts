@@ -59,7 +59,6 @@ export class LogRedactor {
 		for (const directory of this.#directories) {
 			for (const name of [
 				"auth.json",
-				"radius.json",
 				"models.json",
 				"settings.json",
 				"envs.json",

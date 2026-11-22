@@ -12,7 +12,7 @@ export const THEME_CHOICES: Readonly<
 	dark: { label: "Dark", icon: MoonIcon, next: "system" },
 };
 
-/** Cycles System → Light → Dark; the choice is kept per browser, or by the Radius shell or p2-mac hosting the page. */
+/** Cycles System → Light → Dark; the choice is kept per browser, or by p2-mac hosting the page. */
 export function ThemeButton() {
 	const theme = useThemePreference();
 	const { label, icon: Icon, next } = THEME_CHOICES[theme];

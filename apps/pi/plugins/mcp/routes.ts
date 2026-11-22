@@ -1,6 +1,6 @@
 // The browser routes of MCP sign-ins (owners only). `GET /mcp/sign-in/<server>` begins a sign-in and redirects to the
 // authorization server: the browser returns to a loopback callback on the p2 host when it runs there, else to `GET
-// /mcp/callback` on the origin it reaches p2 through (Radius, a public host). The device owner's browser runs on the
+// /mcp/callback` on the origin it reaches p2 through (a public host). The device owner's browser runs on the
 // p2 host; for any other owner a probe page finds out first (`LoopbackProbe`).
 
 import type { IncomingMessage, ServerResponse } from "node:http";
