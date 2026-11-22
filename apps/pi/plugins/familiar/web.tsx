@@ -3,9 +3,9 @@
 import { BACKGROUND_CONTEXT, contribute, defineFacet, keptIn, liveIn } from "@p2/app/v1";
 import {
 	conversationRoute,
+	Logo,
 	NEW_SESSION,
 	navigate,
-	PiLogo,
 	SideNavigation,
 	Slots,
 	useComposerState,
@@ -71,7 +71,7 @@ function OwnerRow() {
 				onActivate={open}
 				marker={
 					<IconMarker working={row !== undefined && row.worker.busy.length > 0}>
-						<PiLogo compact />
+						<Logo compact />
 					</IconMarker>
 				}
 				label={<span className={`session-title ${unread ? "unread" : ""}`}>{FAMILIAR_TITLE}</span>}
