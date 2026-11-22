@@ -4,9 +4,11 @@ import { css } from "remix/component";
 import { csp, getCspNonce } from "remix/middleware/csp";
 import { render } from "remix/middleware/render";
 import { createRouter, type MiddlewareContext } from "remix/router";
-import { Canvas } from "./canvas";
+import { createCanvas } from "./canvas-view";
 import { routes } from "./routes";
 import { woodTheme } from "./wood";
+
+const Canvas = createCanvas();
 
 type Context = MiddlewareContext<
   [ReturnType<typeof csp>, ReturnType<typeof render>]

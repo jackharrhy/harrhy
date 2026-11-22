@@ -8,7 +8,7 @@ const fleet = ["ref", "radio", "worldview", "maps-collaboration"];
 test("canonical runtime changes check Celld consumers without unrelated Node apps", () => {
   for (const path of ["celld.json", "scripts/celld-runtime.mjs"]) {
     const selected = selectChecks([path], loadWorkspaces());
-    for (const app of [...fleet, "4orm"])
+    for (const app of [...fleet, "4orm", "world"])
       assert.ok(selected.includes(`@harrhy/${app}`), app);
     assert.ok(!selected.includes("@harrhy/auth"));
     assert.ok(!selected.includes("@harrhy/cms"));

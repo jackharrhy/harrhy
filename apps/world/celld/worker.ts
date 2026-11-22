@@ -1,3 +1,4 @@
+import { router } from "../app/router";
 import { createChessTable } from "./chess-table";
 import { validateChessCommand, type ChessState } from "../shared/chess-wire";
 import type { AuthoredTable } from "../shared/table-placement";
@@ -18,6 +19,7 @@ import {
 } from "../shared/protocol";
 
 interface Env {
+  ASSETS: Fetcher;
   WORLD_ROOM: DurableObjectNamespace<WorldRoomCell>;
   HARRHY_WORLD_ORIGIN?: string;
 }
@@ -33,11 +35,9 @@ type Peer = {
   messages: number;
   lastInput: number;
 };
-const timingPath = "/__bench/timing";
 const noStore = { "Cache-Control": "no-store" };
 const encoder = new TextEncoder();
 const snapshotEvery = 3;
-const sampleLimit = 36_000;
 let collision: ReturnType<typeof loadBspCollision> | undefined;
 
 function getCollision() {
@@ -46,28 +46,52 @@ function getCollision() {
   ));
 }
 
-function timingSamples() {
-  return {
-    ticks: 0,
-    snapshots: 0,
-    droppedDeadlines: 0,
-    droppedTimingSamples: 0,
-    tickIntervalsMs: [] as number[],
-    snapshotIntervalsMs: [] as number[],
-    tickLatenessMs: [] as number[],
-  };
-}
-
 export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
-    if (pathname === "/room" || pathname === timingPath)
-      return env.WORLD_ROOM.getByName("hall").fetch(request);
-    if (pathname !== "/healthz" && pathname !== BSP_MAP_PATH)
-      return new Response(null, { status: 404 });
     const head = request.method === "HEAD";
     if (request.method !== "GET" && !head)
       return new Response(null, { status: 405 });
+    if (pathname === "/" || pathname === "/room") {
+      const origin = env.HARRHY_WORLD_ORIGIN;
+      const publicUrl = origin && URL.parse(origin);
+      if (
+        !publicUrl ||
+        !["http:", "https:"].includes(publicUrl.protocol) ||
+        publicUrl.origin !== origin
+      )
+        return new Response("World origin is not configured", { status: 503 });
+      if (pathname === "/room") {
+        if (request.headers.get("Upgrade")?.toLowerCase() !== "websocket")
+          return new Response(null, {
+            status: 426,
+            headers: { Upgrade: "websocket" },
+          });
+        if (request.headers.get("Origin") !== origin)
+          return new Response(null, { status: 403 });
+        if (request.headers.has("Sec-WebSocket-Protocol"))
+          return new Response(null, { status: 400 });
+        return env.WORLD_ROOM.getByName("hall").fetch(request);
+      }
+      // Use the browser-facing origin rather than the listener address for CSP.
+      const response = await router.fetch(new Request(publicUrl.href));
+      response.headers.set("Cache-Control", "private, no-store");
+      return head ? new Response(null, response) : response;
+    }
+    if (
+      pathname === "/world.css" ||
+      /^\/(?:assets|textures|billboard|audio)\/[a-zA-Z0-9._-]+$/.test(pathname)
+    ) {
+      const asset = await env.ASSETS.fetch(request);
+      const headers = new Headers(asset.headers);
+      headers.set("X-Content-Type-Options", "nosniff");
+      return new Response(head ? null : asset.body, {
+        status: asset.status,
+        headers,
+      });
+    }
+    if (pathname !== "/healthz" && pathname !== BSP_MAP_PATH)
+      return new Response(null, { status: 404 });
     const { revision } = await getCollision();
     if (pathname === "/healthz") {
       const ready: MapReady = { status: "ready", map: "bsp", revision };
@@ -96,11 +120,8 @@ export class WorldRoomCell extends DurableObject<Env> {
     string,
     { id: string; until: number; timer: ReturnType<typeof setTimeout> }
   >();
-  private timing = timingSamples();
   private timer?: ReturnType<typeof setTimeout>;
   private deadline = 0;
-  private lastTick?: number;
-  private lastSnapshot?: number;
   private frame = 0;
 
   constructor(ctx: DurableObjectState, env: Env) {
@@ -112,24 +133,6 @@ export class WorldRoomCell extends DurableObject<Env> {
 
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    if (url.pathname === timingPath) {
-      if (request.method === "POST") {
-        if (this.peers.size)
-          return new Response("Room is active", { status: 409 });
-        this.timing = timingSamples();
-        return new Response(null, { status: 204, headers: noStore });
-      }
-      if (request.method !== "GET") return new Response(null, { status: 405 });
-      return Response.json(
-        {
-          tickHz: TICK_HZ,
-          snapshotHz: TICK_HZ / snapshotEvery,
-          activePeers: this.peers.size,
-          ...this.timing,
-        },
-        { headers: noStore },
-      );
-    }
     if (request.method !== "GET" || url.pathname !== "/room")
       return new Response(null, { status: 405 });
     if (!this.env.HARRHY_WORLD_ORIGIN)
@@ -384,7 +387,6 @@ export class WorldRoomCell extends DurableObject<Env> {
     if (this.peers.size) return;
     if (this.timer !== undefined) clearTimeout(this.timer);
     this.timer = undefined;
-    this.lastTick = this.lastSnapshot = undefined;
     this.releaseEmptyRoom();
   }
 
@@ -400,11 +402,6 @@ export class WorldRoomCell extends DurableObject<Env> {
   private send(socket: WebSocket, message: ServerMessage) {
     if (socket.readyState === WebSocket.OPEN)
       socket.send(JSON.stringify(message));
-  }
-
-  private sample(samples: number[], value: number) {
-    if (samples.length < sampleLimit) samples.push(value);
-    else this.timing.droppedTimingSamples++;
   }
 
   private schedule(room: Room) {
@@ -426,25 +423,15 @@ export class WorldRoomCell extends DurableObject<Env> {
     // Keep phase without bursting simulation steps after a stalled turn.
     const late = Math.max(0, now - this.deadline);
     const missed = Math.floor(late / TICK_MS);
-    this.timing.droppedDeadlines += missed;
     this.deadline += (1 + missed) * TICK_MS;
-    this.sample(this.timing.tickLatenessMs, late);
-    if (this.lastTick !== undefined)
-      this.sample(this.timing.tickIntervalsMs, now - this.lastTick);
-    this.lastTick = now;
     room.step();
     for (const pool of this.tables.values()) {
       if (pool.kind === "pool")
         this.broadcastTable(pool.tick(now, 1 / TICK_HZ));
       else this.broadcastTable(pool.tick(now));
     }
-    this.timing.ticks++;
     const snapshotDue = ++this.frame % snapshotEvery === 0;
     if (snapshotDue) {
-      this.timing.snapshots++;
-      if (this.lastSnapshot !== undefined)
-        this.sample(this.timing.snapshotIntervalsMs, now - this.lastSnapshot);
-      this.lastSnapshot = now;
       const message = JSON.stringify({
         type: "motion",
         ...room.snapshot(),

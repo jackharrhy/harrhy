@@ -1,6 +1,6 @@
 # World
 
-World is a private multiplayer walk-through of the authored GoldSrc hall. Node serves a Remix 3 page and bridges same-origin game traffic to the local Celld Worker. `WorldRoomCell` owns player simulation. The browser uses Worldview’s WebGPU renderer, Gurgur’s directional sprites and a Wood HUD built with `@harrhy/ui`.
+World is a private multiplayer walk-through of the authored GoldSrc hall. One Celld process serves the Remix 3 page, native static assets and same-origin game traffic. `WorldRoomCell` owns player simulation. The browser uses Worldview’s WebGPU renderer, Gurgur’s directional sprites and a Wood HUD built with `@harrhy/ui`.
 
 Right-drag to orbit your avatar (drag on touch), click or tap the floor to walk, and scroll all the way in for first person. Click to capture the mouse, use WASD, and hold Space to auto-bhop. Scroll out to return to third person. The west wall has a surf ramp. A WebGPU-capable browser is required.
 Click either table to walk up and sit. Moss joins automatically at the west table; the east table is human-only. Right-drag orbits the shared Pool camera; middle-drag pans and the wheel zooms. Pull back and release to shoot, or use arrow keys and hold Space. A disconnected seat stays reserved for 30 seconds in the same tab. Leave the table to resume walking.
@@ -9,24 +9,37 @@ Click a chess table to sit. The west table is human-only; the east table automat
 
 ## Run locally
 
-Install with Node 26 and `pnpm install --frozen-lockfile`. Build with `pnpm --filter @harrhy/world run build`. Use the qualified [Celld runtime](../../docs/celld-runtime.md), an isolated SQLite bucket, and a loopback listener. For example, from the repository root:
+Install with Node 26 and `pnpm install --frozen-lockfile`. Set `CELLD_BIN` to the absolute path of the [qualified binary](../../docs/celld-runtime.md). From the repository root, using an unused loopback port:
 
 ```sh
+node scripts/celld-runtime.mjs verify "$CELLD_BIN"
+pnpm --filter @harrhy/world run build
 scratch=$(mktemp -d)
 bucket="sqlite://$scratch/objects.sqlite3"
-export CELLD_ESBUILD="$PWD/node_modules/.bin/esbuild"
+export CELLD_ESBUILD="$PWD/apps/world/node_modules/.bin/esbuild"
 export CELLD_VAR_HARRHY_WORLD_ORIGIN=http://127.0.0.1:3189
-"$CELLD_BIN" deploy apps/world/celld --bucket "$bucket"
-"$CELLD_BIN" --bucket "$bucket" --listen 127.0.0.1:3188 --no-control-plane
+"$CELLD_BIN" deploy apps/world --bucket "$bucket"
+"$CELLD_BIN" --bucket "$bucket" --listen 127.0.0.1:3189 --no-control-plane
 ```
 
-In another terminal, start the frontend with `HARRHY_WORLD_ORIGIN=http://127.0.0.1:3189 HARRHY_WORLD_UPSTREAM=http://127.0.0.1:3188 pnpm --filter @harrhy/world start` and open `http://127.0.0.1:3189/`. `HARRHY_WORLD_PORT` selects the frontend port; set `HARRHY_WORLD_ORIGIN` and Celld’s matching origin for a private HTTPS route. Exact Origin is not account authentication. Do not expose the Celld listener or its benchmark endpoint to browsers.
+Open `http://127.0.0.1:3189/` directly. `HARRHY_WORLD_ORIGIN` in the Worker must be the exact browser-facing HTTP(S) origin, including a non-default port and no trailing slash. It controls WebSocket admission and the shell's CSP. Origin checking is not account authentication. Keep the listener private. Node and `ws` are not production services.
 
 ## Boundaries
 
-- `server/index.ts` serves the page and browser bundle and relays World’s HTTP and WebSocket traffic. It has no game state.
-- `celld/worker.ts` serves the deployed BSP and routes to `WorldRoomCell`. The cell steps bitECS at 60 Hz while occupied and emits player snapshots at 20 Hz. Pool broadcasts full ball poses at 60 Hz while a shot rolls. Player state is ephemeral; a restart does not restore players.
+- `celld/worker.ts` serves `/` through `app/router.tsx`. Static files come from the native `ASSETS` binding over `dist/client`; the Worker serves `/maps/hall.bsp` and `/healthz` from the same deployed map. Only `/room` routes to `WorldRoomCell`.
+- The cell steps bitECS at 60 Hz while occupied and emits player snapshots at 20 Hz. Pool broadcasts full ball poses at 60 Hz while a shot rolls. Player state is ephemeral; a restart does not restore players.
 - `shared/motion.ts` runs `@harrhy/schmovement` in the cell and in the client. Both trace the same authored BSP; a revision check rejects mismatched joins. `app/bsp-render.ts` renders that same BSP.
 - The editable map and bake instructions are in [Editing the Hall](content/README.md). Rebuild the map and redeploy the Worker together. The frontend build does not publish a separate map copy.
 
-`pnpm --filter @harrhy/world run check` checks types, simulation tests and both frontend bundles. With a disposable pair running, set `HARRHY_WORLD_TEST_BSP=1` and `HARRHY_WORLD_TEST_URL` for `pnpm --filter @harrhy/world run test:browser`. `node apps/world/scripts/bench-room.mjs --help` describes the loopback-only room benchmark.
+## Verification
+
+`pnpm --filter @harrhy/world run check` checks types, simulation tests and the browser build. With the **disposable** listener above still running, run these sequentially from another terminal:
+
+```sh
+export HARRHY_WORLD_TEST_URL=http://127.0.0.1:3189
+pnpm --filter @harrhy/world run test:surface
+pnpm --filter @harrhy/world run test:pool-live
+HARRHY_WORLD_TEST_BSP=1 pnpm --filter @harrhy/world run test:browser
+```
+
+The browser smoke needs Playwright Chromium with WebGPU (SwiftShader is supported). `node apps/world/scripts/bench-room.mjs --help` describes the separate loopback-only WebSocket benchmark; the Worker publishes no benchmark endpoint.

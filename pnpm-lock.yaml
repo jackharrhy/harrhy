@@ -1468,9 +1468,6 @@ importers:
       three:
         specifier: 0.187.0
         version: 0.187.0
-      ws:
-        specifier: 8.22.2
-        version: 8.22.2
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261112.1
@@ -1493,6 +1490,9 @@ importers:
       vite:
         specifier: ^8.3.8
         version: 8.3.8(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1)
+      ws:
+        specifier: 8.22.2
+        version: 8.22.2
 
   apps/worldview:
     dependencies:
