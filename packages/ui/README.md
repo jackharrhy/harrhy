@@ -100,7 +100,7 @@ Recipes consume the nearest variables, so subtree overrides inherit naturally. A
 
 ### Graphite and density
 
-Picker names are Basic (cleanTheme), Ledger (tactileTheme), Newspaper (brutalistTheme), Scorebook (sluggersTheme) and Graphite. Existing theme exports are unchanged. Graphite is light token data; the importing app supplies Inter or uses system sans.
+Picker names are Basic (cleanTheme), Dial (tactileTheme), Newspaper (brutalistTheme), Scorebook (sluggersTheme) and Graphite. Existing theme exports are unchanged. Graphite is light token data; the importing app supplies Inter or uses system sans.
 
 ```ts
 import {

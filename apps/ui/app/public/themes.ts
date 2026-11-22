@@ -18,7 +18,7 @@ export type ThemeName = keyof typeof themes;
 export const themeLabels: Record<ThemeName, string> = {
   clean: "Basic",
   graphite: "Graphite",
-  tactile: "Ledger",
+  tactile: "Dial",
   brutalist: "Newspaper",
   sluggers: "Scorebook",
 };

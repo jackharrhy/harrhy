@@ -19,7 +19,7 @@ it("loads Artbin's three font roles on demand without changing Clean/Radio fonts
   await page.evaluate(() => document.fonts.ready);
   assert.deepEqual(fonts, []);
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Ledger", exact: true }).click();
+  await page.getByRole("option", { name: "Dial", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("theme") === "tactile");
   assert.deepEqual(fonts, []);
   await page.getByRole("button", { name: "Theme", exact: true }).click();
