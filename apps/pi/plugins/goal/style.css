@@ -1,0 +1,21 @@
+.goal-objective {
+	margin: 0;
+	white-space: pre-wrap;
+	overflow-wrap: anywhere;
+}
+.goal-meta {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: var(--s2);
+}
+.goal-progress {
+	width: 100%;
+}
+.goal-evidence {
+	margin: 0;
+	overflow-wrap: anywhere;
+}
+.goal-chip {
+	gap: var(--s1);
+}

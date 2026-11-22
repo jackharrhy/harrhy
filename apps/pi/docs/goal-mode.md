@@ -1,6 +1,8 @@
 # Goal mode
 
-Goal mode has no control at present. Its `/goal` command was part of the terminal UI, which is [removed](../../../docs/pi-removed-features.md#terminal-ui). The `goal` plugin still serves the owner’s `Goal` contract (`plugins/goal/contract.ts`) for the main conversation of a private, unarchived, unlocked session:
+**Control.** The owner starts and steers a goal from the web UI. Open the command menu (Cmd/Ctrl+K), pick **Goal**, and the Goal sheet shows the objective, state, step progress and latest evidence. It has an objective field with a step limit (1–12) and **Start**, plus **Pause** while a goal runs and **Resume** while it is paused with its step settled. Starting again while no step is running replaces the previous goal; there is no separate clear. While a goal is running or paused, a chip with its step count appears in the session’s top bar and opens the sheet. The terminal UI’s `/goal` command was [removed](../../../docs/pi-removed-features.md#terminal-ui). The contract has no change feed, so the sheet polls `status` every 2 seconds and the chip every 5 seconds. The sheet and chip are `plugins/goal/web.tsx`.
+
+The `goal` plugin serves the owner’s `Goal` contract (`plugins/goal/contract.ts`) for the main conversation of a private, unarchived, unlocked session:
 
 - `status` returns the objective, step count, and latest evidence.
 - `pause` prevents another step from starting. Use ordinary Stop to interrupt a step already admitted.

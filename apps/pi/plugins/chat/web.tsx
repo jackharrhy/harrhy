@@ -788,6 +788,7 @@ function TopBar({
 				)}
 			</div>
 			{offline && <span className="offline">Offline</span>}
+			<SlotList prefix="topbar-end" />
 			<Slot name="session-options" />
 			<Slot name="session-actions" />
 		</header>

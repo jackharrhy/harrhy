@@ -93,8 +93,8 @@ derivation and the Mermaid renderer stand on their own.
 
 Worth keeping in mind:
 
-- Goal mode's `/goal` command was in the terminal UI and nothing else starts a goal. The `goal` plugin and its
-  contract are still there ([goal mode](../apps/pi/docs/goal-mode.md)); it needs a web control to be usable again.
+- Goal mode's `/goal` command was in the terminal UI. The `goal` plugin and its contract stayed, and the web UI now
+  has a Goal sheet in the command menu ([goal mode](../apps/pi/docs/goal-mode.md)).
 - The `quiet-tools` plugin (one line per tool call), the per-visitor preferences served from `<data>/tui.json`, the
   `SentFiles` text preview of the session worker and the Settings row for the model cycling scope existed only for the
   terminal and went with it.
