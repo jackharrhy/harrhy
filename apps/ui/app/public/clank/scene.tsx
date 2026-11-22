@@ -5,11 +5,10 @@ import {
   composeTheme,
   densityOverrides,
 } from "@harrhy/ui/theme";
-import { Button } from "@harrhy/ui/native";
+import { Button, Inline } from "@harrhy/ui/native";
 import { sessions, blocks } from "./fixture.ts";
 import { WorkbenchHeader } from "../workbench.tsx";
-import { themes, themeLabels, type ThemeName } from "../themes.ts";
-const palettes = ["clean", "brutalist", "graphite"] as const;
+import { themes, type ThemeName } from "../themes.ts";
 import { Words, Settled } from "./markdown.tsx";
 import { Mark } from "./marks.tsx";
 import { shell } from "./styles.ts";
@@ -82,6 +81,22 @@ export const Cookoff = clientEntry(
           <WorkbenchHeader
             theme={skin}
             page="scenes"
+            controls={
+              <Inline role="group" aria-label="Density">
+                {(["standard", "compact"] as const).map((value) => (
+                  <Button
+                    variant={density === value ? "secondary" : "quiet"}
+                    aria-pressed={density === value}
+                    mix={on("click", () => {
+                      density = value;
+                      handle.update();
+                    })}
+                  >
+                    {value === "standard" ? "Standard" : "Compact"}
+                  </Button>
+                ))}
+              </Inline>
+            }
             onThemeChange={(next) => {
               skin = next;
               handle.update();
@@ -115,35 +130,6 @@ export const Cookoff = clientEntry(
                   <span>{item.name}</span>
                 </button>
               ))}
-              <div class="railfoot">
-                <a href="/scenes">← UI showcase</a>
-                <nav aria-label="Design comparison" class="skins">
-                  {palettes.map((k) => (
-                    <button
-                      aria-pressed={skin === k}
-                      mix={on("click", () => {
-                        skin = k;
-                        handle.update();
-                      })}
-                    >
-                      {themeLabels[k]}
-                    </button>
-                  ))}
-                </nav>
-                <div class="skins" role="group" aria-label="Density">
-                  {(["standard", "compact"] as const).map((value) => (
-                    <button
-                      aria-pressed={density === value}
-                      mix={on("click", () => {
-                        density = value;
-                        handle.update();
-                      })}
-                    >
-                      {value === "compact" ? "Compact" : "Standard"}
-                    </button>
-                  ))}
-                </div>
-              </div>
             </aside>
             <section class="transcript" aria-label="Session detail">
               <div class="heading">

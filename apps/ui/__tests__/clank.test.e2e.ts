@@ -15,14 +15,31 @@ it("replays a single prefix through both Markdown policies, then changes phone v
   const button = (name: string) =>
     page.getByRole("button", { name, exact: true });
   const proof = await page.locator(".scroll").innerText();
-  for (const skin of ["Basic", "Newspaper", "Graphite"]) {
-    await button(skin).click();
+  const header = page.getByRole("banner");
+  assert.equal(
+    await page.getByRole("link", { name: /UI showcase/ }).count(),
+    0,
+  );
+  for (const [skin, id] of [
+    ["Basic", "clean"],
+    ["Newspaper", "brutalist"],
+    ["Graphite", "graphite"],
+  ]) {
+    await header.getByRole("button", { name: "Theme", exact: true }).click();
+    await page.getByRole("option", { name: skin, exact: true }).click();
+    await page.locator(`[data-skin=${id}]`).waitFor();
     const session = page.locator(".session").first();
     const prose = page.locator(".measure p").first();
-    await button("Standard").click();
+    await header.getByRole("button", { name: "Standard", exact: true }).click();
+    await header
+      .getByRole("button", { name: "Standard", pressed: true })
+      .waitFor();
     const standard = await session.boundingBox();
     const textSize = await prose.evaluate((n) => getComputedStyle(n).fontSize);
-    await button("Compact").click();
+    await header.getByRole("button", { name: "Compact", exact: true }).click();
+    await header
+      .getByRole("button", { name: "Compact", pressed: true })
+      .waitFor();
     const compact = await session.boundingBox();
     assert.ok(standard && compact && compact.height < standard.height);
     assert.equal(

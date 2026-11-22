@@ -1,4 +1,4 @@
-import { css, type Handle } from "remix/component";
+import { css, type Handle, type RemixNode } from "remix/component";
 import { ButtonLink, Inline } from "@harrhy/ui/native";
 import { Select } from "@harrhy/ui/interactive";
 import { themeOptions, type ThemeName } from "./themes.ts";
@@ -13,11 +13,12 @@ export function WorkbenchHeader(
   handle: Handle<{
     theme: ThemeName;
     page: "explorer" | "scenes";
+    controls?: RemixNode;
     onThemeChange: (theme: ThemeName) => void;
   }>,
 ) {
   return () => {
-    const { theme, page, onThemeChange } = handle.props;
+    const { theme, page, controls, onThemeChange } = handle.props;
     return (
       <header mix={headerStyles}>
         <ButtonLink
@@ -55,6 +56,7 @@ export function WorkbenchHeader(
               onThemeChange(next);
             }}
           />
+          {controls}
         </Inline>
       </header>
     );
@@ -86,7 +88,8 @@ const brandStyles = css({ fontWeight: 700, whiteSpace: "nowrap" });
 const pickerStyles = css({
   marginLeft: "auto",
   gap: "8px",
-  flexWrap: "nowrap",
-  "& button": { width: "auto", minWidth: "100px" },
+  justifyContent: "flex-end",
+  "& > div": { flexShrink: 0 },
+  "& #workbench-theme": { width: "auto", minWidth: "100px" },
   "& label": { fontSize: "0.875rem", color: "var(--hui-muted)" },
 });
