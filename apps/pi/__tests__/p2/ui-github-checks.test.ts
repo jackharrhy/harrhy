@@ -29,7 +29,6 @@ test("the owner allows and removes repositories in Settings › GitHub", { skip:
 			Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, ${JSON.stringify(value)});
 			input.dispatchEvent(new Event('input', { bubbles: true }));
 		})()`);
-	// A bad name is refused with a reason; a good one is listed.
 	await type("not a repo");
 	await clickText("Allow");
 	await browser.wait(`document.querySelector('[role=alert]')?.textContent.includes('owner/name')`);

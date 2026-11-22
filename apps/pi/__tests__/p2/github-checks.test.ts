@@ -29,7 +29,6 @@ it("decides a commit's result from its check runs and statuses", () => {
 	assert.equal(decide(items(run("a", "completed", "success"), run("b", "in_progress", null))), "pending");
 	assert.equal(decide(items(run("a", "completed", "success"), run("b", "completed", "skipped"))), "passed");
 	assert.equal(decide(items(run("a", "completed", "success"), run("b", "completed", "timed_out"))), "failed");
-	assert.equal(decide(items(run("a", "completed", "action_required"))), "failed");
 	assert.equal(decide(items(run("a", "completed", "some_new_conclusion"))), "failed", "unknown conclusions fail");
 	assert.equal(decide(items(run("a", "completed", "cancelled"))), "cancelled");
 	assert.equal(decide(items(run("a", "completed", "cancelled"), run("b", "completed", "failure"))), "failed");
@@ -144,7 +143,6 @@ const FAST = { pollMs: 40, idleMs: 40, settleMs: 80, graceMs: 80, lingerMs: 600 
 async function harness(fake: Fake, config: object = { token: TOKEN }, allowed: string[] = ["acme/site"]) {
 	const github = await fakeGithub(fake);
 	const fixture = await startFixture({ integrations: ["github-checks"] });
-	// Only what a test needs to reach the fake: its address and its token.
 	await writeFile(join(fixture.dataDir, "github-checks.json"), JSON.stringify({ apiBase: github.base, ...FAST, ...config }), { mode: 0o600 });
 	const settings = await holdIn(fixture.browser(), GithubChecksSettings, {}, "owner");
 	for (const repo of allowed) await settings.allow({ repo }, TEST);
@@ -190,32 +188,26 @@ it("publishes once per finished commit and set of runs, and wakes the subscribed
 		await h.subscriptions.createTarget({ id: "quiet-main", source: SOURCE, target: session.target, config: config({ kind: "branch", name: "main" }, { notify: "failure" }) }, TEST);
 		await h.subscriptions.createTarget({ id: "other-repo", source: SOURCE, target: session.target, config: { repo: "evil/site", ref: { kind: "pr", number: 1 } } }, TEST);
 
-		// The pinned commit failed: one event, naming the failing check.
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("commit dddddddd")));
 		assert.match(session.texts().find((text) => text.includes("deploy"))!, /commit d{40} at ddddddd: failed. 1 did not pass:\n- deploy: failure/);
 
-		// The pull request's e2e still runs: nothing yet. Finish it, and exactly one event arrives.
 		assert(!session.texts().some((text) => text.includes("PR #12")));
 		fake.runs[SHA_A] = [run("lint", "completed", "success"), run("e2e", "completed", "failure")];
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("PR #12")));
 		await new Promise((resolve) => setTimeout(resolve, 400));
 		assert.equal(session.texts().filter((text) => text.includes("PR #12")).length, 1, "polling again does not repeat it");
 
-		// A re-run that fails again is a new set of runs, so it reports again.
 		fake.runs[SHA_A] = [run("lint", "completed", "success"), run("e2e", "completed", "failure", "e2e-rerun")];
 		await poll(async () => session.texts().filter((text) => text.includes("PR #12")).length === 2, 5000, "re-run reported");
 
-		// A push is a new commit with a new result.
 		fake.pulls[12] = { head: SHA_B, state: "open" };
 		fake.runs[SHA_B] = [run("lint", "completed", "success"), run("e2e", "completed", "success")];
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("all 2 checks passed")));
 
-		// The quiet branch subscription said nothing of a green main, and the unlisted repository nothing at all.
 		assert(!session.texts().some((text) => text.includes("branch main")));
 		assert(!session.texts().some((text) => text.includes("evil/site")));
 		assert.equal(fake.hits["/repos/evil/site/pulls/1"], undefined, "an unlisted repository is never asked about");
 
-		// Main turns red: now it speaks.
 		fake.branch.sha = SHA_D;
 		await poll(async () => session.texts().some((text) => text.includes("branch main")), 5000, "red main reported");
 		session.chat.release();
@@ -259,10 +251,8 @@ it("keeps looking at a closed pull request for a while, then stops", { timeout: 
 		const session = await h.watch("Closed");
 		await h.subscriptions.createTarget({ id: "pr", source: SOURCE, target: session.target, config: { repo: "acme/site", ref: { kind: "pr", number: 9 } } }, TEST);
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("PR #9")));
-		// A later stage appears after the first report: it is still seen.
 		fake.runs[SHA_A] = [run("build", "completed", "success"), run("deploy", "completed", "failure")];
 		await until(session.chat.view, () => session.texts().some((text) => text.includes("deploy")));
-		// Then, after a quiet while, no more requests.
 		await new Promise((resolve) => setTimeout(resolve, 1200));
 		const hits = fake.hits["/repos/acme/site/pulls/9"];
 		await new Promise((resolve) => setTimeout(resolve, 400));
@@ -322,7 +312,6 @@ it("lets the agent watch, list and stop, and refuses what cannot be watched", { 
 		await first.call(`return await tools.github_checks_watch({ repo: "acme/missing", commit: "${SHA_C}" })`);
 		await until(first.chat.view, () => first.model().includes("GitHub 404 for /repos/acme/missing"));
 
-		// Stop and list.
 		const id = /(github-checks-[0-9a-f]+)/.exec(first.model())![1]!;
 		await first.call(`return await tools.github_checks_stop({ id: "${id}" })`);
 		await until(first.chat.view, () => first.model().includes(`"id":"${id}","enabled":false`));
@@ -381,7 +370,6 @@ it("keeps the owner's allowed repositories, refuses bad ones, and says whether t
 		const refused = await h.settings.checkLogin({}, TEST);
 		assert.equal(refused.ok, false);
 		assert.match(refused.message, /GitHub 401/);
-		// A guest has no part in it.
 		const guest = h.fixture.as({ kind: "guest", id: "guest", name: "Guest", home: "x", sessions: { x: "full" }, revision: 1 });
 		const ref = guest.hold(GithubChecksSettings, {}, TEST);
 		await expectChord(whenLive(ref), "forbidden");

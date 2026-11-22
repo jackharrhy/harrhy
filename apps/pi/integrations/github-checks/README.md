@@ -5,8 +5,9 @@ a branch or a commit. Pi polls GitHub itself, so the agent needs no polling loop
 It declares the stimulus source `github.checks` version 1; the stimuli plugin owns the saved delivery, retry and receipt,
 and the target worker owns native input.
 
-- `server.ts`: the poller, the owner's allowed list and the probe the agent's tools call. `github.ts`: a small read-only
-  REST client. `web.tsx`: Settings › GitHub.
+- `server.ts`: the facet (the owner's settings, the probe the agent's tools call, the poller's loop). `poller.ts`: what to
+  look at and when to publish. `settings.ts`: the allowed list and `github-checks.json`. `access.ts`: the token and the
+  client. `github.ts`: a small read-only REST client. `web.tsx`: Settings › GitHub.
 - `checks.ts`: the rules (when a commit is done, what its result is, how it reads). `contract.ts`: the shapes.
 - `worker.ts`: the agent's three tools.
 

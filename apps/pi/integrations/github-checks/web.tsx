@@ -101,9 +101,7 @@ function GithubSheet() {
 						Check GitHub login
 					</button>
 					{login && (
-						<span role="status" className={login.ok ? "muted small" : "error small"}>
-							{login.message}
-						</span>
+						<output className={login.ok ? "muted small" : "error small"}>{login.message}</output>
 					)}
 				</div>
 			</div>
