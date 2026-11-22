@@ -305,9 +305,6 @@ export const Scenes = clientEntry(
               </Stack>
             </section>
           )}
-          <p mix={muted}>
-            Fixtures only. No accounts, persistence or production requests.
-          </p>
         </main>
       </div>
     );

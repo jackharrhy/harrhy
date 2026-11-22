@@ -45,9 +45,9 @@ export function WorkbenchHeader(
           </ButtonLink>
         </nav>
         <Inline mix={pickerStyles}>
-          <label htmlFor="workbench-theme">Theme</label>
           <Select
             id="workbench-theme"
+            aria-label="Theme"
             defaultValue={theme}
             options={themeOptions}
             onValueChange={(value) => {
@@ -65,11 +65,14 @@ export function WorkbenchHeader(
 const headerStyles = css({
   display: "flex",
   alignItems: "center",
-  gap: "24px",
-  minHeight: "72px",
+  position: "sticky",
+  top: 0,
+  zIndex: 5,
+  "--workbench-picker-height": "32px",
+  gap: "16px",
   fontSize: "var(--hui-text-size)",
   lineHeight: "var(--hui-line-height)",
-  padding: "12px 24px",
+  padding: "4px 24px",
   borderBottom: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
   "& nav": { display: "flex", gap: "4px" },
@@ -77,9 +80,12 @@ const headerStyles = css({
     textDecoration: "underline",
     textUnderlineOffset: "6px",
   },
+  "@media (max-width: 600px), (pointer: coarse)": {
+    "--workbench-picker-height": "44px",
+  },
   "@media (max-width: 600px)": {
-    padding: "12px 16px",
-    gap: "8px",
+    padding: "4px 16px",
+    gap: "4px 8px",
     flexWrap: "wrap",
     "& nav": { order: 3, width: "100%" },
   },
@@ -90,6 +96,11 @@ const pickerStyles = css({
   gap: "8px",
   justifyContent: "flex-end",
   "& > div": { flexShrink: 0 },
-  "& #workbench-theme": { width: "auto", minWidth: "100px" },
-  "& label": { fontSize: "0.875rem", color: "var(--hui-muted)" },
+  "& #workbench-theme": {
+    width: "auto",
+    minWidth: "100px",
+    height: "var(--workbench-picker-height)",
+    paddingBlock: "4px",
+    fontSize: "0.875rem",
+  },
 });

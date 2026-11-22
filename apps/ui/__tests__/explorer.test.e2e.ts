@@ -270,6 +270,11 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
       () => document.documentElement.dataset.uiReady === "true",
     );
     const trigger = page.getByRole("button", { name: "Theme", exact: true });
+    await page.evaluate(() => window.scrollTo(0, 300));
+    await page.waitForFunction(() => window.scrollY > 100);
+    const header = await page.getByRole("banner").boundingBox();
+    assert.equal(header?.y, 0);
+    assert.ok((await trigger.boundingBox())!.height >= 44);
     await trigger.click();
     const list = page.getByRole("listbox");
     await list.waitFor();

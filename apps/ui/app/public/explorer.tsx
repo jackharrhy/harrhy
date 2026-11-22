@@ -357,15 +357,6 @@ export const Explorer = clientEntry(
               <h1>{selected.name}</h1>
               <p mix={introStyle}>{selected.summary}</p>
               <Story key={story} story={story} theme={theme} />
-              <p
-                mix={css({
-                  color: "var(--hui-muted)",
-                  fontSize: "12px",
-                  marginTop: "20px",
-                })}
-              >
-                Local fixtures. No saved data or production requests.
-              </p>
             </main>
           </div>
         </div>
