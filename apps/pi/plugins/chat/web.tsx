@@ -66,7 +66,6 @@ import {
 	navigate,
 	OneShotAgents,
 	OpenConversation,
-	OpenTerminal,
 	OpenWorkspaceFile,
 	openCommandPage,
 	openLayer,
@@ -793,7 +792,6 @@ function TopBar({
 			<Slot name="view-actions" />
 			<Slot name="artifact-actions" />
 			<Slot name="tree-actions" />
-			<Slot name="terminal-actions" />
 			<Slot name="workspace-actions" />
 			<Slot name="session-options" />
 			<Slot name="session-actions" />
@@ -898,18 +896,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 					file: { path, view: "file", line },
 				},
 			});
-		},
-		[nav],
-	);
-	// The terminal panel where it is open (the workspace's tab), else below the chat.
-	const openTerminal = useCallback(
-		(terminalId: string) => {
-			const current = nav.route;
-			void nav.push(
-				current.workspace?.tab === "terminal"
-					? { ...current, workspace: { ...current.workspace, terminal: terminalId, startTerminal: undefined } }
-					: { ...current, terminal: terminalId, startTerminal: undefined },
-			);
 		},
 		[nav],
 	);
@@ -1694,35 +1680,33 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 										<OpenConversation.Provider value={openConversation}>
 											<OneShotAgents.Provider value={oneShots}>
 												<OpenWorkspaceFile.Provider value={canWrite ? openWorkspaceFile : undefined}>
-													<OpenTerminal.Provider value={owner ? openTerminal : undefined}>
-														<ReplyTo.Provider value={participant && canReply ? startReply : undefined}>
-															<BranchFrom.Provider value={branching}>
-																<RevealEntry.Provider value={reveal}>
-																	<FillGap.Provider value={fillGap}>
-																		<Messages
-																			transcript={shown}
-																			rows={rows}
-																			list={follow.list}
-																			range={follow.range}
-																			stopped={
-																				stopped?.sessionId === sessionId &&
-																				stopped?.conversationId === conversationId &&
-																				!view?.entries.some((entry) =>
-																					entry.model?.some(
-																						(message) =>
-																							message.role === "assistant" &&
-																							message.stopReason === "aborted",
-																					),
-																				)
-																			}
-																			earlier={earlier}
-																			onEarlier={() => void loadEarlier()}
-																		/>
-																	</FillGap.Provider>
-																</RevealEntry.Provider>
-															</BranchFrom.Provider>
-														</ReplyTo.Provider>
-													</OpenTerminal.Provider>
+													<ReplyTo.Provider value={participant && canReply ? startReply : undefined}>
+														<BranchFrom.Provider value={branching}>
+															<RevealEntry.Provider value={reveal}>
+																<FillGap.Provider value={fillGap}>
+																	<Messages
+																		transcript={shown}
+																		rows={rows}
+																		list={follow.list}
+																		range={follow.range}
+																		stopped={
+																			stopped?.sessionId === sessionId &&
+																			stopped?.conversationId === conversationId &&
+																			!view?.entries.some((entry) =>
+																				entry.model?.some(
+																					(message) =>
+																						message.role === "assistant" &&
+																						message.stopReason === "aborted",
+																				),
+																			)
+																		}
+																		earlier={earlier}
+																		onEarlier={() => void loadEarlier()}
+																	/>
+																</FillGap.Provider>
+															</RevealEntry.Provider>
+														</BranchFrom.Provider>
+													</ReplyTo.Provider>
 												</OpenWorkspaceFile.Provider>
 											</OneShotAgents.Provider>
 										</OpenConversation.Provider>
@@ -2053,8 +2037,6 @@ function Main() {
 					<div className="chat-view" ref={setView} />
 					<Dock frame={frame} dockRef={setDock} />
 				</div>
-				{/* Below the chat, per conversation (the bottom terminal panel). */}
-				{conversation && !ended && <Slot key={conversation} name="chat-bottom" />}
 			</ChatFrame.Provider>
 		</PageObjectsContext.Provider>
 	);

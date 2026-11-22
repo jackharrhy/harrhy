@@ -1,9 +1,9 @@
-// The right-hand panels each session had open on this device (the workspace, the terminal, the side panel), so a
+// The right-hand panels each session had open on this device (the workspace, the side panel), so a
 // session opens with its own panels instead of the ones the previous session had open.
 import type { Route, WorkspaceTab } from "./navigation.ts";
 
 /** The parts of a route that are a session's panels. */
-export type SessionPanels = Pick<Route, "workspace" | "terminal" | "panel" | "activity">;
+export type SessionPanels = Pick<Route, "workspace" | "panel" | "activity">;
 
 /** What is kept of a session's panels: the conversation they were open in decides whether an activity still applies. */
 type Kept = SessionPanels & { conversation: number };
@@ -33,16 +33,15 @@ export function rememberPanels(route: Route): void {
 /**
  * The panels `conversation` of `session` opens with: within the open session, the ones open now; another session's
  * as it last had them on this device (none if it never had any). Restoring never covers the chat: on phones, where
- * the workspace and the side panel take the screen, only the terminal below the chat comes back.
+ * the workspace and the side panel take the screen, nothing is restored over the chat.
  */
 export function panelsFor(current: Route, session: string, conversation: number): SessionPanels {
 	if (session === current.session) return panelsOf(current, conversation, current.conversation);
 	const kept = read().find(([each]) => each === session)?.[1];
 	if (!kept) return {};
-	const { workspace, terminal, panel, activity } = panelsOf(kept, conversation, kept.conversation);
+	const { workspace, panel, activity } = panelsOf(kept, conversation, kept.conversation);
 	return {
 		...(workspace && window.matchMedia(WORKSPACE_DOCKS).matches ? { workspace } : {}),
-		...(terminal !== undefined ? { terminal } : {}),
 		...(window.matchMedia(SIDE_PANEL_DOCKS).matches ? { panel, activity } : {}),
 	};
 }
@@ -54,22 +53,15 @@ const SIDE_PANEL_DOCKS = "(min-width: 700px)";
 
 /**
  * The panels of `from` (open in conversation `shown`) as `conversation` shows them: the workspace on the same tab at
- * its root (another conversation may work elsewhere), the same terminal, the same plugin panel, and a transcript
- * block's activity only in its own conversation. Requests to start a terminal never carry over.
+ * its root (another conversation may work elsewhere), the same plugin panel, and a transcript
+ * block's activity only in its own conversation.
  */
 function panelsOf(from: SessionPanels, conversation: number, shown: number): SessionPanels {
-	const { workspace, terminal, panel, activity } = from;
+	const { workspace, panel, activity } = from;
 	return {
 		...(workspace
-			? {
-					workspace: {
-						tab: workspace.tab,
-						directory: "",
-						...(workspace.tab === "terminal" && workspace.terminal ? { terminal: workspace.terminal } : {}),
-					},
-				}
+			? { workspace: { tab: workspace.tab, directory: "" } }
 			: {}),
-		...(terminal !== undefined ? { terminal } : {}),
 		...(panel !== undefined ? { panel } : {}),
 		...(activity && conversation === shown ? { activity } : {}),
 	};
@@ -91,29 +83,21 @@ function read(): [string, Kept][] {
 	}
 }
 
-const TABS: readonly string[] = ["files", "changes", "search", "comments", "terminal"];
+const TABS: readonly string[] = ["files", "changes", "search", "comments"];
 
 /** A stored entry's panels, each field kept only when it has this version's shape. */
 function keptOf(value: unknown): Kept | undefined {
 	if (typeof value !== "object" || value === null) return undefined;
-	const { conversation, workspace, terminal, panel, activity } = value as Record<string, unknown>;
+	const { conversation, workspace, panel, activity } = value as Record<string, unknown>;
 	if (typeof conversation !== "number") return undefined;
 	const tab = (workspace as { tab?: unknown } | null | undefined)?.tab;
-	const shell = (workspace as { terminal?: unknown } | null | undefined)?.terminal;
 	const row = (activity as { row?: unknown } | null | undefined)?.row;
 	const step = (activity as { step?: unknown } | null | undefined)?.step;
 	return {
 		conversation,
 		...(typeof tab === "string" && TABS.includes(tab)
-			? {
-					workspace: {
-						tab: tab as WorkspaceTab,
-						directory: "",
-						...(typeof shell === "string" ? { terminal: shell } : {}),
-					},
-				}
+			? { workspace: { tab: tab as WorkspaceTab, directory: "" } }
 			: {}),
-		...(typeof terminal === "string" ? { terminal } : {}),
 		...(typeof panel === "string" ? { panel } : {}),
 		...(typeof row === "string" ? { activity: { row, ...(typeof step === "string" ? { step } : {}) } } : {}),
 	};

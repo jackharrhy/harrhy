@@ -1,5 +1,5 @@
 // `/tree` in the browser (docs/tree.md, "Tree panel"): the top bar's button opening the tree panel in the side panel,
-// beside the terminal's and the workspace's, and the panel itself (TreePanel.tsx). The owner's only: the tree is.
+// beside the workspace's, and the panel itself (TreePanel.tsx). The owner's only: the tree is.
 import { contribute, defineFacet } from "@p2/app/v1";
 import { BranchIcon, closePanel, openPanel, Slots, useOwner, useRoute, useSidePanelShown } from "@p2/app/v1/web";
 import { TREE_PANEL, TreePanel } from "./TreePanel.tsx";

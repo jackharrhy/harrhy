@@ -1,5 +1,4 @@
-// A panel size the reader drags with a handle, kept per browser: the sidebar's and the right-hand panels' widths, the
-// terminal's height.
+// A panel size the reader drags with a handle, kept per browser: the sidebar's and the right-hand panels' widths.
 import { type CSSProperties, type PointerEvent as ReactPointerEvent, useCallback, useState } from "react";
 
 /** A dragged size: the style setting its CSS variable, and the handle's `pointerdown`. */

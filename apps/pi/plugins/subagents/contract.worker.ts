@@ -153,7 +153,7 @@ export function stillGiven(
 
 /**
  * The tools an agent of `kind` gets from a caller with tools `caller`: `names` among its choosable tools (default: all),
- * with code mode the caller's script-only tools (MCP tools, the terminal, `agent`, code mode's own), and for a
+ * with code mode the caller's script-only tools (MCP tools, `agent`, code mode's own), and for a
  * subagent the `scope: "subagent"` ones. Deferred tools stay deferred, except those in `load`. Text names the tools
  * `names` may not choose.
  */

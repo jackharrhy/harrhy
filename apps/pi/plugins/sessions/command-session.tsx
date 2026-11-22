@@ -1,4 +1,4 @@
-// What the command menu's session commands share, here and in other plugins (workspace, terminals, subagents): the
+// What the command menu's session commands share, here and in other plugins (workspace, subagents): the
 // session a command acts on, opening a panel in it, opening a conversation from a menu row, and the wrapper that hides
 // a command while its session is archived.
 import { keptIn } from "@p2/app/v1";
@@ -27,7 +27,7 @@ export const commandSession = (target: CommandTarget | undefined, route: Route):
 	target?.type === "session" ? target.id : route.session;
 
 /**
- * Opens a panel of `session` (the workspace, the terminal: `change` adds it to the route): on the current route when it
+ * Opens a panel of `session` (the workspace: `change` adds it to the route): on the current route when it
  * shows the session, else with the session's main conversation, in one step, so Back returns to where the reader was.
  * Unlike a layer over a conversation (`openLayerIn`: two steps), a panel is part of the session's route, as the panels
  * a session opens with are (`conversationRoute`).

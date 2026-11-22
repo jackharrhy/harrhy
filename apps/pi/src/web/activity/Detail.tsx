@@ -82,7 +82,7 @@ export const DetailProse = ({ text }: { text: string }) => (
 	</div>
 );
 
-/** A button below a detail that leads somewhere (a conversation, a terminal). */
+/** A button below a detail that leads somewhere (a conversation). */
 export const DetailLink = ({
 	children,
 	onClick,

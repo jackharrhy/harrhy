@@ -146,7 +146,7 @@ export function OwnerNotices() {
 			.map((log) => ({
 				id: `log:${log.id}:${log.time}`,
 				tone: isSuccessResult(log.message) ? ("success" as const) : ("error" as const),
-				message: `${log.source.startsWith("session:") ? "Worker" : log.source === "dev" ? "Dev supervisor" : log.source === "terminals" ? "Terminal host" : "Server"}: ${log.message}`,
+				message: `${log.source.startsWith("session:") ? "Worker" : log.source === "dev" ? "Dev supervisor" : "Server"}: ${log.message}`,
 				details: log.message,
 				actions: [
 					{ label: "Show logs", run: () => openLayer({ kind: "sheet", name: "logs", locator: log.source }) },

@@ -11,7 +11,7 @@ Every piece of state has exactly one owner: the host and object that is the auth
 from the server to a session (or back), write down for each field who enforces it.
 
 - **The host that enforces a fact owns it.** The server decides where a session runs (relocation fence, MCP placement,
-  where terminals open, which ports a session may forward) and whether a worker may start (archive). Those facts are
+  which ports a session may forward) and whether a worker may start (archive). Those facts are
   the server's, even if a copy also lives in the session.
 - **Content belongs to the session.** A title, the model and thinking level, the transcript: the session's worker owns
   them and reports them.

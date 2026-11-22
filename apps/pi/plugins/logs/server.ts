@@ -51,7 +51,7 @@ export default defineFacet((host) => {
 				const collect = (): void => {
 					if (active) return;
 					active = (async () => {
-						for (const source of ["terminals", "dev"]) {
+						for (const source of ["dev"]) {
 							const path = join(directory, `${source}.logs.json`);
 							try {
 								const info = await stat(path, { bigint: true });
