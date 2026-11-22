@@ -166,7 +166,7 @@ export class RemoteProcess {
   `apps/p2/plugins/terminals/main.ts` (the server opening its own pi-env connections per environment),
   `apps/p2/plugins/envs` (environment configuration, SSH options, host keys), `apps/p2/plugins/login` (provider OAuth
   with `remote: principal.access !== "local"`), `apps/p2/plugins/radius/relay-access.ts` (requests relayed through
-  Radius), `apps/p2/plugins/powershell/worker.ts` (a deferred tool offered per conversation), `apps/p2/src/runtime/principals.ts`
+  Radius), `apps/p2/src/runtime/principals.ts`
   (`OwnerPrincipal.access` is `"local" | "relay" | "device"`). After the port these files move or change; find their
   v2 equivalents.
 

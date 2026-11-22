@@ -154,7 +154,7 @@ through `durableRegistry` (`src/runtime/durable.ts:41`).
 
 | Part | Field | What | p2 users |
 | --- | --- | --- | --- |
-| Tools | `tools` (`defineTool`, `types.ts:293`) | `parameters`, `execute(args, api, ctx)` returning `output`/`structuredOutput`/`details`; `replay: "safe" \| "unsafe"` (rerun after a crash, `:298`); `callers: ["model" \| "tools"]` (`:317`); `structuredOutputSchema` (`:311`); `deferred` (`:322`); `executionMode`, `prepareArguments`, `outputLimits`; `api.executeTool` for nested calls (`:281`) | coding-tools, artifacts, send-file, ports, conversations, sessions, subagents, dev-tools, codemode, powershell; `agent` is `callers: ["tools"]`, replay-safe with a schema (`plugins/agent/tool.ts:53-57`) |
+| Tools | `tools` (`defineTool`, `types.ts:293`) | `parameters`, `execute(args, api, ctx)` returning `output`/`structuredOutput`/`details`; `replay: "safe" \| "unsafe"` (rerun after a crash, `:298`); `callers: ["model" \| "tools"]` (`:317`); `structuredOutputSchema` (`:311`); `deferred` (`:322`); `executionMode`, `prepareArguments`, `outputLimits`; `api.executeTool` for nested calls (`:281`) | coding-tools, artifacts, send-file, ports, conversations, sessions, subagents, dev-tools, codemode; `agent` is `callers: ["tools"]`, replay-safe with a schema (`plugins/agent/tool.ts:53-57`) |
 | Prompt | `sections` (`section(key, render, {tag})`, `types.ts:349`) | rendered before each request, in extension order | prompt (`plugins/prompt/worker.ts:185-191`), coding-tools, ports, conversations, dev-tools |
 | Hooks | `hooks: [hook(Task, handlers)]` | `GenerationTask`: `beforeRequest`, `afterResponse`, `onYield`, `afterTools` (`types.ts:757`); `ToolTask`: `beforeTool`, `afterTool` (`:778`); `CompactionTask`: `beforeCompact` (`:795`); handlers get `HookApi` (doc reads, memos, models, `:745`) | cache-warming (`afterResponse`; the request from `HarnessParts.requestOf(message)`, a read-only `ModelRequest`) |
 | Wraps | `wraps: [wrapTool(tool, fn) \| wrapSection(section, fn)]` (`types.ts:360`) | replace another extension's tool or section where selected | none yet |
@@ -181,7 +181,7 @@ that must survive reload reads live resources through getters (`plugins/codemode
 
 | Hook | Kind | What | Consulted | Used by |
 | --- | --- | --- | --- | --- |
-| `ExtensionSwitches` | registry: extension name → `Readable<boolean>` | `false` leaves that extension out of new snapshots | `src/runtime/durable.ts:31,43-93` | codemode (`codemode` setting), powershell (Windows), dev-tools (dev checkout) |
+| `ExtensionSwitches` | registry: extension name → `Readable<boolean>` | `false` leaves that extension out of new snapshots | `src/runtime/durable.ts:31,43-93` | codemode (`codemode` setting), dev-tools (dev checkout) |
 | `InputGates` | registry: name → `(ctx) => Promise` | awaited before any input is submitted | `plugins/chat/worker.ts:320,380,404`, `plugins/conversations/worker.ts:132` | prompt (first AGENTS.md load) |
 | `SendRouters` | registry (chat): name → `(RoutedSend, ctx) => {submissionId} \| undefined` | `Chat.send` asks each; untaken sends become `p2.input` | `plugins/chat/worker.ts:571` | chat-mode (`plugins/chat-mode/worker.ts:134`) |
 | `ReadOnlyConversations` | registry: name → `(conversation, ctx) => reason?` | refuses `Chat.send`/`dequeue`/`configure` | `plugins/chat/worker.ts:514` | subagents (one-shot agents) |
@@ -318,7 +318,7 @@ Prompt registers templates and skills (`plugins/prompt/tui.ts:87`).
 
 | Registry | Key → value | Order | Users |
 | --- | --- | --- | --- |
-| `TuiToolRenderers` | tool name → pi `ToolRenderers` (`renderCall`, `renderResult`, `renderShell`, p2's `nestedCalls`; `src/tui/tools/types.ts`) | — (without one: pi's generic card) | coding-tools, powershell, codemode, artifacts, ports, send-file, subagents, history |
+| `TuiToolRenderers` | tool name → pi `ToolRenderers` (`renderCall`, `renderResult`, `renderShell`, p2's `nestedCalls`; `src/tui/tools/types.ts`) | — (without one: pi's generic card) | coding-tools, codemode, artifacts, ports, send-file, subagents, history |
 | `TuiToolRendererResolvers` | `<order>:<plugin>` → `(toolName, next) => renderers` | key order, then the registry (`src/tui/tools/index.ts`); the registry's `nestedCalls` stays | quiet-tools (`10:`: one line per call, full content when expanded or failed) |
 | `TuiSettingFields` | `<plugin>.<name>` → `/settings` row (label, values, fallback), stored at `settings.plugins.<plugin>.<name>` of the visitor's prefs; read with `pluginSetting`; resolvers get the settings, a change redraws every card (`src/runtime/tui-preferences.ts`) | after the built-in rows, key order | quiet-tools |
 | `TuiEntryRenderers` | entry kind → `(entry, ctx) => Component \| undefined` (replaces the display; `undefined` hides) | — | core `p2.shell` (`src/tui/core-commands.ts:290`) |
