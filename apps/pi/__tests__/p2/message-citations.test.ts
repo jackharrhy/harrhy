@@ -22,9 +22,6 @@ it(
 		const chat = await holdIn(owner, Chat, { session: source, conversation: 1 }, "participant");
 		const text = "Exact  text\nwith whitespace and Unicode \u03bb.";
 		await chat.send({ text, requestId: "source" }, TEST);
-		const page = await chat.entries({ limit: 20 }, TEST);
-		const entry = page.items.find((item) => item.kind === "p2.input");
-		assert.ok(entry);
 		const guest = fixture.as({
 			kind: "guest",
 			id: "fixture-guest",
@@ -41,15 +38,9 @@ it(
 			},
 			TEST,
 		);
-		const deadline = Date.now() + 5000;
-		let claimed;
-		do {
-			claimed = (await chat.entries({ limit: 20 }, TEST)).items.find(
-				(item) => item.kind === "p2.input" && item.id !== entry.id,
-			);
-			if (!claimed) await new Promise((resolve) => setTimeout(resolve, 20));
-		} while (!claimed && Date.now() < deadline);
-		assert.ok(claimed);
+		const inputs = (view: typeof chat.view.value) => view?.entries.filter((item) => item.kind === "p2.input") ?? [];
+		const [entry, claimed] = inputs(await until(chat.view, (view) => inputs(view).length === 2));
+		assert.ok(entry && claimed);
 		const cite = {
 			session: source,
 			conversation: 1 as const,
@@ -109,6 +100,10 @@ it(
 		const receipt = await sender.send(args, TEST);
 		assert.deepEqual(await sender.send(args, TEST), receipt);
 		await assert.rejects(sender.send({ ...args, message: "Changed" }, TEST), /request conflicts/);
+		await chat.send({ text, requestId: "same-text-different-entry" }, TEST);
+		const [, , other] = inputs(await until(chat.view, (view) => inputs(view).length === 3));
+		assert.ok(other);
+		await assert.rejects(sender.send({ ...args, cite: { ...cite, entryId: other.id } }, TEST), /request conflicts/);
 		const verify = async (server: typeof fixture.server, session: string) =>
 			server.host.root(async (ctx) => {
 				const generation = (
@@ -138,8 +133,10 @@ it(
 			citation: null,
 		});
 		const verified = await verify(fixture.server, to);
-		assert.equal(verified.action, "citation");
-		assert.equal(verified.citation?.quote.text, text);
+		assert.deepEqual(verified, {
+			action: "citation",
+			citation: { id: receipt.id, cite, quote: { text, name: "Owner" }, destination: to },
+		});
 		await fixture.server.close();
 		const restarted = await startServer({
 			dataDir: fixture.dataDir,

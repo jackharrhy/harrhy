@@ -32,7 +32,7 @@ export default defineFacet((host) => {
 		return {
 			variant: "owner",
 			members: {
-				send: (args, ctx) => broker.attach({ session, ...args }, ctx),
+				send: (args, ctx) => broker.attach({ ...args, session }, ctx),
 			},
 		};
 	});
@@ -168,10 +168,8 @@ export default defineFacet((host) => {
 					{ generation, pid },
 					token,
 					async () => {
-						for (const [id, side] of [
-							[session, "source"],
-							[to, "destination"],
-						] as const) {
+						for (const id of sessions) {
+							const side = id === session ? "source" : "destination";
 							if ((await catalog.get({ id }, scope)).archivedAt !== null)
 								throw forbidden(`Citation ${side} session is archived`);
 							if (await shares.isShared({ session: id }, scope))

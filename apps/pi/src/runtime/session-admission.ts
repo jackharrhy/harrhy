@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { defineRegistry, defineState, local } from "@earendil-works/chord";
 import type { Context } from "@earendil-works/chord/context";
-import { int, obj, opt, type Static, str } from "@earendil-works/pi-schema";
+import { compile, int, obj, opt, type Static, str } from "@earendil-works/pi-schema";
 import { type FacetHost, forbidden, nativeOf, type Self, serveNative } from "./chord.ts";
 import { record } from "./schema.ts";
 
@@ -13,10 +13,17 @@ const Reservation = obj({
 	token: str(),
 });
 type Reservation = Static<typeof Reservation>;
+const ReservationState = obj({ sessions: record(Reservation) });
+const reservationState = compile(ReservationState);
 const Reservations = defineState("reservations", {
-	version: 1,
-	schema: obj({ sessions: record(Reservation) }),
+	version: 2,
+	schema: ReservationState,
 	initial: () => ({ sessions: {} }),
+	migrate: (old, from) => {
+		// Both shipped version-1 shapes are valid: older reservations have no group.
+		if (from === 1 && reservationState.check(old)) return old;
+		throw new Error(`Invalid persisted reservations version ${from}`);
+	},
 	persist: true,
 	checkpointWhen: () => true,
 });

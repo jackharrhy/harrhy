@@ -8,7 +8,7 @@ import {
 	LiveDoc,
 	section,
 } from "@earendil-works/pi-durable";
-import { bool, compile, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { bool, compile, equal, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import {
 	defineFacet,
 	expectVariant,
@@ -65,18 +65,6 @@ const PARAMETERS = obj(
 type ToolArgs = Static<typeof PARAMETERS>;
 
 const isCitation = compile(Citation).check;
-function sameCitation(previous: unknown, next: import("./contract.ts").MessageCitation): boolean {
-	return (
-		isCitation(previous) &&
-		previous.id === next.id &&
-		previous.destination === next.destination &&
-		previous.cite.session === next.cite.session &&
-		previous.cite.conversation === next.cite.conversation &&
-		previous.cite.entryId === next.cite.entryId &&
-		previous.quote.text === next.quote.text &&
-		previous.quote.name === next.quote.name
-	);
-}
 
 const ConversationTools = local("p2.conversation-tools", {
 	version: 1,
@@ -251,9 +239,8 @@ export default defineFacet((host) => {
 							if (existing) {
 								const entry = existing.entry && (await tx.entry(existing.entry));
 								const data = entry ? (entry.data as { text?: unknown; citation?: unknown }) : undefined;
-								return {
-									submissionId: data?.text === message && sameCitation(data.citation, citation) ? existing.id : null,
-								};
+								const matches = data?.text === message && isCitation(data.citation) && equal(data.citation, citation);
+								return { submissionId: matches ? existing.id : null };
 							}
 							// Do not leave a citation queued for placement after a sharing change.
 							if ((await tx.doc(LiveDoc, main.id)).run || (await tx.doc(InboxDoc, main.id)).items.length)
