@@ -140,7 +140,7 @@ export async function startFixture(
 		/** settings.json written into the data directory before the server starts (keys read at the start: `telemetry`). */
 		readonly settings?: Readonly<Record<string, unknown>>;
 		/** Install the checked-in integration directories into this fixture's actual user plugin root. */
-		readonly integrations?: readonly ("atlas-feedback" | "ingress")[];
+		readonly integrations?: readonly ("atlas-feedback" | "github-checks" | "ingress")[];
 	} = {},
 ): Promise<Fixture> {
 	const root = mkdtempSync(join(tmpdir(), "p2-test-"));
