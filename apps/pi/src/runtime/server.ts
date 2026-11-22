@@ -187,7 +187,7 @@ export type ServerParts = {
 	readonly telemetry?: TelemetryStore;
 	/**
 	 * The user plugin root (`<data>/plugins/`, plugins the owner or the agent writes) and its apply: builds the root's
-	 * changed plugins and rolls them out to the server and every worker, with the web and TUI bundles; per plugin what
+	 * changed plugins and rolls them out to the server, every worker and the pages; per plugin what
 	 * happened (`reload_plugins`, docs/agent-plugins.md).
 	 */
 	readonly plugins: {

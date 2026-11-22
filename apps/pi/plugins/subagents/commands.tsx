@@ -1,5 +1,5 @@
-// The command menu's conversation commands (the TUI's `/agents` and `/main`): Switch conversation…, Back to main
-// conversation, and a root search over the subagents' names.
+// The command menu's conversation commands: Switch conversation…, Back to main conversation, and a root search over
+// the subagents' names.
 import { keptIn } from "@p2/app/v1";
 import {
 	type Command,

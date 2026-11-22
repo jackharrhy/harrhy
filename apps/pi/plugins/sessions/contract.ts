@@ -349,7 +349,7 @@ const SessionsV6 = evolve(SessionsV5, (e) =>
 /**
  * Sessions as a principal sees them. The owner lists and manages all; a guest sees its own session; a worker sees
  * only its own session (its principal names it). The provider still serves 3, 4, 5 and 6 (its
- * `accepts`): pages and TUIs loaded before a deploy keep working. 7: a branch's `parent` (the sidebar's tree), in rows
+ * `accepts`): pages loaded before a deploy keep working. 7: a branch's `parent` (the sidebar's tree), in rows
  * and in `treeSelf`.
  *
  * The worker's `treeSelf`: the session's main conversation or its branches changed (a `/tree` switch or fork, a branch

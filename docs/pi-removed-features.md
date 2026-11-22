@@ -11,6 +11,7 @@ at that commit.
 | Voice | `16e22a10` | `plugins/voice`, `voice-server/` |
 | Discord | `16e22a10` | `plugins/discord` |
 | Telemetry panel | `16e22a10` | `plugins/telemetry` |
+| Terminal UI | `48c0ac80` | `src/tui`, `src/hosts/tui*`, `src/runtime/tui*`, `src/api/v1/tui.ts`, every plugin's `tui*.ts`, `plugins/quiet-tools`, `docs/p2-tui-port.md` |
 
 Paths are under `apps/pi/`.
 
@@ -61,3 +62,38 @@ The Traces pane in Settings and the agent's `telemetry_*` tools, which read what
 methods and model requests. Only the readers were removed. Recording is still in the server, the session workers and the
 owner's page, and is off unless `settings.json` has `"telemetry": true`; it writes `<data>/telemetry.sqlite`, which
 nothing reads now.
+
+## Terminal UI
+
+A terminal client with the same capabilities as the web interface, started with
+`node --import ./src/source.ts ./src/hosts/tui.ts` (`--session <id>` opened one session). About 20,000 lines.
+
+- The launcher (`src/hosts/tui*.ts`) was the only trusted part. It signed in with the host's owner key, an owner link
+  or a share link (as a named guest) and kept the cookie. The interface itself was one bundle the server built from the
+  plugins and served at `/__p2_tui`, run in a worker thread that saw only Chord frames. Clipboard, opening URLs,
+  downloads, the external editor and sign-out were launcher "grants", confirmed on a consent screen the launcher drew.
+- The runtime (`src/runtime/tui*.ts`, `src/tui/`) had a session picker, a conversation view with pi's editor,
+  transcript and tool cards, overlay lists, and one command registry behind key bindings, slash commands and the
+  palette, with a `when` condition per command. Themes were derived from the terminal's own colours; key bindings and
+  settings were per visitor. Mermaid code blocks were drawn as Unicode diagrams (`grok-mermaid`).
+- `tui` was a plugin facet kind beside `server`, `worker` and `web`: a plugin's `tui.ts` drew in the terminal as its
+  `web.tsx` does in the page. 25 plugins had one, for sharing, files and downloads, the tree, models, provider login,
+  MCP, environments, logs, the workspace, subagents, artifacts and more.
+
+The design is in `docs/p2-tui-port.md` at that commit. Its sections 8 and 10.8 also describe `@` file completion,
+`!cmd` shell entries, skills and prompt templates, and fork and clone, which the web still has. There is a lot of
+reusable machinery in the removed code: the command registry, the sandboxed bundle with launcher grants, the theme
+derivation and the Mermaid renderer stand on their own.
+
+Worth keeping in mind:
+
+- Goal mode's `/goal` command was in the terminal UI and nothing else starts a goal. The `goal` plugin and its
+  contract are still there ([goal mode](../apps/pi/docs/goal-mode.md)); it needs a web control to be usable again.
+- The `quiet-tools` plugin (one line per tool call), the per-visitor preferences served from `<data>/tui.json`, the
+  `SentFiles` text preview of the session worker and the Settings row for the model cycling scope existed only for the
+  terminal and went with it.
+- Still in the tree: the `@earendil-works/pi-tui` library (`compat/packages/tui`; `@` file completion ranks with its
+  `fuzzyMatch`), Chord's own `tui` modules, and the `enabledModels` setting with the `Models` contract's scope
+  members, which nothing reads now.
+- Left on a machine that ran it, read by nothing now: the launcher's `~/.pi/p2-tui/` (preferences and saved sign-in
+  cookies) and `<data>/tui.json`.

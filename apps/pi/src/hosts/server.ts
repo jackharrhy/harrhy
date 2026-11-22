@@ -4,7 +4,7 @@ import { chmodSync, mkdirSync } from "node:fs";
 import { realpath } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { homedir } from "node:os";
-import { join, relative, resolve, sep } from "node:path";
+import { join, relative, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { isChordError, localeChoiceFacet, type PluginFacet, webSocketLink } from "@earendil-works/chord";
 import { filesFacet } from "@earendil-works/chord/app/files";
@@ -17,7 +17,7 @@ import { WebSocketServer } from "ws";
 import { backupConfigured } from "../runtime/backup.ts";
 import { type Ctx, createHost, type Host, type HostError, hostErrorText, Server, Session } from "../runtime/chord.ts";
 import { envDefaultModel } from "../runtime/default-model.ts";
-import { type DevCommand, type DevResult, parseDevCommand } from "../runtime/dev-protocol.ts";
+import { type DevCommand, type DevModule, type DevResult, parseDevCommand } from "../runtime/dev-protocol.ts";
 import { configureFetch } from "../runtime/fetch.ts";
 import {
 	assertMigrated,
@@ -51,7 +51,6 @@ import {
 import { readTelemetrySetting } from "../runtime/settings.ts";
 import { isLinkClient, STALE_PAGE_CODE, STALE_PAGE_REASON } from "../runtime/stale-page.ts";
 import { WorkerBoundary, type WorkerInit } from "../runtime/worker.ts";
-import { type BundleInput, buildTuiBundle, type TuiBundle, tuiManifest } from "./bundles.ts";
 import { devControl } from "./dev.ts";
 import { readDevCommand, sendDevCommand, serveDevChannel } from "./dev-channel.ts";
 import { LoadedModules, loadedModuleHashes, loadedPluginFiles } from "./dev-modules.ts";
@@ -75,7 +74,6 @@ import {
 } from "./principals.ts";
 import { SessionWorkers } from "./session-workers.ts";
 import { limitedSocket, MAX_CLIENT_FRAME } from "./socket-limits.ts";
-import { tuiPreferencesFacet } from "./tui-preferences.ts";
 import { WEB_ENTRY, WEB_RESOLUTION } from "./web/base.ts";
 import { createWeb, isAppPage, isPublicFile } from "./web.ts";
 
@@ -90,8 +88,6 @@ export type ServerOptions = {
 	readonly fake?: boolean;
 	/** Serve the web UI (default true). */
 	readonly web?: boolean;
-	/** Server-side TUI source directory override for disposable test facets. Never sent to the launcher. */
-	readonly tuiDirectory?: string;
 	/** Mark backend/runtime changes dirty and enable explicit dev controls (default P2_DEV=1). */
 	readonly dev?: boolean;
 	/** Idle time before a session worker stops (default 5 minutes). */
@@ -338,48 +334,17 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	);
 	// Capture before plugin resources open (e.g. provider SDK startup), not only after the logs facet activates.
 	const stopLogs = captureProcessLogs("server");
-	/** Source files of the last built bundles, by bundle (dev watcher: which plugin saves affect downloaded code). */
-	const bundleInputs = new Map<"tui" | "web", readonly string[]>();
 	/**
-	 * Records a bundle's source files. Plugin files mark their plugin dirty when saved (`loadedFiles` below); in dev mode
-	 * the others (browser and TUI runtime code) are compared by content like the server's own modules, so a save asks
-	 * for a restart, or the next reload, which rebuilds both bundles.
+	 * Records the web bundle's source files. Plugin files mark their plugin dirty when saved (`loadedFiles` below); in
+	 * dev mode the others (browser runtime code) are compared by content like the server's own modules, so a save asks
+	 * for a restart.
 	 */
-	const recordInputs = (bundle: "tui" | "web", inputs: readonly BundleInput[]): void => {
-		bundleInputs.set(
-			bundle,
-			inputs.map(({ file }) => file),
-		);
-		if (!devModules) return;
-		const plugin = (file: string) =>
-			file.startsWith(PLUGINS_DIRECTORY) ||
-			file.startsWith(userRoot) ||
-			(options.tuiDirectory !== undefined && file.startsWith(options.tuiDirectory));
-		devModules.set(
-			`${bundle}-bundle`,
+	const recordWebInputs = (inputs: readonly DevModule[]): void => {
+		const plugin = (file: string) => file.startsWith(PLUGINS_DIRECTORY) || file.startsWith(userRoot);
+		devModules?.set(
+			"web-bundle",
 			inputs.filter(({ file }) => !plugin(file)),
 		);
-	};
-	/** Records a built bundle only once it is current (after a successful reload commit). */
-	const adoptTui = (bundle: TuiBundle): void => recordInputs("tui", bundle.inputs);
-	// The TUI bundle builds once, on first use, and again only when a plugin reload commits. A late lazy build may not
-	// overwrite the input baseline installed by a newer reload.
-	let tuiBundle: Promise<TuiBundle> | undefined;
-	const getTuiBundle = (): Promise<TuiBundle> => {
-		if (tuiBundle) return tuiBundle;
-		let current!: Promise<TuiBundle>;
-		current = buildTuiBundle(plugins, options.tuiDirectory ?? roots).then(
-			(bundle) => {
-				if (tuiBundle === current) adoptTui(bundle);
-				return bundle;
-			},
-			(error: unknown) => {
-				if (tuiBundle === current) tuiBundle = undefined;
-				throw error;
-			},
-		);
-		tuiBundle = current;
-		return current;
 	};
 	const stopDevEvents = dev
 		? workers.subscribe(({ session, running, generation, pid }) =>
@@ -420,7 +385,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 							(id) => guestUpgrades.revoke(id),
 						),
 					},
-					{ name: "@p2/tui-preferences", facet: tuiPreferencesFacet(dataDir) },
 					// The server's files (the kit's `Files`): `<data>/server/files/`.
 					{ name: "chord.app.files", facet: filesFacet(hostFiles(serverDirectory(dataDir))) },
 					// The pages' code, and the user's locale pick that a page's language follows (Chord's page holds it).
@@ -467,9 +431,9 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 
 	let reloading = false;
 	/**
-	 * Builds `requested` (and plugins added since), web facets included, then the TUI bundle of the new selection, then
-	 * rolls the build out to the server, every running worker and the pages (the web surface), and adopts the TUI bundle.
-	 * Stops before the rollout at the first failed build (a facet's, or the TUI bundle's): nothing changes then.
+	 * Builds `requested` (and plugins added since), web facets included, then rolls the build out to the server, every
+	 * running worker and the pages (the web surface). Stops before the rollout when a facet's build failed: nothing
+	 * changes then.
 	 */
 	const rebuild = async (requested: readonly string[]): Promise<Rebuilt> => {
 		const built = await chordPlugins.build(requested, BACKGROUND_CONTEXT);
@@ -479,14 +443,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 		if (failed.length) return { kind: "failed", failed };
 		const next = currentSelection();
 		processLogs.append("server", "event", `Reloading plugins: ${requested.join(", ")}`);
-		// Prepare the TUI's downloaded code before the backend commit; publish only a successfully committed selection.
 		// Web facets are among `built`: the web surface's step publishes them to pages after the server and workers.
-		let nextTuiBundle: TuiBundle;
-		try {
-			nextTuiBundle = await buildTuiBundle(next, options.tuiDirectory ?? roots);
-		} catch (error) {
-			return { kind: "failed", failed: bundleFailures(error, roots) };
-		}
 		const result = await chordPlugins.rollout(
 			[
 				chordPlugins.step("server", host),
@@ -497,8 +454,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 			BACKGROUND_CONTEXT,
 		);
 		plugins = next;
-		tuiBundle = Promise.resolve(nextTuiBundle);
-		adoptTui(nextTuiBundle);
 		const changed = [...new Set(built.facets.map((facet) => facet.plugin))].sort();
 		for (const notice of processLogs.notices())
 			if (notice.source === "server" && notice.message.startsWith("Reload refused:"))
@@ -508,8 +463,8 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	};
 	/**
 	 * Builds `requested` (and plugins added since), then rolls them out to the server, every running worker and the
-	 * pages; the TUI bundle is rebuilt first (a failed build keeps the old code and bundles). A plugin whose build or
-	 * evaluation fails keeps its old code (an added one stays out), reported in the result.
+	 * pages. A plugin whose build or evaluation fails keeps its old code (an added one stays out), reported in the
+	 * result.
 	 */
 	const performReload = async (
 		requested: readonly string[],
@@ -730,7 +685,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	 * port, whose cookies SameSite does not separate) gets no principal from any credential: no fetch, module, upload
 	 * or WebSocket of a foreign page can read or drive p2 with the owner's or a guest's cookie. Only a top-level
 	 * navigation to an app page authenticates, so links into p2 open it normally. Requests without Fetch Metadata
-	 * (the TUI, scripts) are unaffected.
+	 * (scripts) are unaffected.
 	 */
 	const resolveAccess = async (request: IncomingMessage, ctx: Ctx): Promise<RequestAccess | undefined> => {
 		const access = await credentialAccess(request, ctx);
@@ -798,31 +753,6 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 					}
 					return;
 				}
-				if (path === "/__p2_tui" || /^\/__p2_tui\/[a-f0-9]{64}\.mjs$/.test(path)) {
-					if (
-						(isOwner(principal) || isGuest(principal)) &&
-						(request.method === "GET" || request.method === "HEAD")
-					) {
-						const bundle = await getTuiBundle();
-						const tui = tuiManifest(bundle);
-						if (path !== "/__p2_tui" && path !== tui.bundle) {
-							response.writeHead(404);
-							response.end();
-							return;
-						}
-						const manifest = path === "/__p2_tui";
-						response.writeHead(200, {
-							"Content-Type": manifest ? "application/json" : "text/javascript; charset=utf-8",
-						});
-						response.end(request.method === "HEAD" ? undefined : manifest ? JSON.stringify(tui) : bundle.source);
-						return;
-					}
-					if (isGuest(principal)) {
-						response.writeHead(403);
-						response.end();
-					} else signIn(request, response, 401);
-					return;
-				}
 				const route = findRoute((await host.registry(Routes, ctx)).value, request.method ?? "GET", path);
 				if (route !== undefined) return route(request, response, { principal, origin }, ctx);
 				// An owner loading the app may get renewed cookies (a local session in use does not expire).
@@ -864,7 +794,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	};
 	/**
 	 * A page's link from code other than the current: its `web` query names another base bundle, or it names neither a
-	 * base nor a client (`client`: the TUI, scripts), a page from before pages named their base
+	 * base nor a client (`client`: scripts), a page from before pages named their base
 	 * (src/runtime/stale-page.ts). Without the web surface no page is served here and none is asked.
 	 */
 	const stalePage = async (request: IncomingMessage): Promise<StalePage | undefined> => {
@@ -904,8 +834,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	// web's base code (a save of one asks for a restart in dev mode).
 	void surface?.build().then((built) => {
 		if (built.kind === "built")
-			recordInputs(
-				"web",
+			recordWebInputs(
 				// Packages change by an install, which restarts anyway (the old bundle recorded none either).
 				[...built.inputs].flatMap(([file, hash]) => (file.includes("/node_modules/") ? [] : [{ file, hash }])),
 			);
@@ -962,29 +891,6 @@ type Rebuilt =
 			readonly result: RolloutResult;
 			readonly changed: readonly string[];
 	  };
-
-/** A bundle build's failure as failed facets: esbuild's errors with their files and lines, by plugin where it can tell. */
-function bundleFailures(
-	error: unknown,
-	roots: readonly string[],
-): { plugin: string; kind: string; errors: string[] }[] {
-	// esbuild's build failure (its `errors`); anything else is one message.
-	const messages = (
-		error as { errors?: { text: string; location?: { file: string; line: number; column: number } | null }[] }
-	).errors;
-	if (!Array.isArray(messages)) return [{ plugin: "bundle", kind: "web", errors: [errorText(error)] }];
-	const byPlugin = new Map<string, string[]>();
-	for (const { text, location } of messages) {
-		const file = location ? resolve(APP, location.file) : undefined;
-		const root = roots.find((each) => file?.startsWith(`${each}${sep}`));
-		// A plugin's file is named from its root (`counter/web.tsx`), as the plugin tools name it.
-		const path = file && root ? relative(root, file) : location?.file;
-		const plugin = path && root ? (path.split(sep)[0] ?? "bundle") : "bundle";
-		const where = location ? `${path}:${location.line}:${location.column}: ` : "";
-		byPlugin.set(plugin, [...(byPlugin.get(plugin) ?? []), `${where}${text}`]);
-	}
-	return [...byPlugin].map(([plugin, errors]) => ({ plugin, kind: "web", errors }));
-}
 
 /** An error's message. */
 const errorText = (error: unknown): string => (error instanceof Error ? error.message : String(error));

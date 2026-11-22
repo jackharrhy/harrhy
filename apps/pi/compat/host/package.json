@@ -23,7 +23,6 @@
     "cron-parser": "5.10.5",
     "diff": "8.0.4",
     "esbuild": "0.28.2",
-    "grok-mermaid": "0.2.3",
     "lowlight": "3.3.0",
     "marked": "18.0.14",
     "proper-lockfile": "4.1.2",

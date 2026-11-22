@@ -40,7 +40,7 @@ export const FileIndexCache = local("p2.file-index-cache", {
 });
 
 /**
- * `@` and Tab file completion (p2-tui-port.md section 8.3): the session directory's files and directories, ranked
+ * `@` and Tab file completion: the session directory's files and directories, ranked
  * like pi's `@` completion. Cwd-relative only, the workspace's confinement and private-path exclusion; participants
  * only (holding it leases the workspace watch). `changes` advances when files change: clients query again.
  */

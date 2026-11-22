@@ -68,10 +68,6 @@
       "@earendil-works/chord/react": [
         "./compat/packages/chord/src/react/index.ts"
       ],
-      "@earendil-works/chord/tui": ["./compat/packages/chord/src/tui/index.ts"],
-      "@earendil-works/chord/tui/launcher": [
-        "./compat/packages/chord/src/node/tui/index.ts"
-      ],
       "@earendil-works/chord/sync": [
         "./compat/packages/chord/src/sync/index.ts"
       ],

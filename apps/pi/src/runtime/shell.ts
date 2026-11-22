@@ -1,4 +1,4 @@
-// User shell commands (`!cmd`, `!!cmd`; p2-tui-port.md section 10.8) as Durable entries (browser-safe). A finished
+// User shell commands (`!cmd`, `!!cmd`) as Durable entries (browser-safe). A finished
 // command is placed as a `p2.shell` entry through a write submission: it never starts a run. With `includeInContext`
 // (`!`) the entry also carries a user model message, pi's `bashExecutionToText`, so the agent sees it on its next run;
 // `!!` entries are display-only. The data never has a `text` field, so readers never take it for a person's message.

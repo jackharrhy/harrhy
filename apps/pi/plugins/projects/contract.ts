@@ -1,6 +1,6 @@
 // Projects: the owner's groupings of sessions, each with its places (where its sessions start, the first one by default;
 // `/move` goes to another machine's), in the owner's order; which project each session belongs to; and the helpers that
-// find a project's place on a machine and a directory's subpath below a place. Browser-safe: the sessions TUI uses them.
+// find a project's place on a machine and a directory's subpath below a place. Browser-safe.
 import { arr, nul, num, obj, type Static, str, union } from "@earendil-works/pi-schema";
 import { evolve, LOCAL, local, method, record, remote, serverHost } from "@p2/app/v1";
 
@@ -107,9 +107,6 @@ export const Projects = evolve(ProjectsV2, (e) =>
 		.addMethod("owner", "restore", NameOnly, nul())
 		.addMethod("owner", "remove", NameOnly, nul()),
 );
-
-/** How a place's machine reads: its environment's name, or this device's label. */
-export const placeLabel = (place: ProjectPlace, localLabel: string): string => place.env ?? localLabel;
 
 /**
  * Where the absolute `path` sits below the place path `root`, from the text alone: the rest below it ("" at the root;

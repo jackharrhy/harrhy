@@ -1,8 +1,7 @@
 // p2's plugins on Chord v2's plugin component: plugin directories under plugins/, each facet of kind `server`,
 // `worker` or `web` built on its own against p2's plugin API (`@p2/app/v1`) and the packages a facet shares with its
 // host: server and worker facets evaluated with this process's instances of them (host-packages.ts), web facets served
-// to pages by Chord's web surface (server.ts) and evaluated there with the page's (src/hosts/web/main.tsx). TUI facets
-// stay in p2's own bundle (bundles.ts).
+// to pages by Chord's web surface (server.ts) and evaluated there with the page's (src/hosts/web/main.tsx).
 
 import { cpSync, existsSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -19,7 +18,7 @@ import { SHARED_PACKAGES, WORKER_PACKAGES } from "./host-packages.ts";
 import { WEB_PACKAGES } from "./web/packages.ts";
 
 export type PluginName = string;
-export type FacetKind = "server" | "worker" | "web" | "tui";
+type FacetKind = "server" | "worker" | "web";
 /** Facet files of one plugin (absolute paths). */
 export type PluginFacets = Readonly<Partial<Record<FacetKind, string>>>;
 export type PluginListing = ReadonlyMap<PluginName, PluginFacets>;
@@ -27,7 +26,7 @@ export type PluginListing = ReadonlyMap<PluginName, PluginFacets>;
 export const PLUGINS_DIRECTORY = fileURLToPath(new URL("../../plugins/", import.meta.url));
 /** p2's base code: a change asks for a restart (`plugins.state.base`). */
 export const BASE_DIRECTORY = fileURLToPath(new URL("../", import.meta.url));
-const FACET_KINDS = ["server", "worker", "web", "tui"] as const;
+const FACET_KINDS = ["server", "worker", "web"] as const;
 
 /** Where pages load web facets' assets from (the web surface's). */
 export const WEB_ASSETS = `${WEB_PREFIX}assets/`;
@@ -131,7 +130,7 @@ function selectedCopy(selection: readonly string[]): string {
 		filter: (path) => {
 			const [name, file, ...rest] = path.slice(PLUGINS_DIRECTORY.length).split("/");
 			if (name === undefined || selection.includes(name) || rest.length || file === undefined) return true;
-			return !/^(server|worker|web|tui)\.tsx?$/.test(file);
+			return !/^(server|worker|web)\.tsx?$/.test(file);
 		},
 	});
 	return directory;

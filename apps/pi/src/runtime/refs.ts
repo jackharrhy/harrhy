@@ -1,4 +1,4 @@
-// References as p2's UIs (the TUI, the web) hold them: following a value with its current one first, waiting until a
+// References as p2's UIs hold them: following a value with its current one first, waiting until a
 // reference is live, and releasing a held reference a little later so that coming back to it is instant.
 
 import type { Contract, Held, RefState, Registry, RegistryValue } from "@earendil-works/chord";
@@ -183,7 +183,7 @@ export class Lingering {
 			return;
 		}
 		const timer = setTimeout(() => this.#now(ref), delay);
-		// A lingering reference never keeps a process alive (a TUI exiting, a test ending).
+		// A lingering reference never keeps a process alive (a test ending).
 		(timer as { unref?: () => void }).unref?.();
 		this.#waiting.set(ref, timer);
 		if (this.#waiting.size > this.#cap) this.#now(this.#waiting.keys().next().value as HeldRef);

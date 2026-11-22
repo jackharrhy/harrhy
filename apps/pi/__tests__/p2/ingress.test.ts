@@ -52,8 +52,8 @@ describe("external ingress", () => {
 	it("requires a dedicated token, rejects cookies, retargeting and remote requests", async () => {
 		assert.equal((await fixture.http(path, { method: "POST", body: "{}" })).status, 401);
 		assert.equal(
-			(await http(fixture.server.port, "/__p2_tui", { headers: { Authorization: `Bearer ${token}` } })).status,
-			401,
+			(await http(fixture.server.port, "/__p2_dev", { headers: { Authorization: `Bearer ${token}` } })).status,
+			403,
 		);
 		assert.equal(
 			(await http(fixture.server.port, path, { method: "POST", headers: { Authorization: "Bearer wrong" } })).status,

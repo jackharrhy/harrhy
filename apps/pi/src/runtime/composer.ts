@@ -1,4 +1,4 @@
-// Composer text expanders (p2-tui-port.md 10.8): the web composer asks them, in key order, for the text to send
+// Composer text expanders: the web composer asks them, in key order, for the text to send
 // (the prompt plugin expands `/template` and `/skill:` on the session worker). Plain TypeScript, so tests import it.
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import type { Host } from "./chord.ts";

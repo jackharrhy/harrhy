@@ -6,18 +6,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { it } from "node:test";
 import { fileURLToPath } from "node:url";
-import { TuiAltScreen } from "@earendil-works/pi-tui";
 import { BACKGROUND_CONTEXT as TEST } from "@p2/app/v1";
-import { VirtualTerminal } from "../fixtures/goal/virtual-terminal.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
-import chatTui from "../../plugins/chat/tui.ts";
 import { Goal } from "../../plugins/goal/contract.ts";
-import goalTui from "../../plugins/goal/tui.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
 import { Sharing } from "../../plugins/sharing/contract.ts";
 import { startServer } from "../../src/hosts/server.ts";
-import { TuiRuntime } from "../../src/runtime/tui.ts";
-import { tuiCoreFacet } from "../../src/tui/core-commands.ts";
 import { clientHost, holdIn, localOwner, poll, startFixture, until } from "./helpers.ts";
 
 async function startWithStaleProbe(t: { after(fn: () => unknown): void }) {
@@ -169,7 +163,7 @@ it("preserves a busy-paused goal across restart and requires explicit resume", {
 	}
 });
 
-it("runs two native steps from a typed TUI command and reports completion", { timeout: 25000 }, async (t) => {
+it("runs two native steps and reports completion", { timeout: 25000 }, async (t) => {
 	const fixture = await startFixture();
 	const rounds: number[] = [];
 	const shareStep = Promise.withResolvers<void>();
@@ -210,14 +204,7 @@ it("runs two native steps from a typed TUI command and reports completion", { ti
 		res.end("data: [DONE]\n\n");
 	});
 	const model = await localProvider(t, fixture.dataDir, provider);
-	const owner = fixture.browser([
-		{ name: "tui-core", facet: tuiCoreFacet },
-		{ name: "tui-chat", facet: chatTui },
-		{ name: "tui-goal", facet: goalTui },
-	]);
-	const terminal = new VirtualTerminal(100, 24);
-	const tui = new TuiAltScreen(terminal);
-	const runtime = new TuiRuntime(owner, tui);
+	const owner = fixture.browser();
 	try {
 		const sessions = await holdIn(owner, Sessions, {}, "owner");
 		const { id: session } = await sessions.create({ cwd: fixture.workspace }, TEST);
@@ -225,31 +212,13 @@ it("runs two native steps from a typed TUI command and reports completion", { ti
 		const chat = await holdIn(owner, Chat, { session, ...target }, "participant");
 		await chat.configure({ model }, TEST);
 		const goal = await holdIn(owner, Goal, { session }, "owner");
-		runtime.connected = true;
-		runtime.role = "owner";
-		runtime.session = session;
-		runtime.screen = "chat";
-		await runtime.start();
-		tui.setLayoutRoot(runtime.root);
-		tui.setFocus(runtime);
-		tui.start();
-		for (const key of "/goal start 3 Compare UI layouts\r") terminal.sendInput(key);
-		await poll(
-			async () => (await goal.status(target, TEST))?.phase === "reported-complete",
-			10000,
-			"TUI goal report",
-		);
+		await goal.start({ ...target, objective: "Compare UI layouts", limit: 3 }, TEST);
+		await poll(async () => (await goal.status(target, TEST))?.phase === "reported-complete", 10000, "goal report");
 		const result = await goal.status(target, TEST);
 		assert.equal(result?.steps, 2);
 		assert.equal(result.evidence, "both layouts checked");
 		assert.ok(result.submission && result.answer);
 		assert.deepEqual(rounds, [1, 2]);
-		for (const key of "/goal status\r") terminal.sendInput(key);
-		await poll(
-			async () => (await terminal.flushAndGetViewport()).join("\n").includes("reported-complete"),
-			3000,
-			"TUI status notice",
-		);
 		await goal.start({ ...target, objective: "Block while paused", limit: 3 }, TEST);
 		await poll(() => rounds.length === 3, 5000, "blocked step admitted");
 		await blockStep.promise;
@@ -274,8 +243,6 @@ it("runs two native steps from a typed TUI command and reports completion", { ti
 	} finally {
 		finishShareStep.resolve();
 		finishBlockStep.resolve();
-		tui.stop();
-		runtime.dispose();
 		await fixture.close();
 	}
 });

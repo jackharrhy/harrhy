@@ -1,5 +1,5 @@
 // How chat entries add to the transcript's display of people's messages (the shared `TranscriptEntries` registry):
-// a reply's quoted line and a mention's note. Pure; used by the web and the TUI facets.
+// a reply's quoted line and a mention's note. Pure.
 import type { EntryDisplay } from "../chat/contract.ts";
 import { CHAT_ENTRY, chatMessage, MENTION_ENTRY, mention, type ReplyTo } from "./contract.ts";
 

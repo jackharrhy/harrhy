@@ -1,4 +1,4 @@
-// How a message that carried view context shows in the transcript (web and TUI): the person's text as always, with a
+// How a message that carried view context shows in the transcript: the person's text as always, with a
 // note of what came along.
 import type { EntryDisplay } from "../chat/contract.ts";
 
