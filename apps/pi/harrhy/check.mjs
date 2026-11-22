@@ -39,6 +39,7 @@ sandbox([
   "__tests__/p2/sharing-db.test.ts",
   "__tests__/p2/ingress.test.ts",
   "__tests__/p2/atlas-feedback.test.ts",
+  "__tests__/p2/github-checks.test.ts",
   "__tests__/p2/projects-reopen.test.ts",
   "__tests__/p2/repositories.test.ts",
   "__tests__/p2/work-context-previews.test.ts",

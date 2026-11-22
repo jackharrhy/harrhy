@@ -1,0 +1,5 @@
+{
+	"name": "github-checks",
+	"private": true,
+	"type": "module"
+}
