@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { hostname } from "node:os";
 import {
 	awaitWithContext,
@@ -6,23 +6,40 @@ import {
 	defineFacet,
 	forbidden,
 	isChordError,
+	isOwner,
 	isWorker,
 	LOCAL,
 	nativeOf,
 	signalOf,
+	withoutAbortSignal,
 } from "@p2/app/v1";
-import { Hosts } from "@p2/app/v1/server";
+import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { ModelResources } from "../models/contract.ts";
 import { ProjectService, placeOn } from "../projects/contract.ts";
 import { Catalog, isThinkingLevel, type Session, SessionOperations } from "../sessions/contract.ts";
+import { Shares } from "../sharing/contract.ts";
 import { StatusStore } from "../status/contract.ts";
-import { ConversationBroker, Conversations, PeerConversation, type Query } from "./contract.ts";
+import { CitationSend, ConversationBroker, Conversations, PeerConversation, type Query } from "./contract.ts";
 
 // The server's side of peer conversations: the broker between session workers (a local object, so its references act
 // as the server, whom `PeerConversation` serves), and the workers' view of it, fenced by worker generation.
 export default defineFacet((host) => {
+	host.serve(CitationSend, ({ session }, principal, self) => {
+		if (!isOwner(principal)) throw forbidden("Only the owner can attach a citation");
+		const broker = self.get(ConversationBroker, {});
+		return {
+			variant: "owner",
+			members: {
+				send: (args, ctx) => broker.attach({ session, ...args }, ctx),
+			},
+		};
+	});
+
 	host.serve(ConversationBroker, (_params, self) => {
 		const catalog = self.get(Catalog, {});
+		const hosts = self.get(Hosts, {});
+		const shares = self.get(Shares, {});
+		const admission = sessionAdmissionOf(self);
 		const statuses = self.get(StatusStore, {});
 		const operations = self.get(SessionOperations, {});
 		const projects = self.get(ProjectService, {});
@@ -53,8 +70,7 @@ export default defineFacet((host) => {
 			} catch (error) {
 				// The worker went away under the reference (killed, stopped idle, paused): retry once with a fresh reference.
 				// The worker deduplicates a send by its request ID, so a send that did arrive is not repeated.
-				if (signalOf(ctx).aborted || !(isChordError(error, "unavailable") || isChordError(error, "gone")))
-					throw error;
+				if (signalOf(ctx).aborted || !(isChordError(error, "unavailable") || isChordError(error, "gone"))) throw error;
 				result = await attempt();
 			}
 			if (await archived()) throw forbidden("Conversation is archived; the action may already have taken effect");
@@ -82,7 +98,10 @@ export default defineFacet((host) => {
 				};
 			const slash = named.indexOf("/");
 			if (slash <= 0) throw new Error("model must be 'provider/modelId'");
-			const model = { provider: named.slice(0, slash), modelId: named.slice(slash + 1) };
+			const model = {
+				provider: named.slice(0, slash),
+				modelId: named.slice(slash + 1),
+			};
 			const available = await resources().resources.models.getAvailable(model.provider);
 			if (!available.some((each) => each.id === model.modelId))
 				throw new Error(`${named} is not a signed-in model; leave model out to use yours`);
@@ -116,6 +135,53 @@ export default defineFacet((host) => {
 		};
 
 		return {
+			attach: async ({ session, cite, to, message, requestId }, ctx) => {
+				if (cite.session !== session || session === to || !message.trim()) throw forbidden("Citation unavailable");
+				const source = await holdPeer(session, ctx);
+				const quote = await source.quote(cite, ctx);
+				if (!quote) throw forbidden("Citation unavailable");
+				const destination = await holdPeer(to, ctx);
+				const worker = hosts.workers.value[to];
+				if (!worker?.running || !worker.pid) throw forbidden("Citation unavailable");
+				const { generation, pid } = worker;
+				// Complete the fenced admission independently of the owner's connection. If the
+				// worker RPC fails ambiguously, retain both reservations until that PID exits.
+				const scope = withoutAbortSignal(ctx);
+				const sessions = [session, to];
+				const token = randomUUID();
+				const reserved = await admission().reserveGroup(
+					sessions,
+					{ generation, pid },
+					token,
+					async () => {
+						for (const id of sessions) {
+							if (
+								(await catalog.get({ id }, scope)).archivedAt !== null ||
+								(await shares.isShared({ session: id }, scope))
+							)
+								return false;
+						}
+						return true;
+					},
+					scope,
+				);
+				if (!reserved) throw forbidden("Citation unavailable");
+				const id = createHash("sha256")
+					.update(JSON.stringify([session, to, requestId]))
+					.digest("hex");
+				const result = await destination.citationSend(
+					{
+						generation,
+						title: session,
+						message,
+						citation: { id, cite, quote, destination: to },
+					},
+					scope,
+				);
+				await admission().releaseGroup(sessions, token, scope);
+				if (result.submissionId === null) throw forbidden("Citation destination busy or request conflicts");
+				return { id, submissionId: result.submissionId };
+			},
 			query: async ({ source, requestId, query }, ctx) => {
 				const sender = await catalog.get({ id: source }, ctx);
 				if (sender.archivedAt !== null) throw forbidden("The sending session is archived");
@@ -137,6 +203,17 @@ export default defineFacet((host) => {
 						ctx,
 					);
 				switch (query.action) {
+					case "citation": {
+						const peer = await holdPeer(source, ctx);
+						return {
+							action: "citation",
+							citation: await admission().mutate(
+								source,
+								async () => ((await shares.isShared({ session: source }, ctx)) ? null : peer.citation(query.id, ctx)),
+								ctx,
+							),
+						};
+					}
 					case "list": {
 						const sessions = catalog.sessions.value.filter((session) => session.archivedAt === null);
 						const memberships = projects.sessions.value;
@@ -167,7 +244,13 @@ export default defineFacet((host) => {
 					case "create": {
 						const row = await create(sender, requestId, query, ctx);
 						await send(row.id, query.message, undefined);
-						return { action: "create", to: row.id, title: row.title, env: row.env ?? null, cwd: row.cwd };
+						return {
+							action: "create",
+							to: row.id,
+							title: row.title,
+							env: row.env ?? null,
+							cwd: row.cwd,
+						};
 					}
 					case "restore":
 						await catalog.get({ id: query.to }, ctx);

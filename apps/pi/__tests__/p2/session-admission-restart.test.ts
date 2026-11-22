@@ -11,7 +11,13 @@ import { startServer } from "../../src/hosts/server.ts";
 const Probe = local("test.admission-restart", {
 	version: 1,
 	params: {},
-	members: { reserve: method(obj({}), bool()), mutate: method(obj({})) },
+	members: {
+		reserve: method(obj({}), bool()),
+		mutate: method(obj({})),
+		reserveGroup: method(obj({}), bool()),
+		mutateSource: method(obj({})),
+		releaseGroup: method(obj({})),
+	},
 });
 
 it("retains a live worker's reservation across server restart through a data-directory alias", async (t) => {
@@ -26,6 +32,19 @@ it("retains a live worker's reservation across server restart through a data-dir
 				reserve: (_args, ctx) =>
 					admission().reserve("session", { generation: 1, pid: process.pid }, "token", async () => true, ctx),
 				mutate: (_args, ctx) => admission().mutate("session", async () => null, ctx),
+				reserveGroup: (_args, ctx) =>
+					admission().reserveGroup(
+						["source", "destination"],
+						{ generation: 1, pid: process.pid },
+						"group",
+						async () => true,
+						ctx,
+					),
+				mutateSource: (_args, ctx) => admission().mutate("source", async () => null, ctx),
+				releaseGroup: async (_args, ctx) => {
+					await admission().releaseGroup(["source", "destination"], "group", ctx);
+					return null;
+				},
 			};
 		});
 	});
@@ -41,6 +60,11 @@ it("retains a live worker's reservation across server restart through a data-dir
 	const original = await start(dataDir);
 	try {
 		assert.equal(await original.host.root(async (ctx) => (await ctx.get(Probe, {})).reserve({}, ctx), TEST), true);
+		await original.host.root(async (ctx) => {
+			const probe = await ctx.get(Probe, {});
+			assert.equal(await probe.reserveGroup({}, ctx), true);
+			await assert.rejects(probe.mutateSource({}, ctx), /citation is being admitted/);
+		}, TEST);
 	} finally {
 		await original.close();
 	}
@@ -48,6 +72,12 @@ it("retains a live worker's reservation across server restart through a data-dir
 	const restarted = await start(alias);
 	try {
 		assert.equal(restarted.dataDir, dataDir);
+		await restarted.host.root(async (ctx) => {
+			const probe = await ctx.get(Probe, {});
+			await assert.rejects(probe.mutateSource({}, ctx), /citation is being admitted/);
+			await probe.releaseGroup({}, ctx);
+			await probe.mutateSource({}, ctx);
+		}, TEST);
 		await assert.rejects(
 			restarted.host.root(async (ctx) => (await ctx.get(Probe, {})).mutate({}, ctx), TEST),
 			/goal step is being admitted/,
