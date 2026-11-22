@@ -15,6 +15,7 @@ at that commit.
 | Web terminal | `46d6b3a9` | `plugins/terminals` (including `vendor/ghostty`), the workspace's Terminal tab, the bottom terminal panel and its CSS |
 | Artifacts and views | `63776fc1` | `plugins/artifacts`, `plugins/views`, `src/web/artifact-kinds.ts`, `src/web/view-kinds.ts`, `docs/artifacts.md`, `docs/views.md`, `docs/glyph-editor-port.md` |
 | Workspace panel | `b2834089` | `plugins/workspace/{Workspace.tsx,file.tsx,commands.tsx,web.tsx,tabs.ts,server.ts,fuzzy.ts}`, the workspace route and its per-device memory, `.workspace-*` styles |
+| PowerShell | `9041e2c9` | `plugins/powershell` |
 
 Paths are under `apps/pi/`.
 
@@ -227,3 +228,9 @@ Worth bringing back:
 Left on a machine that ran it, read by nothing now: the browser's `pi-review:*` and `pi-review-editor:*` drafts,
 `pi-workspace-wrap` and `pi-workspace-width` in local storage, and the `workspace` entries in `p2-session-panels`
 (entries that carry one drop it when read).
+
+## PowerShell
+
+The `powershell` plugin offered Durable's deferred `powershell` tool to each conversation (the main agent and every subagent) whose location's machine ran Windows and that had the `bash` tool. It decided from the local platform or the remote environment's OS report, asked an unreachable remote again every 30 s, and showed calls in the chat as a command block.
+
+Kept: the vendored `createPowerShellTool` in `compat/packages/durable`, which shares code with `bash` and is a public export of that package (nothing in Pi uses it now), and the SSH environment's PowerShell probing of Windows hosts, which is unrelated.
