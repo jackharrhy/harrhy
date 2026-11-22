@@ -105,7 +105,7 @@ async function candidate(id) {
       });
     });
     const url = `http://127.0.0.1:${port}`;
-    for (const path of ["/", "/?view=scenes&scene=radio"]) {
+    for (const path of ["/explorer", "/scenes/radio"]) {
       const response = await fetchLocal(url + path, {
         headers: { Host: allowedHosts[0] ?? "127.0.0.1" },
         signal: AbortSignal.timeout(20_000),

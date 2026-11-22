@@ -65,7 +65,7 @@ export function RadioScene(handle: Handle<{ theme: ThemeName }>) {
         ]}
       >
         <RadioPlayerView
-          sceneHref={`/?view=scenes&scene=radio&theme=${handle.props.theme}`}
+          sceneHref={`/scenes/radio?theme=${handle.props.theme}`}
           originalSkin={handle.props.theme === "tactile"}
           state={demo.state}
           client={demo.actions}

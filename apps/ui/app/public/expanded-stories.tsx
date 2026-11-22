@@ -109,7 +109,7 @@ export function ExpandedStory(
       story === "progress"
         ? `<Progress aria-label="Upload" value={${progress}} />`
         : story === "breadcrumbs"
-          ? `<Breadcrumbs>\n  <BreadcrumbList>\n    <BreadcrumbItem><BreadcrumbLink href="/?view=scenes&scene=radio">radio</BreadcrumbLink></BreadcrumbItem>\n    <BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbLink href="/?view=scenes&scene=radio">rooms</BreadcrumbLink></BreadcrumbItem>\n    <BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbPage>Evening radio</BreadcrumbPage></BreadcrumbItem>\n  </BreadcrumbList>\n</Breadcrumbs>`
+          ? `<Breadcrumbs>\n  <BreadcrumbList>\n    <BreadcrumbItem><BreadcrumbLink href="/scenes/radio">radio</BreadcrumbLink></BreadcrumbItem>\n    <BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbLink href="/scenes/radio">rooms</BreadcrumbLink></BreadcrumbItem>\n    <BreadcrumbItem><BreadcrumbSeparator /><BreadcrumbPage>Evening radio</BreadcrumbPage></BreadcrumbItem>\n  </BreadcrumbList>\n</Breadcrumbs>`
           : story === "table"
             ? `<TableContainer tabindex={0} role="region" aria-label="Upload table">\n  <Table>\n    <TableCaption>Synthetic uploads</TableCaption>\n    <TableHeader><TableRow><TableHead>File</TableHead><TableHead>Size</TableHead></TableRow></TableHeader>\n    <TableBody><TableRow><TableHead scope="row">moss.png</TableHead><TableCell>128 KB</TableCell></TableRow><TableRow><TableHead scope="row">slate.png</TableHead><TableCell>96 KB</TableCell></TableRow></TableBody>\n    <TableFooter><TableRow><TableHead scope="row">Total</TableHead><TableCell>224 KB</TableCell></TableRow></TableFooter>\n  </Table>\n</TableContainer>`
             : story === "collapsible"
@@ -161,15 +161,11 @@ export function ExpandedStory(
             <Breadcrumbs>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href="/?view=scenes&scene=radio">
-                    radio
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href="/scenes/radio">radio</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem>
                   <BreadcrumbSeparator />
-                  <BreadcrumbLink href="/?view=scenes&scene=radio">
-                    rooms
-                  </BreadcrumbLink>
+                  <BreadcrumbLink href="/scenes/radio">rooms</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbItem>
                   <BreadcrumbSeparator />

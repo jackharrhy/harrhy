@@ -20,20 +20,24 @@ export function WorkbenchHeader(
     const { theme, page, onThemeChange } = handle.props;
     return (
       <header mix={headerStyles}>
-        <ButtonLink href="/" variant="quiet" mix={brandStyles}>
+        <ButtonLink
+          href={`/explorer?theme=${theme}`}
+          variant="quiet"
+          mix={brandStyles}
+        >
           @harrhy/ui
         </ButtonLink>
         <nav aria-label="Workbench">
           <ButtonLink
             variant="quiet"
-            href={`/?theme=${theme}`}
+            href={`/explorer?theme=${theme}`}
             aria-current={page === "explorer" ? "page" : undefined}
           >
             <span>Explorer</span>
           </ButtonLink>
           <ButtonLink
             variant="quiet"
-            href={`/?view=scenes&theme=${theme}`}
+            href={`/scenes?theme=${theme}`}
             aria-current={page === "scenes" ? "page" : undefined}
           >
             <span>Scenes</span>

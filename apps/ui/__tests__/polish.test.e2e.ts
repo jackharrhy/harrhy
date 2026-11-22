@@ -7,7 +7,7 @@ it("shares route/tab presentation in one Navigation example without merging sema
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?component=navigation-menu&theme=tactile");
+  await page.goto("/explorer/navigation-menu?theme=tactile");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -55,7 +55,7 @@ it("gives the table frame sole outer-border ownership and Radio its source-deriv
   for (const theme of ["clean", "tactile", "brutalist"])
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(`/?component=table&theme=${theme}`);
+      await page.goto(`/explorer/table?theme=${theme}`);
       const table = page.locator('[data-preview="table"] table');
       const borders = await table.evaluate((node) => ({
         frame: getComputedStyle(node.parentElement!).borderBottomWidth,
@@ -95,7 +95,7 @@ it("uses the same official-anchor popup gap for Menu and Select, including flipp
   page.on("pageerror", (error) => errors.push(error.message));
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/?component=menu&theme=tactile");
+    await page.goto("/explorer/menu?theme=tactile");
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );

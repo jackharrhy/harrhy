@@ -301,7 +301,7 @@ export const Explorer = clientEntry(
           />
           <div mix={workspace}>
             <aside mix={rail} aria-label="Components">
-              <form method="get" action="/">
+              <form method="get" action={`/explorer/${story}`}>
                 <Input
                   name="q"
                   type="search"
@@ -310,7 +310,6 @@ export const Explorer = clientEntry(
                   defaultValue={query}
                 />
                 <Button type="submit">Find</Button>
-                <input type="hidden" name="component" value={story} />
                 <input type="hidden" name="theme" value={theme} />
               </form>
               <nav aria-label="Component navigation">
@@ -322,7 +321,7 @@ export const Explorer = clientEntry(
                         .filter((item) => item.group === group)
                         .map((item) => (
                           <a
-                            href={`/?component=${item.id}&theme=${theme}&q=${encodeURIComponent(query)}`}
+                            href={`/explorer/${item.id}?theme=${theme}&q=${encodeURIComponent(query)}`}
                             aria-current={
                               item.id === story ? "page" : undefined
                             }
@@ -336,7 +335,8 @@ export const Explorer = clientEntry(
               </nav>
               {filtered.length === 0 && (
                 <p>
-                  No components found. <a href="/">Clear search</a>
+                  No components found.{" "}
+                  <a href={`/explorer/${story}?theme=${theme}`}>Clear search</a>
                 </p>
               )}
               <details mix={mobile}>
@@ -344,7 +344,7 @@ export const Explorer = clientEntry(
                 <div aria-label="Mobile component navigation">
                   {filtered.map((item) => (
                     <a
-                      href={`/?component=${item.id}&theme=${theme}&q=${encodeURIComponent(query)}`}
+                      href={`/explorer/${item.id}?theme=${theme}&q=${encodeURIComponent(query)}`}
                       aria-current={item.id === story ? "page" : undefined}
                     >
                       {item.name}
@@ -534,8 +534,8 @@ function Story(
                   : story === "tabs"
                     ? `// Route links navigate to another URL.
 <NavigationMenu aria-label="Collections">
-  <NavigationMenuLink href="/?component=tabs" aria-current="page">Browse</NavigationMenuLink>
-  <NavigationMenuLink href="/?component=table">Recent uploads</NavigationMenuLink>
+  <NavigationMenuLink href="/explorer/tabs" aria-current="page">Browse</NavigationMenuLink>
+  <NavigationMenuLink href="/explorer/table">Recent uploads</NavigationMenuLink>
 </NavigationMenu>
 
 // Tabs switch panels in this page; arrows move between tabs.
@@ -761,12 +761,12 @@ function Story(
                     <p>Open another URL; each link is a normal Tab stop.</p>
                     <NavigationMenu aria-label="Collections">
                       <NavigationMenuLink
-                        href="/?component=tabs"
+                        href="/explorer/tabs"
                         aria-current="page"
                       >
                         Browse
                       </NavigationMenuLink>
-                      <NavigationMenuLink href="/?component=table">
+                      <NavigationMenuLink href="/explorer/table">
                         Recent uploads
                       </NavigationMenuLink>
                     </NavigationMenu>

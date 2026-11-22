@@ -87,9 +87,9 @@ export const Scenes = clientEntry(
             })}
           >
             <Inline>
-              <a href="/?view=scenes&scene=clank">Clank cook-off</a>
+              <a href="/scenes/clank">Clank cook-off</a>
               <a
-                href={`/?view=scenes&scene=radio&theme=${theme}`}
+                href={`/scenes/radio?theme=${theme}`}
                 aria-current={
                   handle.props.scene === "radio" ? "page" : undefined
                 }
@@ -97,7 +97,7 @@ export const Scenes = clientEntry(
                 Radio
               </a>
               <a
-                href={`/?view=scenes&scene=sluggers&theme=${theme}`}
+                href={`/scenes/sluggers?theme=${theme}`}
                 aria-current={
                   handle.props.scene === "sluggers" ? "page" : undefined
                 }
@@ -105,7 +105,7 @@ export const Scenes = clientEntry(
                 Sluggers
               </a>
               <a
-                href={`/?view=scenes&scene=forms&theme=${theme}`}
+                href={`/scenes/forms?theme=${theme}`}
                 aria-current={
                   handle.props.scene === "forms" ? "page" : undefined
                 }
@@ -113,7 +113,7 @@ export const Scenes = clientEntry(
                 Forms
               </a>
               <a
-                href={`/?view=scenes&scene=themes&theme=${theme}`}
+                href={`/scenes/themes?theme=${theme}`}
                 aria-current={
                   handle.props.scene === "themes" ? "page" : undefined
                 }

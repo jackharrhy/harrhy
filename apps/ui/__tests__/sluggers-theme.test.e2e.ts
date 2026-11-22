@@ -17,7 +17,7 @@ it("applies Sluggers CSS on narrow and wide previews without private asset reque
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 960 });
     for (const story of ["table", "menu"]) {
-      await page.goto(`/?component=${story}&theme=sluggers`);
+      await page.goto(`/explorer/${story}?theme=sluggers`);
       await page.waitForFunction(
         () => document.documentElement.dataset.uiReady === "true",
       );
@@ -59,7 +59,7 @@ it("keeps Sluggers keyboard focus and official popup semantics", async (t) => {
   const app = createApp(undefined, { sluggersPrivateFonts: false });
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?component=menu&theme=sluggers");
+  await page.goto("/explorer/menu?theme=sluggers");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -107,7 +107,7 @@ it("loads opt-in font declarations before a hydrated Clean to Sluggers selection
     if (request.url().includes("sluggers-font-fixture")) fontRequests++;
   });
   for (const theme of ["clean", "tactile"]) {
-    await page.goto(`/?component=button&theme=${theme}`);
+    await page.goto(`/explorer/button?theme=${theme}`);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );

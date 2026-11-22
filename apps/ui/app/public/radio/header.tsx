@@ -29,7 +29,7 @@ export function RadioHeader(
           <BreadcrumbList mix={radioHeaderStyle.breadcrumbs}>
             <BreadcrumbItem>
               <BreadcrumbLink
-                href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
+                href={handle.props.sceneHref ?? "/scenes/radio"}
                 mix={radioHeaderStyle.brandLink}
               >
                 radio
@@ -39,7 +39,7 @@ export function RadioHeader(
               <BreadcrumbSeparator mix={radioHeaderStyle.separator} />
               {roomName ? (
                 <BreadcrumbLink
-                  href={handle.props.sceneHref ?? "/?view=scenes&scene=radio"}
+                  href={handle.props.sceneHref ?? "/scenes/radio"}
                   mix={radioHeaderStyle.roomsLink}
                 >
                   <span aria-hidden="true" mix={radioHeaderStyle.backIcon}>

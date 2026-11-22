@@ -31,11 +31,21 @@ export function createApp(
       new Response("Not found", { status: 404 }),
   );
   router.get("/healthz", () => new Response("ok"));
-  router.get(routes.home, async ({ request }) => {
+  const workbench = async ({ request }: { request: Request }) => {
     const url = new URL(request.url);
-    const cookoff =
-      url.searchParams.get("view") === "scenes" &&
-      url.searchParams.get("scene") === "clank";
+    const [, view, slug] = url.pathname.split("/");
+    const scenes = view === "scenes";
+    const scene = slug ?? "forms";
+    const cookoff = scenes && scene === "clank";
+    const story = stories.find(
+      (item) => item.id === (slug === "navigation-menu" ? "tabs" : slug),
+    );
+    if (
+      (scenes &&
+        !["forms", "radio", "sluggers", "themes", "clank"].includes(scene)) ||
+      (!scenes && slug && !story)
+    )
+      return new Response("Not found", { status: 404 });
     const candidate = url.searchParams.get("theme");
     const theme: ThemeName =
       candidate && Object.hasOwn(themes, candidate)
@@ -60,7 +70,7 @@ export function createApp(
               crossOrigin="anonymous"
             />
           )}
-          {url.searchParams.get("scene") === "radio" && (
+          {scenes && scene === "radio" && (
             <link rel="stylesheet" href="/assets/ui/radio/fonts.css" />
           )}
           {sluggersPrivateFonts && (
@@ -74,38 +84,13 @@ export function createApp(
         </head>
         <body mix={css({ margin: 0 })}>
           {cookoff ? (
-            <Cookoff
-              initial={
-                candidate === "clean" || candidate === "brutalist"
-                  ? candidate
-                  : "graphite"
-              }
-            />
-          ) : url.searchParams.get("view") === "scenes" ? (
-            <Scenes
-              theme={theme}
-              scene={
-                url.searchParams.get("scene") === "radio"
-                  ? "radio"
-                  : url.searchParams.get("scene") === "sluggers"
-                    ? "sluggers"
-                    : url.searchParams.get("scene") === "themes"
-                      ? "themes"
-                      : "forms"
-              }
-            />
+            <Cookoff initial={theme} />
+          ) : scenes ? (
+            <Scenes theme={theme} scene={scene} />
           ) : (
             <Explorer
               theme={theme}
-              story={
-                stories.find(
-                  (story) =>
-                    story.id ===
-                    (url.searchParams.get("component") === "navigation-menu"
-                      ? "tabs"
-                      : url.searchParams.get("component")),
-                )?.id ?? "button"
-              }
+              story={story?.id ?? "button"}
               query={(url.searchParams.get("q") ?? "").slice(0, 100)}
             />
           )}
@@ -130,7 +115,38 @@ export function createApp(
         "Referrer-Policy": "no-referrer",
       },
     });
+  };
+  router.get(routes.home, ({ request }) => {
+    const url = new URL(request.url);
+    const view = url.searchParams.get("view");
+    const scene = url.searchParams.get("scene");
+    const component = url.searchParams.get("component");
+    const knownScene =
+      scene &&
+      ["forms", "radio", "sluggers", "themes", "clank"].includes(scene);
+    const story = stories.find(
+      (item) =>
+        item.id === (component === "navigation-menu" ? "tabs" : component),
+    );
+    const path =
+      view === "scenes"
+        ? knownScene
+          ? routes.scene.href({ scene })
+          : routes.scenes.href()
+        : story
+          ? routes.component.href({ component: story.id })
+          : routes.explorer.href();
+    for (const key of ["view", "scene", "component"])
+      url.searchParams.delete(key);
+    return new Response(null, {
+      status: 302,
+      headers: { Location: path + url.search, "Cache-Control": "no-store" },
+    });
   });
+  router.get(routes.explorer, workbench);
+  router.get(routes.component, workbench);
+  router.get(routes.scenes, workbench);
+  router.get(routes.scene, workbench);
   return {
     async fetch(request: Request) {
       if (!hosts.includes(new URL(request.url).hostname.toLowerCase()))

@@ -100,7 +100,7 @@ it("wires Explorer dialog, tabs and async failure controls", async (t) => {
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?component=dialog");
+  await page.goto("/explorer/dialog");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -122,7 +122,7 @@ it("wires Explorer dialog, tabs and async failure controls", async (t) => {
     await trigger.evaluate((node) => node === document.activeElement),
     true,
   );
-  await page.goto("/?component=tabs");
+  await page.goto("/explorer/tabs");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -135,7 +135,7 @@ it("wires Explorer dialog, tabs and async failure controls", async (t) => {
       .getAttribute("aria-selected"),
     "true",
   );
-  await page.goto("/?component=button");
+  await page.goto("/explorer/button");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -192,7 +192,7 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?component=select");
+  await page.goto("/explorer/select");
   await page.getByRole("button", { name: "Visibility", exact: true }).click();
   const list = page.getByRole("listbox");
   await page.waitForFunction(
@@ -265,7 +265,7 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
   const page = await t.serve(await createTestServer(app.fetch));
   for (const width of [320, 393]) {
     await page.setViewportSize({ width, height: 873 });
-    await page.goto("/?view=scenes");
+    await page.goto("/scenes");
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );
@@ -297,4 +297,32 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
       true,
     );
   }
+});
+
+it("keeps the same header across workbench routes", async (t) => {
+  const app = createApp();
+  t.after(() => app.close());
+  const page = await t.serve(await createTestServer(app.fetch));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const nav = page.getByRole("navigation", { name: "Workbench" });
+  const measure = () =>
+    nav
+      .getByRole("link")
+      .evaluateAll((links) =>
+        links.map((link) => [
+          getComputedStyle(link).fontSize,
+          link.getBoundingClientRect().x,
+          link.getBoundingClientRect().width,
+        ]),
+      );
+  await page.goto("/?view=scenes&theme=clean");
+  assert.equal(new URL(page.url()).pathname, "/scenes");
+  const baseline = await measure();
+  await nav.getByRole("link", { name: "Explorer" }).click();
+  await page.waitForURL((url) => url.pathname === "/explorer");
+  assert.deepEqual(await measure(), baseline);
+  await nav.getByRole("link", { name: "Scenes" }).click();
+  await page.getByRole("link", { name: "Clank cook-off" }).click();
+  await page.waitForURL((url) => url.pathname === "/scenes/clank");
+  assert.deepEqual(await measure(), baseline);
 });

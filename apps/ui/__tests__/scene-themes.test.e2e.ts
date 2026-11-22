@@ -8,7 +8,7 @@ it("switches the actual Radio and Sluggers surfaces without remounting their fix
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   for (const scene of ["radio", "sluggers"]) {
-    await page.goto(`/?view=scenes&scene=${scene}&theme=clean`);
+    await page.goto(`/scenes/${scene}?theme=clean`);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );

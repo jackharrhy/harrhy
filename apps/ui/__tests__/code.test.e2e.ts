@@ -9,7 +9,7 @@ it("integrates shared code views, safe live source, copy and prepared diff state
   const page = await t.serve(await createTestServer(app.fetch));
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.goto("/?component=code");
+  await page.goto("/explorer/code");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );

@@ -9,7 +9,7 @@ it("keeps Sluggers tenant context, unknown statistics, keyboard lineup edits and
   const page = await t.serve(await createTestServer(app.fetch));
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  await page.goto("/?view=scenes&scene=sluggers&theme=clean");
+  await page.goto("/scenes/sluggers?theme=clean");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -185,7 +185,7 @@ it("bounds the four Sluggers examples at mobile, tablet and desktop widths", asy
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?view=scenes&scene=sluggers&theme=brutalist");
+  await page.goto("/scenes/sluggers?theme=brutalist");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );

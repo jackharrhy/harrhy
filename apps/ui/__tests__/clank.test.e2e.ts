@@ -8,7 +8,7 @@ it("replays a single prefix through both Markdown policies, then changes phone v
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/?view=scenes&scene=clank");
+  await page.goto("/scenes/clank");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );

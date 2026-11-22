@@ -20,7 +20,7 @@ it("ports Radio queue, transport and keyboard behavior without a runtime connect
     if (
       request.method() !== "GET" ||
       url.origin !== fixtureOrigin ||
-      (url.pathname !== "/" && !url.pathname.startsWith("/assets/"))
+      (url.pathname !== "/scenes/radio" && !url.pathname.startsWith("/assets/"))
     )
       requests.push(request.method() + " " + request.url());
   });
@@ -49,7 +49,7 @@ it("ports Radio queue, transport and keyboard behavior without a runtime connect
       throw new Error("Forbidden fixture playback");
     };
   });
-  await page.goto("/?view=scenes&scene=radio");
+  await page.goto("/scenes/radio");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -207,7 +207,7 @@ it("renders actual Radio scenario states and narrow layouts", async (t) => {
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?view=scenes&scene=radio");
+  await page.goto("/scenes/radio");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );

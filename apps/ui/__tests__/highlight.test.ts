@@ -26,7 +26,7 @@ it("server renders real syntax tokens and serves only local Fraunces assets", as
   const app = createApp();
   t.after(() => app.close());
   const response = await app.fetch(
-    new Request("http://localhost/?component=code&theme=brutalist"),
+    new Request("http://localhost/explorer/code?theme=brutalist"),
   );
   const html = await response.text();
   assert.match(html, /<span style="color:/);

@@ -12,7 +12,7 @@ it("loads Artbin's three font roles on demand without changing Clean/Radio fonts
     if (new URL(request.url()).pathname.endsWith(".woff2"))
       fonts.push(request.url());
   });
-  await page.goto("/?component=code");
+  await page.goto("/explorer/code");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );

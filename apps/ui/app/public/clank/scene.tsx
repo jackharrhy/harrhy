@@ -7,16 +7,16 @@ import {
 } from "@harrhy/ui/theme";
 import { Button } from "@harrhy/ui/native";
 import { sessions, blocks } from "./fixture.ts";
-import { themes, themeLabels } from "../themes.ts";
+import { WorkbenchHeader } from "../workbench.tsx";
+import { themes, themeLabels, type ThemeName } from "../themes.ts";
 const palettes = ["clean", "brutalist", "graphite"] as const;
-type Skin = (typeof palettes)[number];
 import { Words, Settled } from "./markdown.tsx";
 import { Mark } from "./marks.tsx";
 import { shell } from "./styles.ts";
 
 export const Cookoff = clientEntry(
   import.meta.url,
-  function Cookoff(handle: Handle<{ initial: Skin }>) {
+  function Cookoff(handle: Handle<{ initial: ThemeName }>) {
     let skin = handle.props.initial,
       index = 0,
       pane = "Transcript",
@@ -79,6 +79,14 @@ export const Cookoff = clientEntry(
             shell,
           ]}
         >
+          <WorkbenchHeader
+            theme={skin}
+            page="scenes"
+            onThemeChange={(next) => {
+              skin = next;
+              handle.update();
+            }}
+          />
           <nav aria-label="Session views" class="mobile">
             {["Sessions", "Transcript", "Overview"].map((p) => (
               <button
@@ -108,7 +116,7 @@ export const Cookoff = clientEntry(
                 </button>
               ))}
               <div class="railfoot">
-                <a href="/?view=scenes">← UI showcase</a>
+                <a href="/scenes">← UI showcase</a>
                 <nav aria-label="Design comparison" class="skins">
                   {palettes.map((k) => (
                     <button

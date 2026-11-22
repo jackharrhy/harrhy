@@ -7,7 +7,7 @@ it("keeps Artbin reference geometry and visible focus scoped at desktop and mobi
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?view=scenes&scene=themes&theme=brutalist");
+  await page.goto("/scenes/themes?theme=brutalist");
   const specimen = page.locator('[data-comparison="brutalist"]');
   const button = specimen.getByRole("button", { name: "Save collection" });
   for (const width of [1440, 390]) {
@@ -76,7 +76,7 @@ it("exercises local consent and board composition without persistence", async (t
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?view=scenes");
+  await page.goto("/scenes");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
