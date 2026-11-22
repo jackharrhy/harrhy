@@ -61,6 +61,8 @@ const headerStyles = css({
   alignItems: "center",
   gap: "24px",
   minHeight: "72px",
+  fontSize: "var(--hui-text-size)",
+  lineHeight: "var(--hui-line-height)",
   padding: "12px 24px",
   borderBottom: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
