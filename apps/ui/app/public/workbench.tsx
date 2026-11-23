@@ -13,37 +13,29 @@ export function WorkbenchHeader(
   handle: Handle<{
     theme: ThemeName;
     page: "explorer" | "scenes";
+    title: string;
     controls?: RemixNode;
     onThemeChange: (theme: ThemeName) => void;
   }>,
 ) {
   return () => {
-    const { theme, page, controls, onThemeChange } = handle.props;
+    const { theme, page, title, controls, onThemeChange } = handle.props;
     return (
       <header mix={headerStyles}>
-        <ButtonLink
-          href={`/explorer?theme=${theme}`}
-          variant="quiet"
-          mix={brandStyles}
-        >
-          @harrhy/ui
-        </ButtonLink>
-        <nav aria-label="Workbench">
+        <div mix={brandCell}>
           <ButtonLink
-            variant="quiet"
             href={`/explorer?theme=${theme}`}
-            aria-current={page === "explorer" ? "page" : undefined}
-          >
-            <span>Explorer</span>
-          </ButtonLink>
-          <ButtonLink
             variant="quiet"
-            href={`/scenes?theme=${theme}`}
-            aria-current={page === "scenes" ? "page" : undefined}
+            mix={brandStyles}
           >
-            <span>Scenes</span>
+            @harrhy/ui
           </ButtonLink>
-        </nav>
+        </div>
+        <div mix={contextStyles} data-workbench-location>
+          <span>{page === "scenes" ? "Scenes" : "Explorer"}</span>
+          <span aria-hidden="true">/</span>
+          <strong>{title}</strong>
+        </div>
         <Inline mix={pickerStyles}>
           <Select
             id="workbench-theme"
@@ -63,34 +55,57 @@ export function WorkbenchHeader(
   };
 }
 const headerStyles = css({
-  display: "flex",
+  display: "grid",
+  gridTemplateColumns: "var(--workbench-rail-width) minmax(0, 1fr) auto",
   alignItems: "center",
   zIndex: 5,
   "--workbench-picker-height": "32px",
-  gap: "16px",
   fontSize: "var(--hui-text-size)",
   lineHeight: "var(--hui-line-height)",
-  padding: "4px 24px",
+  paddingRight: "16px",
   borderBottom: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
-  "& nav": { display: "flex", gap: "4px" },
-  '& nav [aria-current="page"] > span': {
-    textDecoration: "underline",
-    textUnderlineOffset: "6px",
-  },
-  "@media (max-width: 600px), (pointer: coarse)": {
+  "@media (max-width: 760px), (pointer: coarse)": {
     "--workbench-picker-height": "44px",
   },
-  "@media (max-width: 600px)": {
-    padding: "4px 16px",
-    gap: "4px 8px",
-    flexWrap: "wrap",
-    "& nav": { order: 3, width: "100%" },
+  "@media (max-width: 760px)": {
+    gridTemplateColumns: "minmax(0, 1fr) auto",
+    padding: "0 12px",
   },
 });
-const brandStyles = css({ fontWeight: 700, whiteSpace: "nowrap" });
+const brandCell = css({
+  padding: "4px 16px",
+  alignSelf: "stretch",
+  display: "flex",
+  alignItems: "center",
+  borderRight: "1px solid var(--hui-border)",
+  "@media (max-width: 760px)": { borderRight: 0, padding: "4px 0" },
+});
+const brandStyles = css({
+  fontFamily: "var(--hui-font-mono)",
+  fontSize: "0.875rem",
+  fontWeight: 650,
+  whiteSpace: "nowrap",
+});
+const contextStyles = css({
+  display: "flex",
+  alignItems: "baseline",
+  gap: "8px",
+  minWidth: 0,
+  paddingInline: "16px",
+  fontSize: "0.875rem",
+  color: "var(--hui-muted)",
+  "& strong": {
+    fontWeight: 650,
+    color: "var(--hui-ink)",
+    whiteSpace: "nowrap",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+  },
+  "@media (max-width: 760px)": { display: "none" },
+});
 const pickerStyles = css({
-  marginLeft: "auto",
+  paddingBlock: "4px",
   gap: "8px",
   justifyContent: "flex-end",
   "& > div": { flexShrink: 0 },
@@ -100,5 +115,15 @@ const pickerStyles = css({
     height: "var(--workbench-picker-height)",
     paddingBlock: "4px",
     fontSize: "0.875rem",
+    "&::before": {
+      content: '""',
+      width: "9px",
+      height: "9px",
+      flex: "none",
+      borderRadius: "2px",
+      background: "var(--hui-accent)",
+    },
+    "& > span": { marginRight: "auto" },
   },
+  "@media (max-width: 760px)": { maxWidth: "min(60vw, 240px)" },
 });

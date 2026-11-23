@@ -5,13 +5,14 @@ import type { ThemeName } from "./themes.ts";
 
 export const workbenchShell = css({
   height: "100dvh",
+  "--workbench-rail-width": "220px",
   display: "grid",
   gridTemplateRows: "auto minmax(0, 1fr)",
   overflow: "clip",
 });
 const split = css({
   display: "grid",
-  gridTemplateColumns: "220px minmax(0, 1fr)",
+  gridTemplateColumns: "var(--workbench-rail-width) minmax(0, 1fr)",
   gridTemplateRows: "minmax(0, 1fr)",
   "@media (max-width: 760px)": {
     gridTemplateColumns: "minmax(0, 1fr)",
@@ -81,6 +82,9 @@ const scenes = [
   ["themes", "Themes", "/scenes/themes"],
   ["clank", "Clank cook-off", "/scenes/clank"],
 ] as const;
+export function sceneLabel(id: string) {
+  return scenes.find(([key]) => key === id)?.[1] ?? "Forms";
+}
 const groups = [...new Set(stories.map((item) => item.group))];
 
 export function WorkbenchWorkspace(

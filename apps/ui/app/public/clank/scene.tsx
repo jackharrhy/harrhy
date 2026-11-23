@@ -81,6 +81,7 @@ export const Cookoff = clientEntry(
           <WorkbenchHeader
             theme={skin}
             page="scenes"
+            title="Clank cook-off"
             controls={
               <Inline role="group" aria-label="Density">
                 {(["standard", "compact"] as const).map((value) => (

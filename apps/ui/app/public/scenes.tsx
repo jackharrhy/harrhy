@@ -14,7 +14,11 @@ import {
   Textarea,
 } from "@harrhy/ui/native";
 import { WorkbenchHeader } from "./workbench.tsx";
-import { WorkbenchWorkspace, workbenchShell } from "./workspace.tsx";
+import {
+  sceneLabel,
+  WorkbenchWorkspace,
+  workbenchShell,
+} from "./workspace.tsx";
 import { displayStyles, themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { themes, themeLabels } from "./themes.ts";
 import type { ThemeName } from "./themes.ts";
@@ -58,6 +62,7 @@ export const Scenes = clientEntry(
         <WorkbenchHeader
           theme={theme}
           page="scenes"
+          title={sceneLabel(handle.props.scene)}
           onThemeChange={(next) => {
             theme = next;
             handle.update();

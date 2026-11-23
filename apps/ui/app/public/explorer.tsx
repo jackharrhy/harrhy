@@ -167,6 +167,7 @@ export const Explorer = clientEntry(
           <WorkbenchHeader
             theme={theme}
             page="explorer"
+            title={selected.name}
             onThemeChange={(next) => {
               theme = next;
               handle.update();

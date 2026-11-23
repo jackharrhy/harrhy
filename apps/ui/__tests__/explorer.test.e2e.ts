@@ -240,7 +240,6 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   await page.getByRole("button", { name: "Theme", exact: true }).click();
   await page.getByRole("option", { name: "Newspaper", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("theme") === "newspaper");
-  await page.getByRole("link", { name: "Scenes", exact: true }).click();
   await page.getByRole("link", { name: "Radio", exact: true }).click();
   assert.equal(new URL(page.url()).searchParams.get("theme"), "newspaper");
   assert.equal(
@@ -309,35 +308,18 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
   }
 });
 
-it("keeps the same header across workbench routes", async (t) => {
+it("updates the toolbar location while keeping panes independently scrollable", async (t) => {
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.setViewportSize({ width: 1440, height: 900 });
-  const nav = page.getByRole("navigation", { name: "Workbench" });
-  const measure = async () => {
-    await page.evaluate(() => document.fonts.ready.then(() => true));
-    await page.waitForFunction(
-      () =>
-        getComputedStyle(document.querySelector("header nav a")!).fontSize ===
-        "16px",
-    );
-    return nav
-      .getByRole("link")
-      .evaluateAll((links) =>
-        links.map((link) => [
-          getComputedStyle(link).fontSize,
-          link.getBoundingClientRect().x,
-          link.getBoundingClientRect().width,
-        ]),
-      );
-  };
+  const header = page.getByRole("banner").first();
+  const location = header.locator("[data-workbench-location]");
   await page.goto("/?view=scenes&theme=basic");
-  assert.equal(new URL(page.url()).pathname, "/scenes");
-  const baseline = await measure();
-  await nav.getByRole("link", { name: "Explorer" }).click();
+  await location.getByText("Forms", { exact: true }).waitFor();
+  await header.getByRole("link", { name: "@harrhy/ui" }).click();
   await page.waitForURL((url) => url.pathname === "/explorer");
-  assert.deepEqual(await measure(), baseline);
+  await location.getByText("Button", { exact: true }).waitFor();
   await page.setViewportSize({ width: 1440, height: 480 });
   const rail = page.getByRole("complementary", { name: "Examples" });
   const preview = page.getByRole("region", { name: "Example preview" });
@@ -347,8 +329,7 @@ it("keeps the same header across workbench routes", async (t) => {
   assert.ok(await preview.evaluate((pane) => pane.scrollTop > 0));
   assert.equal(await rail.evaluate((pane) => pane.scrollTop), 200);
   assert.equal(await page.evaluate(() => window.scrollY), 0);
-  await nav.getByRole("link", { name: "Scenes" }).click();
   await page.getByRole("link", { name: "Clank cook-off" }).click();
   await page.waitForURL((url) => url.pathname === "/scenes/clank");
-  assert.deepEqual(await measure(), baseline);
+  await location.getByText("Clank cook-off", { exact: true }).waitFor();
 });
