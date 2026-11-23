@@ -6,6 +6,7 @@ Reusable Remix 3 native components, scoped semantic themes and part recipes. App
 
 - `@harrhy/ui`: compatible legacy styles only, safe for current Worker consumers.
 - `@harrhy/ui/native`: native controls (including Button with optional async action), fields, surfaces and layout.
+- `@harrhy/ui/icons`: decorative semantic icons with SVG defaults and optional partial `IconSet` overrides. Label the enclosing control, not the glyph.
 - `@harrhy/ui/interactive`: native modal and official tabs/select/accordion/menu compositions.
 - `@harrhy/ui/code`: native SSR code blocks and caller-prepared unified diffs.
 - `@harrhy/ui/highlight`: optional standalone Pierre Highlights token preparation and escaped source HTML.

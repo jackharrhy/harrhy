@@ -3,12 +3,19 @@ import type { Handle } from "remix/component";
 import { Button, Inline } from "@harrhy/ui/native";
 import { Select } from "@harrhy/ui/interactive";
 import { RadioPlayerView } from "./player.tsx";
-import type { ThemeName } from "../themes.ts";
-import { desktopThemeStyle, selectedDesktopThemeStyle } from "./theme.ts";
+import type { Density, ThemeName } from "../themes.ts";
+import {
+  desktopThemeStyle,
+  selectedDesktopThemeStyle,
+  radioControlsTheme,
+} from "./theme.ts";
 import { createRadioDemo, scenarios } from "./model.ts";
+import { dialIcons } from "./icons.tsx";
 import type { Scenario } from "./model.ts";
 
-export function RadioScene(handle: Handle<{ theme: ThemeName }>) {
+export function RadioScene(
+  handle: Handle<{ theme: ThemeName; density: Density }>,
+) {
   let scenario: Scenario = "paused";
   let width = 960;
   const demo = createRadioDemo(() => {
@@ -47,7 +54,7 @@ export function RadioScene(handle: Handle<{ theme: ThemeName }>) {
       <div
         mix={[
           handle.props.theme === "dial"
-            ? desktopThemeStyle
+            ? [desktopThemeStyle, radioControlsTheme(handle.props.density)]
             : selectedDesktopThemeStyle,
           ref((node, signal) => {
             const observer = new ResizeObserver((entries) => {
@@ -65,8 +72,8 @@ export function RadioScene(handle: Handle<{ theme: ThemeName }>) {
         ]}
       >
         <RadioPlayerView
-          sceneHref={`/scenes/radio?theme=${handle.props.theme}`}
-          originalSkin={handle.props.theme === "dial"}
+          sceneHref={`/scenes/radio?theme=${handle.props.theme}&density=${handle.props.density}`}
+          icons={handle.props.theme === "dial" ? dialIcons : undefined}
           state={demo.state}
           client={demo.actions}
           preview

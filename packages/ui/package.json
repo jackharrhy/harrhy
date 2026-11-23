@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./styles.ts",
+    "./icons": "./icons.tsx",
     "./native": "./components.tsx",
     "./interactive": "./interactive.ts",
     "./code": "./code.tsx",

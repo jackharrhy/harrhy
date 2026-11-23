@@ -85,10 +85,10 @@ export const desktopIconStyle = {
 export const desktopStyle = {
   window: css({
     color: desktopColor.ink,
-    background: `repeating-linear-gradient(${desktopColor.wash}, ${desktopColor.wash} 2px, ${desktopColor.stripe} 2px, ${desktopColor.stripe} 4px)`,
+    background: `var(--radio-frame-image, ${desktopColor.wash})`,
     border: `1px solid ${desktopColor.ink}`,
-    borderRadius: "6px",
-    boxShadow: "0 0 0 1px #fff inset, 0 18px 50px rgba(15, 24, 28, 0.18)",
+    borderRadius: "var(--radio-frame-radius, var(--hui-panel-radius))",
+    boxShadow: "var(--radio-frame-shadow, none)",
     overflow: "hidden",
     fontSize: "14px",
     lineHeight: "20px",
@@ -98,10 +98,10 @@ export const desktopStyle = {
     display: "flex",
     alignItems: "center",
     padding: "0 8px",
-    color: "#fff",
-    background: "linear-gradient(#6d777c, #4d575d)",
+    color: "var(--radio-title-ink, var(--hui-ink))",
+    background: "var(--radio-title-bg, var(--hui-elevated))",
     borderBottom: `1px solid ${desktopColor.ink}`,
-    textShadow: "0 1px #000",
+    textShadow: "var(--radio-title-shadow, none)",
   }),
   panel: css({
     background: desktopColor.paper,

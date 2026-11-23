@@ -97,7 +97,7 @@ export const Scenes = clientEntry(
               <p mix={muted}>Compositions with local data.</p>
             </div>
             {handle.props.scene === "radio" ? (
-              <RadioScene theme={theme} />
+              <RadioScene theme={theme} density={density} />
             ) : handle.props.scene === "sluggers" ? (
               <SluggersScene theme={theme} />
             ) : handle.props.scene === "forms" ? (

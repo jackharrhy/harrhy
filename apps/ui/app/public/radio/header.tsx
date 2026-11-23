@@ -9,12 +9,14 @@ import {
   BreadcrumbSeparator,
 } from "@harrhy/ui/native";
 
-import { desktopIconStyle, desktopStyle } from "./desktop-styles.ts";
+import { Icon, type IconSet } from "@harrhy/ui/icons";
+import { desktopStyle } from "./desktop-styles.ts";
 
 type RadioStatusTone = "offline" | "online" | "syncing";
 
 export function RadioHeader(
   handle: Handle<{
+    icons?: IconSet;
     roomName?: string;
     sceneHref?: string;
     status?: RemixNode;
@@ -42,9 +44,7 @@ export function RadioHeader(
                   href={handle.props.sceneHref ?? "/scenes/radio"}
                   mix={radioHeaderStyle.roomsLink}
                 >
-                  <span aria-hidden="true" mix={radioHeaderStyle.backIcon}>
-                    arrow_back
-                  </span>
+                  <Icon name="back" icons={handle.props.icons} />
                   <span>rooms</span>
                 </BreadcrumbLink>
               ) : (
@@ -99,7 +99,7 @@ const radioHeaderStyle = {
     gap: "12px",
   }),
   breadcrumbs: css({
-    "--hui-muted": "#fff",
+    "--hui-muted": "var(--radio-title-ink, var(--hui-ink))",
     minWidth: 0,
     display: "flex",
     flexWrap: "nowrap",
@@ -111,11 +111,11 @@ const radioHeaderStyle = {
     whiteSpace: "nowrap",
   }),
   brandLink: css({
-    color: "#fff",
+    color: "inherit",
     fontWeight: 700,
     textDecoration: "none",
     "&:focus-visible": {
-      outline: "1px solid #fff",
+      outline: "1px solid currentColor",
       outlineOffset: "1px",
     },
   }),
@@ -125,37 +125,28 @@ const radioHeaderStyle = {
     display: "inline-flex",
     alignItems: "center",
     gap: "3px",
-    color: "#ffffff",
+    color: "inherit",
     borderRadius: "2px",
     textDecoration: "none",
-    textShadow: "0 1px #000",
+    textShadow: "var(--radio-title-shadow, none)",
     "&:hover": {
-      color: "#fff",
+      color: "inherit",
       background: "rgba(255, 255, 255, 0.12)",
     },
     "&:focus-visible": {
-      color: "#fff",
-      outline: "1px solid rgba(255, 255, 255, 0.8)",
+      color: "inherit",
+      outline: "1px solid currentColor",
       outlineOffset: "1px",
     },
   }),
-  backIcon: css({
-    ...desktopIconStyle,
-    width: "14px",
-    height: "20px",
-    flex: "0 0 14px",
-    display: "inline-grid",
-    placeItems: "center",
-    fontSize: "13px",
-    lineHeight: 1,
-  }),
-  rootCrumb: css({ color: "rgba(255, 255, 255, 0.9)" }),
+  rootCrumb: css({ color: "inherit" }),
   separator: css({
-    color: "rgba(255, 255, 255, 0.32)",
+    color: "currentColor",
+    opacity: 0.45,
   }),
   currentCrumb: css({
     overflow: "hidden",
-    color: "#fff",
+    color: "inherit",
     textOverflow: "ellipsis",
   }),
   status: css({
@@ -166,10 +157,10 @@ const radioHeaderStyle = {
     display: "flex",
     alignItems: "center",
     position: "relative",
-    color: "#fff",
+    color: "inherit",
     font: "inherit",
     fontSize: "12px",
-    textShadow: "0 1px #000",
+    textShadow: "var(--radio-title-shadow, none)",
     "&::before": {
       content: '""',
       boxSizing: "border-box",
