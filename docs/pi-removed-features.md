@@ -19,6 +19,10 @@ at that commit.
 | Vendored TUI package | `9041e2c9` | `compat/packages/tui` (`@earendil-works/pi-tui`), `compat/packages/chord/src/tui`, `compat/packages/chord/src/node/tui`, the `/tui` and `/tui/launcher` Chord entry points |
 | Projects | `ef8c5dbc` | `plugins/projects`, `plugins/sessions/{project-commands.tsx,sidebar/NewProjectSheet.tsx,sidebar/drag.ts}`, the `SessionCopied` hook, the new-session screen's project picker, the sidebar's Projects rollup |
 | Session tree UI | `15f6ce2f` | `plugins/tree/{web.tsx,TreePanel.tsx,toc.ts,entry-in-view.ts,tree.css,branch-target.ts}`, `plugins/sessions/BranchSheet.tsx`, the `sessions.rename-branch` command, the `tree-actions` slot and `.tree-toggle` style |
+| Scope prompt | `89497d43` | `plugins/scope-prompt`, the `p2.scope-prompt.toggle` binding; the chat's note for `p2.view-input` moved to `plugins/chat/legacy-entries.ts` |
+| Rollups | `89497d43` | `plugins/rollups`, `plugins/sessions/sidebar/custom.ts`, the sidebar's saved-rollup sections and their options' code, the `sidebar_rollups` tool and the Familiar's mention of it |
+| Sharing and chat mode | `89497d43` | `plugins/sharing`, `plugins/chat-mode`, the share sheet and command, the Share action in the Session sheet, the viewer count's share button, the guest sidebar, `SendRouters`, the reply and mention composer, `shares.sqlite` migration |
+| Repositories | `89497d43` | `plugins/repositories`, `docs/repositories.md` (the owner's Previews sheet and its `work-context.json` reader) |
 | Glyphs | `d78f5ad5` | `plugins/glyphs`, the chat header icon, `externalTargetGlyphs` |
 
 Paths are under `apps/pi/`.
@@ -29,7 +33,7 @@ A hosted relay for reaching a Pi from anywhere. The `radius` plugin connected an
 framed Pi's page in its own shell, which shared its theme and URL with the page, and authenticated other people by email.
 Around it grew port forwarding through the relay (`ports`, including the agent's `ports` tool and the Envs panel), a
 session-sync adapter (`sync`), sharing a session with a person by email, a static page build for Radius Cloud Brain, and
-the terminal UI's `--radius` sign-in. Share links, guests and the join page stayed.
+the terminal UI's `--radius` sign-in. Share links, guests and the join page stayed until they were removed too (see Sharing and chat mode).
 
 ## Voice
 
@@ -172,7 +176,7 @@ Worth bringing back:
 
 What other features used, and where it went:
 
-- The scope prompt carried its scope block with a message through the views plugin's send router. It has its own router
+- The scope prompt (removed later, see Scope prompt) carried its scope block with a message through the views plugin's send router. It has its own router
   now. Its transcript note keeps the old `p2.view-input` entry kind, so earlier messages that carried selections still
   show their note. Pointing at a pane or a changes file is gone with them; the chat and diff lines remain.
 - The Previews list was an owner-only pane of the workbench. It opens as a sheet from the command menu ("Previews").
@@ -219,7 +223,7 @@ What stayed:
   longer carry git's ignored flag, which only the Files tab used.
 - Chat attachments and uploads (`plugins/files`), `send_file` and its downloads, the file viewer for attachments and
   sent files (`src/web/Viewer.tsx`), and the diff and code blocks in transcript tool cards.
-- The scope prompt (`plugins/scope-prompt`), which points the agent at a part of the page, including a diff line in a
+- The scope prompt (`plugins/scope-prompt`, removed later: see Scope prompt), which points the agent at a part of the page, including a diff line in a
   tool card, and its transcript note for the old `p2.view-input` entries.
 
 Worth bringing back:
@@ -284,7 +288,7 @@ What stayed:
 
 - Folders: `create` takes a `cwd` (and `env`); the sidebar's folder rollup pages, the folder pickers and a group's "+" in
   rollups made from code start a session in a folder.
-- Saved rollups stay valid: a stored output with a project target still loads and its "+" starts nothing. A rollup
+- Saved rollups (removed later: see Rollups) stay valid: a stored output with a project target still loads and its "+" starts nothing. A rollup
   script that reads `projects` fails with an error and keeps its last good output; `project` is gone from each session.
   Sessions that carried a project in the catalog are unaffected, since the project lived only in `ProjectService`'s
   store.
@@ -321,7 +325,7 @@ What stayed:
   `SessionTree.branch` from `plugins/chat/web.tsx`; older branches stay read-only. The worker, the whole `SessionTree`
   contract (`tree`, `navigate`, `select`, `rename`, `branch`), `p2.main` with its stored branch labels and
   `tree.test.ts` are unchanged, so stored sessions read as before.
-- The `data-entry` attributes on transcript rows (search reveal and the scope prompt read them) and the generic side
+- The `data-entry` attributes on transcript rows (search reveal reads them; the scope prompt read them until it was removed) and the generic side
   panel (`openPanel`, `Route.panel`).
 
 Worth bringing back:
@@ -349,3 +353,128 @@ A small colored picture per session, a stand-in for the session's folder so sess
 
 Worth bringing back: a per-session "flavor" (an identity mark in the header, the sidebar and Atlas's recipient list).
 `glyph.ts` at the last commit is a pure function and can be lifted as is, with whatever seed the new mark needs.
+
+## Scope prompt
+
+Pointing at part of the page and asking about it. In pointing mode (a double tap of Cmd, Ctrl elsewhere; Cmd+.; the
+command menu's "Prompt anywhere"; a button beside the sidebar's collapse button) what was under the pointer was
+outlined, and a click opened a composer that asked the open conversation or the Familiar about it. About 1,050 lines in
+the `scope-prompt` plugin.
+
+- The page wrote a `<scope>` block: a JSON description of what was pointed at (the chain of levels, outermost first, the
+  last one chosen), the text selected inside it and, for the Familiar, the page (the session, its conversation and
+  title, a sidebar list, or the new-session screen). The block went to the conversation's agent after the person's text
+  (`ScopeStage`, carried by a send router for that message), or to the Familiar after the text.
+- The transcript showed the person's text with a note ("scope Chat › Message"). Targets were the page's own elements:
+  sidebar rows, rollups and groups, the transcript and its messages, and diff lines in tool cards.
+- The Familiar's prompt routed pointed requests by the block.
+
+What stayed:
+
+- Messages sent before it still show their note. They carry the `p2.view-input` entry kind; the chat plugin keeps that
+  display in `plugins/chat/legacy-entries.ts`, so "with 2 selections from views" and "scope …" notes are unchanged.
+- The `data-entry` attributes on transcript rows, and the `sidebar-header` and `topbar-start` slots. Nothing registers
+  for those slots now.
+- The `p2.scope-prompt.toggle` key binding is gone; `DEFAULT_KEYS` keeps only the command menu's.
+
+Worth bringing back:
+
+- Pointing at a thing and asking about it is a good way to start a question, and the block is a precise, checkable
+  reference (IDs and keys the page knows, not what the model guesses). A smaller version could point at a transcript
+  entry or a sidebar row only, without the overlay.
+
+## Rollups
+
+Saved scripts that built extra sidebar sections. A rollup was a script over every session (`sessions`, `now()`,
+`mentions(...)` through the search index) that returned a flat list of sessions, groups of sessions (with a folder to
+start a session in) or a link to a list. The owner saw its sections in the sidebar, refreshed when what the script read
+changed, every so many minutes, or by hand. The Familiar's `sidebar_rollups` tool listed, previewed, saved, refreshed
+and removed them. About 900 lines in the `rollups` plugin and the sidebar's custom-rule code (`sidebar/custom.ts`).
+
+What stayed:
+
+- The built-in sections, Sessions and Archive, and their options: the window (24 hours, 3 days, a week, forever), moving
+  a section up or down, and collapsing. The folder pages the command menu opens (`FOLDER_ROLLUP`) are unchanged.
+- The sidebar settings (`p2.sidebar-settings-state`, `SidebarSettings`): their order, windows and collapsed keys still
+  load. Keys of removed rollups (`rollup:<key>`) are ignored.
+- The search index's `mentions` query (`Search.mentions`) is still served, and nothing calls it now.
+
+Left in the server's store, read by nothing: the `p2.rollup-store` table with each saved rollup, its output and its
+last error.
+
+Worth bringing back:
+
+- A saved view over sessions ("the ones mentioning X", "the failing ones") is useful. The part to keep is the loop of
+  previewing a script's output against the sessions now before saving it, and showing what it reads so a refresh runs
+  only when that changed.
+
+## Sharing and chat mode
+
+Two parts that only worked together. Sharing gave someone else access to one session through a link. Chat mode let the
+people viewing a conversation talk in its transcript, with the agent reading along when someone mentioned it.
+
+Sharing (the `sharing` plugin, about 1,300 lines with its share sheet and command):
+
+- Each session had at most one link per mode: read-only (`view`) or read/write (`full`). Opening a link at
+  `/join/<token>` took a name (self-chosen, unverified), set a cookie (`p2_guest_<port>`) and gave the browser a guest
+  principal with the sessions shared with it. A read/write link on a remote environment needed a confirmation, since
+  guests could run commands there.
+- The share sheet (from the Session sheet, the chat's viewer count and the command menu) showed the links and their
+  copy and reset actions, the guests who were connected, and a removal per guest. Disabling sharing ended every link and
+  grant. Archiving a session paused its guests' access; restoring it gave the access back.
+- Guest grants and links were tables of the server's store (`p2.shares`); `GuestPresence` marked the connected guests.
+  The old `shares.sqlite` was moved by `migrate-data` until this removal; the migration step is gone and the file is
+  left in the data dir, read by nothing. `data-report` still reads it for its report.
+
+Chat mode (the `chat-mode` plugin, about 1,000 lines):
+
+- A "Chat" chip in the composer switched it on per conversation (the owner only). With it on, messages from people went
+  into the transcript as chat messages, not to the agent. Mentioning the agent (`@pi`, or its name, which the owner could
+  rename; speech-style mentions were recognised too) passed the chat messages it had not yet read to the agent as a digest,
+  and the answer came back into the transcript. A "waiting" count showed how many messages a mention would pass on.
+- Replies quoted a message ("Replying to …"), and the composer completed the agent's mention first. These stopped with
+  chat mode, along with the `SendRouters` registry that let a plugin take a message before it became an input.
+
+Behaviour that changed with it:
+
+- Stimuli (addressed and scheduled), goal steps, conversation citations and Atlas feedback targets no longer refuse a
+  session because it was shared. No session can be shared now, so those checks had nothing to test. Atlas's
+  `omittedPrivacyCount` is gone from its target list (its client reads it as optional).
+- A session refused to be a stimulus target when it was not private; the wording is now "an unarchived session".
+
+What stayed, and why:
+
+- The guest principal type (`GuestPrincipal`, `isGuest`, `canView`, `canSend`, the `guest` variant of `Access`, guest
+  author kinds in messages, the guest page gate in `src/hosts/web.ts`, the ended-share notice and the guest reconnect
+  logic in the web host). These run through the host, the web host, the session catalog and most plugins' access checks,
+  so removing them touches every principal test. Nothing can create a guest now: the `guest` authenticator and the
+  `SessionAccess` entry were the only producers, and both went with the plugin. A guest cookie no longer authenticates.
+- The `Authenticators` and `SessionAccess` registries and the `GuestUpgrades` helper. They are generic.
+- Owner access is unchanged. The owner's loopback sign-in, the owner devices plugin and its cookies, and the worker and
+  server principals do not depend on sharing.
+- Reply quotes and mention counts of old chat messages still show: `plugins/chat/legacy-entries.ts` reads them from
+  the `chat.message` and `chat.mention` entries, which render as people's messages as before.
+- The `replyTo` field of a send is accepted and ignored, so a page that still sends it is not refused.
+
+Worth bringing back:
+
+- Several people in one conversation with the agent reading along only when mentioned. The digest of the chat since the
+  last answer, and the mention counting, are the reusable parts. Sharing needs a sender-verified identity first: a
+  self-chosen name is not enough for anything that changes what a person may do.
+
+## Repositories
+
+The owner's Previews list: registered preview URLs, opened as a sheet from the command menu ("Previews"). It read
+`<data>/work-context.json`, which declared preview URLs (`previews`: an ID, a name, a URL and an expiry or
+`nonExpiring`), and an Infra registry (`infra`: the preview domain and the registry file of its routes and leases).
+It never probed or started a service, and it listed the URLs of the owner's declarations, with their expiry and their
+access, with a Refresh button. Owner only. About 490 lines in the `repositories` plugin, with its own tests and
+`docs/repositories.md`.
+
+Left: `<data>/work-context.json` is read by nothing now. The Infra registry file it names is left alone too.
+
+Worth bringing back:
+
+- Knowing the preview URLs of the work in progress, and when a lease ends, is useful when several branches run at once.
+  The part worth keeping is the rule that a URL comes only from the owner's declaration, never a guess from registry
+  labels.
