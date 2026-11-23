@@ -121,7 +121,7 @@ jobs:
           fi
           convert -version
           identify -version
-      - if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/ui-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/letters-to-steve') || needs.select.outputs.browser == 'true'
+      - if: contains(fromJSON(needs.select.outputs.selected), '@harrhy/artbin-app') || contains(fromJSON(needs.select.outputs.selected), '@harrhy/letters-to-steve') || needs.select.outputs.browser == 'true'
         run: pnpm --filter @harrhy/ui-app exec playwright install --only-shell chromium
       - if: needs.select.outputs.pool == 'true'
         run: pnpm --filter @harrhy/pool-app exec playwright install --only-shell chromium

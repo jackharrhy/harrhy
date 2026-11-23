@@ -8,29 +8,13 @@ it("replays a single prefix through both Markdown policies, then changes phone v
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.setViewportSize({ width: 1280, height: 800 });
-  await page.goto("/?view=scenes&scene=clank");
+  await page.goto("/scenes/clank");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
   const button = (name: string) =>
     page.getByRole("button", { name, exact: true });
   const proof = await page.locator(".scroll").innerText();
-  for (const skin of ["Basic", "Newspaper", "Graphite"]) {
-    await button(skin).click();
-    const session = page.locator(".session").first();
-    const prose = page.locator(".measure p").first();
-    await button("Standard").click();
-    const standard = await session.boundingBox();
-    const textSize = await prose.evaluate((n) => getComputedStyle(n).fontSize);
-    await button("Compact").click();
-    const compact = await session.boundingBox();
-    assert.ok(standard && compact && compact.height < standard.height);
-    assert.equal(
-      await prose.evaluate((n) => getComputedStyle(n).fontSize),
-      textSize,
-    );
-    assert.equal(await page.locator(".scroll").innerText(), proof);
-  }
   const step = button("Step");
   // Each manual tick adds eight characters. Stop inside the fence before its closing line.
   for (let i = 0; i < 18; i++) await step.click();

@@ -1,34 +1,46 @@
 import {
+  composeTheme,
+  densityOverrides,
+  themeStyles,
   brutalistTheme,
   cleanTheme,
   graphiteTheme,
-  tactileTheme,
+  dialTheme,
   sluggersTheme,
 } from "@harrhy/ui/theme";
 
 export const themes = {
-  clean: cleanTheme,
+  basic: cleanTheme,
   graphite: graphiteTheme,
-  tactile: tactileTheme,
-  brutalist: brutalistTheme,
-  sluggers: sluggersTheme,
+  dial: dialTheme,
+  newspaper: brutalistTheme,
+  scorebook: sluggersTheme,
 };
 export type ThemeName = keyof typeof themes;
 
 export const themeLabels: Record<ThemeName, string> = {
-  clean: "Basic",
+  basic: "Basic",
   graphite: "Graphite",
-  tactile: "Ledger",
-  brutalist: "Newspaper",
-  sluggers: "Scorebook",
+  dial: "Dial",
+  newspaper: "Newspaper",
+  scorebook: "Scorebook",
 };
 export const themeExports: Record<ThemeName, string> = {
-  clean: "cleanTheme",
+  basic: "cleanTheme",
   graphite: "graphiteTheme",
-  tactile: "tactileTheme",
-  brutalist: "brutalistTheme",
-  sluggers: "sluggersTheme",
+  dial: "dialTheme",
+  newspaper: "brutalistTheme",
+  scorebook: "sluggersTheme",
 };
 export const themeOptions = (Object.keys(themes) as ThemeName[]).map(
   (value) => ({ value, label: themeLabels[value] }),
 );
+
+export type Density = keyof typeof densityOverrides;
+export const densityOptions = [
+  { value: "standard", label: "Standard" },
+  { value: "compact", label: "Compact" },
+];
+export function workbenchTheme(theme: ThemeName, density: Density) {
+  return themeStyles(composeTheme(themes[theme], densityOverrides[density]));
+}

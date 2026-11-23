@@ -10,7 +10,7 @@ it("exercises extracted parts, official Accordion/Menu and matching Explorer sou
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
   const visit = async (story: string) => {
-    await page.goto(`/?component=${story}&theme=brutalist`);
+    await page.goto(`/explorer/${story}?theme=newspaper`);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );
@@ -147,7 +147,7 @@ it("keeps native Collapsible operable without browser modules", async (t) => {
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
   await page.route("**/assets/**", (route) => route.abort());
-  await page.goto("/?component=collapsible");
+  await page.goto("/explorer/collapsible");
   const disclosure = page.locator("[data-preview=collapsible] details");
   assert.equal(await disclosure.getAttribute("open"), null);
   await disclosure.locator("summary").click();

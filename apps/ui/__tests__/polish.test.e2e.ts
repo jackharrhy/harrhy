@@ -7,7 +7,7 @@ it("shares route/tab presentation in one Navigation example without merging sema
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?component=navigation-menu&theme=tactile");
+  await page.goto("/explorer/navigation-menu?theme=dial");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -52,10 +52,10 @@ it("gives the table frame sole outer-border ownership and Radio its source-deriv
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  for (const theme of ["clean", "tactile", "brutalist"])
+  for (const theme of ["basic", "dial", "newspaper"])
     for (const width of [390, 1440]) {
       await page.setViewportSize({ width, height: 900 });
-      await page.goto(`/?component=table&theme=${theme}`);
+      await page.goto(`/explorer/table?theme=${theme}`);
       const table = page.locator('[data-preview="table"] table');
       const borders = await table.evaluate((node) => ({
         frame: getComputedStyle(node.parentElement!).borderBottomWidth,
@@ -76,8 +76,8 @@ it("gives the table frame sole outer-border ownership and Radio its source-deriv
         borders.rows.slice(1).every((row) => row[0] === "1px"),
         true,
       );
-      assert.equal(borders.head !== "none", theme === "tactile");
-      assert.equal(borders.column, theme === "tactile" ? "1px" : "0px");
+      assert.equal(borders.head !== "none", theme === "dial");
+      assert.equal(borders.column, theme === "dial" ? "1px" : "0px");
       assert.equal(
         await page.evaluate(
           () => document.documentElement.scrollWidth <= innerWidth,
@@ -95,7 +95,7 @@ it("uses the same official-anchor popup gap for Menu and Select, including flipp
   page.on("pageerror", (error) => errors.push(error.message));
   for (const width of [390, 1440]) {
     await page.setViewportSize({ width, height: 900 });
-    await page.goto("/?component=menu&theme=tactile");
+    await page.goto("/explorer/menu?theme=dial");
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );

@@ -14,14 +14,18 @@ import {
   Textarea,
 } from "@harrhy/ui/native";
 import { WorkbenchHeader } from "./workbench.tsx";
-import { displayStyles, themeRoot, themeStyles } from "@harrhy/ui/theme";
+import {
+  sceneLabel,
+  WorkbenchWorkspace,
+  workbenchShell,
+} from "./workspace.tsx";
+import { displayStyles, themeRoot } from "@harrhy/ui/theme";
 import { themes, themeLabels } from "./themes.ts";
-import type { ThemeName } from "./themes.ts";
+import { type ThemeName, type Density, workbenchTheme } from "./themes.ts";
 import { RadioScene } from "./radio/scene.tsx";
 import { SluggersScene } from "./sluggers/scene.tsx";
 
 const shell = css({
-  minHeight: "100vh",
   "& *": { boxSizing: "border-box" },
 });
 const main = css({
@@ -49,266 +53,237 @@ const muted = css({ margin: 0, color: "var(--hui-muted)", fontSize: "14px" });
 
 export const Scenes = clientEntry(
   import.meta.url,
-  function Scenes(handle: Handle<{ theme: ThemeName; scene: string }>) {
+  function Scenes(
+    handle: Handle<{ theme: ThemeName; scene: string; density: Density }>,
+  ) {
     let theme = handle.props.theme;
+    let density = handle.props.density;
     let access: "pending" | "allowed" | "denied" = "pending";
     let board: string | null = null;
     return () => (
-      <div mix={[themeStyles(themes[theme]), themeRoot, shell]}>
+      <div
+        mix={[workbenchTheme(theme, density), themeRoot, workbenchShell, shell]}
+      >
         <WorkbenchHeader
+          density={density}
+          onDensityChange={(next) => {
+            density = next;
+            handle.update();
+          }}
           theme={theme}
           page="scenes"
+          title={sceneLabel(handle.props.scene)}
           onThemeChange={(next) => {
             theme = next;
             handle.update();
           }}
         />
-        <main mix={main}>
-          <div>
-            <h1
-              mix={css({
-                margin: "0 0 8px",
-                fontSize: "28px",
-                lineHeight: "1.2",
-              })}
-            >
-              Scenes
-            </h1>
-            <p mix={muted}>Compositions with local data.</p>
-          </div>
-          <nav
-            aria-label="Scenes"
-            mix={css({
-              "& a": { color: "inherit", textUnderlineOffset: "6px" },
-              "& [aria-current=page]": {
-                fontWeight: 650,
-                textDecorationThickness: "2px",
-              },
-            })}
-          >
-            <Inline>
-              <a href="/?view=scenes&scene=clank">Clank cook-off</a>
-              <a
-                href={`/?view=scenes&scene=radio&theme=${theme}`}
-                aria-current={
-                  handle.props.scene === "radio" ? "page" : undefined
-                }
+        <WorkbenchWorkspace
+          density={density}
+          scene={handle.props.scene}
+          theme={theme}
+        >
+          <main mix={main}>
+            <div>
+              <h1
+                mix={css({
+                  margin: "0 0 8px",
+                  fontSize: "28px",
+                  lineHeight: "1.2",
+                })}
               >
-                Radio
-              </a>
-              <a
-                href={`/?view=scenes&scene=sluggers&theme=${theme}`}
-                aria-current={
-                  handle.props.scene === "sluggers" ? "page" : undefined
-                }
-              >
-                Sluggers
-              </a>
-              <a
-                href={`/?view=scenes&scene=forms&theme=${theme}`}
-                aria-current={
-                  handle.props.scene === "forms" ? "page" : undefined
-                }
-              >
-                Forms
-              </a>
-              <a
-                href={`/?view=scenes&scene=themes&theme=${theme}`}
-                aria-current={
-                  handle.props.scene === "themes" ? "page" : undefined
-                }
-              >
-                Themes
-              </a>
-            </Inline>
-          </nav>
-          {handle.props.scene === "radio" ? (
-            <RadioScene theme={theme} />
-          ) : handle.props.scene === "sluggers" ? (
-            <SluggersScene theme={theme} />
-          ) : handle.props.scene === "forms" ? (
-            <>
-              <div mix={grid}>
-                <Panel aria-labelledby="auth-title">
-                  <Stack>
-                    <div>
-                      <h2
-                        mix={css({ margin: 0, fontSize: "18px" })}
-                        id="auth-title"
-                      >
-                        App consent
-                      </h2>
-                      <p mix={muted}>Auth composition · synthetic account</p>
-                    </div>
-                    <div>
-                      <strong mix={displayStyles}>
-                        Ref wants to access your profile
-                      </strong>
-                      <p>
-                        Share your display name with this app. Your email stays
-                        private.
-                      </p>
-                    </div>
-                    <Inline>
-                      <Badge>Profile: read</Badge>
-                      <Badge>Fixture account</Badge>
-                    </Inline>
-                    {access === "pending" ? (
+                Scenes
+              </h1>
+              <p mix={muted}>Compositions with local data.</p>
+            </div>
+            {handle.props.scene === "radio" ? (
+              <RadioScene theme={theme} density={density} />
+            ) : handle.props.scene === "sluggers" ? (
+              <SluggersScene theme={theme} />
+            ) : handle.props.scene === "forms" ? (
+              <>
+                <div mix={grid}>
+                  <Panel aria-labelledby="auth-title">
+                    <Stack>
+                      <div>
+                        <h2
+                          mix={css({ margin: 0, fontSize: "18px" })}
+                          id="auth-title"
+                        >
+                          App consent
+                        </h2>
+                        <p mix={muted}>Auth composition · synthetic account</p>
+                      </div>
+                      <div>
+                        <strong mix={displayStyles}>
+                          Ref wants to access your profile
+                        </strong>
+                        <p>
+                          Share your display name with this app. Your email
+                          stays private.
+                        </p>
+                      </div>
                       <Inline>
-                        <Button
-                          variant="primary"
-                          mix={on("click", () => {
-                            access = "allowed";
-                            handle.update();
-                          })}
-                        >
-                          Allow access
-                        </Button>
-                        <Button
-                          mix={on("click", () => {
-                            access = "denied";
-                            handle.update();
-                          })}
-                        >
-                          Deny
-                        </Button>
+                        <Badge>Profile: read</Badge>
+                        <Badge>Fixture account</Badge>
                       </Inline>
-                    ) : (
-                      <Stack>
-                        <Notice
-                          role="status"
-                          tone={access === "allowed" ? "success" : "neutral"}
-                        >
-                          {access === "allowed"
-                            ? "Access allowed locally. No permissions changed."
-                            : "Access denied. Nothing shared."}
-                        </Notice>
-                        <Button
-                          mix={on("click", () => {
-                            access = "pending";
-                            handle.update();
-                          })}
-                        >
-                          Reset consent
-                        </Button>
-                      </Stack>
-                    )}
-                  </Stack>
-                </Panel>
-                <Panel aria-labelledby="ref-title">
-                  <Stack>
-                    <div>
-                      <h2
-                        mix={css({ margin: 0, fontSize: "18px" })}
-                        id="ref-title"
-                      >
-                        Create a board
-                      </h2>
-                      <p mix={muted}>Ref composition · browser validation</p>
-                    </div>
-                    <form
-                      mix={[
-                        css({ display: "grid", gap: "16px" }),
-                        on("submit", (event) => {
-                          event.preventDefault();
-                          board = String(
-                            new FormData(event.currentTarget).get("title"),
-                          );
-                          handle.update();
-                        }),
-                      ]}
-                    >
-                      <Field
-                        id="board-title"
-                        label="Board title"
-                        description="Only visible to you. Maximum 80 characters."
-                      >
-                        <Input
-                          name="title"
-                          required
-                          maxLength={80}
-                          placeholder="Evening sketches…"
-                        />
-                      </Field>
-                      <Field id="board-description" label="Description">
-                        <Textarea
-                          name="description"
-                          rows={3}
-                          placeholder="What belongs on this board?"
-                        />
-                      </Field>
-                      <label mix={checkboxLabelStyles}>
-                        <Checkbox name="private" defaultChecked /> Keep this
-                        board private
-                      </label>
-                      <Inline>
-                        <Button type="submit" variant="primary">
-                          Create board
-                        </Button>
-                        <Button
-                          type="reset"
-                          mix={on("click", () => {
-                            board = null;
-                            handle.update();
-                          })}
-                        >
-                          Reset
-                        </Button>
-                      </Inline>
-                    </form>
-                    <Notice role="status" tone={board ? "success" : "neutral"}>
-                      {board
-                        ? `“${board}” created in memory.`
-                        : "No boards yet."}
-                    </Notice>
-                  </Stack>
-                </Panel>
-              </div>
-            </>
-          ) : (
-            <section aria-labelledby="themes-title">
-              <Stack>
-                <h2
-                  mix={css({ margin: 0, fontSize: "18px" })}
-                  id="themes-title"
-                >
-                  Theme comparison
-                </h2>
-                <div mix={comparison}>
-                  {(Object.keys(themes) as ThemeName[]).map((name) => (
-                    <div
-                      data-comparison={name}
-                      mix={[
-                        themeStyles(themes[name]),
-                        themeRoot,
-                        css({ padding: "12px" }),
-                      ]}
-                    >
-                      <Panel>
+                      {access === "pending" ? (
+                        <Inline>
+                          <Button
+                            variant="primary"
+                            mix={on("click", () => {
+                              access = "allowed";
+                              handle.update();
+                            })}
+                          >
+                            Allow access
+                          </Button>
+                          <Button
+                            mix={on("click", () => {
+                              access = "denied";
+                              handle.update();
+                            })}
+                          >
+                            Deny
+                          </Button>
+                        </Inline>
+                      ) : (
                         <Stack>
-                          <h3 mix={css({ margin: 0, fontSize: "16px" })}>
-                            {themeLabels[name]}
-                          </h3>
-                          <Field id={`${name}-name`} label="Collection name">
-                            <Input placeholder="Evening sketches…" />
-                          </Field>
-                          <Inline>
-                            <Button variant="primary">Save collection</Button>
-                            <Button disabled>Export</Button>
-                          </Inline>
-                          <Notice tone="success">All changes saved</Notice>
+                          <Notice
+                            role="status"
+                            tone={access === "allowed" ? "success" : "neutral"}
+                          >
+                            {access === "allowed"
+                              ? "Access allowed locally. No permissions changed."
+                              : "Access denied. Nothing shared."}
+                          </Notice>
+                          <Button
+                            mix={on("click", () => {
+                              access = "pending";
+                              handle.update();
+                            })}
+                          >
+                            Reset consent
+                          </Button>
                         </Stack>
-                      </Panel>
-                    </div>
-                  ))}
+                      )}
+                    </Stack>
+                  </Panel>
+                  <Panel aria-labelledby="ref-title">
+                    <Stack>
+                      <div>
+                        <h2
+                          mix={css({ margin: 0, fontSize: "18px" })}
+                          id="ref-title"
+                        >
+                          Create a board
+                        </h2>
+                        <p mix={muted}>Ref composition · browser validation</p>
+                      </div>
+                      <form
+                        mix={[
+                          css({ display: "grid", gap: "16px" }),
+                          on("submit", (event) => {
+                            event.preventDefault();
+                            board = String(
+                              new FormData(event.currentTarget).get("title"),
+                            );
+                            handle.update();
+                          }),
+                        ]}
+                      >
+                        <Field
+                          id="board-title"
+                          label="Board title"
+                          description="Only visible to you. Maximum 80 characters."
+                        >
+                          <Input
+                            name="title"
+                            required
+                            maxLength={80}
+                            placeholder="Evening sketches…"
+                          />
+                        </Field>
+                        <Field id="board-description" label="Description">
+                          <Textarea
+                            name="description"
+                            rows={3}
+                            placeholder="What belongs on this board?"
+                          />
+                        </Field>
+                        <label mix={checkboxLabelStyles}>
+                          <Checkbox name="private" defaultChecked /> Keep this
+                          board private
+                        </label>
+                        <Inline>
+                          <Button type="submit" variant="primary">
+                            Create board
+                          </Button>
+                          <Button
+                            type="reset"
+                            mix={on("click", () => {
+                              board = null;
+                              handle.update();
+                            })}
+                          >
+                            Reset
+                          </Button>
+                        </Inline>
+                      </form>
+                      <Notice
+                        role="status"
+                        tone={board ? "success" : "neutral"}
+                      >
+                        {board
+                          ? `“${board}” created in memory.`
+                          : "No boards yet."}
+                      </Notice>
+                    </Stack>
+                  </Panel>
                 </div>
-              </Stack>
-            </section>
-          )}
-          <p mix={muted}>
-            Fixtures only. No accounts, persistence or production requests.
-          </p>
-        </main>
+              </>
+            ) : (
+              <section aria-labelledby="themes-title">
+                <Stack>
+                  <h2
+                    mix={css({ margin: 0, fontSize: "18px" })}
+                    id="themes-title"
+                  >
+                    Theme comparison
+                  </h2>
+                  <div mix={comparison}>
+                    {(Object.keys(themes) as ThemeName[]).map((name) => (
+                      <div
+                        data-comparison={name}
+                        mix={[
+                          workbenchTheme(name, density),
+                          themeRoot,
+                          css({ padding: "12px" }),
+                        ]}
+                      >
+                        <Panel>
+                          <Stack>
+                            <h3 mix={css({ margin: 0, fontSize: "16px" })}>
+                              {themeLabels[name]}
+                            </h3>
+                            <Field id={`${name}-name`} label="Collection name">
+                              <Input placeholder="Evening sketches…" />
+                            </Field>
+                            <Inline>
+                              <Button variant="primary">Save collection</Button>
+                              <Button disabled>Export</Button>
+                            </Inline>
+                            <Notice tone="success">All changes saved</Notice>
+                          </Stack>
+                        </Panel>
+                      </div>
+                    ))}
+                  </div>
+                </Stack>
+              </section>
+            )}
+          </main>
+        </WorkbenchWorkspace>
       </div>
     );
   },

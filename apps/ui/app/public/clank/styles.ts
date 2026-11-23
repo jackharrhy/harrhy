@@ -4,14 +4,18 @@ const line = "1px solid var(--hui-border)",
   mono = "var(--hui-font-mono)";
 const row = { display: "flex", alignItems: "center", gap: "8px" } as const;
 export const shell = css({
-  height: "100dvh",
+  height: "100%",
   display: "flex",
   flexDirection: "column",
   fontSize: "var(--hui-text-size)",
   color: "var(--hui-ink)",
   background: "var(--hui-surface)",
   "& *": { boxSizing: "border-box" },
-  "& button": { font: "inherit", color: "inherit", cursor: "pointer" },
+  "& .columns button, & .mobile button": {
+    font: "inherit",
+    color: "inherit",
+    cursor: "pointer",
+  },
   "& :focus-visible": {
     outline: "2px solid var(--hui-focus)",
     outlineOffset: "-2px",
@@ -44,7 +48,7 @@ export const shell = css({
     borderBottom: line,
   },
   "& .heading": { justifyContent: "space-between" },
-  "& .session,& .skins button,& .engines button,& .step,& .mobile button": {
+  "& .session,& .engines button,& .step,& .mobile button": {
     border: 0,
     background: "transparent",
     borderRadius: "var(--hui-control-radius)",
@@ -66,16 +70,7 @@ export const shell = css({
     color: "var(--hui-selected-ink)",
     fontWeight: 600,
   },
-  "& .railfoot": {
-    marginTop: "auto",
-    display: "grid",
-    gap: "8px",
-    padding: "12px 16px",
-    fontSize: "13px",
-    color: muted,
-  },
-  "& .skins,& .engines": { ...row, gap: "2px" },
-  "& .skins button,& .engines button,& .step": {
+  "& .engines button,& .step": {
     fontSize: "13px",
     minHeight: "32px",
     padding: "4px 8px",
@@ -156,7 +151,7 @@ export const shell = css({
     padding: "4px 16px",
   },
   "& .transport button": { ...row, justifyContent: "center" },
-  "& .engines": { marginLeft: "auto" },
+  "& .engines": { ...row, gap: "2px", marginLeft: "auto" },
   "& dl": {
     display: "grid",
     gridTemplateColumns: "auto minmax(0,1fr)",
@@ -178,9 +173,8 @@ export const shell = css({
     "& .rail-title": { display: "none" },
     "& .phone-title": { display: "block" },
     "& .sessions,& .overview": { border: 0 },
-    "& button,& .session,& summary,& .engines button,& .skins button,& .transport button,& .mobile button,& .railfoot a":
+    "& .columns button,& .session,& summary,& .engines button,& .transport button,& .mobile button":
       { minWidth: "44px", minHeight: "44px" },
-    "& .railfoot a": { ...row },
     "& .measure": { paddingBlock: "16px" },
     "& .transport": { paddingBottom: "max(4px,env(safe-area-inset-bottom))" },
   },

@@ -1,16 +1,16 @@
 import { createCookie } from "remix/cookie";
 import {
   cleanTheme,
-  tactileTheme,
+  dialTheme,
   brutalistTheme,
   themeStyles,
   composeTheme,
 } from "@harrhy/ui/theme";
 
 export const themes = [
-  { id: "clean", name: "Basic", tokens: cleanTheme },
-  { id: "tactile", name: "Ledger", tokens: tactileTheme },
-  { id: "brutalist", name: "Newspaper", tokens: brutalistTheme },
+  { id: "basic", name: "Basic", tokens: cleanTheme },
+  { id: "dial", name: "Dial", tokens: dialTheme },
+  { id: "newspaper", name: "Newspaper", tokens: brutalistTheme },
 ] as const;
 export type ThemeId = (typeof themes)[number]["id"];
 export const themeMixins = Object.fromEntries(
@@ -36,7 +36,7 @@ export async function requestTheme(request: Request) {
     ? selected
     : valid(saved)
       ? saved
-      : "brutalist";
+      : "newspaper";
   return {
     theme,
     cookie: valid(selected)

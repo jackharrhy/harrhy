@@ -23,107 +23,23 @@ import {
   Tab,
   TabPanel,
 } from "@harrhy/ui/interactive";
-import { themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { themeRoot } from "@harrhy/ui/theme";
 import { CodeDiff } from "@harrhy/ui/code";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { HighlightedCode, prepareCode } from "./highlight.tsx";
 import type { DiffLine } from "@harrhy/ui/code";
 import { WorkbenchHeader } from "./workbench.tsx";
+import { WorkbenchWorkspace, workbenchShell } from "./workspace.tsx";
+import { stories, type StoryId } from "./stories.ts";
+export { stories } from "./stories.ts";
 import { themes, themeExports } from "./themes.ts";
-import type { ThemeName } from "./themes.ts";
+import { type ThemeName, type Density, workbenchTheme } from "./themes.ts";
 
-import {
-  expandedStories,
-  isExpandedStory,
-  ExpandedStory,
-} from "./expanded-stories.tsx";
+import { isExpandedStory, ExpandedStory } from "./expanded-stories.tsx";
 
-export const stories = [
-  ...expandedStories,
-  {
-    id: "button",
-    name: "Button",
-    group: "Actions",
-    summary: "An action, with a clear priority.",
-  },
-  {
-    id: "field",
-    name: "Field",
-    group: "Forms",
-    summary: "One control, its label, help and validation.",
-  },
-  {
-    id: "select",
-    name: "Select",
-    group: "Forms",
-    summary: "Choose one value from a short list.",
-  },
-  {
-    id: "range",
-    name: "Range",
-    group: "Forms",
-    summary: "A native slider with themed focus and a usable hit area.",
-  },
-  {
-    id: "checkbox",
-    name: "Checkbox",
-    group: "Forms",
-    summary: "An independent, labelled choice.",
-  },
-  {
-    id: "textarea",
-    name: "Textarea",
-    group: "Forms",
-    summary: "Room for a longer answer.",
-  },
-  {
-    id: "notice",
-    name: "Notice",
-    group: "Feedback",
-    summary: "Feedback that belongs beside the task.",
-  },
-  {
-    id: "badge",
-    name: "Badge",
-    group: "Feedback",
-    summary: "A short, non-interactive label.",
-  },
-  {
-    id: "dialog",
-    name: "Dialog",
-    group: "Overlays",
-    summary: "A focused task with native focus containment.",
-  },
-  {
-    id: "tabs",
-    name: "Navigation",
-    group: "Navigation",
-    summary: "Route links and in-page tabs share presentation, not behavior.",
-  },
-  {
-    id: "panel",
-    name: "Panel",
-    group: "Layout",
-    summary: "A named surface for related content.",
-  },
-  {
-    id: "code",
-    name: "CodeBlock",
-    group: "Code",
-    summary: "Selectable source with Pierre Highlights syntax highlighting.",
-  },
-  {
-    id: "diff",
-    name: "CodeDiff",
-    group: "Code",
-    summary: "Prepared changes, readable without color.",
-  },
-] as const;
-export type StoryId = (typeof stories)[number]["id"];
 const chrome = css({
   color: "var(--hui-ink)",
   background: "var(--hui-canvas)",
-  minHeight: "100vh",
   fontFamily: "var(--hui-font-ui)",
   fontSize: "14px",
   lineHeight: "1.5",
@@ -150,51 +66,6 @@ const chrome = css({
   "& p": { margin: 0 },
   "& code, & pre": {
     fontFamily: "var(--hui-font-mono)",
-  },
-});
-const workspace = css({
-  display: "grid",
-  gridTemplateColumns: "220px minmax(0, 1fr)",
-  minHeight: "calc(100vh - 60px)",
-  "@media (max-width: 760px)": { gridTemplateColumns: "1fr" },
-});
-const rail = css({
-  padding: "24px 16px",
-  borderRight: "1px solid var(--hui-border)",
-  background: "var(--hui-surface)",
-  "& form": { display: "flex", gap: "4px", marginBottom: "24px" },
-  "& input": { minWidth: 0, width: "100%" },
-  "& h2": {
-    fontSize: "12px",
-    color: "var(--hui-muted)",
-    margin: "20px 10px 6px",
-  },
-  "& a": {
-    display: "block",
-    padding: "6px 10px",
-    borderRadius: "var(--hui-control-radius)",
-    textDecoration: "none",
-    marginBottom: "2px",
-    "&:hover": { background: "var(--hui-hover-surface)" },
-  },
-  '& a[aria-current="page"]': {
-    background: "var(--hui-selected-surface)",
-    color: "var(--hui-selected-ink)",
-    fontWeight: 600,
-  },
-  "@media (max-width: 760px)": {
-    padding: "12px 16px",
-    borderRight: 0,
-    borderBottom: "1px solid var(--hui-border)",
-    "& nav": { display: "none" },
-    "& form": { marginBottom: "8px" },
-  },
-});
-const mobile = css({
-  display: "none",
-  "@media (max-width: 760px)": {
-    display: "block",
-    "& summary": { cursor: "pointer", padding: "8px 0" },
   },
 });
 const contentStyle = css({
@@ -264,17 +135,27 @@ const source = css({ borderTop: "1px solid var(--hui-border)" });
 export const Explorer = clientEntry(
   import.meta.url,
   function Explorer(
-    handle: Handle<{ story: StoryId; theme: ThemeName; query: string }>,
+    handle: Handle<{
+      story: StoryId;
+      theme: ThemeName;
+      query: string;
+      density: Density;
+    }>,
   ) {
     let theme = handle.props.theme;
+    let density = handle.props.density;
     return () => {
       const { story, query } = handle.props;
       const selected = stories.find((item) => item.id === story)!;
-      const filtered = stories.filter((item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()),
-      );
       return (
-        <div mix={[themeStyles(themes[theme]), themeRoot, chrome]}>
+        <div
+          mix={[
+            workbenchTheme(theme, density),
+            themeRoot,
+            workbenchShell,
+            chrome,
+          ]}
+        >
           <a
             href="#component"
             mix={css({
@@ -292,82 +173,36 @@ export const Explorer = clientEntry(
             Skip to component
           </a>
           <WorkbenchHeader
+            density={density}
+            onDensityChange={(next) => {
+              density = next;
+              handle.update();
+            }}
             theme={theme}
             page="explorer"
+            title={selected.name}
             onThemeChange={(next) => {
               theme = next;
               handle.update();
             }}
           />
-          <div mix={workspace}>
-            <aside mix={rail} aria-label="Components">
-              <form method="get" action="/">
-                <Input
-                  name="q"
-                  type="search"
-                  aria-label="Find a component"
-                  placeholder="Find a component…"
-                  defaultValue={query}
-                />
-                <Button type="submit">Find</Button>
-                <input type="hidden" name="component" value={story} />
-                <input type="hidden" name="theme" value={theme} />
-              </form>
-              <nav aria-label="Component navigation">
-                {[...new Set(stories.map((item) => item.group))].map(
-                  (group) => (
-                    <div>
-                      <h2>{group}</h2>
-                      {filtered
-                        .filter((item) => item.group === group)
-                        .map((item) => (
-                          <a
-                            href={`/?component=${item.id}&theme=${theme}&q=${encodeURIComponent(query)}`}
-                            aria-current={
-                              item.id === story ? "page" : undefined
-                            }
-                          >
-                            {item.name}
-                          </a>
-                        ))}
-                    </div>
-                  ),
-                )}
-              </nav>
-              {filtered.length === 0 && (
-                <p>
-                  No components found. <a href="/">Clear search</a>
-                </p>
-              )}
-              <details mix={mobile}>
-                <summary>Component: {selected.name}</summary>
-                <div aria-label="Mobile component navigation">
-                  {filtered.map((item) => (
-                    <a
-                      href={`/?component=${item.id}&theme=${theme}&q=${encodeURIComponent(query)}`}
-                      aria-current={item.id === story ? "page" : undefined}
-                    >
-                      {item.name}
-                    </a>
-                  ))}
-                </div>
-              </details>
-            </aside>
+          <WorkbenchWorkspace
+            density={density}
+            story={story}
+            theme={theme}
+            query={query}
+          >
             <main id="component" mix={contentStyle}>
               <h1>{selected.name}</h1>
               <p mix={introStyle}>{selected.summary}</p>
-              <Story key={story} story={story} theme={theme} />
-              <p
-                mix={css({
-                  color: "var(--hui-muted)",
-                  fontSize: "12px",
-                  marginTop: "20px",
-                })}
-              >
-                Local fixtures. No saved data or production requests.
-              </p>
+              <Story
+                key={story}
+                story={story}
+                theme={theme}
+                density={density}
+              />
             </main>
-          </div>
+          </WorkbenchWorkspace>
         </div>
       );
     };
@@ -446,6 +281,7 @@ function Story(
   handle: Handle<{
     story: StoryId;
     theme: ThemeName;
+    density: Density;
   }>,
 ) {
   let variant: "primary" | "secondary" | "quiet" | "danger" = "primary";
@@ -496,7 +332,7 @@ function Story(
     handle.update();
   }
   return () => {
-    const { story, theme } = handle.props;
+    const { story, theme, density } = handle.props;
     if (isExpandedStory(story))
       return <ExpandedStory story={story} theme={theme} />;
     const shownSource =
@@ -534,8 +370,8 @@ function Story(
                   : story === "tabs"
                     ? `// Route links navigate to another URL.
 <NavigationMenu aria-label="Collections">
-  <NavigationMenuLink href="/?component=tabs" aria-current="page">Browse</NavigationMenuLink>
-  <NavigationMenuLink href="/?component=table">Recent uploads</NavigationMenuLink>
+  <NavigationMenuLink href="/explorer/tabs" aria-current="page">Browse</NavigationMenuLink>
+  <NavigationMenuLink href="/explorer/table">Recent uploads</NavigationMenuLink>
 </NavigationMenu>
 
 // Tabs switch panels in this page; arrows move between tabs.
@@ -576,7 +412,7 @@ function Story(
           <div
             data-preview={story}
             data-theme={theme}
-            mix={[themeStyles(themes[theme]), themeRoot, stage]}
+            mix={[workbenchTheme(theme, density), themeRoot, stage]}
           >
             <div
               style={{
@@ -761,12 +597,12 @@ function Story(
                     <p>Open another URL; each link is a normal Tab stop.</p>
                     <NavigationMenu aria-label="Collections">
                       <NavigationMenuLink
-                        href="/?component=tabs"
+                        href="/explorer/tabs"
                         aria-current="page"
                       >
                         Browse
                       </NavigationMenuLink>
-                      <NavigationMenuLink href="/?component=table">
+                      <NavigationMenuLink href="/explorer/table">
                         Recent uploads
                       </NavigationMenuLink>
                     </NavigationMenu>

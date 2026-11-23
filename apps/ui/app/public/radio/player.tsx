@@ -1,8 +1,9 @@
 import { css, on, ref, type Handle } from "remix/component";
 
+import { Icon, type IconSet } from "@harrhy/ui/icons";
 import { Button, Input, Range } from "@harrhy/ui/native";
 import { focusStyles } from "@harrhy/ui/recipes";
-import { desktopColor, radioControlsTheme } from "./theme.ts";
+import { desktopColor } from "./theme.ts";
 
 import type { Track } from "./model.ts";
 import { RadioHeader, RadioStatus } from "./header.tsx";
@@ -23,7 +24,7 @@ export function RadioPlayerView(
     sceneHref?: string;
     client: RadioDemoActions | null;
     preview?: boolean;
-    originalSkin: boolean;
+    icons?: IconSet;
     roomName?: string;
     viewportWidth: number;
     onAddTrack?: () => void;
@@ -81,11 +82,11 @@ export function RadioPlayerView(
         mix={[
           radioStyle.window,
           radioStyle.shell,
-          handle.props.originalSkin && radioControlsTheme,
           preview ? radioStyle.previewShell : radioStyle.pageShell,
         ]}
       >
         <RadioHeader
+          icons={handle.props.icons}
           roomName={handle.props.roomName}
           sceneHref={handle.props.sceneHref}
           status={<StatusPill state={state} />}
@@ -172,7 +173,10 @@ export function RadioPlayerView(
               aria-label={state.playing ? "Pause" : "Play"}
               title={state.playing ? "Pause" : "Play"}
             >
-              {state.playing ? "Pause" : "Play"}
+              <Icon
+                name={state.playing ? "pause" : "play"}
+                icons={handle.props.icons}
+              />
             </Button>
             <Button
               mix={[
@@ -183,7 +187,7 @@ export function RadioPlayerView(
               aria-label="Wake audio"
               title="Wake audio"
             >
-              Wake
+              <Icon name="power" icons={handle.props.icons} />
             </Button>
             <Button
               mix={[
@@ -195,7 +199,7 @@ export function RadioPlayerView(
               aria-label="Sync playback"
               title="Sync playback"
             >
-              Sync
+              <Icon name="sync" icons={handle.props.icons} />
             </Button>
             <div mix={radioStyle.nudgeControls}>
               <Button

@@ -14,7 +14,7 @@ The separate opt-in `/sluggers-lab` subpage compares six full experimental recip
 - `fonts.css`: scene-only optional private original type roles; binaries are not committed.
 - `../../../__tests__/sluggers.test.ts`, `sluggers.test.e2e.ts`: fixture arithmetic, unknown/zero, frozen history, tenant context, keyboard reorder, validation/error/retry, publication confirmation/focus and responsive bounds.
 
-Open `/?view=scenes&scene=sluggers&theme=sluggers` for the full Sluggers workbench, or `/?component=button&theme=sluggers` for standard components. Clean/Radio/Artbin remain independently selectable. Local view/scenario state resets on reload. League changes reset lineup/review fixtures. Meaningful team actions open the corresponding synthetic lineup. Match start freezes appearances independently of later team edits.
+Open `/?view=scenes&scene=sluggers&theme=scorebook` for the full Sluggers workbench, or `/?component=button&theme=scorebook` for standard components. Clean/Radio/Artbin remain independently selectable. Local view/scenario state resets on reload. League changes reset lineup/review fixtures. Meaningful team actions open the corresponding synthetic lineup. Match start freezes appearances independently of later team edits.
 
 Use existing app setup and checks:
 

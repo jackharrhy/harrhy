@@ -39,6 +39,6 @@ pnpm --filter @harrhy/ui-app check
 HOST=127.0.0.1 PORT=19374 pnpm --filter @harrhy/ui-app start
 ```
 
-Visit `http://127.0.0.1:19374/?view=scenes&scene=clank`. Add `&theme=clean` or `&theme=brutalist` for the existing tokens. Graphite is also available in the workbench picker; existing theme IDs still work.
+Visit `http://127.0.0.1:19374/?view=scenes&scene=clank`. Add `&theme=basic` or `&theme=newspaper` for the existing tokens. Graphite is also available in the workbench picker; existing theme IDs still work.
 
 Chromium checks covered 320, 390, 768, 1024 and 1440px without horizontal page overflow. Graphite uses a 2px ink outline for keyboard focus. Phone controls and summaries have 44px minimum targets. No screen-reader or physical-device certification is implied.

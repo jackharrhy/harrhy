@@ -46,8 +46,8 @@ it("explores actual props, matching source, and global themes", async (t) => {
     () => document.activeElement?.getAttribute("role") === "listbox",
   );
   await page.getByRole("option", { name: "Newspaper", exact: true }).click();
-  await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
-  assert.equal(new URL(page.url()).searchParams.get("theme"), "brutalist");
+  await page.waitForURL((url) => url.searchParams.get("theme") === "newspaper");
+  assert.equal(new URL(page.url()).searchParams.get("theme"), "newspaper");
   const button = preview.getByRole("button", {
     name: "Delete reference",
     exact: true,
@@ -73,7 +73,7 @@ it("explores actual props, matching source, and global themes", async (t) => {
       true,
     );
   }
-  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page.locator("summary").filter({ hasText: "Browse examples" }).click();
   await page
     .getByRole("link", { name: "Field", exact: true })
     .filter({ visible: true })
@@ -100,7 +100,7 @@ it("wires Explorer dialog, tabs and async failure controls", async (t) => {
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?component=dialog");
+  await page.goto("/explorer/dialog");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -122,7 +122,7 @@ it("wires Explorer dialog, tabs and async failure controls", async (t) => {
     await trigger.evaluate((node) => node === document.activeElement),
     true,
   );
-  await page.goto("/?component=tabs");
+  await page.goto("/explorer/tabs");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -135,7 +135,7 @@ it("wires Explorer dialog, tabs and async failure controls", async (t) => {
       .getAttribute("aria-selected"),
     "true",
   );
-  await page.goto("/?component=button");
+  await page.goto("/explorer/button");
   await page.waitForFunction(
     () => document.documentElement.dataset.uiReady === "true",
   );
@@ -173,14 +173,17 @@ it("filters component navigation with a native GET and without scripts", async (
   await page.route("**/assets/**", (route) => route.abort());
   await page.goto("/");
   await page
-    .getByLabel("Find a component", { exact: true })
+    .getByRole("searchbox", { name: "Find a component", exact: true })
     .fill("nothing-matches");
   await page.getByRole("button", { name: "Find", exact: true }).click();
-  await page.getByText("No components found.", { exact: false }).waitFor();
+  await page
+    .getByText("No components found.", { exact: false })
+    .filter({ visible: true })
+    .waitFor();
   assert.equal(new URL(page.url()).searchParams.get("q"), "nothing-matches");
   await page.setViewportSize({ width: 390, height: 900 });
   await page.goto("/");
-  await page.locator("summary").filter({ hasText: "Component" }).click();
+  await page.locator("summary").filter({ hasText: "Browse examples" }).click();
   await page
     .getByRole("link", { name: "Field", exact: true })
     .filter({ visible: true })
@@ -192,7 +195,7 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   const app = createApp();
   t.after(() => app.close());
   const page = await t.serve(await createTestServer(app.fetch));
-  await page.goto("/?component=select");
+  await page.goto("/explorer/select");
   await page.getByRole("button", { name: "Visibility", exact: true }).click();
   const list = page.getByRole("listbox");
   await page.waitForFunction(
@@ -236,10 +239,9 @@ it("separates selected, highlighted and disabled options and keeps global theme 
   assert.equal(await list.isVisible(), false);
   await page.getByRole("button", { name: "Theme", exact: true }).click();
   await page.getByRole("option", { name: "Newspaper", exact: true }).click();
-  await page.waitForURL((url) => url.searchParams.get("theme") === "brutalist");
-  await page.getByRole("link", { name: "Scenes", exact: true }).click();
+  await page.waitForURL((url) => url.searchParams.get("theme") === "newspaper");
   await page.getByRole("link", { name: "Radio", exact: true }).click();
-  assert.equal(new URL(page.url()).searchParams.get("theme"), "brutalist");
+  assert.equal(new URL(page.url()).searchParams.get("theme"), "newspaper");
   assert.equal(
     await page
       .locator("header")
@@ -250,12 +252,12 @@ it("separates selected, highlighted and disabled options and keeps global theme 
     true,
   );
   await page.getByRole("button", { name: "Theme", exact: true }).click();
-  await page.getByRole("option", { name: "Ledger", exact: true }).click();
-  await page.waitForURL((url) => url.searchParams.get("theme") === "tactile");
+  await page.getByRole("option", { name: "Dial", exact: true }).click();
+  await page.waitForURL((url) => url.searchParams.get("theme") === "dial");
   await page.reload();
   assert.match(
     await page.getByRole("button", { name: "Theme", exact: true }).innerText(),
-    /Ledger/,
+    /Dial/,
   );
 });
 
@@ -265,11 +267,18 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
   const page = await t.serve(await createTestServer(app.fetch));
   for (const width of [320, 393]) {
     await page.setViewportSize({ width, height: 873 });
-    await page.goto("/?view=scenes");
+    await page.goto("/scenes");
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );
     const trigger = page.getByRole("button", { name: "Theme", exact: true });
+    const preview = page.getByRole("region", { name: "Example preview" });
+    await preview.evaluate((pane) => pane.scrollTo(0, 300));
+    assert.ok(await preview.evaluate((pane) => pane.scrollTop > 100));
+    assert.equal(await page.evaluate(() => window.scrollY), 0);
+    const header = await page.getByRole("banner").boundingBox();
+    assert.equal(header?.y, 0);
+    assert.ok((await trigger.boundingBox())!.height >= 44);
     await trigger.click();
     const list = page.getByRole("listbox");
     await list.waitFor();
@@ -289,7 +298,7 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
     );
     await page.getByRole("option", { name: "Newspaper", exact: true }).click();
     await page.waitForURL(
-      (url) => url.searchParams.get("theme") === "brutalist",
+      (url) => url.searchParams.get("theme") === "newspaper",
     );
     assert.equal(await list.isVisible(), false);
     assert.equal(
@@ -297,4 +306,30 @@ it("keeps the mobile theme picker below its trigger, touch-sized and inside the 
       true,
     );
   }
+});
+
+it("updates the toolbar location while keeping panes independently scrollable", async (t) => {
+  const app = createApp();
+  t.after(() => app.close());
+  const page = await t.serve(await createTestServer(app.fetch));
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const header = page.getByRole("banner").first();
+  const location = header.locator("[data-workbench-location]");
+  await page.goto("/?view=scenes&theme=basic");
+  await location.getByText("Forms", { exact: true }).waitFor();
+  await header.getByRole("link", { name: "@harrhy/ui" }).click();
+  await page.waitForURL((url) => url.pathname === "/explorer");
+  await location.getByText("Button", { exact: true }).waitFor();
+  await page.setViewportSize({ width: 1440, height: 480 });
+  const rail = page.getByRole("complementary", { name: "Examples" });
+  const preview = page.getByRole("region", { name: "Example preview" });
+  await rail.evaluate((pane) => pane.scrollTo(0, 200));
+  assert.equal(await preview.evaluate((pane) => pane.scrollTop), 0);
+  await preview.evaluate((pane) => pane.scrollTo(0, 200));
+  assert.ok(await preview.evaluate((pane) => pane.scrollTop > 0));
+  assert.equal(await rail.evaluate((pane) => pane.scrollTop), 200);
+  assert.equal(await page.evaluate(() => window.scrollY), 0);
+  await page.getByRole("link", { name: "Clank cook-off" }).click();
+  await page.waitForURL((url) => url.pathname === "/scenes/clank");
+  await location.getByText("Clank cook-off", { exact: true }).waitFor();
 });

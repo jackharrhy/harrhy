@@ -1,4 +1,5 @@
 import { css } from "remix/component";
+import { tokens } from "./theme.ts";
 
 export const visuallyHiddenStyles = css({
   position: "absolute",
@@ -14,7 +15,7 @@ export const visuallyHiddenStyles = css({
 
 export const focusStyles = css({
   "&:focus-visible": {
-    outline: "2px solid var(--hui-focus)",
+    outline: `2px solid ${tokens.focus}`,
     outlineOffset: "3px",
   },
 });
@@ -25,32 +26,32 @@ export const buttonStyles = css({
   alignItems: "center",
   justifyContent: "center",
   gap: "0.5rem",
-  minHeight: "var(--hui-button-height)",
-  padding: "var(--hui-button-padding)",
-  border: "var(--hui-border-width) solid var(--hui-button-border)",
-  borderRadius: "var(--hui-control-radius)",
-  fontFamily: "var(--hui-font-ui)",
+  minHeight: tokens.button.height,
+  padding: tokens.button.padding,
+  border: `${tokens.borderWidth} solid ${tokens.button.border}`,
+  borderRadius: tokens.control.radius,
+  fontFamily: tokens.font.ui,
   fontVariationSettings: "normal",
   fontOpticalSizing: "auto",
-  fontSize: "var(--hui-button-text-size)",
-  fontWeight: "var(--hui-button-weight)",
+  fontSize: tokens.button.textSize,
+  fontWeight: tokens.button.weight,
   lineHeight: "1.25",
-  backgroundColor: "var(--hui-surface)",
-  backgroundImage: "var(--hui-button-image)",
-  color: "var(--hui-ink)",
-  boxShadow: "var(--hui-button-shadow)",
+  backgroundColor: tokens.surface,
+  backgroundImage: tokens.button.image,
+  color: tokens.ink,
+  boxShadow: tokens.button.shadow,
   textDecoration: "none",
   cursor: "pointer",
   textAlign: "center",
-  transition: "filter var(--hui-motion)",
+  transition: `filter ${tokens.motion}`,
   '&[data-variant="primary"]': {
-    borderColor: "var(--hui-button-primary-border)",
-    backgroundColor: "var(--hui-accent)",
-    color: "var(--hui-on-accent)",
+    borderColor: tokens.button.primaryBorder,
+    backgroundColor: tokens.accent,
+    color: tokens.onAccent,
   },
   '&[data-variant="danger"]': {
-    backgroundColor: "var(--hui-danger)",
-    color: "var(--hui-on-danger)",
+    backgroundColor: tokens.danger,
+    color: tokens.onDanger,
     backgroundImage: "none",
   },
   '&[data-variant="quiet"]': {
@@ -68,8 +69,8 @@ export const buttonStyles = css({
   "&:disabled, &[aria-disabled=true]": {
     cursor: "not-allowed",
     boxShadow: "none",
-    color: "var(--hui-muted)",
-    backgroundColor: "var(--hui-disabled-surface)",
+    color: tokens.muted,
+    backgroundColor: tokens.disabledSurface,
     backgroundImage: "none",
   },
 });
@@ -78,22 +79,22 @@ export const controlStyles = css({
   boxSizing: "border-box",
   width: "100%",
   minWidth: "0",
-  minHeight: "var(--hui-control-height)",
-  padding: "var(--hui-control-padding)",
-  border: "var(--hui-border-width) solid var(--hui-control-border)",
-  borderRadius: "var(--hui-control-radius)",
-  background: "var(--hui-surface)",
-  color: "var(--hui-ink)",
+  minHeight: tokens.control.height,
+  padding: tokens.control.padding,
+  border: `${tokens.borderWidth} solid ${tokens.control.border}`,
+  borderRadius: tokens.control.radius,
+  background: tokens.surface,
+  color: tokens.ink,
   font: "inherit",
-  fontFamily: "var(--hui-font-ui)",
-  fontSize: "var(--hui-control-text-size)",
+  fontFamily: tokens.font.ui,
+  fontSize: tokens.control.textSize,
   lineHeight: "1.4",
-  boxShadow: "var(--hui-control-shadow)",
-  "&::placeholder": { color: "var(--hui-muted)", opacity: 1 },
-  '&[aria-invalid="true"]': { borderColor: "var(--hui-danger)" },
+  boxShadow: tokens.control.shadow,
+  "&::placeholder": { color: tokens.muted, opacity: 1 },
+  '&[aria-invalid="true"]': { borderColor: tokens.danger },
   "&:disabled": {
-    color: "var(--hui-muted)",
-    backgroundColor: "var(--hui-disabled-surface)",
+    color: tokens.muted,
+    backgroundColor: tokens.disabledSurface,
     backgroundImage: "none",
     cursor: "not-allowed",
   },
@@ -104,29 +105,29 @@ export const checkStyles = css({
   flexShrink: 0,
   margin: 0,
   verticalAlign: "middle",
-  accentColor: "var(--hui-accent)",
+  accentColor: tokens.accent,
 });
 export const fieldStyles = css({
   display: "grid",
-  gap: "var(--hui-field-gap)",
+  gap: tokens.field.gap,
   minWidth: "0",
 });
 export const labelStyles = css({
-  fontFamily: "var(--hui-font-detail)",
-  fontSize: "var(--hui-label-size)",
-  fontWeight: "var(--hui-label-weight)",
-  textTransform: "var(--hui-label-transform)",
-  letterSpacing: "var(--hui-label-tracking)",
+  fontFamily: tokens.font.detail,
+  fontSize: tokens.label.size,
+  fontWeight: tokens.label.weight,
+  textTransform: tokens.label.transform,
+  letterSpacing: tokens.label.tracking,
 });
 export const descriptionStyles = css({
   margin: 0,
   fontSize: "0.875rem",
-  color: "var(--hui-muted)",
+  color: tokens.muted,
 });
 export const errorStyles = css({
   margin: 0,
   fontSize: "0.875rem",
-  color: "var(--hui-danger)",
+  color: tokens.danger,
 });
 export const panelStyles = css({
   padding: "var(--hui-panel-padding)",

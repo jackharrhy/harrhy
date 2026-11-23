@@ -21,6 +21,7 @@ export type SelectProps = Omit<
   "children" | "type" | "name" | "value" | "defaultValue" | "disabled"
 > & {
   options: readonly SelectOption[];
+  optionLabelMix?: (option: SelectOption) => ReturnType<typeof css>[];
   defaultValue?: string;
   placeholder?: string;
   name?: string;
@@ -33,6 +34,7 @@ export function Select(handle: Handle<SelectProps>) {
   return () => {
     const {
       options,
+      optionLabelMix,
       defaultValue,
       placeholder = "Choose an option",
       name,
@@ -66,7 +68,7 @@ export function Select(handle: Handle<SelectProps>) {
                   key={option.value}
                   mix={[optionStyles, select.option(option)]}
                 >
-                  <span>{option.label}</span>
+                  <span mix={optionLabelMix?.(option)}>{option.label}</span>
                   <svg
                     aria-hidden="true"
                     width="16"
@@ -113,7 +115,9 @@ function SelectSurface(handle: Handle<{ children?: RemixNode }>) {
     </div>
   );
 }
-function SelectTrigger(handle: Handle<Omit<SelectProps, "options">>) {
+function SelectTrigger(
+  handle: Handle<Omit<SelectProps, "options" | "optionLabelMix">>,
+) {
   const context = handle.context.get(select.Context);
   return () => {
     const { mix, onValueChange, ...props } = handle.props;

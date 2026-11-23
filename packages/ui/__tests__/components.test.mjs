@@ -7,8 +7,14 @@ const { Button, ButtonLink, Field, Input, Textarea, Range } =
   await import("../components.tsx");
 const { Dialog, Tabs, TabList, Tab, TabPanel } =
   await import("../interactive.ts");
-const { composeTheme, cleanTheme, tactileTheme, brutalistTheme, themeStyles } =
-  await import("../theme.ts");
+const {
+  composeTheme,
+  extendTheme,
+  cleanTheme,
+  dialTheme,
+  brutalistTheme,
+  themeStyles,
+} = await import("../theme.ts");
 
 test("native actions keep native form and navigation contracts without a client boundary", async () => {
   const html = await renderToString(
@@ -98,11 +104,11 @@ test("standalone controls preserve authored invalid state and native metadata", 
 });
 
 test("theme composition is immutable and emits scoped semantic and recipe variables", async () => {
-  const theme = composeTheme(tactileTheme, {
+  const theme = composeTheme(dialTheme, {
     controlHeight: "3rem",
     accent: "#ffffff",
   });
-  assert.equal(tactileTheme.controlHeight, cleanTheme.controlHeight);
+  assert.equal(dialTheme.controlHeight, cleanTheme.controlHeight);
   assert.equal(theme.controlHeight, "3rem");
   assert.notEqual(theme.panelImage, "none");
   const html = await renderToString(
@@ -111,6 +117,21 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   assert.match(html, /--hui-control-height: 3rem/);
   assert.match(html, /--hui-button-image:/);
   assert.match(html, /--hui-font-ui:/);
+});
+
+test("nested extensions preserve live aliases and reject wrong-category references", async () => {
+  const theme = extendTheme(cleanTheme, (t) => ({
+    control: { border: "#244753" },
+    button: { border: t.control.border },
+  }));
+  const html = await renderToString(h("section", { mix: themeStyles(theme) }));
+  assert.notEqual(cleanTheme.controlBorder, theme.controlBorder);
+  assert.match(html, /--hui-control-border: #244753/);
+  assert.match(html, /--hui-button-border: var\(--hui-control-border\)/);
+  const invalid = extendTheme(cleanTheme, (t) => ({
+    control: { radius: t.ink },
+  }));
+  assert.throws(() => themeStyles(invalid), /color.*dimension/);
 });
 
 function luminance(hex) {
