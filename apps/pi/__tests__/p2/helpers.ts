@@ -140,14 +140,16 @@ export async function startFixture(
 		/** settings.json written into the data directory before the server starts (keys read at the start: `telemetry`). */
 		readonly settings?: Readonly<Record<string, unknown>>;
 		/** Install the checked-in integration directories into this fixture's actual user plugin root. */
-		readonly integrations?: readonly ("atlas-feedback" | "github-checks" | "ingress" | "peers")[];
+		readonly integrations?: readonly ("atlas-feedback" | "cursor" | "github-checks" | "ingress" | "peers")[];
+		/** Runs after the integrations are installed and before the server starts (a plugin's node_modules, say). */
+		readonly prepare?: (dataDir: string) => void;
 	} = {},
 ): Promise<Fixture> {
 	const root = mkdtempSync(join(tmpdir(), "p2-test-"));
 	const dataDir = join(root, "data");
 	const workspace = join(root, "workspace");
 	mkdirSync(workspace, { recursive: true });
-	const { settings, integrations, ...serverOptions } = options;
+	const { settings, integrations, prepare, ...serverOptions } = options;
 	if (settings !== undefined) {
 		mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 		writeFileSync(join(dataDir, "settings.json"), JSON.stringify(settings), { mode: 0o600 });
@@ -162,6 +164,7 @@ export async function startFixture(
 				cpSync(join(APP, "integrations", name), join(userPluginsDirectory(dataDir), name), { recursive: true });
 			}
 		}
+		prepare?.(dataDir);
 		server = await startServer({
 			dataDir,
 			port: 0,

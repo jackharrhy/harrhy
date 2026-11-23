@@ -1,0 +1,6 @@
+{
+	"name": "@cursor/sdk",
+	"version": "0.0.0-fake",
+	"private": true,
+	"main": "./index.cjs"
+}
