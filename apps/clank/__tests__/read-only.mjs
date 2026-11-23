@@ -10,16 +10,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { chromium } from "playwright";
 import { WebSocket } from "ws";
-import {
-  holdIn,
-  http,
-  startFixture,
-  TEST,
-  until,
-} from "../../pi/__tests__/p2/helpers.ts";
-import { Sharing } from "../../pi/plugins/sharing/contract.ts";
+import { holdIn, startFixture, TEST } from "../../pi/__tests__/p2/helpers.ts";
 import { Catalog, Sessions } from "../../pi/plugins/sessions/contract.ts";
-import { followCatalog } from "../read-only/chord.ts";
 
 // Run inside its own network namespace. No live endpoint, credential or data-dir input.
 const fixture = await startFixture();
@@ -54,34 +46,6 @@ try {
     return row;
   }, TEST);
   const owner = fixture.browser();
-  const sharing = await holdIn(owner, Sharing, { session: seeded.id }, "owner");
-  await sharing.link({ mode: "view" }, TEST);
-  const links = await until(sharing.links, (entries) =>
-    entries?.some((l) => l.mode === "view"),
-  );
-  const joined = await http(port, "/join", {
-    method: "POST",
-    headers: {
-      Origin: `http://127.0.0.1:${port}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      token: links.find((l) => l.mode === "view").token,
-      name: "Fixture guest",
-    }),
-  });
-  assert.equal(joined.status, 200);
-  const guest = String(joined.headers["set-cookie"]).split(";")[0];
-  await holdIn(fixture.client({ Cookie: guest }).host, Sessions, {}, "guest");
-  await assert.rejects(
-    followCatalog(
-      port,
-      guest,
-      () => assert.fail("Guest received a catalog"),
-      () => {},
-    ),
-    /Pi owner Sessions required/,
-  );
   const token = randomBytes(32).toString("hex");
   await writeFile(join(dir, "bridge-token"), token, { mode: 0o600 });
   const password = randomBytes(32).toString("hex");
@@ -281,7 +245,7 @@ HARRHY_CLANK_BRIDGE_TOKEN=${token}
   assert.equal((await running.exit)[0], 1);
   assert.deepEqual(errors, []);
   console.log(
-    "Read-only: real guest denied; preview write denied; bounded owner projection; live update and fresh reconnect; revocation cleared map and closed listener.",
+    "Read-only: preview write denied; bounded owner projection; live update and fresh reconnect; revocation cleared map and closed listener.",
   );
 } finally {
   pilot?.kill();

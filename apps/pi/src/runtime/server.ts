@@ -272,7 +272,6 @@ export function findRoute(
 
 /**
  * Authenticates requests (loopback and tunnel hosts): an owner returned wins, else the first principal returned.
- * Example: the sharing plugin maps a guest cookie to its current grant.
  */
 export type Authenticator = (
 	request: IncomingMessage,
@@ -283,7 +282,7 @@ export const Authenticators = keyedRegistry<Authenticator>("p2.authenticators");
 
 /**
  * Whether a principal other than the owner may reach a session (its worker host, its files): any entry saying yes
- * admits. Example: the sharing plugin admits a guest of that session whose grant is current.
+ * admits.
  */
 export type SessionAuthorizer = (principal: P2Principal, session: string, ctx: Ctx) => boolean | Promise<boolean>;
 export const SessionAccess = keyedRegistry<SessionAuthorizer>("p2.session-access");

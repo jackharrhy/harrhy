@@ -70,7 +70,6 @@ import {
 	type EntriesPage,
 	type ModelMeta,
 	RunControl,
-	SendRouters,
 	StatsSchema,
 } from "./contract.ts";
 import { ShellCommands, serveShellCommands } from "./shell.ts";
@@ -169,7 +168,6 @@ async function content(
 }
 
 export default defineFacet((host) => {
-	serveKeyed(host, SendRouters);
 	serveShellCommands(host);
 	host.serve(
 		Conversation,
@@ -441,7 +439,6 @@ export default defineFacet((host) => {
 		const call = <T>(fn: () => Promise<T>): Promise<T> => worker().liveness.call(fn);
 		/** Refuses writes a plugin does not allow here (a one-shot agent's conversation); Stop is not one of them. */
 		const readOnlyConversations = self.registry(ReadOnlyConversations);
-		const routers = self.registry(SendRouters);
 		const gates = self.registry(InputGates);
 		const writable = async (ctx: Ctx): Promise<void> => {
 			for (const readOnly of readOnlyConversations.value.values()) {
@@ -506,13 +503,6 @@ export default defineFacet((host) => {
 						// As Pi Mobile: a message has text or attachments.
 						if (!input.text.trim() && !attachments?.length) throw new Error("Invalid content");
 						await writable(ctx);
-						for (const route of routers.value.values()) {
-							const routed = await route(
-								{ ...input, conversation, author: author(), attachments: attachments ?? [] },
-								ctx,
-							);
-							if (routed) return routed;
-						}
 						const files = attachments?.length
 							? await (await ctx.get(Attachments, {})).resolve({ ids: attachments, conversation }, ctx)
 							: undefined;

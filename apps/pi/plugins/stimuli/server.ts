@@ -17,7 +17,6 @@ import {
 import { processLogs } from "@p2/app/v1/node";
 import { Hosts, serverOf, WorkerInitValues } from "@p2/app/v1/server";
 import { Catalog } from "../sessions/contract.ts";
-import { Shares } from "../sharing/contract.ts";
 import { addressedMethods, findTarget, serveAddressed, mayDeliver } from "./addressed-server.ts";
 import { Saved } from "./saved.ts";
 import { StimulusSources, sourceKey } from "./contract.server.ts";
@@ -95,10 +94,8 @@ export default defineFacet((host) => {
 			];
 			const server = serverOf(self);
 			const catalog = self.get(Catalog, {});
-			const shares = self.get(Shares, {});
 			const startValues = self.registry(WorkerInitValues);
 			const startReady = self.derive([startValues], ([values]) => values.has("session"));
-			const shared = (session: string) => shares.links.value.some((link) => link.session === session);
 			const active = new Map<string, Promise<void>>();
 			const retry = new Map<string, { at: number; delay: number }>();
 			let changed = () => {};
@@ -108,13 +105,12 @@ export default defineFacet((host) => {
 				retry.clear();
 				changed();
 			});
-			const privateTarget = (session: string) => {
+			const openTarget = (session: string) => {
 				const target = catalog.sessions.value.find((row) => row.id === session);
-				if (!target || target.archivedAt !== null || shared(session))
-					throw forbidden("Stimuli require a private, unarchived session");
+				if (!target || target.archivedAt !== null) throw forbidden("Stimuli require an unarchived session");
 			};
 			const validateTarget = async (target: { session: string; conversation: number }, ctx: Ctx) => {
-				privateTarget(target.session);
+				openTarget(target.session);
 				await until(startReady, (ready) => ready, ctx);
 				const worker = await awaitWithContext(ctx.get(StimulusWorker, { session: target.session }), ctx);
 				await worker.validateTarget({ conversation: target.conversation }, ctx);
@@ -136,7 +132,7 @@ export default defineFacet((host) => {
 						const delivery = draft.wakes[id]?.delivery ?? draft.addressed[id]?.delivery ?? draft.events[id]!.envelope.delivery;
 						const target = catalog.sessions.value.find((session) => session.id === delivery.session);
 						if (draft.addressed[id] && !target) continue; // The sidebar view is bounded, not an absence proof.
-						if (!target || (target.archivedAt === null && !shared(delivery.session))) continue;
+						if (!target || target.archivedAt === null) continue;
 						if (row.phase.kind === "scheduled") row.phase = { kind: "closed", reason: "blocked" };
 						else if (row.phase.kind === "pending" || row.phase.kind === "uncertain")
 							row.phase = { kind: "uncertain", policy: "readback-only" };
@@ -145,7 +141,6 @@ export default defineFacet((host) => {
 				changed();
 			};
 			self.on(catalog.sessions, async (_change, ctx) => blockUnavailable(ctx));
-			self.on(shares.links, async (_change, ctx) => blockUnavailable(ctx));
 			const phase = async (id: string, next: Wake["phase"], ctx: Ctx) => {
 				await saved.change((draft) => {
 					const row = draft.wakes[id] ?? draft.addressed[id] ?? draft.events[id]!;
@@ -162,9 +157,8 @@ export default defineFacet((host) => {
 					if (addressed && row.phase.kind === "scheduled") await phase(id, { kind: "closed", reason: "blocked" }, ctx);
 					return;
 				}
-				const unavailable = async () => addressed
-					? !mayDeliver(addressed, policies.value.get(addressed.peer)) || await shares.isShared({ session }, ctx)
-					: shared(session);
+				const unavailable = async () =>
+					addressed !== undefined && !mayDeliver(addressed, policies.value.get(addressed.peer));
 				if (row.phase.kind === "scheduled" && await unavailable()) {
 					await phase(id, { kind: "closed", reason: "blocked" }, ctx);
 					return;
@@ -331,7 +325,7 @@ export default defineFacet((host) => {
 					const configHash = digest(args.config);
 					await saved.change((draft) => {
 						if (draft.subscriptions[args.id]) throw new Error("Subscription already exists");
-						privateTarget(args.target.session);
+						openTarget(args.target.session);
 						draft.subscriptions[args.id] = { ...args, configHash, revision: 1, enabled: true };
 					}, ctx);
 					return saved.value.subscriptions[args.id]!;
@@ -346,7 +340,7 @@ export default defineFacet((host) => {
 					await saved.change((draft) => {
 						const current = draft.subscriptions[args.id]!;
 						if (current.revision !== args.expectedRevision) throw new Error("Subscription revision conflict");
-						privateTarget(args.target.session);
+						openTarget(args.target.session);
 						for (const event of Object.values(draft.events))
 							if (event.envelope.subscriptionId === args.id) retire(event);
 						current.target = args.target;
@@ -367,7 +361,7 @@ export default defineFacet((host) => {
 						const current = draft.subscriptions[args.id]!;
 						if (current.revision !== args.expectedRevision) throw new Error("Subscription revision conflict");
 						if (current.enabled === args.enabled) return;
-						if (args.enabled) privateTarget(current.target.session);
+						if (args.enabled) openTarget(current.target.session);
 						for (const event of Object.values(draft.events))
 							if (event.envelope.subscriptionId === args.id) retire(event);
 						current.enabled = args.enabled;
@@ -404,7 +398,7 @@ export default defineFacet((host) => {
 							sourceKey(current.source) !== sourceKey(args.source)
 						)
 							throw forbidden("Retired stimulus binding");
-						privateTarget(current.target.session);
+						openTarget(current.target.session);
 						const source = declaration(current.source);
 						const text = source.render(args.event, current.config);
 						if (!text.length || Buffer.byteLength(text) > 32768)
@@ -452,8 +446,8 @@ export default defineFacet((host) => {
 						return previous;
 					}
 					if (notBefore <= Date.now()) throw new Error("New wakes must be in the future");
-					if ((await catalog.get({ id: session }, ctx)).archivedAt !== null || shared(session))
-						throw forbidden("Wakes require a private, unarchived session");
+					if ((await catalog.get({ id: session }, ctx)).archivedAt !== null)
+						throw forbidden("Wakes require an unarchived session");
 					const row: Wake = {
 						delivery: { id, session, conversation, notBefore, text, intentHash },
 						phase: { kind: "scheduled" },

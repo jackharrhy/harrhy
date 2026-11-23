@@ -4,7 +4,6 @@ import { awaitWithContext, type FacetHost, forbidden, isWorker, serveKeyed, Plug
 import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { FamiliarStore } from "../familiar/contract.ts";
 import { Catalog } from "../sessions/contract.ts";
-import { Shares } from "../sharing/contract.ts";
 import {
 	AddressedFence, type AddressedIntent, AddressedPolicies, type AddressedPolicy,
 	type AddressedReadback, AddressedWorker, WakeStore,
@@ -50,7 +49,6 @@ export function addressedMethods(
 ) {
 	const policies = self.registry(AddressedPolicies);
 	const catalog = self.get(Catalog, {});
-	const shares = self.get(Shares, {});
 	const requireReceipt = (peer: string) => {
 		if (!currentPolicy(policies.value.get(peer))?.receipts) throw forbidden("Addressed receipt not authorized");
 	};
@@ -63,8 +61,7 @@ export function addressedMethods(
 				: new Set(policy?.discover ?? []);
 			for (const id of ids) {
 				const row = await findTarget(catalog, id, ctx);
-				if (row?.archivedAt === null && !(await shares.isShared({ session: id }, ctx)) &&
-					(await findTarget(catalog, id, ctx))?.archivedAt === null)
+				if (row?.archivedAt === null && (await findTarget(catalog, id, ctx))?.archivedAt === null)
 					rows.push({ id, title: row.title });
 			}
 			return policy?.revision === currentPolicy(policies.value.get(peer))?.revision ? rows : [];
@@ -88,8 +85,8 @@ export function addressedMethods(
 			const existing = saved.value.addressed[id];
 			if (existing) return recover(existing);
 			const session = selector ?? (await ctx.get(FamiliarStore, {})).session.value;
-			if (!session || (await findTarget(catalog, session, ctx))?.archivedAt !== null ||
-				await shares.isShared({ session }, ctx)) throw forbidden("Addressed target unavailable");
+			if (!session || (await findTarget(catalog, session, ctx))?.archivedAt !== null)
+				throw forbidden("Addressed target unavailable");
 			const conversation = await (await awaitWithContext(ctx.get(AddressedWorker, { session }), ctx)).main({}, ctx);
 			let inserted = false;
 			await saved.change((draft) => {
@@ -124,7 +121,6 @@ export function serveAddressed(host: FacetHost) {
 		const hosts = self.get(Hosts, {});
 		const rows = self.get(WakeStore, {});
 		const catalog = self.get(Catalog, {});
-		const shares = self.get(Shares, {});
 		const policies = self.registry(AddressedPolicies);
 		const gate = sessionAdmissionOf(self);
 		return { variant: "worker", members: {
@@ -135,7 +131,7 @@ export function serveAddressed(host: FacetHost) {
 					const row = await rows.addressedRow({ id }, ctx);
 					if (!row || row.delivery.session !== session || row.delivery.intentHash !== intentHash ||
 						row.phase.kind !== "pending" || (await catalog.get({ id: session }, ctx)).archivedAt !== null ||
-						await shares.isShared({ session }, ctx) || !mayDeliver(row, policies.value.get(row.peer)))
+						!mayDeliver(row, policies.value.get(row.peer)))
 						throw forbidden("Addressed admission withdrawn");
 					return true;
 				}, ctx);

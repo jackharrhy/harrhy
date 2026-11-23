@@ -1,6 +1,6 @@
-// Moves p2's share links, guests and grants (`shares.sqlite`, schema versions 1 and 2) and its sessions' subagent lists
-// (`subagents.sqlite`) into the server's Chord store, as the tables of `Shares` and `ChildStore`
-// (`plugins/sharing/store.ts`, `plugins/subagents/children.ts`). Part of `npm run migrate-data` (`migrate-data.ts`),
+// Moves p2's sessions' subagent lists (`subagents.sqlite`) into the server's Chord store, as the tables of
+// `ChildStore` (`plugins/subagents/children.ts`). Share links (`shares.sqlite`) are no longer moved: sharing was
+// removed. Part of `npm run migrate-data` (`migrate-data.ts`),
 // offline.
 //
 // Each file is written in one transaction of a host of its own on the server's store, serving the owner's contract
@@ -15,15 +15,6 @@ import { isDeepStrictEqual } from "node:util";
 import { constant, query } from "@earendil-works/chord";
 import { BACKGROUND_CONTEXT as context } from "@earendil-works/chord/context";
 import { arr, compile, obj, opt, str } from "@earendil-works/pi-schema";
-import { Shares } from "../plugins/sharing/contract.ts";
-import {
-	GrantRows,
-	type GrantStored,
-	GuestRows,
-	type GuestStored,
-	LinkRows,
-	type LinkStored,
-} from "../plugins/sharing/store.ts";
 import { type ChildRow, ChildRows } from "../plugins/subagents/children.ts";
 import { type Child, ChildSchema, ChildStore } from "../plugins/subagents/contract.ts";
 
@@ -45,25 +36,22 @@ export type FileMigration =
 const JOURNAL = ["", "-wal", "-shm"];
 const BACKUP = "pre-server-data-backup";
 
-/** `Shares`' rows. */
-type ShareTables = { readonly links: LinkStored[]; readonly guests: GuestStored[]; readonly grants: GrantStored[] };
 /** `ChildStore`'s rows. */
 type ChildTables = { readonly children: ChildRow[] };
 
 /**
- * Migrates `shares.sqlite` and `subagents.sqlite` of `dataDir` into the server store of `work` (`dataDir` itself, or a
+ * Migrates `subagents.sqlite` of `dataDir` into the server store of `work` (`dataDir` itself, or a
  * dry run's directory: the server's store is copied there first, and nothing in `dataDir` changes).
  */
 export async function migrateServerData(
 	dataDir: string,
 	work: string,
 	dryRun: boolean,
-): Promise<{ readonly shares: FileMigration; readonly subagents: FileMigration }> {
+): Promise<{ readonly subagents: FileMigration }> {
 	const serverDir = serverDirectory(work);
 	if (dryRun && !existsSync(hostStore(serverDir)) && existsSync(hostStore(serverDirectory(dataDir))))
 		copySqlite(hostStore(serverDirectory(dataDir)), hostStore(serverDir));
 	return {
-		shares: await migrateFile(dataDir, serverDir, dryRun, SHARES),
 		subagents: await migrateFile(dataDir, serverDir, dryRun, children(serverDir)),
 	};
 }
@@ -75,14 +63,6 @@ type Step<T extends object> = {
 	readonly activate: (ctx: Ctx) => Promise<unknown>;
 	readonly read: (path: string) => T;
 	readonly count: (rows: T) => number;
-};
-
-const SHARES: Step<ShareTables> = {
-	file: "shares.sqlite",
-	facet: (use) => sharesFacet(use),
-	activate: (ctx) => ctx.get(Shares, {}),
-	read: (path) => readShares(path),
-	count: (rows) => rows.links.length + rows.guests.length + rows.grants.length,
 };
 
 /** `subagents.sqlite`, its own-cwd children placed on their sessions' environments in `serverDir`'s catalog. */
@@ -133,50 +113,6 @@ type Owned<T> = {
 	readonly write: (rows: T, ctx: Ctx) => Promise<void>;
 	readonly read: (ctx: Ctx) => Promise<T>;
 };
-
-/** `Shares`' tables, written and read in its own transactions. */
-const sharesFacet = (use: (owned: Owned<ShareTables>) => void) =>
-	defineFacet((h) =>
-		h.serve(Shares, (_params, self) => {
-			const links = self.table(LinkRows);
-			const guests = self.table(GuestRows);
-			const grants = self.table(GrantRows);
-			const refused = () => Promise.reject(new Error("Shares is open for its migration only"));
-			use({
-				empty: async (ctx) =>
-					(await links.count(query(LinkRows), ctx)) +
-						(await guests.count(query(GuestRows), ctx)) +
-						(await grants.count(query(GrantRows), ctx)) ===
-					0,
-				write: (rows, ctx) =>
-					self.tx((tx) => {
-						for (const row of rows.links) tx.put(links, row);
-						for (const row of rows.guests) tx.put(guests, row);
-						for (const row of rows.grants) tx.put(grants, row);
-					}, ctx),
-				read: async (ctx) => ({
-					links: await all(links.rows(query(LinkRows), ctx)),
-					guests: await all(guests.rows(query(GuestRows), ctx)),
-					grants: await all(grants.rows(query(GrantRows), ctx)),
-				}),
-			});
-			return {
-				links: constant([]),
-				emails: constant([]),
-				people: constant([]),
-				authenticate: refused,
-				authenticateEmail: refused,
-				grant: refused,
-				active: refused,
-				isShared: refused,
-				link: refused,
-				share: refused,
-				remove: refused,
-				disableSession: refused,
-				join: refused,
-			};
-		}),
-	);
 
 /** `ChildStore`'s table, written and read in its own transactions. */
 const childrenFacet = (use: (owned: Owned<ChildTables>) => void) =>
@@ -250,72 +186,6 @@ async function withTables<T extends object>(
 }
 
 /**
- * The links, guests and grants of `shares.sqlite` at `path` (a copy), as `Shares`' tables keep them. Version 1 (one
- * guest per link) becomes a guest with one grant, the session of its link, as `ShareDb` migrated it.
- */
-function readShares(path: string): ShareTables {
-	const db = new DatabaseSync(path);
-	try {
-		const version = Number(db.prepare("PRAGMA user_version").get()?.user_version ?? 0);
-		if (version !== 1 && version !== 2) throw new Error(`shares.sqlite: unsupported schema version ${version}`);
-		const linkRows = db.prepare("SELECT id,session,mode,token FROM links").all();
-		const links: LinkStored[] = linkRows.map((row) => ({
-			session: Session({ id: String(row.session) }),
-			mode: mode(row.mode),
-			id: String(row.id),
-			token: String(row.token),
-		}));
-		const sessionOfLink = new Map(linkRows.map((row) => [String(row.id), String(row.session)]));
-		const modeOfLink = new Map(linkRows.map((row) => [String(row.id), mode(row.mode)]));
-		const guests: GuestStored[] = [];
-		const grants: GrantStored[] = [];
-		if (version === 1) {
-			for (const row of db.prepare("SELECT id,linkId,name,secretHash,removed,revision,lastSeen FROM guests").all()) {
-				const session = sessionOfLink.get(String(row.linkId));
-				guests.push({
-					id: String(row.id),
-					name: String(row.name),
-					secretHash: String(row.secretHash),
-					revision: Number(row.revision),
-					lastSeen: Number(row.lastSeen),
-				});
-				if (session === undefined) continue;
-				grants.push({
-					session: Session({ id: session }),
-					guest: String(row.id),
-					mode: modeOfLink.get(String(row.linkId)) ?? "view",
-					linkId: String(row.linkId),
-					removed: row.removed === 1,
-					grantedAt: Number(row.lastSeen),
-				});
-			}
-		} else {
-			for (const row of db.prepare("SELECT id,name,secretHash,email,revision,lastSeen FROM guests").all())
-				guests.push({
-					id: String(row.id),
-					name: String(row.name),
-					...(row.secretHash === null ? {} : { secretHash: String(row.secretHash) }),
-					...(row.email === null ? {} : { email: String(row.email) }),
-					revision: Number(row.revision),
-					lastSeen: Number(row.lastSeen),
-				});
-			for (const row of db.prepare("SELECT guest,session,mode,linkId,removed,grantedAt FROM grants").all())
-				grants.push({
-					session: Session({ id: String(row.session) }),
-					guest: String(row.guest),
-					mode: mode(row.mode),
-					...(row.linkId === null ? {} : { linkId: String(row.linkId) }),
-					removed: row.removed === 1,
-					grantedAt: Number(row.grantedAt),
-				});
-		}
-		return { links, guests, grants };
-	} finally {
-		db.close();
-	}
-}
-
-/**
  * Each session's children in `subagents.sqlite` at `path` (a copy), as `ChildStore`'s table keeps them. A child stored
  * with an own cwd (before locations) is placed on its session's environment, as `ChildStore` placed it (a session could
  * not change machines while it had such children): `envs` maps each session to it.
@@ -365,12 +235,6 @@ function sessionEnvs(serverDir: string): Map<string, string | null> {
 	} finally {
 		db.close();
 	}
-}
-
-/** A stored share mode. */
-function mode(value: unknown): "view" | "full" {
-	if (value === "view" || value === "full") return value;
-	throw new Error(`shares.sqlite: unknown mode ${JSON.stringify(value)}`);
 }
 
 /** Whether `stored` holds exactly `rows` (each table compared as a set). */

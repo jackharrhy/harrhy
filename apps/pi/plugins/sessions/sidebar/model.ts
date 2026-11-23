@@ -1,10 +1,9 @@
 // The sidebar's rules, as pure functions over what p2 already knows. A rollup is a rule that collects sessions into one
-// section of the sidebar: groups of sessions (one per folder, for rollups made from code), a flat list (the live
-// sessions), or only a link to its list (the Archive). The sidebar shows each rollup's relevant sessions (relevance and the rollup's
-// window); its list page shows them all, those that fell out of the window aged. No React: the views render what these
-// return.
+// section of the sidebar: a flat list (the live sessions), or only a link to its list (the Archive); the folders are
+// groups of sessions for the command menu's folder pages. The sidebar shows each rollup's relevant sessions (relevance
+// and the rollup's window); its list page shows them all, those that fell out of the window aged. No React: the views
+// render what these return.
 
-import type { RollupWindow } from "../../rollups/contract.ts";
 import type { RunFailure, Work } from "../../status/contract.ts";
 import type { Child } from "../../subagents/contract.ts";
 import type { Session, SidebarWindow } from "../contract.ts";
@@ -44,8 +43,8 @@ export function failureOf(row: SidebarRow): string | undefined {
 export type NewTarget = { kind: "folder"; env: string | null; cwd: string };
 
 /**
- * A group a rollup collected: its key, name (and a longer title), its sessions and where a new one starts (none: no
- * "+"). `keep`: shown even without a relevant session.
+ * A group of sessions (a folder): its key, name (and a longer title), its sessions and where a new one starts. It shows
+ * while it has a relevant session.
  */
 export type Group = {
 	readonly key: string;
@@ -55,7 +54,6 @@ export type Group = {
 	readonly sandboxed: boolean;
 	readonly members: readonly SidebarRow[];
 	readonly target?: NewTarget;
-	readonly keep?: boolean;
 };
 
 /** What a rollup collects: a flat list of sessions, groups of sessions, or sessions shown only in its list page. */
@@ -73,10 +71,8 @@ export type RollupContext = {
 
 /**
  * A rule that turns sessions into one section of the sidebar. `archived`: it collects archived sessions. `prefix`: the
- * key prefix of the groups it collects. `window`: its window until the owner picks one (default 3 days; `none`: every
- * session it collects shows). `timeOf`: the time its window compares and its list sorts by (default `updatedAt`).
- * `keeps`: sessions it shows whatever their time, as pinned ones. `headless`: its sessions show without a heading row,
- * always open, followed by a link to its list when its window hides some.
+ * key prefix of the groups it collects. `headless`: its sessions show without a heading row, always open, followed by a
+ * link to its list when its window hides some.
  */
 export type Rollup = {
 	readonly key: string;
@@ -84,9 +80,6 @@ export type Rollup = {
 	readonly archived: boolean;
 	readonly headless?: boolean;
 	readonly prefix?: string;
-	readonly window?: RollupWindow;
-	readonly timeOf?: (row: SidebarRow) => number;
-	readonly keeps?: (row: SidebarRow) => boolean;
 	collect(rows: readonly SidebarRow[], context: RollupContext): Collected;
 };
 
@@ -202,12 +195,11 @@ function ordered(rollups: readonly Rollup[], order: readonly string[]): Rollup[]
 
 const DEFAULT_WINDOW: SidebarWindow = "3d";
 const DAY = 24 * 60 * 60 * 1000;
-const WINDOW_MS: Record<RollupWindow, number> = {
+const WINDOW_MS: Record<SidebarWindow, number> = {
 	"1d": DAY,
 	"3d": 3 * DAY,
 	"1w": 7 * DAY,
 	forever: Infinity,
-	none: Infinity,
 };
 
 /** The windows a rollup offers, with their labels, shortest first. */
@@ -218,20 +210,14 @@ export const WINDOWS: readonly { readonly window: SidebarWindow; readonly label:
 	{ window: "forever", label: "Forever" },
 ];
 
-/** A rollup's window: the owner's choice, else its own, else 3 days; a rollup without one (`none`) offers no choice. */
-function windowOf(rollup: Rollup, view: View): RollupWindow {
-	if (rollup.window === "none") return "none";
-	return view.windows[rollup.key] ?? rollup.window ?? DEFAULT_WINDOW;
-}
-
-/** The time `rollup`'s window compares for `row`. */
-const timeIn = (rollup: Rollup, row: SidebarRow) => rollup.timeOf?.(row) ?? row.updatedAt;
+/** A rollup's window: the owner's choice, else 3 days. */
+const windowOf = (rollup: Rollup, view: View): SidebarWindow => view.windows[rollup.key] ?? DEFAULT_WINDOW;
 
 /**
- * Whether the sidebar shows `row` in `rollup`: something keeps it in view (pinned, open now, working, an unread answer,
- * a failure, a running operation, the rollup keeps it), or its time is within the rollup's window.
+ * Whether the sidebar shows `row`: something keeps it in view (pinned, open now, working, an unread answer, a failure, a
+ * running operation), or its last activity is within the rollup's window.
  */
-function isRelevant(rollup: Rollup, row: SidebarRow, window: RollupWindow, view: View): boolean {
+function isRelevant(row: SidebarRow, window: SidebarWindow, view: View): boolean {
 	return (
 		row.pinned ||
 		row.id === view.open ||
@@ -239,14 +225,12 @@ function isRelevant(rollup: Rollup, row: SidebarRow, window: RollupWindow, view:
 		Boolean(row.worker.unread) ||
 		row.operation !== undefined ||
 		failureOf(row) !== undefined ||
-		Boolean(rollup.keeps?.(row)) ||
-		view.now - timeIn(rollup, row) < WINDOW_MS[window]
+		view.now - row.updatedAt < WINDOW_MS[window]
 	);
 }
 
-/** Pinned sessions first, then the latest by `rollup`'s time. */
-const byPinThenTime = (rollup: Rollup) => (a: SidebarRow, b: SidebarRow) =>
-	Number(b.pinned) - Number(a.pinned) || timeIn(rollup, b) - timeIn(rollup, a);
+/** Pinned sessions first, then the latest by activity. */
+const byPinThenTime = (a: SidebarRow, b: SidebarRow) => Number(b.pinned) - Number(a.pinned) || b.updatedAt - a.updatedAt;
 
 /** The owner's sidebar settings (`SidebarSettings`), and what relevance depends on. */
 export type View = {
@@ -308,7 +292,7 @@ export type GroupSection = Omit<Group, "members"> & {
  * A rollup's section of the sidebar, by the layout of what it collected. A collapsed one says what the sessions it hides
  * do (`hidden`; nothing while shown).
  */
-export type Section = { readonly key: string; readonly name: string; readonly window: RollupWindow } & (
+export type Section = { readonly key: string; readonly name: string; readonly window: SidebarWindow } & (
 	| {
 			readonly layout: "sessions";
 			readonly collapsed: boolean;
@@ -343,7 +327,7 @@ export function sectionsOf(
 		const window = windowOf(rollup, view);
 		const collapsed = view.collapsed[rollup.key] ?? false;
 		const relevant = (members: readonly SidebarRow[]) =>
-			members.filter((row) => isRelevant(rollup, row, window, view)).sort(byPinThenTime(rollup));
+			members.filter((row) => isRelevant(row, window, view)).sort(byPinThenTime);
 		const base = { key: rollup.key, name: rollup.name, window };
 		const collected = rollup.collect(rows, context);
 		if (collected.layout === "link") return { ...base, layout: "link", total: collected.members.length };
@@ -372,7 +356,7 @@ export function sectionsOf(
 		const groups = collected.groups.flatMap(({ members, ...group }): GroupSection[] => {
 			const shown = relevant(members);
 			const closed = view.collapsed[group.key] ?? false;
-			if (shown.length === 0 && !group.keep) return [];
+			if (shown.length === 0) return [];
 			return [
 				closed
 					? { ...group, collapsed: closed, rows: [], hidden: activityOf(shown) }
@@ -393,7 +377,7 @@ export type ListGroup = Omit<Group, "members"> & { readonly entries: readonly Li
 export type ListPageData = {
 	readonly name: string;
 	/** The rollup's window; absent for archived sessions. */
-	readonly window?: RollupWindow;
+	readonly window?: SidebarWindow;
 	readonly archived: boolean;
 	/** For one group's page: where its "+" starts a new session. */
 	readonly target?: NewTarget;
@@ -420,13 +404,12 @@ export function listPageOf(
 	);
 	if (!rollup) return undefined;
 	const window = windowOf(rollup, view);
-	const order = byPinThenTime(rollup);
 	const entries = (members: readonly SidebarRow[]): ListEntry[] =>
 		rollup.archived
 			? members.toSorted((a, b) => (b.archivedAt ?? 0) - (a.archivedAt ?? 0)).map((row) => ({ row, aged: false }))
 			: members
-					.map((row) => ({ row, aged: !isRelevant(rollup, row, window, view) }))
-					.sort((a, b) => Number(a.aged) - Number(b.aged) || order(a.row, b.row));
+					.map((row) => ({ row, aged: !isRelevant(row, window, view) }))
+					.sort((a, b) => Number(a.aged) - Number(b.aged) || byPinThenTime(a.row, b.row));
 	const base = { archived: rollup.archived, ...(rollup.archived ? {} : { window }) };
 	const collected = rollup.collect(rows, context);
 	if (collected.layout !== "groups")

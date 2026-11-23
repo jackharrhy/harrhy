@@ -13,7 +13,6 @@ import inboxFacet from "../../integrations/local-inbox/server.ts";
 import { LocalInboxAdmin } from "../../integrations/local-inbox/contract.ts";
 import { createP2Models } from "../../plugins/models/models.ts";
 import { Catalog, type Session as SessionRow } from "../../plugins/sessions/contract.ts";
-import { Shares } from "../../plugins/sharing/contract.ts";
 import {
 	bindStimulusPublisher,
 	defineStimulusSource,
@@ -212,24 +211,6 @@ it("recovers interrupted native admissions across restart and grant changes", { 
 						},
 						activity: async () => null,
 						update: async () => {
-							throw new Error("unused");
-						},
-					}),
-				],
-				[
-					Shares,
-					(_params, _principal, self) => ({
-						links: self.state([]),
-						authenticate: async () => null,
-						isShared: async () => false,
-						grant: async () => null,
-						active: async () => null,
-						link: async () => null,
-						remove: async () => null,
-						disableSession: async () => {
-							throw new Error("unused");
-						},
-						join: async () => {
 							throw new Error("unused");
 						},
 					}),

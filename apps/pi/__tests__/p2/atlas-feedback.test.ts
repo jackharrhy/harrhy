@@ -8,7 +8,6 @@ import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { AtlasFeedback, type Batch, payloadDigest } from "../../integrations/atlas-feedback/contract.server.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Catalog, Sessions } from "../../plugins/sessions/contract.ts";
-import { Sharing } from "../../plugins/sharing/contract.ts";
 import { EventReadbackSchema, Subscriptions } from "../../plugins/stimuli/contract.ts";
 import { Subagents } from "../../plugins/subagents/contract.ts";
 import { SessionTree } from "../../plugins/tree/contract.ts";
@@ -29,7 +28,6 @@ const Targets = compile(
 		),
 		defaultSessionId: union([str(), nul()]),
 		eligibleCount: int(),
-		omittedPrivacyCount: int(),
 		unavailable: arr(obj({ sessionId: str(), label: str(), reason: str() })),
 	}),
 );
@@ -239,10 +237,6 @@ it("authenticates the app, filters targets, freezes batches and preserves retire
 			);
 			return value.receipt.state === "admitted" && value.receipt.event.phase.kind === "settled";
 		});
-		const sharing = await holdIn(fixture.browser(), Sharing, { session: other.id }, "owner");
-		await sharing.link({ mode: "view" }, TEST);
-		assert.deepEqual(await getTargets(), []);
-		sharing.release();
 		chat.release();
 		subscriptions.release();
 		sessions.release();
@@ -276,11 +270,8 @@ it("derives all private root recipients, keeps root titles and preserves old bin
 		const sessions = await holdIn(owner, Sessions, {}, "owner");
 		const ask = await sessions.create({ cwd: fixture.workspace, title: "Ask Pi fixture" }, TEST);
 		const idle = await sessions.create({ cwd: fixture.workspace, title: "Idle root" }, TEST);
-		const shared = await sessions.create({ cwd: fixture.workspace, title: "Private label must be omitted" }, TEST);
 		const archived = await sessions.create({ cwd: fixture.workspace, title: "Archived root" }, TEST);
 		await sessions.archive({ id: archived.id }, TEST);
-		const sharing = await holdIn(owner, Sharing, { session: shared.id }, "owner");
-		await sharing.link({ mode: "view" }, TEST);
 		const tree = await holdIn(owner, SessionTree, { session: ask.id }, "owner");
 		await tree.rename({ conversation: 1, label: "Only a branch review label" }, TEST);
 		const config = { resource: "atlas-roots", articleOrigin: "https://atlas.example.test" };
@@ -317,7 +308,6 @@ it("derives all private root recipients, keeps root titles and preserves old bin
 		const first = await get();
 		assert.equal(first.defaultSessionId, ask.id);
 		assert.equal(first.eligibleCount, 2, JSON.stringify(first));
-		assert.equal(first.omittedPrivacyCount, 1);
 		assert.deepEqual(first.unavailable, []);
 		assert.deepEqual(
 			first.targets.map((row) => [row.sessionId, row.label]).sort(),
@@ -326,8 +316,6 @@ it("derives all private root recipients, keeps root titles and preserves old bin
 				[idle.id, idle.title],
 			].sort(),
 		);
-		assert(!JSON.stringify(first).includes(shared.title));
-		assert(!JSON.stringify(first).includes(shared.id));
 		const oldTarget = first.targets.find((row) => row.sessionId === ask.id)!;
 		const chat = await holdIn(owner, Chat, { session: ask.id, conversation: 1 }, "participant");
 		const children = await holdIn(owner, Subagents, {}, "reader");

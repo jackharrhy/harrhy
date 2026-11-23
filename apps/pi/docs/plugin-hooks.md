@@ -110,21 +110,11 @@ contracts and factories are the enforcement.
 | --- | --- | --- | --- | --- |
 | `Routes` | `"METHOD /path"` or `"METHOD /prefix/*"` → `(req, res, {principal, origin}, ctx)` | after host paths, longest prefix wins (`src/hosts/server.ts:459`, `src/runtime/server.ts:124`) | files, artifacts, workspace, sharing, devices | Handler authorizes itself; `principal` may be `undefined` (stranger), owner, guest. |
 | `Upgrades` | exact path → `(req, socket, head, principal, ctx)` | WebSocket upgrades other than `/chord` (`src/hosts/server.ts`) | none at present | Only authenticated principals reach it. |
-| `Authenticators` | name → `(req, origin, ctx) => principal` | every request; first owner wins, else first principal (`src/hosts/server.ts:343-355`) | devices (owner cookie), sharing (guest cookie) | |
+| `Authenticators` | name → `(req, origin, ctx) => principal` | every request; first owner wins, else first principal (`src/hosts/server.ts:343-355`) | devices (owner cookie) | |
 | `RequestResolvers` | name → `(req, ctx) => {principal, origin}` | before Host checks (`src/hosts/server.ts:357`) | radius, devices | Trusted transports only. |
-| `SessionAccess` | name → `(principal, session, ctx) => boolean` | `mayReach`: worker routes, files (`src/runtime/server.ts:158-165`) | sharing (`plugins/sharing/server.ts:332`) | Any yes admits a non-owner. |
+| `SessionAccess` | name → `(principal, session, ctx) => boolean` | `mayReach`: worker routes, files (`src/runtime/server.ts:158-165`) | none now (the sharing plugin was removed) | Any yes admits a non-owner. |
 | `WorkerInitValues` | key → `(session, ctx) => value` | before each worker spawn; a throw refuses it (`src/runtime/server.ts:297-303`) | sessions (`plugins/sessions/server.ts:103`, key `session`) | Worker reads `WorkerProcess.init.values[key]`. |
 | `SessionArchived` | name → `(session, ctx) => Promise` | awaited before `archive` returns (`plugins/sessions/server.ts:69`) | ports (`plugins/ports/server.ts:42`) | Defined by the sessions plugin. No restore/delete/create counterparts. |
-
-```ts
-// plugins/sharing/server.ts:326
-self.register(Authenticators, {
-	guest: async (request, origin, ctx) => {
-		const cookie = cookieValue(request, cookieName(origin.port));
-		return cookie === undefined ? undefined : ((await shares.authenticate({ cookie }, ctx)) ?? undefined);
-	},
-});
-```
 
 Reserved host endpoints are `/health`, `/__p2_dev`, `/__p2_tui[/<hash>.mjs]` and the `/chord` WebSocket upgrade
 (`src/hosts/server.ts`). Plugin `Routes` run before the web host, so they can shadow app pages, `/_chord/web/…` and
@@ -183,7 +173,6 @@ that must survive reload reads live resources through getters (`plugins/codemode
 | --- | --- | --- | --- | --- |
 | `ExtensionSwitches` | registry: extension name → `Readable<boolean>` | `false` leaves that extension out of new snapshots | `src/runtime/durable.ts:31,43-93` | codemode (`codemode` setting), dev-tools (dev checkout) |
 | `InputGates` | registry: name → `(ctx) => Promise` | awaited before any input is submitted | `plugins/chat/worker.ts:320,380,404`, `plugins/conversations/worker.ts:132` | prompt (first AGENTS.md load) |
-| `SendRouters` | registry (chat): name → `(RoutedSend, ctx) => {submissionId} \| undefined` | `Chat.send` asks each; untaken sends become `p2.input` | `plugins/chat/worker.ts:571` | chat-mode (`plugins/chat-mode/worker.ts:134`) |
 | `ReadOnlyConversations` | registry: name → `(conversation, ctx) => reason?` | refuses `Chat.send`/`dequeue`/`configure` | `plugins/chat/worker.ts:514` | subagents (one-shot agents) |
 | `ConversationConfigured` | registry: name → `(conversation, ctx)` | after a browser/TUI `configure` | `plugins/chat/worker.ts:482` | subagents |
 | `HarnessConfig` | registry, key `"default"` only | models + Durable settings | `src/runtime/worker.ts:332-350,410` | models |
@@ -193,17 +182,6 @@ that must survive reload reads live resources through getters (`plugins/codemode
 | `WorkerProcess` | local, lifetime "host" | `init` (dataDir, generation, `values` from `WorkerInitValues`), `liveness` (`add("viewers" \| "activeCalls")`, `stopping`) | `src/runtime/worker.ts` | workspace (viewers), participants' calls (`activeCalls`, the relocation fence), codemode (`stopping`) |
 | `Conversation` | local (chat) | `submit` (input with own `entry` kind), `write` (display-only entry), `stop`, `history`, `compact`, `reset`, `runShell`… | `plugins/chat/contract.ts:140-189` | chat-mode, conversations |
 
-```ts
-// plugins/chat-mode/worker.ts:134 (shortened)
-self.register(SendRouters, {
-	"chat-mode": async ({ conversation, author, text, requestId }, ctx) => {
-		if (!(await enabled(conversation, ctx))) return undefined; // leave it to the next router / p2.input
-		const chat = ctx.get(Conversation, { conversation });
-		return chat.write({ kind: CHAT_ENTRY, data: { author, text, attachments: [] }, requestId, author }, ctx);
-	},
-});
-```
-
 ### 3.3 Entries, documents, environments
 
 - **Entry kinds:** `Conversation.submit({ …, entry: { kind, data } })` places an input under a plugin kind
@@ -212,8 +190,7 @@ self.register(SendRouters, {
   the web (`src/web/transcript.ts:506-512`) and need a `TuiEntryRenderers` entry in the TUI.
 - **Documents:** `defineDoc` from `@earendil-works/pi-durable`; write in `harness.commit(tx => tx.doc(Doc, id))`,
   read with `harness.snapshot(Doc, id)` or in tools/hooks via their API. Conversation docs reach clients in
-  `Chat.view.docs`. Examples: `p2.subagents`, `p2.agent-run`, `p2.views`, chat-mode's `ChatModeDoc`
-  (`plugins/chat-mode/worker.ts:25`). Change signals: `CommitSignal` (`src/runtime/commits.ts:4`), `watchSource`
+  `Chat.view.docs`. Examples: `p2.subagents`, `p2.agent-run`. Change signals: `CommitSignal` (`src/runtime/commits.ts:4`), `watchSource`
   (`src/runtime/durable.ts:113`).
 - **Environments:** tools use `api.env`; plugins use `Harness.environment` / `environments.at(cwd)`. Only one remote
   provider (`HarnessEnvironments["remote"]`).
@@ -230,8 +207,8 @@ self.register(SendRouters, {
 | `app` | `src/hosts/web/main.tsx` (`startWeb`) | single | web-shell |
 | `sidebar` | `src/web/AppLayout.tsx:21` | single | sessions |
 | `main` | `src/web/AppLayout.tsx:60` | single | chat |
-| `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | sessions, sharing |
-| `composer:*` | `plugins/chat/web.tsx:925` (`SlotList`) | list | chat-mode |
+| `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | sessions |
+| `composer:*` | `plugins/chat/web.tsx:925` (`SlotList`) | list | none now (chat mode was removed) |
 | `chat-content` | `plugins/chat/web.tsx:1133` | wrapper (gets `children`) | artifacts (card contexts, the sent-file viewer, the artifacts side panel) |
 | `chat-attribution` | `plugins/chat/web.tsx:1134` | wrapper | conversations |
 | `sidebar-actions:*` | `plugins/sessions/web.tsx` (`SlotList`) | list: icon buttons before the theme switch | settings |
@@ -265,17 +242,17 @@ Pattern: the plugin's slot component renders its button and, when `useSheet(name
 - **Composer:** `ComposerExpanders` (`src/runtime/composer.ts:7`): `(host, session, text) => text?`, asked in key order
   for text starting with `/` (`plugins/chat/web.tsx:621`); prompt registers one (`plugins/prompt/composer.ts:10`).
   Chips: `composer:*` slots. Shared state: `useComposerState()` (`src/web/composer-state.tsx:123`: draft, files,
-  `addFiles`, `replyTo`, `canReply`/`setCanReply`, `pinChat`). `@`/Tab completion is core (`src/web/file-completion.tsx`).
+  `addFiles`, `pinChat`). `@`/Tab completion is core (`src/web/file-completion.tsx`).
   No web commands, slash commands or key bindings.
 - **Transcript:** `TranscriptEntries` (`plugins/chat/contract.ts:270`): entry kind → pure `(data) => {replyTo?, note?}`,
-  adds to a person's message (chat-mode, shared with the TUI). Tool cards are a fixed `switch (tool.name)` in
+  adds to a person's message (the legacy chat-mode and views entries keep theirs, `plugins/chat/legacy-entries.ts`). Tool cards are a fixed `switch (tool.name)` in
   `src/web/Chat.tsx:303-511` (bash, codemode, read, write, subagent, artifact, ports, send_file, edit, generic). React
   contexts the chat plugin provides to cards (`src/web/Chat.tsx:65-77`: `OpenConversation`, `OneShotAgents`,
   `OpenPeerConversation`, `WorkingDirectory`, `SessionId`, `ReplyTo`) are not a plugin API.
 - **Owner notices:** one core lane (`src/web/OwnerNotices.tsx`) fed by `LogNotices` and the dev status; plugins can only
   publish server errors (2.3).
 - **Theme:** `src/web/theme.ts` (system/light/dark, `setTheme`/`subscribeTheme`) and CSS in `src/web/style.css`; plugins
-  import their own CSS (`plugins/chat-mode/style.css`). No theme contribution.
+  import their own CSS (`plugins/sessions/sidebar/style.css`). No theme contribution.
 
 ## 5. TUI facets
 

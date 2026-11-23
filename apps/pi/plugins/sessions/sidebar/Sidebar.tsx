@@ -1,11 +1,9 @@
 // The sidebar's view, built from Elanor's sidebar and side navigation: one navigation group per rollup, in the layout
-// of what it collected (the live sessions, a rollup made from code's folders as groups of sessions, the Archive's name),
-// and the guest's list of shared sessions. Every row has the same shape (NavRow.tsx): a marker, a label, details and
+// of what it collected (the live sessions, the Archive's name). Every row has the same shape (NavRow.tsx): a marker, a label, details and
 // controls at the trailing end. The owner's list starts with the rows plugins put there (the Familiar's), then the row
 // that opens the new-session screen. A rollup's name opens its list page, its chevron shows or hides its sessions; a
 // group's row shows or hides its sessions and its "+" starts a session in its folder; a session's row opens it, its
 // chevron shows or hides its subagents. It renders what model.ts computes and calls back for every action.
-import { type Grant, grantMode } from "@p2/app/v1";
 import {
 	NavAddIcon,
 	NavFolderIcon,
@@ -230,13 +228,11 @@ function placesOf(sections: readonly Section[], id: string): string[] {
 
 /** Memoized: the composer re-renders App on every keypress, and the session list need not follow. */
 export const SidebarView = memo(function SidebarView({
-	rows,
 	sections,
 	now,
 	page,
 	newSession,
 	startRows,
-	guest,
 	activeId,
 	conversationId,
 	connected,
@@ -255,8 +251,6 @@ export const SidebarView = memo(function SidebarView({
 	headerActions,
 	footerActions,
 }: {
-	/** Every session the reader may see, archived ones included (the guest's list). */
-	rows: readonly SidebarRow[];
 	/** The sections, as `sectionsOf` computed them (the owner's). */
 	sections: readonly Section[];
 	/** The time the sections were computed at; rows say how long ago they were active from it. */
@@ -267,7 +261,6 @@ export const SidebarView = memo(function SidebarView({
 	newSession: boolean;
 	/** The owner's rows before "New session", each a list item (the `sidebar-start:<name>` slots: the Familiar's). */
 	startRows?: ReactNode;
-	guest?: Grant;
 	activeId?: string;
 	conversationId: number;
 	connected: boolean;
@@ -291,7 +284,7 @@ export const SidebarView = memo(function SidebarView({
 	/** Opens a rollup's or a group's list in the main area. */
 	onPage: (key: string) => void;
 	onCollapseSidebar: () => void;
-	/** Icon buttons in the owner's header, before the collapse button (e.g. the scope prompt's). */
+	/** Icon buttons in the owner's header, before the collapse button. */
 	headerActions?: ReactNode;
 	/** Icon buttons at the footer's end, before the theme switch (the owner's), e.g. the Settings gear. */
 	footerActions?: ReactNode;
@@ -336,39 +329,7 @@ export const SidebarView = memo(function SidebarView({
 			<Sidebar.Footer className="drawer-foot">{foot}</Sidebar.Footer>
 		</Sidebar.Root>
 	);
-	if (guest)
-		return frame(
-			"Shared session",
-			<>
-				<div className="brand">
-					<Logo compact />
-					<span>Shared session</span>
-				</div>
-				<p className="empty-note">
-					Joined as <strong>{guest.name}</strong>
-					<br />
-					{/* The open session's access: sessions may be shared with a guest in different modes. */}
-					{grantMode(guest, activeId) === "full" ? "Read/write" : "Read-only"}
-				</p>
-			</>,
-			<SideNavigation.Root className="sidebar-nav" aria-label="Shared sessions">
-				<SideNavigation.List>
-					{rows.map((session) => (
-						// A guest's list shows each session once.
-						<SessionItem
-							key={session.id}
-							session={session}
-							scope="shared"
-							actions={{ ...actions, activeScope: undefined }}
-						/>
-					))}
-				</SideNavigation.List>
-			</SideNavigation.Root>,
-			<>
-				<span className="spacer" />
-				<ThemeButton />
-			</>,
-		);
+
 	return frame(
 		"Sessions",
 		<div className="drawer-header-row">

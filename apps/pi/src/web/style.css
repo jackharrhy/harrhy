@@ -214,9 +214,7 @@ body,
 .row-button,
 .model-row,
 .login-action,
-.hit,
-.guest-row,
-.share-row {
+.hit {
 	display: flex;
 	align-items: center;
 	gap: var(--s2);
@@ -439,11 +437,6 @@ textarea.input {
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
-/* Share link rows: label left, actions right. */
-.share-row > span:first-child {
-	flex: 1;
-}
-
 /* Layout */
 .app {
 	display: flex;
@@ -851,28 +844,6 @@ textarea.input {
 	font-variant-numeric: tabular-nums;
 	white-space: nowrap;
 }
-/* Replies: a button beside a person's message (on hover; a coarse pointer uses a long press instead), the
-   quoted line above a reply, and a brief highlight of the message a quoted line leads to. */
-.reply-button {
-	display: inline-flex;
-	flex: none;
-	align-items: center;
-	align-self: flex-start;
-	justify-content: center;
-	width: var(--control-sm);
-	height: var(--control-sm);
-	color: var(--muted);
-}
-.reply-button:hover {
-	color: var(--text);
-}
-.user .reply-button {
-	opacity: 0;
-}
-.user:hover .reply-button,
-.user .reply-button:focus-visible {
-	opacity: 1;
-}
 /* Editing someone else's message (`/tree`): in its header on hover, always shown where there is no hover. The owner's
    messages have Edit in their actions below the bubble. */
 .edit-button {
@@ -896,25 +867,6 @@ textarea.input {
 	.edit-button {
 		opacity: 1;
 	}
-}
-/* Phones and tablets reply with a long press. */
-@media (pointer: coarse) {
-	.reply-button {
-		display: none;
-	}
-}
-.composer .replying {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: var(--s2);
-	padding: var(--s1) var(--s3) 0;
-	color: var(--muted);
-	font-size: var(--fs-xs);
-}
-.composer .replying button {
-	display: inline-flex;
-	color: var(--muted);
 }
 /* The quoted line names what a reply answers by its icon, not a side line. */
 .reply-quote {
@@ -2334,13 +2286,6 @@ audio.file-media {
 	letter-spacing: 0.15em;
 	text-align: center;
 	user-select: all;
-}
-.guest-row {
-	justify-content: space-between;
-}
-.guest-row > span:first-child {
-	min-width: 0;
-	overflow-wrap: anywhere;
 }
 .forward-row > .inline-form {
 	flex: none;

@@ -15,21 +15,6 @@ const PATH_WRAPPERS: Record<string, string> = { "(": ")", "[": "]", "{": "}", "<
 
 export type CompletionItem = { value: string; label: string; description?: string };
 
-/**
- * Chat mode's agent mention as a whole token (plugins/chat-mode/contract.ts `mentionPattern`): `@pi`, or the agent's
- * name in the conversation. Never completed as a file.
- */
-export const isMentionToken = (at: string, name = "Pi"): boolean => at.toLowerCase() === `@${name.toLowerCase()}`;
-
-/** The mention offered first while chat mode is on (`name`: the agent's name there), when the typed prefix starts it. */
-export function mentionItems(rawPrefix: string, name: string | undefined): CompletionItem[] {
-	if (!name) return [];
-	const token = name.toLowerCase();
-	return token.startsWith(rawPrefix.toLowerCase())
-		? [{ value: `@${token}`, label: `@${token}`, description: `mention ${name}` }]
-		: [];
-}
-
 function findLastDelimiter(text: string): number {
 	let last = -1;
 	let index = 0;

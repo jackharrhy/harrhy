@@ -16,7 +16,6 @@ import {
 import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { ModelResources } from "../models/contract.ts";
 import { Catalog, isThinkingLevel, type Session, SessionOperations } from "../sessions/contract.ts";
-import { Shares } from "../sharing/contract.ts";
 import { StatusStore } from "../status/contract.ts";
 import { ConversationBroker, Conversations, PeerConversation, type Query } from "./contract.ts";
 
@@ -26,7 +25,6 @@ export default defineFacet((host) => {
 	host.serve(ConversationBroker, (_params, self) => {
 		const catalog = self.get(Catalog, {});
 		const hosts = self.get(Hosts, {});
-		const shares = self.get(Shares, {});
 		const admission = sessionAdmissionOf(self);
 		const statuses = self.get(StatusStore, {});
 		const operations = self.get(SessionOperations, {});
@@ -145,8 +143,6 @@ export default defineFacet((host) => {
 						const side = id === session ? "source" : "destination";
 						if ((await catalog.get({ id }, scope)).archivedAt !== null)
 							throw forbidden(`Citation ${side} session is archived`);
-						if (await shares.isShared({ session: id }, scope))
-							throw forbidden(`Citation ${side} session has a share link or active guest grant`);
 					}
 					return true;
 				},
@@ -196,7 +192,7 @@ export default defineFacet((host) => {
 							action: "citation",
 							citation: await admission().mutate(
 								source,
-								async () => ((await shares.isShared({ session: source }, ctx)) ? null : peer.citation(query.id, ctx)),
+								async () => peer.citation(query.id, ctx),
 								ctx,
 							),
 						};

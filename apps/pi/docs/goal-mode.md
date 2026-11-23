@@ -11,7 +11,7 @@ The `goal` plugin serves the owner’s `Goal` contract (`plugins/goal/contract.t
 
 A goal runs one ordinary model turn at a time, up to the chosen limit of 1–12 turns. This limit does not cap time, tokens, or tool calls within a turn. Admission pauses if the conversation is busy, has queued work, or changed since the goal last checked it. There is no global setting.
 
-**Privacy at admission.** The session must be private, unarchived, and unlocked when each step is admitted. Sharing, locking, and archiving may proceed after admission; they prevent further steps while the session is ineligible. Goal inputs and answers are ordinary transcript entries. Anyone granted access later can see them.
+**Admission.** The session must be unarchived and unlocked when each step is admitted. Locking and archiving may proceed after admission; they prevent further steps while the session is ineligible. Goal inputs and answers are ordinary transcript entries. Anyone granted access later can see them.
 
 **Restart.** The worker saves each submission receipt with the goal in the same transaction. Already-admitted work can recover through normal p2 recovery. New steps require explicit resume after a worker restart.
 

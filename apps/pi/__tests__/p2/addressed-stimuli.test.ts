@@ -7,7 +7,6 @@ import { BACKGROUND_CONTEXT, type Ctx } from "@p2/app/v1";
 import { Hosts, WakeStore } from "@p2/app/v1/server";
 import { FamiliarStore } from "../../plugins/familiar/contract.ts";
 import { Catalog } from "../../plugins/sessions/contract.ts";
-import { Sharing } from "../../plugins/sharing/contract.ts";
 import { SessionTree } from "../../plugins/tree/contract.ts";
 import { startServer } from "../../src/hosts/server.ts";
 import { clientHost, holdIn, localOwner, poll } from "./helpers.ts";
@@ -62,14 +61,6 @@ it("addresses one native admission per peer event across competing selectors and
 				assert.deepEqual(await send(winner), before);
 			} finally {
 				tree.release();
-			}
-			const sharing = await holdIn(owner, Sharing, { session: other }, "owner");
-			try {
-				await sharing.link({ mode: "view" }, BACKGROUND_CONTEXT);
-				assert.deepEqual(await discover(), []);
-				await assert.rejects(send(other, "shared-event"), /unavailable/);
-			} finally {
-				sharing.release();
 			}
 		} finally {
 			await owner.close(BACKGROUND_CONTEXT);

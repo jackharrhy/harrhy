@@ -29,7 +29,7 @@ its outcome.
 `useOptimistic` plus a transition: it returns `[shown, run, pending]`.
 
 ```tsx
-// plugins/chat-mode/web.tsx: the chat mode chip
+// a composer chip (chat mode was removed; the pattern stays)
 const { fail } = useComposerState(); // the app's toast
 const [{ enabled, name }, guess] = useOptimisticCall<Shown, Partial<Shown>>(
 	{ enabled: useReadable(mode?.enabled) ?? false, name: useReadable(mode?.name) ?? DEFAULT_AGENT_NAME },
@@ -87,7 +87,6 @@ The same instinct applies to loading: hold what a view needs in parallel, from v
   for all its actions.
 - **Short links:** `/s/<id>` opens the session's main conversation as this device last saw it (`knownMain`), so the
   page holds the right conversation first instead of conversation 1 and a redirect.
-- **No waiting for state after an answer:** a share link is read from `links` when `Sharing.link` resolves.
 
 ## Tests
 
