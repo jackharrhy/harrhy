@@ -1,4 +1,4 @@
-# Self-hosted Artbin theme fonts
+# Self-hosted theme fonts
 
 All files are local, SIL OFL 1.1, and used only when a rendered theme role needs them. No font service, npm font package, telemetry or remote font request is added. Clean/Radio retain their existing families; theme comparison intentionally renders Artbin too. Only the Artbin-selected document preloads its 68,044-byte UI face; other faces load on use with `font-display: swap`.
 
@@ -21,3 +21,7 @@ Copyright © 2017 IBM Corp., Reserved Font Name “Plex”; [IBM-Plex-Mono-OFL.t
 Verified axis: wght 100–700, default 400. No binary modification. CSS uses the `IBM Plex Mono` alias. SHA256: `632cb6cee5e90d89bd4354ff362bcffcef1384c19b603ddd2830561716e1f440`.
 
 The official Latin1 files include common punctuation; CSS retains their upstream unicode range so unsupported characters use the named fallbacks. Only upright faces are shipped, not extra italics/families/all static weights. Both Artbin and the UI workbench explicitly serve these package-owned resources. Loading remains host-owned; importing a theme does not download fonts. See [third-party notices](../THIRD_PARTY_NOTICES.md).
+
+## Allo — Jello display and UI
+
+Unmodified `AlloVariable.woff2` from the official [Allo 1.0.3 release](https://allo.joshpuckett.me/downloads/Allo-1.0.3.zip), licensed under [SIL OFL 1.1](Allo-OFL.txt). Jello uses the `ROND` axis for display text. Serve `../allo.css` and its relative font path. SHA256: `482bec1444dabaf1a493b34aa926bb7751ef5edc3e5a9f90a4111c7bb1e0c0ec`.

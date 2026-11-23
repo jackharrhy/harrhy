@@ -3,6 +3,7 @@ import {
   densityOverrides,
   themeStyles,
   brutalistTheme,
+  jelloTheme,
   cleanTheme,
   graphiteTheme,
   dialTheme,
@@ -15,6 +16,7 @@ export const themes = {
   dial: dialTheme,
   newspaper: brutalistTheme,
   scorebook: sluggersTheme,
+  jello: jelloTheme,
 };
 export type ThemeName = keyof typeof themes;
 
@@ -24,6 +26,7 @@ export const themeLabels: Record<ThemeName, string> = {
   dial: "Dial",
   newspaper: "Newspaper",
   scorebook: "Scorebook",
+  jello: "Jello",
 };
 export const themeExports: Record<ThemeName, string> = {
   basic: "cleanTheme",
@@ -31,6 +34,7 @@ export const themeExports: Record<ThemeName, string> = {
   dial: "dialTheme",
   newspaper: "brutalistTheme",
   scorebook: "sluggersTheme",
+  jello: "jelloTheme",
 };
 export const themeOptions = (Object.keys(themes) as ThemeName[]).map(
   (value) => ({ value, label: themeLabels[value] }),

@@ -67,6 +67,7 @@ export function createApp(
           <link rel="stylesheet" href="/assets/ui/clank/fonts.css" />
           <title>@harrhy/ui workbench</title>
           <link rel="stylesheet" href="/assets/hui/fonts.css" />
+          <link rel="stylesheet" href="/assets/hui/allo.css" />
           {theme === "newspaper" && (
             <link
               rel="preload"

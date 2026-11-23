@@ -1,0 +1,28 @@
+{
+  "name": "@harrhy/slides",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "pnpm run build && celld dev --port 21142",
+    "check": "pnpm run build && pnpm run types:worker && pnpm run typecheck && node --import remix/node-tsx --test __tests__/*.test.ts && wrangler deploy --dry-run",
+    "build": "node build.ts",
+    "typecheck": "tsrs --noEmit",
+    "types:worker": "wrangler types worker-configuration.d.ts",
+    "test:native": "pnpm run build && node __tests__/native-smoke.mjs"
+  },
+  "dependencies": {
+    "@harrhy/identity": "0.1.0",
+    "@harrhy/request-body": "0.1.0",
+    "@harrhy/ui": "0.1.0",
+    "capnweb": "0.13.0",
+    "remix": "3.2.0",
+    "@harrhy/live-state": "workspace:*"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "jsonc-parser": "^3.3.1",
+    "wrangler": "^4.161.0",
+    "playwright": "1.65.0",
+    "@types/node": "^26.6.6"
+  }
+}

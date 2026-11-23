@@ -481,6 +481,21 @@ export const brutalistTheme = extendTheme(cleanTheme, {
   overlayShadow: "none",
 });
 
+/** Allo specimen paper, ink, and pink, with dark ink on the vivid accent. */
+export const jelloTheme = extendTheme(cleanTheme, {
+  canvas: "#fcfcfc",
+  surface: "#fcfcfc",
+  ink: "#111111",
+  accent: "color(display-p3 1 0.1765 0.3333)",
+  onAccent: "#111111",
+  focus: "#a51139",
+  font: {
+    display: '"Allo", system-ui, sans-serif',
+    ui: '"Allo", system-ui, sans-serif',
+    displayVariation: '"ROND" 100',
+  },
+});
+
 /** Sluggers blue scorebook palette; private font assets are host-owned and opt-in. */
 export const sluggersTheme: Readonly<ThemeTokens> = extendTheme(cleanTheme, {
   colorScheme: "dark",
