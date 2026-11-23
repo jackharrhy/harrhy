@@ -45,6 +45,7 @@ sandbox([
   "__tests__/p2/addressed-stimuli.test.ts",
   "__tests__/p2/local-inbox.test.ts",
   "__tests__/p2/schedules-recovery.test.ts",
+  "__tests__/p2/host-health.test.ts",
 ]);
 const cache = resolve(homedir(), ".cache/ms-playwright");
 const chromium =
