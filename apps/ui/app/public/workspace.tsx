@@ -1,5 +1,5 @@
 import { css, type Handle, type RemixNode } from "remix/component";
-import { Button, Input } from "@harrhy/ui/native";
+import { Button, ButtonLink, Input } from "@harrhy/ui/native";
 import { stories, type StoryId } from "./stories.ts";
 import type { ThemeName } from "./themes.ts";
 
@@ -30,45 +30,93 @@ const scrollPane = css({
   },
 });
 const rail = css({
-  padding: "12px 16px 20px",
   fontSize: "14px",
   lineHeight: "1.5",
   borderRight: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
-  "& form": { display: "flex", gap: "4px", marginBottom: "24px" },
-  "& input": { minWidth: 0, width: "100%" },
+  scrollPaddingTop: "64px",
+  "& nav": { padding: "8px 10px" },
+  "& nav + nav": { borderTop: "1px solid var(--hui-border)" },
   "& h2": {
-    fontSize: "12px",
+    fontSize: "11px",
+    fontWeight: 650,
+    letterSpacing: "0.055em",
+    textTransform: "uppercase",
     color: "var(--hui-muted)",
-    margin: "20px 10px 6px",
+    margin: "8px 8px 4px",
   },
-  "& a": {
-    display: "block",
-    padding: "6px 10px",
-    borderRadius: "var(--hui-control-radius)",
+  "& nav div + div": { marginTop: "12px" },
+  "& a[data-example-link]": {
+    display: "flex",
+    justifyContent: "flex-start",
+    width: "100%",
+    minHeight: "32px",
+    padding: "4px 8px",
+    borderColor: "transparent",
+    fontSize: "inherit",
+    fontWeight: 500,
     textDecoration: "none",
-    marginBottom: "2px",
     "&:hover": { background: "var(--hui-hover-surface)" },
   },
-  '& a[aria-current="page"]': {
+  "& a[data-example-link][aria-current=page]": {
     background: "var(--hui-selected-surface)",
     color: "var(--hui-selected-ink)",
-    fontWeight: 600,
+    fontWeight: 650,
+  },
+  "& a[data-example-link][aria-current=page]::after": {
+    content: '""',
+    marginLeft: "auto",
+    width: "5px",
+    height: "5px",
+    borderRadius: "50%",
+    background: "currentColor",
   },
   "@media (max-width: 760px)": {
-    padding: "0 16px",
     maxHeight: "38dvh",
     borderRight: 0,
     borderBottom: "1px solid var(--hui-border)",
-    "& form": { marginBottom: "8px" },
+    "& a[data-example-link]": { minHeight: "40px" },
     "& details[open]": { paddingBottom: "12px" },
   },
 });
+const search = css({
+  position: "sticky",
+  top: 0,
+  zIndex: 1,
+  display: "grid",
+  gridTemplateColumns: "minmax(0, 1fr) auto",
+  alignItems: "center",
+  padding: "10px",
+  background: "var(--hui-surface)",
+  borderBottom: "1px solid var(--hui-border)",
+  "& input": {
+    gridArea: "1 / 1 / 2 / 3",
+    width: "100%",
+    minWidth: 0,
+    paddingInlineEnd: "40px",
+    fontSize: "inherit",
+  },
+  "& button": {
+    gridArea: "1 / 2",
+    zIndex: 1,
+    marginInlineEnd: "2px",
+    minHeight: "28px",
+    minWidth: "32px",
+    padding: "4px",
+    color: "var(--hui-muted)",
+  },
+});
+const empty = css({
+  padding: "0 18px 16px",
+  color: "var(--hui-muted)",
+  "& a": { color: "inherit" },
+});
+
 const mobile = css({
   display: "none",
   "@media (max-width: 760px)": {
     display: "block",
-    "& summary": { cursor: "pointer", padding: "8px 0" },
+    "& summary": { cursor: "pointer", padding: "8px 16px" },
   },
 });
 
@@ -104,28 +152,44 @@ export function WorkbenchWorkspace(
     const searchPath = `/explorer/${story ?? "button"}`;
     const items = () => (
       <>
-        <nav aria-label="Scenes">
-          <h2>Scenes</h2>
-          {scenes.map(([id, name, path]) => (
-            <a
-              href={`${path}?theme=${theme}`}
-              aria-current={scene === id ? "page" : undefined}
-            >
-              {name}
-            </a>
-          ))}
-        </nav>
-        <form method="get" action={searchPath}>
+        <form role="search" mix={search} method="get" action={searchPath}>
           <Input
             name="q"
             type="search"
             aria-label="Find a component"
-            placeholder="Find a component…"
+            placeholder="Find a component"
             defaultValue={query}
           />
-          <Button type="submit">Find</Button>
+          <Button type="submit" variant="quiet" aria-label="Find">
+            <svg
+              aria-hidden="true"
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              stroke-linecap="round"
+            >
+              <circle cx="7" cy="7" r="4" />
+              <path d="m10 10 3.5 3.5" />
+            </svg>
+          </Button>
           <input type="hidden" name="theme" value={theme} />
         </form>
+        <nav aria-label="Scenes">
+          <h2>Scenes</h2>
+          {scenes.map(([id, name, path]) => (
+            <ButtonLink
+              variant="quiet"
+              data-example-link
+              href={`${path}?theme=${theme}`}
+              aria-current={scene === id ? "page" : undefined}
+            >
+              {name}
+            </ButtonLink>
+          ))}
+        </nav>
         <nav aria-label="Component navigation">
           {groups.map((group) => {
             const matches = filtered.filter((item) => item.group === group);
@@ -134,12 +198,14 @@ export function WorkbenchWorkspace(
                 <div>
                   <h2>{group}</h2>
                   {matches.map((item) => (
-                    <a
+                    <ButtonLink
+                      variant="quiet"
+                      data-example-link
                       href={`/explorer/${item.id}?theme=${theme}&q=${encodeURIComponent(query)}`}
                       aria-current={item.id === story ? "page" : undefined}
                     >
                       {item.name}
-                    </a>
+                    </ButtonLink>
                   ))}
                 </div>
               )
@@ -147,7 +213,7 @@ export function WorkbenchWorkspace(
           })}
         </nav>
         {filtered.length === 0 && (
-          <p>
+          <p mix={empty}>
             No components found.{" "}
             <a href={`${searchPath}?theme=${theme}`}>Clear search</a>
           </p>
