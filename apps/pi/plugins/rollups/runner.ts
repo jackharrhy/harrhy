@@ -1,22 +1,20 @@
 // Running a rollup's script (server): the sessions as the script sees them, the script wrapped so it records what it
-// reads (session fields, projects, the time, its `mentions` calls), the fingerprint of those values (unchanged: the run
+// reads (session fields, the time, its `mentions` calls), the fingerprint of those values (unchanged: the run
 // is skipped), and the script's output checked against `RollupOutputSchema`, the trust boundary between the script and
 // the sidebar.
 import { createHash } from "node:crypto";
 import type { CodemodeSandbox } from "@earendil-works/pi-codemode";
 import { arr, compile, num, obj, opt, type Static, str, unknown } from "@earendil-works/pi-schema";
-import type { Project } from "../projects/contract.ts";
 import type { Session } from "../sessions/contract.ts";
 import type { Status } from "../status/contract.ts";
 import { type Preview, RollupOutputSchema, type RollupSession } from "./contract.ts";
 
 /**
  * What a script reads: every session but the Familiar's (oldest first, so activity does not reorder them), the
- * projects, the time.
+ * time.
  */
 export type RollupInput = {
 	readonly sessions: readonly RollupSession[];
-	readonly projects: readonly Project[];
 	readonly now: number;
 };
 
@@ -27,8 +25,6 @@ export type RollupFacts = {
 	/** The newest root answer and the owner's read mark, by session (`SearchIndex`). */
 	readonly answers: Readonly<Record<string, number>>;
 	readonly reads: Readonly<Record<string, number>>;
-	readonly projects: readonly Project[];
-	readonly memberships: Readonly<Record<string, string>>;
 	/** The Familiar's session: the sidebar lists it above the rollups, never in one. */
 	readonly familiar: string | null;
 };
@@ -49,19 +45,18 @@ export function inputOf(facts: RollupFacts, now: number): RollupInput {
 				archivedAt: session.archivedAt,
 				pinned: session.pinned,
 				model: `${session.model.provider}/${session.model.modelId}`,
-				project: facts.memberships[session.id] ?? null,
 				state: !status?.running ? "stopped" : status.busy.length > 0 ? "working" : "idle",
 				error: status?.error ?? null,
 				unread: (facts.answers[session.id] ?? 0) > (facts.reads[session.id] ?? 0),
 			};
 		})
 		.sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
-	return { sessions, projects: facts.projects, now };
+	return { sessions, now };
 }
 
 /**
  * The fingerprint of what a run read of `input`: the sessions' IDs in order always, the fields it read of each (every
- * field after `sessions.*`), the projects and the time when it read them, and what each `mentions` call it made
+ * field after `sessions.*`), the time when it read it, and what each `mentions` call it made
  * answered (`mentions`, by its read path). Equal fingerprints mean the script would compute the same output again: it
  * is a function of what it read.
  */
@@ -81,7 +76,6 @@ export function fingerprintOf(
 	});
 	const facts = [
 		sessions,
-		reads.includes("projects") ? input.projects : null,
 		reads.includes("now") ? input.now : null,
 		reads.flatMap((path) => (path.startsWith(MENTIONS_READ) ? [[path, mentions.get(path) ?? null]] : [])),
 	];
@@ -157,8 +151,7 @@ const INPUT_KEY = "p2.rollup-input";
 const RUN_KEY = "p2.rollup-run";
 
 /**
- * `code` inside a function that gives it `sessions` (each a proxy recording the fields read), `projects` (recording
- * any read), `now()` (recording that the time was read) and `mentions(query, { since })` (recording the call), and
+ * `code` inside a function that gives it `sessions` (each a proxy recording the fields read), `now()` (recording that the time was read) and `mentions(query, { since })` (recording the call), and
  * returns its output with the paths it read.
  */
 function wrap(code: string): string {
@@ -171,10 +164,6 @@ const sessions = __input.sessions.map((row) => new Proxy(row, {
 	getOwnPropertyDescriptor(target, key) { __field(key); return Reflect.getOwnPropertyDescriptor(target, key); },
 	ownKeys(target) { __reads.add("sessions.*"); return Reflect.ownKeys(target); },
 }));
-const projects = new Proxy(__input.projects, {
-	get(target, key, receiver) { __reads.add("projects"); return Reflect.get(target, key, receiver); },
-	ownKeys(target) { __reads.add("projects"); return Reflect.ownKeys(target); },
-});
 const now = () => { __reads.add("now"); return __input.now; };
 const __run = load(${JSON.stringify(RUN_KEY)});
 const mentions = async (query, options = {}) => {

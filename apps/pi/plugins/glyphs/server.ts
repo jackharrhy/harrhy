@@ -1,4 +1,4 @@
-// `/glyph.svg?seed=<path or name>[&size=<px>]`: a project glyph as an SVG file, for embedding (`<img src>`) where the
+// `/glyph.svg?seed=<path or name>[&size=<px>]`: a folder glyph as an SVG file, for embedding (`<img src>`) where the
 // sidebar's inline glyph is not available. Open to everyone, on purpose: the glyph is a pure function of the query and
 // reads no data, so it tells a visitor nothing they did not send; the seed's length bounds the work.
 import { contribute, defineFacet } from "@p2/app/v1";

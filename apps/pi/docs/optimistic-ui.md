@@ -93,6 +93,6 @@ The same instinct applies to loading: hold what a view needs in parallel, from v
 
 - `test/p2/ui-optimistic.test.ts` (fixture `test/fixtures/optimistic.ts`): in Chromium, the guess and the pending
   state while a call is held open, the server's value after it passes, the rollback and the error after a refusal.
-- `ui-drawer.test.ts` (a new session shows its first message and attachment at once), `ui-sidebar.test.ts` (a folder's
-  and a project's "+"),
+- `ui-drawer.test.ts` (a new session shows its first message and attachment at once), `ui-sidebar.test.ts` (the
+  new-session screen's location and opening a session from the sidebar),
   `session-start.test.ts` (one ID across retries).

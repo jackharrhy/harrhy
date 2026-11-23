@@ -140,7 +140,7 @@ export function Toggle({
 	onToggle,
 }: {
 	open: boolean;
-	/** What it shows or hides, for its accessible name ("subagents", "the sessions of Projects"). */
+	/** What it shows or hides, for its accessible name ("subagents", "the sessions of a rollup"). */
 	label: string;
 	controls: string;
 	className: string;
@@ -205,7 +205,6 @@ function AgentItem({
 	linkClassName = "",
 	after,
 	menu,
-	pressMenu = true,
 }: {
 	status: ItemStatus;
 	name: ReactNode;
@@ -224,8 +223,6 @@ function AgentItem({
 	/** A control right after the name (a session's chevron). */
 	after?: ReactNode;
 	menu?: CommandTarget;
-	/** Whether a long press opens `menu` (false: the owner's sidebar, where a long press drags, drag.ts). */
-	pressMenu?: boolean;
 }) {
 	const row: ComponentProps<typeof NavRow> = {
 		selected,
@@ -258,12 +255,7 @@ function AgentItem({
 		),
 	};
 	if (!menu) return <NavRow {...row} />;
-	return pressMenu ? <MenuNavRow menu={menu} {...row} /> : <TargetNavRow menu={menu} {...row} />;
-}
-
-/** A row that is the command menu's target `menu` while hovered or focused; a long press is someone else's (drag.ts). */
-export function TargetNavRow({ menu, ...row }: ComponentProps<typeof NavRow> & { menu: CommandTarget }) {
-	return <NavRow {...row} target={useCommandTargetRow(menu)} />;
+	return <MenuNavRow menu={menu} {...row} />;
 }
 
 /** A row that is the command menu's target `menu`: while hovered or focused, and opening the menu on a long press. */
@@ -273,8 +265,6 @@ function MenuNavRow({ menu, ...row }: ComponentProps<typeof NavRow> & { menu: Co
 
 /** What a session's row needs to show and act: the shown conversation, the time, and the actions. */
 export type RowActions = {
-	/** A long press on a session drags it (the owner's sidebar, drag.ts) instead of opening its menu. */
-	dragging?: boolean;
 	activeId?: string;
 	/** The one place the open session is selected in (it may show in several); absent: everywhere it shows. */
 	activeScope?: string;
@@ -421,7 +411,6 @@ export function SessionItem({
 					)
 				}
 				menu={{ type: "session", id: session.id, kind: "Session", label: session.title }}
-				pressMenu={!actions.dragging}
 			/>
 			{session.operation && (
 				<div className={`session-operation ${session.operation.error === undefined ? "" : "failed"}`}>

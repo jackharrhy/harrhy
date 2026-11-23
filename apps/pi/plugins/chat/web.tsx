@@ -10,7 +10,6 @@ import {
 	grantMode,
 	type Held,
 	isChordError,
-	keptIn,
 	liveIn,
 	plainReferences,
 	renameReferences,
@@ -51,7 +50,6 @@ import {
 	keepSessions,
 	keptSizes,
 	knownMain,
-	ListIcon,
 	LockIcon,
 	lightTap,
 	loadKept,
@@ -135,8 +133,6 @@ import { DirectoryPicker, directoryPickerLayer } from "../envs/contract.web.tsx"
 import { GlyphIcon } from "../glyphs/GlyphIcon.tsx";
 import { Models } from "../models/contract.ts";
 import type { ResourceSnapshot } from "../models/resources.ts";
-import { Projects } from "../projects/contract.ts";
-import { placeSeed } from "../projects/glyph-seed.ts";
 import { type Session, Sessions } from "../sessions/contract.ts";
 import { SessionMetrics, SessionStatus, WorkerControl } from "../status/contract.ts";
 import { type Child, conversationLocation, SubagentControl, Subagents } from "../subagents/contract.ts";
@@ -251,8 +247,6 @@ type PageObjects = {
 	readonly models: Held<typeof Models> | undefined;
 	/** The owner's only. */
 	readonly envs: Held<typeof Envs> | undefined;
-	/** The owner's only: projects.json and the sessions' projects, for the top bar's project glyph. */
-	readonly projects: Held<typeof Projects> | undefined;
 };
 
 const PageObjectsContext = createContext<PageObjects | undefined>(undefined);
@@ -725,16 +719,7 @@ function TopBar({
 	const objects = usePageObjects();
 	const envs = useReadable(objects.envs?.envs);
 	const sandboxed = envs?.find((env) => env.name === session?.env)?.config.type === "gondolin";
-	// The project glyph the sidebar shows for this session (guests read no projects: the path's own glyph).
-	const kept = keptIn(objects.projects, "owner");
-	const projects = useReadable(kept?.projects);
-	const memberships = useReadable(kept?.sessions);
-	const glyph = session && (
-		<GlyphIcon
-			seed={placeSeed(projects ?? [], session.env ?? null, session.cwd, memberships?.[session.id])}
-			size={11}
-		/>
-	);
+	const glyph = session && <GlyphIcon seed={session.cwd} size={11} />;
 	const lock = sandboxed && (
 		<span className="title-lock">
 			<LockIcon size={11} />
@@ -1726,8 +1711,6 @@ function NewSession() {
 	const {
 		location: selectedLocation,
 		setLocation,
-		join,
-		setJoin,
 		choice: selectedChoice,
 		setChoice,
 	} = useNewSessionState();
@@ -1780,7 +1763,7 @@ function NewSession() {
 				item: outgoingItem(id, text, OWNER_AUTHOR),
 			},
 			// The page chooses the session's ID: a retried creation answers the same session.
-			{ session: crypto.randomUUID(), location, choice, ...(join ? { join } : {}) },
+			{ session: crypto.randomUUID(), location, choice },
 		);
 		setDraft("");
 		setFiles([]);
@@ -1800,7 +1783,7 @@ function NewSession() {
 			return;
 		}
 		sessionStart.connect({
-			create: async ({ session, location, choice, join }) => {
+			create: async ({ session, location, choice }) => {
 				// The new session's worker starts beside the creation, not after it (its start waits for the row): held
 				// here and lingering for the session's view, which holds it next.
 				const chat = host.hold(Chat, { session, conversation: 1 }, BACKGROUND_CONTEXT);
@@ -1820,15 +1803,10 @@ function NewSession() {
 					chat.release();
 					throw error;
 				}
-				// A project's "+": the session joins the project once it exists, so a refused creation leaves no membership
-				// behind; a failed join leaves the session as it is, and the toast says why.
-				if (join) void join.run(session).catch(composer.fail);
 			},
 			// The server's own errors (a missing directory, an unknown model) refuse; a lost connection is tried again.
 			refused: (error) => !isChordError(error) || refused(error),
 			created: (session) => {
-				// The next new session starts in no project unless its "+" is used again.
-				setJoin(undefined);
 				if (shownHere.current) navigate({ session }, { replace: true });
 			},
 			restore: (messages, error) => {
@@ -1838,7 +1816,7 @@ function NewSession() {
 			},
 		});
 		return () => sessionStart.connect(undefined);
-	}, [connected, sessions, host, setDraft, setFiles, setError, setJoin, composer.fail]);
+	}, [connected, sessions, host, setDraft, setFiles, setError]);
 	// Leaving the page loses a session not created yet: the browser asks first.
 	useEffect(() => {
 		if (!start) return;
@@ -1903,20 +1881,8 @@ function NewSession() {
 								<Logo />
 								<h2>What should Pi do?</h2>
 							</div>
-							{/* The project the session joins, then where it starts: each opens its own picker. */}
+							{/* Where the session starts opens the directory picker. */}
 							<div className="new-session-choices">
-								{owner && (
-									<button
-										type="button"
-										className="project-pick"
-										aria-label={`Project: ${join?.label ?? "No project"}`}
-										onClick={() => openCommandPage("new-session-project", NEW_SESSION_TARGET)}
-									>
-										<ListIcon />
-										<span>{join?.label ?? "No project"}</span>
-										<ChevronIcon size={14} />
-									</button>
-								)}
 								<button
 									type="button"
 									className="cwd-pick"
@@ -1969,10 +1935,9 @@ function Main() {
 	const status = useObject(SessionStatus, {});
 	const models = useObject(Models, owner ? {} : undefined);
 	const envs = useObject(Envs, owner ? {} : undefined);
-	const projects = useObject(Projects, owner ? {} : undefined);
 	const objects = useMemo(
-		() => ({ sessions, access, subagents, status, models, envs, projects }),
-		[sessions, access, subagents, status, models, envs, projects],
+		() => ({ sessions, access, subagents, status, models, envs }),
+		[sessions, access, subagents, status, models, envs],
 	);
 	const grant = useReadable(liveIn(access, "guest")?.grant);
 	// A guest stays within the sessions shared with it; anywhere else it lands in the one shared or joined last.

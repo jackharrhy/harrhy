@@ -1,5 +1,4 @@
 import { createHash, randomUUID } from "node:crypto";
-import { hostname } from "node:os";
 import {
 	awaitWithContext,
 	type Ctx,
@@ -8,7 +7,6 @@ import {
 	isChordError,
 	isOwner,
 	isWorker,
-	LOCAL,
 	nativeOf,
 	signalOf,
 	until,
@@ -17,7 +15,6 @@ import {
 } from "@p2/app/v1";
 import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { ModelResources } from "../models/contract.ts";
-import { ProjectService, placeOn } from "../projects/contract.ts";
 import { Catalog, isThinkingLevel, type Session, SessionOperations } from "../sessions/contract.ts";
 import { Shares } from "../sharing/contract.ts";
 import { StatusStore } from "../status/contract.ts";
@@ -33,7 +30,6 @@ export default defineFacet((host) => {
 		const admission = sessionAdmissionOf(self);
 		const statuses = self.get(StatusStore, {});
 		const operations = self.get(SessionOperations, {});
-		const projects = self.get(ProjectService, {});
 		const resources = nativeOf(self, ModelResources, "The model configuration");
 
 		/**
@@ -68,15 +64,6 @@ export default defineFacet((host) => {
 			return result;
 		};
 
-		/** Where project `name` lives on `env` (null: this device). */
-		const placeOf = (name: string, env: string | null): string => {
-			const project = projects.projects.value.find((each) => each.name === name);
-			if (!project) throw new Error(`No project "${name}"; list shows the projects`);
-			const place = placeOn(project, env ?? LOCAL, hostname());
-			if (!place) throw new Error(`Project "${name}" has no place on ${env ?? "this device"}`);
-			return place.path;
-		};
-
 		/**
 		 * The model `create` starts a session with: the one named, when it is signed in (a model without credentials would
 		 * fail at its first request), else the sender's own model and thinking level.
@@ -106,22 +93,17 @@ export default defineFacet((host) => {
 			query: Extract<Query, { action: "create" }>,
 			ctx: Ctx,
 		): Promise<Session> => {
-			if (query.project !== undefined && query.cwd !== undefined)
-				throw new Error("create takes either a project or a cwd, not both");
 			const env = query.env ?? null;
-			const cwd = query.project === undefined ? query.cwd : placeOf(query.project, env);
-			if (cwd === undefined) throw new Error("create needs either a project or a cwd");
 			const row = await operations.create(
 				{
 					id: idOf(`${sender.id}:${requestId}`),
 					env,
-					cwd,
+					cwd: query.cwd,
 					...(query.title === undefined ? {} : { title: query.title }),
 					...(await modelOf(query.model, sender)),
 				},
 				ctx,
 			);
-			if (query.project !== undefined) await projects.assign({ session: row.id, project: query.project }, ctx);
 			return row;
 		};
 
@@ -221,15 +203,12 @@ export default defineFacet((host) => {
 					}
 					case "list": {
 						const sessions = catalog.sessions.value.filter((session) => session.archivedAt === null);
-						const memberships = projects.sessions.value;
 						return {
 							action: "list",
 							self: source,
 							truncated: sessions.length > 200,
-							projects: projects.projects.value,
 							peers: sessions.slice(0, 200).map((session) => {
 								const status = statuses.statuses.value[session.id];
-								const project = memberships[session.id];
 								return {
 									id: session.id,
 									title: session.title,
@@ -241,7 +220,6 @@ export default defineFacet((host) => {
 											: ("idle" as const),
 									env: session.env ?? null,
 									cwd: session.cwd,
-									...(project === undefined ? {} : { project }),
 								};
 							}),
 						};

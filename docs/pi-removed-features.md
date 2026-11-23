@@ -17,6 +17,7 @@ at that commit.
 | Workspace panel | `b2834089` | `plugins/workspace/{Workspace.tsx,file.tsx,commands.tsx,web.tsx,tabs.ts,server.ts,fuzzy.ts}`, the workspace route and its per-device memory, `.workspace-*` styles |
 | PowerShell | `9041e2c9` | `plugins/powershell` |
 | Vendored TUI package | `9041e2c9` | `compat/packages/tui` (`@earendil-works/pi-tui`), `compat/packages/chord/src/tui`, `compat/packages/chord/src/node/tui`, the `/tui` and `/tui/launcher` Chord entry points |
+| Projects | `ef8c5dbc` | `plugins/projects`, `plugins/sessions/{project-commands.tsx,sidebar/NewProjectSheet.tsx,sidebar/drag.ts}`, the `SessionCopied` hook, the new-session screen's project picker, the sidebar's Projects rollup |
 | Session tree UI | `15f6ce2f` | `plugins/tree/{web.tsx,TreePanel.tsx,toc.ts,entry-in-view.ts,tree.css,branch-target.ts}`, `plugins/sessions/BranchSheet.tsx`, the `sessions.rename-branch` command, the `tree-actions` slot and `.tree-toggle` style |
 
 Paths are under `apps/pi/`.
@@ -252,6 +253,51 @@ Terminal UI went because `@` file completion used its `fuzzyMatch`. Last commit 
   in Pi uses them.
 
 Worth bringing back: nothing in the library. A new terminal client would start from a current pi-tui release.
+
+## Projects
+
+The owner's named groupings of sessions. A project had a name and places: a directory per machine (this device or an
+environment), the first the default. `projects.json` in the data dir was where they started; the server's store held
+them afterwards, in `projects` (one row each, ordered, with archive state) and `project_members` (the project of each
+session), served by `ProjectService` and, to the owner's page, `Projects`. About 600 lines in `plugins/projects`, and a
+good deal more in the sessions plugin's sidebar.
+
+- The sidebar had a Projects rollup, one group per project in the owner's order, with a "+" that started a session at
+  the project's default place and joined it, and a "New project" flow (a folder picker, then a name). Sessions in no
+  project made up the rollup without a heading. A project's ⋯ (or long press) opened commands: rename, change default
+  location, move up or down, archive, restore, delete. An archived project and its sessions waited in the Archive's list
+  until restored. With a mouse or long press, sessions were dragged onto a project (or out of one) and projects dragged
+  into a new order.
+- The new-session screen had a Project button above the folder button; a project chosen there set the folder to its
+  place on that machine and joined the session to it once created. The command menu had Move to project… on a session.
+- A copy of a session (`/clone`, `/fork`) joined its source's project (the `SessionCopied` hook; nothing else used it).
+- The conversations tool's `list` returned the projects with their places and each session's project, and `create`
+  took a `project` instead of a `cwd` (the place on that machine). The Familiar's prompt told it to look for folders in
+  the projects first.
+- A rollup's script saw `projects` and each session's `project`, and a group's target could name a project.
+- The glyph of a session's row and top bar came from its project's first place when it had one, so a project, its
+  folders and its sessions looked alike. Without projects the glyph is the session's own folder (`glyphOf(cwd)`); the
+  `glyphs` plugin and `/glyph.svg` are unchanged.
+
+What stayed:
+
+- Folders: `create` takes a `cwd` (and `env`); the sidebar's folder rollup pages, the folder pickers and a group's "+" in
+  rollups made from code start a session in a folder.
+- Saved rollups stay valid: a stored output with a project target still loads and its "+" starts nothing. A rollup
+  script that reads `projects` fails with an error and keeps its last good output; `project` is gone from each session.
+  Sessions that carried a project in the catalog are unaffected, since the project lived only in `ProjectService`'s
+  store.
+- Sidebar settings keyed `projects` or `project:<name>` (order, window, collapsed) are ignored.
+
+Worth bringing back:
+
+- Naming a place by what it is rather than by path, across machines: "pi" meaning one checkout per environment. It let
+  an agent start work on the right machine without knowing paths. The Familiar now finds folders from its notes and the
+  sessions' locations.
+- Moving a whole group to another machine by one place change, and archiving a group's sessions together.
+
+Left in the server's store, read by nothing now: the `projects` and `project_members` tables, the
+`p2.projects-imported` and `p2.project-sessions` states, and `projects.json` in the data dir.
 
 ## Docs removed with them
 
