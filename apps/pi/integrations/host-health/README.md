@@ -1,10 +1,15 @@
 # Host health
 
-An optional server plugin that wakes a private Pi conversation when the Pi server’s root filesystem runs low. It polls `/` once a minute using filesystem blocks available to unprivileged processes. Install it only where Pi sees the filesystem you want to monitor; a container may see a different root.
+An optional Linux server plugin that wakes a private Pi conversation on host resource pressure. Each enabled check samples once a minute:
 
-- Below **15 GiB** twice in a row: emit a low-space alert.
-- Below **5 GiB** once: emit a critical alert, even if low space already alerted.
-- Above **20 GiB** twice in a row: rearm without sending another message.
+<!-- prettier-ignore -->
+| Check | Warning | Critical | Rearm (two readings) |
+| --- | --- | --- | --- |
+| `disk-root` | Available space below 15 GiB twice | Below 5 GiB | Above 20 GiB |
+| `cpu` | Busy above 90% for five sample intervals | — | Below 75% |
+| `memory` | Available memory below 10% three times | Below 3% | Above 15% |
+
+Disk uses blocks available to unprivileged processes. CPU uses aggregate Linux counter deltas, excluding idle and I/O wait. Memory uses `MemAvailable / MemTotal` so reclaimable cache is not counted as pressure. Install only where Pi sees the intended host resources; these are not container quota checks.
 
 Each severity fires at most once per incident per subscription. The cursor and pending event survive restarts; a retry reuses the original event and identity. The plugin samples nothing without an enabled subscription. It needs no credentials, incoming endpoint, or cleanup privileges. It cannot deliver if Pi is offline or cannot persist its state.
 
@@ -21,8 +26,8 @@ await subscriptions.createTarget({
 }, ctx);
 ```
 
-Use `list` and `setEnabled` with the current revision to inspect or stop the subscription. There is no separate settings page. A revised binding starts a new watch; previously admitted alerts may still be handled.
+Create one subscription per check with a distinct ID; use `cpu` or `memory` instead of `disk-root` for the other checks. Use `list` and `setEnabled` with the current revision to inspect or stop the subscription. There is no separate settings page. A revised binding starts a new watch; previously admitted alerts may still be handled.
 
 ## Response runbook
 
-Set the response policy in the target conversation before enabling the watch. On alert, recheck free space on the named host, notify the configured operator session promptly, and report the largest actionable consumers. Prune only caches the owner has approved as disposable. If inactive worktrees are the better target, request a bounded cleanup from their owning session and report measured before/after space. The event does not authorize volume pruning, deletion of source or work in progress, or service restarts.
+Set the response policy in the target conversation before enabling the watch. On alert, recheck the reported resource on the named host, notify the configured operator session promptly, and report the largest actionable consumers. Prune only caches the owner has approved as disposable. If inactive worktrees are the better target, request a bounded cleanup from their owning session and report measured before/after space. The event does not authorize volume pruning, deletion of source or work in progress, or service restarts.

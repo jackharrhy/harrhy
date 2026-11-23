@@ -8,11 +8,11 @@
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "91abc0fc8729d447a3f96a6018cf173d76db749c088076e0d3752d24cb761afb",
     "docs": "2f12faa24529e62e152b0592d31b93f888a3350ee479b4b990210b66cf2aa424",
-    "__tests__/p2": "2f22875189485925dca4d4778504435ca021206dd8e65e6addd878f4c8d8c3d9",
+    "__tests__/p2": "580f702f2c7951ee2466c1c4aab7fdd0a225a06d819a924d79511cf0da9ef0c5",
     "__tests__/fixtures": "2aef9364eae6c415e7a371e3b1161b3dcf91e6f2dd685b4816656d4fe8363027",
     "compat/packages": "7403343bba3ffbc0ae15c4cbb6ef24b348a11789b337ca2cafb6b52425e046e5",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "499fe522880e953725980ff67c20d53db2d39f92cb2d74b4b3c138a06e7a6ec1"
+    "integrations": "9a43b91f93bee09d3bf767b0f723e1a5eb49d555b2abda778bd7d77c8e7b4a7a"
   },
   "adaptations": [
     {
