@@ -5,6 +5,7 @@ import { join } from "node:path";
 const workers = [
   ["apps/4orm", "wrangler", "worker-configuration.d.ts"],
   ["apps/ref", "wrangler", "worker-configuration.d.ts"],
+  ["apps/slides", "wrangler", "worker-configuration.d.ts"],
   ["apps/radio", "wrangler", "worker-configuration.d.ts"],
   ["apps/maps-collaboration", "wrangler", "worker-configuration.d.ts"],
   ["apps/cms-edge", "cf", ".cloudflare/types/index.d.ts"],

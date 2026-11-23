@@ -1,0 +1,17 @@
+{
+  "name": "harrhy-slides",
+  "main": "worker.ts",
+  "compatibility_date": "2026-08-29",
+  "compatibility_flags": ["nodejs_compat"],
+  "durable_objects": {
+    "bindings": [
+      { "name": "PRESENTATION", "class_name": "PresentationCell" },
+      { "name": "DECKS", "class_name": "DeckCell" },
+    ],
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PresentationCell"] },
+    { "tag": "v2", "new_sqlite_classes": ["DeckCell"] },
+  ],
+  "r2_buckets": [{ "binding": "MEDIA", "bucket_name": "harrhy-slides-media" }],
+}

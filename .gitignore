@@ -4,6 +4,7 @@ node_modules/
 **/.wrangler/
 **/.cloudflare/
 apps/ref/worker-configuration.d.ts
+apps/slides/worker-configuration.d.ts
 apps/radio/worker-configuration.d.ts
 apps/maps-collaboration/worker-configuration.d.ts
 **/.env
@@ -52,4 +53,5 @@ apps/ref/app/build-info.ts
 .agents/skills/workers-best-practices/
 .agents/skills/wrangler/
 
+/apps/slides/.private-media/
 /.ref-discussion/

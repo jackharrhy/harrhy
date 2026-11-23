@@ -1,0 +1,338 @@
+[
+  {
+    "title": "my agent setup",
+    "posterLines": ["my agent setup"],
+    "tone": "cover",
+    "action": {
+      "id": "type-title",
+      "label": "Type / erase title"
+    }
+  },
+  {
+    "title": "yeah... im making a talk/demo/whateva about how i use ai...",
+    "elementLayouts": {
+      "demo": [-3.3, -10.8, 0, 1],
+      "terminal": [-11.4, -7, 0, 1],
+      "title": [-1.1, -4.6, 0, 1]
+    },
+    "tone": "aside",
+    "demoNight": true,
+    "terminal": {
+      "user": "jack",
+      "facts": [
+        ["name", "jack arthur harrhy"],
+        ["current", "senior software developer @ c-core"],
+        ["route", "bluedrop -> colab -> c-core -> spellbook -> gndctl"],
+        ["domain", "jackharrhy.dev"],
+        ["github", "@jackharrhy"],
+        ["also", "siliconharbour.dev maintainer"]
+      ]
+    },
+    "action": {
+      "id": "swap-windows",
+      "label": "Swap windows"
+    }
+  },
+  {
+    "title": "a short history of llms",
+    "tone": "history",
+    "body": [
+      ["2015-12", "openai starts"],
+      ["2017-06", "the transformer"],
+      ["2019-02", "gpt-2", "i think around here i learnt about this stuff"],
+      ["2019-07", "tabnine"],
+      ["2020-06", "gpt-3"],
+      ["2021-06", "copilot preview"],
+      ["2022-11", "chatgpt"]
+    ],
+    "note": "...and the rest you probs know somewhat"
+  },
+  {
+    "title": "intellisense, but it would give you more",
+    "tone": "evolution",
+    "scene": [
+      0,
+      "function listNames(users: User[]) {",
+      "  return users.filter((user) => user.name);\n}\n\n// list the names\n// list the names\n// list the names",
+      [
+        "type User = { name: string };",
+        "",
+        "function listNames(users: User[]) {"
+      ]
+    ]
+  },
+  {
+    "title": "you get a function, then put it in your editor",
+    "tone": "evolution",
+    "scene": [
+      1,
+      "",
+      "how do i remove duplicates from an array?",
+      [
+        "function unique<T>(items: T[]): T[] {",
+        "  return [...new Set(items)];",
+        "}"
+      ]
+    ]
+  },
+  {
+    "title": "what if the chat was in the editor?",
+    "tone": "evolution",
+    "scene": [
+      2,
+      "src / config.ts",
+      "what happens if PORT is missing?",
+      [
+        "export function getPort() {",
+        "  return Number(process.env.PORT ?? 3000);",
+        "}"
+      ]
+    ]
+  },
+  {
+    "title": "what if it made the edit for you?",
+    "tone": "evolution",
+    "scene": [
+      3,
+      "routes.ts · settings.ts",
+      "move the defaults into settings.ts",
+      [
+        "import { defaults } from \"./settings\";",
+        "",
+        "export const route = {",
+        "  timeout: defaults.timeout,",
+        "};"
+      ]
+    ]
+  },
+  {
+    "title": "what if the whole thing was the clanker?",
+    "tone": "evolution",
+    "scene": [
+      4,
+      "",
+      "❯ add an empty-input test and run it",
+      [
+        "test(\"accepts empty input\", () => {",
+        "  assert.deepEqual(parse(\"\"), []);",
+        "});"
+      ]
+    ]
+  },
+  {
+    "title": "where did we go from here?",
+    "tone": "pivot"
+  },
+  {
+    "title": "cursor cloud agents",
+    "tone": "talk",
+    "body": [
+      "give it a task from cursor or slack",
+      "you don’t need your computer to be the one doing the thing",
+      "throw something at it and get a PR back"
+    ],
+    "cloudArt": {
+      "cursor-logo": [65.9, 67.7, 0, 1],
+      "elon-yacht-cutout": [80, 80.4, 21, 0.22]
+    }
+  },
+  {
+    "title": "the good",
+    "tone": "talk",
+    "body": [
+      "i can close my laptop",
+      "it keeps working while i do something else",
+      "i can start it from slack"
+    ],
+    "mark": "thumb"
+  },
+  {
+    "title": "the bad",
+    "tone": "talk",
+    "body": [
+      "i’m paying for someone else’s computer",
+      "not my setup, can be configured, but meh",
+      "remote desktop feels slow from newfoundland"
+    ],
+    "mark": "thumb-down"
+  },
+  {
+    "title": "we’ve had remote development\nforever",
+    "tone": "talk",
+    "body": ["ssh into garfield", "run tmux", "open vim"],
+    "mockTerminal": true,
+    "note": "i still want it to feel like my computer."
+  },
+  {
+    "title": "how do i get that on my system?",
+    "tone": "talk",
+    "body": [
+      "codex remote: i tried it, and found it finicky",
+      "ssh + a tui: works, also meh",
+      "a remote editor when i actually want to look at the code"
+    ]
+  },
+  {
+    "title": "herdr",
+    "screenshot": "herdr",
+    "titleLayout": [45.6, 4, 0, 1],
+    "screenshotLayout": [4.8, 15.4, 0, 1, 87.3]
+  },
+  {
+    "title": "tailscale",
+    "tone": "talk",
+    "body": [
+      "i’m on the macbook, codex is on the home server",
+      "localhost isn’t my laptop."
+    ],
+    "note": "put it on my tailnet.",
+    "mark": "tailscale"
+  },
+  {
+    "title": "rex",
+    "action": {
+      "id": "play-video",
+      "label": "Play / pause video"
+    },
+    "note": "i don’t have to think about ssh. a pane on my server feels like a pane on my mac."
+  },
+  {
+    "title": "zed",
+    "screenshot": "zed",
+    "screenshotLayout": [20.2, 14.2, 0, 1, 59.6],
+    "titleLayout": [47, 5.2, 0, 1]
+  },
+  {
+    "title": "i also had a personal agent",
+    "elementLayouts": {
+      "image": [25.8, -0.1, 0, 1],
+      "image1": [14.5, -8.9, 0, 1, 55],
+      "image2": [14.5, -28.4, 0, 1, 55]
+    },
+    "tone": "talk",
+    "body": [
+      "first openclaw, then hermes",
+      "codex sessions were for coding. the personal agent was a separate thing."
+    ]
+  },
+  {
+    "title": "i wanted to melt the lines",
+    "elementLayouts": { "image": [26, -3.3, 0, 1] },
+    "tone": "talk",
+    "body": [
+      "could hermes tell me what my codex sessions were doing?",
+      "i definitely hacked this together."
+    ]
+  },
+  {
+    "title": "my old setup",
+    "screenshot": "old-setup",
+    "screenshotLayout": [6, 11, 0, 1, 88],
+    "titleLayout": [39.6, 2.1, 0, 1]
+  },
+  {
+    "title": "one long turn, 20 messages in the inbox",
+    "screenshot": "setup-fire",
+    "screenshotLayout": [6, 11, 0, 1, 88],
+    "titleLayout": [18, 2.2, 0, 1],
+    "captionLayout": [31.7, 79.1, 0, 1]
+  },
+  {
+    "title": "i saw pi on a phone",
+    "elementLayouts": {
+      "image1": [-7.8, -5.3, -3, 1, 55, 1],
+      "image2": [44.2, -52, 4, 1, 55, 4]
+    },
+    "screenshot": "pi-phone",
+    "titleLayout": [5.1, 11.3, 0, 1, null, 3],
+    "screenshotLayout": [42.5, 10.6, 3, 1, 19.8, 2]
+  },
+  {
+    "title": "pi durable",
+    "elementLayouts": {
+      "image": [30.8, -38.5, 1, 1, 55.6],
+      "body": [-0.2, 21.6, 0, 1],
+      "title": [-0.1, 18.3, 0, 1]
+    },
+    "tone": "talk",
+    "body": [
+      "where does the session live? how does it resume?",
+      "i’d worked on that problem at spellbook. this was the first time i’d seen someone take that part seriously."
+    ]
+  },
+  {
+    "title": "p2 and the familiar",
+    "screenshot": "p2",
+    "screenshotLayout": [14.4, 11, 0, 1, 71.3],
+    "titleLayout": [35, 4, 0, 1]
+  },
+  {
+    "title": "oops, all pi",
+    "screenshot": "all-pi",
+    "titleLayout": [41.7, 8.1, 0, 1]
+  },
+  {
+    "title": "what the fuck is jack doing with this setup?",
+    "posterLines": ["what", "the fuck is jack doing", "with this setup?"],
+    "action": { "id": "stretch-poster", "label": "Stretch the words" }
+  },
+  {
+    "title": "remix jam",
+    "elementLayouts": { "image1": [38.9, 2.1, 3, 1, 55, 2] },
+    "screenshot": "remix-jam",
+    "screenshotLayout": [5, 9.4, -4, 1, 52.2]
+  },
+  {
+    "title": "one repo for the things i actually work on",
+    "elementLayouts": { "image": [28.4, 5.5, 2, 1] },
+    "shout": true,
+    "tone": "talk",
+    "body": [
+      "sergio’s talk at remix one-shot me",
+      "mario baseball, quake, my website: not a soup of projects doing their own thing"
+    ],
+    "code": "apps/       the projects\npackages/   shared UI, validation, MCP"
+  },
+  {
+    "title": "demo time",
+    "posterLines": ["demo time"]
+  },
+  {
+    "title": "the harness lives here too",
+    "tone": "talk",
+    "body": [
+      "p2 runs from a package in my repo",
+      "the teacup is the same one on my website",
+      "this deck is @harrhy/slides"
+    ]
+  },
+  {
+    "title": "imagine inviting an agent to a game of pool",
+    "screenshot": "pool",
+    "screenshotLayout": [6, 20, 0, 0, 88],
+    "titleLayout": [15.5, 46.2, 0, 1]
+  },
+  {
+    "title": "i’m still sculpting it",
+    "elementLayouts": {
+      "image1": [14.7, -10.2, 0, 1, 55]
+    },
+    "screenshot": "clay",
+    "screenshotLayout": [6, 20, 0, 0, 88],
+    "titleLayout": [34.4, 13.9, 0, 1]
+  },
+  {
+    "title": "this would have been a ludicrous endeavour before AI",
+    "elementLayouts": { "title": [0, 1, 0, 1] },
+    "shout": true
+  },
+  {
+    "title": "if you take one thing away from this spiel",
+    "shout": true,
+    "tone": "talk",
+    "body": [
+      "be ambitious with your ideas",
+      "don’t just apply AI to what you already do. think about what you can do now that you couldn’t do before."
+    ]
+  }
+]

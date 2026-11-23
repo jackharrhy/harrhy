@@ -10,6 +10,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | Workspace | What it runs | Guide |
 | --- | --- | --- |
 | [`@harrhy/8mb`](apps/8mb/) | Browser video compression and opt-in aggregate diagnostics | [README](apps/8mb/README.md) |
+| [`@harrhy/slides`](apps/slides/) | Synchronized talk deck with presenter sign-in | [README](apps/slides/README.md) |
 | [`@harrhy/pi`](apps/pi/) | Faithful P2 React/Chord v0 review import; no live cutover | [README](apps/pi/README.md) |
 | [`@harrhy/clank`](apps/clank/) | Live session catalog for a disposable Pi fixture | [README](apps/clank/README.md) |
 | [`@harrhy/atlas`](apps/atlas/) | Private agent-owned Markdown spaces and trusted page widgets | [README](apps/atlas/README.md) |

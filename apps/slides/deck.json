@@ -1,0 +1,25 @@
+[
+  {
+    "title": "example presentation",
+    "posterLines": ["example presentation"],
+    "tone": "cover",
+    "action": { "id": "type-title", "label": "Type / erase title" }
+  },
+  {
+    "title": "the sample deck",
+    "tone": "talk",
+    "body": ["Edit this example or inject your own deck."],
+    "cloudArt": {
+      "cursor-logo": [78, 14],
+      "elon-yacht-cutout": [84.3, 76]
+    }
+  },
+  {
+    "title": "screenshot placeholder",
+    "screenshot": "herdr"
+  },
+  {
+    "title": "example recording",
+    "action": { "id": "play-video", "label": "Play / pause video" }
+  }
+]

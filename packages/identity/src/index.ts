@@ -252,6 +252,7 @@ export function createIdentityClient(
       code: string,
       transaction: LoginTransaction,
       redirectUri: string,
+      { requiredRole }: { requiredRole?: string } = {},
     ): Promise<IdentityProfile> {
       if (!validLoginTransaction(transaction, transaction.state) || !text(code))
         throw invalid();
@@ -316,7 +317,11 @@ export function createIdentityClient(
         !text(profile.name)
       )
         throw invalid();
-      if (!assigned.has("member") && !assigned.has("admin"))
+      if (
+        requiredRole === undefined
+          ? !assigned.has("member") && !assigned.has("admin")
+          : !assigned.has(requiredRole)
+      )
         throw new IdentityError("Access to this application is required", 403);
       return {
         subject: claims.sub,

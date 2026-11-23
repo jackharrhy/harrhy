@@ -14,6 +14,7 @@ export function createAssets() {
       "packages/ui/*.ts",
       "packages/ui/*.tsx",
       "packages/ui/fonts.css",
+      "packages/ui/allo.css",
       "packages/ui/fonts/*.woff2",
     ],
     allowPackages: [
