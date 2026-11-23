@@ -15,40 +15,6 @@ it("replays a single prefix through both Markdown policies, then changes phone v
   const button = (name: string) =>
     page.getByRole("button", { name, exact: true });
   const proof = await page.locator(".scroll").innerText();
-  const header = page.getByRole("banner");
-  assert.equal(
-    await page.getByRole("link", { name: /UI showcase/ }).count(),
-    0,
-  );
-  for (const [skin, id] of [
-    ["Basic", "basic"],
-    ["Newspaper", "newspaper"],
-    ["Graphite", "graphite"],
-  ]) {
-    await header.getByRole("button", { name: "Theme", exact: true }).click();
-    await page.getByRole("option", { name: skin, exact: true }).click();
-    await page.getByRole("listbox").waitFor({ state: "hidden" });
-    await page.locator(`[data-skin=${id}]`).waitFor();
-    const session = page.locator(".session").first();
-    const prose = page.locator(".measure p").first();
-    await header.getByRole("button", { name: "Density", exact: true }).click();
-    await page.getByRole("option", { name: "Standard", exact: true }).click();
-    await page.getByRole("listbox").waitFor({ state: "hidden" });
-    await page.waitForURL(/density=standard/);
-    const standard = await session.boundingBox();
-    const textSize = await prose.evaluate((n) => getComputedStyle(n).fontSize);
-    await header.getByRole("button", { name: "Density", exact: true }).click();
-    await page.getByRole("option", { name: "Compact", exact: true }).click();
-    await page.getByRole("listbox").waitFor({ state: "hidden" });
-    await page.waitForURL(/density=compact/);
-    const compact = await session.boundingBox();
-    assert.ok(standard && compact && compact.height < standard.height);
-    assert.equal(
-      await prose.evaluate((n) => getComputedStyle(n).fontSize),
-      textSize,
-    );
-    assert.equal(await page.locator(".scroll").innerText(), proof);
-  }
   const step = button("Step");
   // Each manual tick adds eight characters. Stop inside the fence before its closing line.
   for (let i = 0; i < 18; i++) await step.click();

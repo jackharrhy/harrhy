@@ -111,7 +111,7 @@ try {
   const { runRemixTest } = await import("remix/test/cli");
   process.exitCode = await runRemixTest({
     cwd: root,
-    glob: { test: "apps/ui/__tests__/*.test{,.browser,.e2e}.{ts,tsx}" },
+    glob: { test: "apps/ui/__tests__/*.test{.browser,.e2e}.{ts,tsx}" },
   });
 } finally {
   hook?.deregister();

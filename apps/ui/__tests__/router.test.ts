@@ -84,3 +84,25 @@ it("renders each Explorer preview and its source with the selected Sluggers them
     );
   }
 });
+
+it("redirects old scene links and retains theme and density in shared navigation", async (t) => {
+  const app = createApp();
+  t.after(() => app.close());
+  const result = await app.fetch(
+    new Request(
+      "http://localhost/?view=scenes&scene=clank&theme=graphite&density=compact",
+    ),
+  );
+  assert.equal(result.status, 302);
+  const target = result.headers.get("Location");
+  assert.equal(target, "/scenes/clank?theme=graphite&density=compact");
+  const clank = await app.fetch(new Request(`http://localhost${target}`));
+  assert.equal(clank.status, 200);
+  const html = await clank.text();
+  assert.match(html, /data-skin="graphite"/);
+  assert.match(html, /--hui-field-gap: 0.375rem/);
+  assert.match(
+    html,
+    /href="\/explorer\/field\?theme=graphite&amp;density=compact/,
+  );
+});
