@@ -44,7 +44,6 @@ import {
 import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Envs } from "../envs/contract.ts";
 import { DirectoryPicker, directoryPickerLayer } from "../envs/contract.web.tsx";
-import { SidebarRollups } from "../rollups/contract.ts";
 import { Search, SessionReads } from "../search/contract.ts";
 import { SessionStatus } from "../status/contract.ts";
 import { type Child, Subagents } from "../subagents/contract.ts";
@@ -53,16 +52,13 @@ import { SESSION_COMMANDS, SESSION_PAGES, SESSION_SEARCH } from "./commands.tsx"
 import { type Operation, type Session, Sessions, SidebarSettings, type SidebarWindow } from "./contract.ts";
 import { type DrawerRows, DrawerRowsContext } from "./contract.web.tsx";
 import { SessionSheet } from "./SessionSheet.tsx";
-import { customKey, customRollup } from "./sidebar/custom.ts";
 import { ListPage } from "./sidebar/ListPage.tsx";
 import {
-	ARCHIVE,
 	arranged,
 	listPageOf,
 	movable,
 	moved,
 	type NewTarget,
-	OTHER,
 	ROLLUPS,
 	type RollupContext,
 	type SidebarRow,
@@ -71,7 +67,7 @@ import {
 	wantingOf,
 } from "./sidebar/model.ts";
 import { publishPage, usePageData } from "./sidebar/page-data.ts";
-import { type CodeSource, RollupSheet } from "./sidebar/RollupSheet.tsx";
+import { RollupSheet } from "./sidebar/RollupSheet.tsx";
 import { folderName } from "./sidebar/Row.tsx";
 import { SidebarView, useNow } from "./sidebar/Sidebar.tsx";
 
@@ -255,14 +251,7 @@ function useSidebarData() {
 			}),
 		[guessSettings, settingsHeld],
 	);
-	// Rollups made from code (plugins/rollups), before the Archive until the owner moves them.
-	const rollupsHeld = useObject(SidebarRollups, owner ? {} : undefined);
-	const entries = useReadable(keptIn(rollupsHeld, "owner")?.rollups);
-	const rollups = useMemo(() => {
-		const custom = (entries ?? []).map(customRollup);
-		const archive = ROLLUPS.filter((rollup) => rollup.key === ARCHIVE);
-		return arranged([...ROLLUPS.filter((rollup) => rollup.key !== ARCHIVE), ...custom, ...archive], settings.order);
-	}, [entries, settings.order]);
+	const rollups = useMemo(() => arranged(ROLLUPS, settings.order), [settings.order]);
 	const now = useNow();
 	const view = useMemo(
 		() => ({ windows: settings.windows, collapsed: settings.collapsed, now, open: route.session }),
@@ -358,8 +347,6 @@ function useSidebarData() {
 		settings,
 		changeSettings,
 		rollups,
-		rollupsHeld,
-		entries,
 		view,
 		onOpen,
 		onRestore,
@@ -383,7 +370,7 @@ function Sidebar() {
 	const data = useSidebarData();
 	const { route, catalog, owner, fail, list, edit, rows, answers, reads, marks, search, settings, changeSettings } =
 		data;
-	const { rollups, rollupsHeld, entries, context, view, onOpen, onRestore, guest } = data;
+	const { rollups, context, view, onOpen, onRestore, guest } = data;
 	// Sessions a plugin's sidebar entry shows (the Familiar's, a `sidebar-start` row) are left out of the rollups.
 	const [apart, setApart] = useState<Readonly<Record<string, readonly string[]>>>({});
 	const listApart = useCallback(
@@ -445,8 +432,7 @@ function Sidebar() {
 				rollups,
 				context,
 				view,
-				// A rollup made from code waits for the rollups: before them its list would say it is gone.
-				loading: (page) => !list || (page.startsWith("rollup:") && entries === undefined),
+				loading: !list,
 				connected,
 				onOpen,
 				onRestore,
@@ -463,7 +449,6 @@ function Sidebar() {
 			context,
 			view,
 			list,
-			entries,
 			connected,
 			onOpen,
 			onRestore,
@@ -477,28 +462,6 @@ function Sidebar() {
 	);
 	const rollupSheet = useSheet("sidebar-rollup");
 	const optionsOf = rollupSheet && sections.find((section) => section.key === rollupSheet.locator);
-	const [refreshing, setRefreshing] = useState<string>();
-	/** The options of a rollup made from code: its refresh, last check and failure, and Refresh now while connected. */
-	const codeOf = (key: string): CodeSource | undefined => {
-		const entry = entries?.find((each) => customKey(each.definition.key) === key);
-		if (!entry) return undefined;
-		const live = liveIn(rollupsHeld, "owner");
-		const refresh = () => {
-			if (!live) return;
-			setRefreshing(key);
-			void live
-				.refresh({ key: entry.definition.key }, BACKGROUND_CONTEXT)
-				.catch(fail)
-				.finally(() => setRefreshing(undefined));
-		};
-		return {
-			refresh: entry.definition.refresh,
-			checkedAt: entry.checkedAt,
-			error: entry.error,
-			refreshing: refreshing === key,
-			...(live ? { onRefresh: refresh } : {}),
-		};
-	};
 	/** A rollup's options: its window, and moving it among the rollups with a heading (one without stays first). */
 	const rollupActions = (key: string) => {
 		const ordering = movable(rollups);
@@ -550,8 +513,6 @@ function Sidebar() {
 				<RollupSheet
 					key={optionsOf.key}
 					section={optionsOf}
-					code={codeOf(optionsOf.key)}
-					now={view.now}
 					{...rollupActions(optionsOf.key)}
 					onClose={closeLayers}
 				/>
@@ -605,7 +566,7 @@ function SectionPage() {
 			key={page}
 			page={page}
 			data={list || undefined}
-			loading={data.loading(page)}
+			loading={data.loading}
 			connected={data.connected}
 			actions={{
 				conversationId: route.conversation,

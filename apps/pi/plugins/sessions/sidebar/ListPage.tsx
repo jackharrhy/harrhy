@@ -25,8 +25,7 @@ import { pageRoute, type RowActions, SessionItem } from "./Row.tsx";
 function subtitle(data: ListPageData | undefined): string {
 	if (!data) return "";
 	if (data.archived) return "Archived sessions. Open a session to restore it.";
-	if (!data.window || data.window === "forever" || data.window === "none")
-		return "Every session shows in the sidebar.";
+	if (!data.window || data.window === "forever") return "Every session shows in the sidebar.";
 	const label = WINDOWS.find((each) => each.window === data.window)?.label.toLowerCase();
 	return `Sessions without activity in the last ${label} are dimmed; the sidebar shows the others.`;
 }

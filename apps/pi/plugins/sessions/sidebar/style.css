@@ -508,10 +508,6 @@
 	color: var(--bad);
 }
 /* A rollup made from code whose last run failed: why, in its options. */
-.rollup-error {
-	color: var(--bad);
-	overflow-wrap: anywhere;
-}
 .session-operation > .session-operation-text {
 	overflow: hidden;
 	text-overflow: ellipsis;

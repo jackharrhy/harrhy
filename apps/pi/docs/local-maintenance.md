@@ -6,7 +6,7 @@ This document belongs to the local integration branch, not upstream policy.
 
 Keep local behavior changes in small commits above a deliberately selected upstream revision. Rebase; do not merge upstream into the integration branch. Never push rewritten history without separate authorization. Keep machine paths, service configuration, credentials and runtime data out of portable commits.
 
-The local sidebar patch hides the built-in Folders rollup from navigation and excludes it when selecting the active sidebar row. It does not remove folder list routes, search, model grouping or persisted sidebar settings. The sessions list, custom rollups and Archive remain available. Its browser expectations belong with the behavior patch.
+The local sidebar patch hides the built-in Folders rollup from navigation and excludes it when selecting the active sidebar row. It does not remove folder list routes, search, model grouping or persisted sidebar settings. The sessions list and Archive remain available. Its browser expectations belong with the behavior patch.
 
 ## Update procedure
 

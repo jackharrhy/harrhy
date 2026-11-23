@@ -113,7 +113,7 @@ export const SearchIndex = local("p2.search-index", {
 		messages: method(obj({ query: str(), sessions: arr(str()) }), arr(MessageHitSchema)),
 		/**
 		 * The sessions with a message matching `query` (keywords as `ftsQuery` reads them, all required) at or after
-		 * `since`, each with the time of its latest one (rollups' `mentions`).
+		 * `since`, each with the time of its latest one. Nothing calls it since rollups were removed (see the removed-features doc).
 		 */
 		mentions: method(obj({ query: str({ minLength: 1, maxLength: 500 }), since: opt(num()) }), record(num())),
 		/** The index rebuilds running or failed (a job each: they survive a server restart). */

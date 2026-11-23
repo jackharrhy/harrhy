@@ -1,5 +1,5 @@
 // The sidebar's view, built from Elanor's sidebar and side navigation: one navigation group per rollup, in the layout
-// of what it collected (the live sessions, a rollup made from code's folders as groups of sessions, the Archive's name),
+// of what it collected (the live sessions, the Archive's name),
 // and the guest's list of shared sessions. Every row has the same shape (NavRow.tsx): a marker, a label, details and
 // controls at the trailing end. The owner's list starts with the rows plugins put there (the Familiar's), then the row
 // that opens the new-session screen. A rollup's name opens its list page, its chevron shows or hides its sessions; a

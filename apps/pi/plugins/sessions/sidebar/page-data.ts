@@ -13,7 +13,7 @@ export type PageData = {
 	readonly context: RollupContext;
 	readonly view: View;
 	/** The sessions are not known yet. */
-	readonly loading: (page: string) => boolean;
+	readonly loading: boolean;
 	readonly connected: boolean;
 	readonly onOpen: (id: string, conversation?: number) => void;
 	readonly onRestore: (id: string, conversation?: number) => void;
