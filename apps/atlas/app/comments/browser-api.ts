@@ -23,7 +23,6 @@ export interface ReviewState {
 export interface ReviewTarget extends TargetBinding {
   readonly sessionId?: string;
   readonly label: string;
-  readonly glyph: { readonly paths: readonly { fill: string; d: string }[] };
 }
 
 /** No automatic mutation retry: a lost acknowledgement must be inspected first. */

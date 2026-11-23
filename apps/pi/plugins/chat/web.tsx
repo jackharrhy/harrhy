@@ -130,7 +130,6 @@ import { createPortal } from "react-dom";
 import { Drafts } from "../drafts/contract.ts";
 import { Envs } from "../envs/contract.ts";
 import { DirectoryPicker, directoryPickerLayer } from "../envs/contract.web.tsx";
-import { GlyphIcon } from "../glyphs/GlyphIcon.tsx";
 import { Models } from "../models/contract.ts";
 import type { ResourceSnapshot } from "../models/resources.ts";
 import { type Session, Sessions } from "../sessions/contract.ts";
@@ -719,7 +718,6 @@ function TopBar({
 	const objects = usePageObjects();
 	const envs = useReadable(objects.envs?.envs);
 	const sandboxed = envs?.find((env) => env.name === session?.env)?.config.type === "gondolin";
-	const glyph = session && <GlyphIcon seed={session.cwd} size={11} />;
 	const lock = sandboxed && (
 		<span className="title-lock">
 			<LockIcon size={11} />
@@ -758,14 +756,12 @@ function TopBar({
 									) : (
 										<>
 											{lock}
-											{glyph}
 											{locationLabel(session.env, session.cwd)}
 										</>
 									)}
 								</button>
 							) : (
 								<p>
-									{glyph}
 									{locationLabel(session.env, session.cwd)}
 								</p>
 							))}

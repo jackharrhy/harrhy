@@ -3,9 +3,6 @@ import type { CommentBatch, TargetBinding } from "./contract.ts";
 interface AgentTarget extends TargetBinding {
   readonly sessionId?: string;
   readonly label: string;
-  readonly glyph: {
-    readonly paths: readonly { readonly fill: string; readonly d: string }[];
-  };
 }
 export interface AgentCatalog {
   readonly targets: readonly AgentTarget[];
@@ -148,21 +145,9 @@ export function createCommentBridge(
         target.revision < 1 ||
         typeof target.label !== "string" ||
         !target.label.trim() ||
-        target.label.length > 256 ||
-        !Array.isArray(target.glyph?.paths) ||
-        target.glyph.paths.length > 64
+        target.label.length > 256
       )
         throw new Error("Invalid comment target");
-      for (const shape of target.glyph.paths)
-        if (
-          !shape ||
-          typeof shape.fill !== "string" ||
-          !/^#[0-9a-fA-F]{6}$/.test(shape.fill) ||
-          typeof shape.d !== "string" ||
-          shape.d.length > 8192 ||
-          !/^[MmLlHhVvCcSsQqTtAaZz0-9.,+\-\s]+$/.test(shape.d)
-        )
-          throw new Error("Invalid comment target glyph");
       return {
         ...(target.sessionId === undefined
           ? {}
@@ -170,9 +155,6 @@ export function createCommentBridge(
         key: target.key,
         revision: target.revision,
         label: target.label,
-        glyph: {
-          paths: target.glyph.paths.map(({ fill, d }) => ({ fill, d })),
-        },
       };
     });
     if (

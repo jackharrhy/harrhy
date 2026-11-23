@@ -7,7 +7,6 @@ import { arr, compile, int, nul, obj, opt, type Static, str, union } from "@eare
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { AtlasFeedback, type Batch, payloadDigest } from "../../integrations/atlas-feedback/contract.server.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
-import { glyphOf } from "../../plugins/glyphs/glyph.ts";
 import { Catalog, Sessions } from "../../plugins/sessions/contract.ts";
 import { Sharing } from "../../plugins/sharing/contract.ts";
 import { EventReadbackSchema, Subscriptions } from "../../plugins/stimuli/contract.ts";
@@ -26,7 +25,6 @@ const Targets = compile(
 				key: str(),
 				revision: int(),
 				label: str(),
-				glyph: obj({ paths: arr(obj({ fill: str(), d: str() })) }),
 			}),
 		),
 		defaultSessionId: union([str(), nul()]),
@@ -112,7 +110,7 @@ it("authenticates the app, filters targets, freezes batches and preserves retire
 		);
 		const targets = await getTargets();
 		assert.equal(targets.length, 1);
-		assert.deepEqual(targets[0]!.glyph, glyphOf(fixture.workspace));
+		assert(!("glyph" in targets[0]!));
 		assert(!JSON.stringify(targets).includes(fixture.workspace));
 		assert.equal(targets[0]!.sessionId, session.id);
 		assert.equal(targets[0]!.label, session.title);

@@ -163,9 +163,7 @@ test("owner send persists before transport and stale source cannot mint another 
     store,
     snapshot: () => snapshot,
     bridge: {
-      targets: async () => [
-        { ...target, label: "Example", glyph: { paths: [] } },
-      ],
+      targets: async () => [{ ...target, label: "Example" }],
       publish: async (batch) => {
         assert.deepEqual(store.batch(batch.batchId)?.body, batch);
         published.push(JSON.stringify(batch));
@@ -221,9 +219,7 @@ test("HTTP comment boundary requires exact canonical origin, signed cookie and h
     store,
     snapshot: () => page,
     bridge: {
-      targets: async () => [
-        { ...target, label: "Example", glyph: { paths: [] } },
-      ],
+      targets: async () => [{ ...target, label: "Example" }],
       publish: async (batch) => {
         publishes++;
         return {
