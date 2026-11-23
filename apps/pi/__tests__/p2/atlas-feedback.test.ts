@@ -25,7 +25,6 @@ const Targets = compile(
 				key: str(),
 				revision: int(),
 				label: str(),
-				glyph: obj({ paths: arr(obj({ fill: str(), d: str() })) }),
 			}),
 		),
 		defaultSessionId: union([str(), nul()]),
@@ -111,7 +110,7 @@ it("authenticates the app, filters targets, freezes batches and preserves retire
 		);
 		const targets = await getTargets();
 		assert.equal(targets.length, 1);
-		assert.deepEqual(targets[0]!.glyph, { paths: [] });
+		assert(!("glyph" in targets[0]!));
 		assert(!JSON.stringify(targets).includes(fixture.workspace));
 		assert.equal(targets[0]!.sessionId, session.id);
 		assert.equal(targets[0]!.label, session.title);

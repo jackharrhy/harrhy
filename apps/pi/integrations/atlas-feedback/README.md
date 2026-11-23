@@ -55,7 +55,7 @@ authenticates this app credential and confines resources/targets. Do not expose 
 ### GET /atlas-feedback/targets
 
 ```json
-{"targets":[{"sessionId":"<stable root UUID>","key":"<opaque sha256 key>","revision":1,"label":"Actual session title","glyph":{"paths":[]}}],"defaultSessionId":"<configured UUID or null>","eligibleCount":1,"omittedPrivacyCount":0,"unavailable":[]}
+{"targets":[{"sessionId":"<stable root UUID>","key":"<opaque sha256 key>","revision":1,"label":"Actual session title"}],"defaultSessionId":"<configured UUID or null>","eligibleCount":1,"omittedPrivacyCount":0,"unavailable":[]}
 ```
 
 Only authorized, enabled bindings for this source/version/resource/origin whose sessions remain private/unarchived
@@ -69,7 +69,6 @@ worker is unavailable without restarting it; other root validation gets a five-s
 not verified writable and does not prevent healthy roots from appearing. Other infrastructure failures remain
 errors, not fabricated eligibility.
 
-`glyph` is always `{"paths":[]}`: Pi has no glyphs, and Atlas's bridge still requires the field. Clients draw nothing for it.
 No cwd, project path or authentication details are returned. The default may be unavailable: clients must show
 that fact rather than silently choosing another recipient.
 

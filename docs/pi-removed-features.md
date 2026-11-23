@@ -344,8 +344,8 @@ A small colored picture per session, a stand-in for the session's folder so sess
 - `contract.server.ts` and `externalTargetGlyphs(ctx)` in `src/api/v1/external-targets.ts`: native glyph geometry for
   trusted server adapters, looked up by session id so the folder path never left the server.
 - The Atlas feedback integration sent each session's `glyph` (`{ paths: [{ fill, d }] }`) in
-  `GET /atlas-feedback/targets`. Pi now sends `glyph: { paths: [] }` because Atlas's bridge still rejects a target
-  without the field.
+  `GET /atlas-feedback/targets`. Pi no longer sends `glyph`, and Atlas's bridge
+  (`apps/atlas/app/comments/bridge.ts`) no longer requires or reads it.
 
 Worth bringing back: a per-session "flavor" (an identity mark in the header, the sidebar and Atlas's recipient list).
 `glyph.ts` at the last commit is a pure function and can be lifted as is, with whatever seed the new mark needs.

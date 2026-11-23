@@ -253,8 +253,6 @@ export default defineFacet((host) => {
 						key: keyOf(config.resource, row.id),
 						revision: row.revision,
 						label: session.title,
-						// Atlas still requires this field until it stops validating it; Pi has no glyphs now.
-						glyph: { paths: [] },
 					});
 				}
 				return {
