@@ -1,27 +1,45 @@
 import { hostname } from "node:os";
 import { randomUUID } from "node:crypto";
-import { compile, int, obj, str } from "@earendil-works/pi-schema";
+import { compile, int, num, obj, str } from "@earendil-works/pi-schema";
 import { contribute, defineFacet, defineState, record, signalOf, sleep } from "@p2/app/v1";
 import { bindStimulusPublisher, defineStimulusSource, sourceKey, StimulusSources, WakeStore } from "@p2/app/v1/server";
-import { Cursor, initial, Metric, observe, policies } from "./policy.ts";
+import { type Condition, type Metric, Source, Watch } from "./contract.ts";
+import { Cursor, initial, observe, policyFor, Severity } from "./policy.ts";
 import { hostProbes } from "./probes.ts";
 
-const Check = obj({ check: Metric });
-const check = compile(Check);
+const check = compile(Watch);
+const labels: Record<Metric, string> = {
+	"disk-root": "Root disk space available (/)",
+	cpu: "Host CPU busy",
+	memory: "Host memory available",
+};
+const describe = (condition: Condition, unit: string) =>
+	condition.op === "between"
+		? `between ${condition.min} and ${condition.max} ${unit} (inclusive)`
+		: `${condition.op} ${condition.value} ${unit}`;
 
-export const HostHealth = defineStimulusSource({
-	id: "p2.host-health",
-	version: 1,
+const source = defineStimulusSource({
+	...Source,
 	label: "Host health",
-	configSchema: Check,
-	eventSchema: obj({ host: str(), at: int(), value: int(), threshold: int() }),
+	configSchema: Watch,
+	eventSchema: obj({ host: str(), at: int(), value: num(), severity: Severity }),
 	render: (event, config) => {
-		const policy = policies[config.check];
-		return `${policy.label} on ${event.host}: ${policy.format(event.value)}, ${policy.direction} ${policy.format(event.threshold)} at ${new Date(event.at).toISOString()}.
+		const policy = policyFor(config);
+		const condition = (event.severity === "critical" ? policy.critical : policy.trigger)!;
+		const unit = config.check === "disk-root" ? "GiB" : "%";
+		return `Host health ${event.severity}: ${labels[config.check]} on ${event.host}: ${Number(event.value.toFixed(3))} ${unit} (${describe(condition, unit)}) at ${new Date(event.at).toISOString()}.
 
 Recheck the reading on the monitored host and follow the conversation’s approved incident runbook. This alert does not authorize deletion or service restarts.`;
 	},
 });
+
+export const HostHealth = {
+	...source,
+	validateConfig(value: unknown) {
+		if (!check.check(value)) throw new Error("Invalid host health watch");
+		policyFor(value);
+	},
+};
 
 const Saved = defineState("p2.host-health", {
 	version: 1,
@@ -76,7 +94,7 @@ export function hostHealthFacet(host: string, probes: ReturnType<typeof hostProb
 										readings.set(metric, reading);
 									}
 									const cursor = watch?.cursor ?? initial();
-									const next = observe(policies[metric], cursor, await reading, Date.now());
+									const next = observe(policyFor(row.config), cursor, await reading, Date.now());
 									if (next === cursor) continue;
 									const updated = { epoch: watch?.epoch ?? randomUUID(), host, cursor: next };
 									await saved.change((draft) => { draft.watches[key] = updated; }, ctx);

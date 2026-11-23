@@ -1,5 +1,5 @@
 import { readFile, statfs } from "node:fs/promises";
-import type { Metric } from "./policy.ts";
+import type { Metric } from "./contract.ts";
 
 type Cpu = { busy: number; total: number };
 
@@ -17,14 +17,14 @@ export function cpuBusy(before: Cpu | undefined, after: Cpu): number | undefined
 	const total = after.total - before.total;
 	const busy = after.busy - before.busy;
 	if (total <= 0 || busy < 0 || busy > total) return;
-	return Math.round(10000 * busy / total);
+	return 100 * busy / total;
 }
 
 export function memoryAvailable(text: string): number {
 	const total = Number(/^MemTotal:\s+(\d+) kB$/m.exec(text)?.[1]);
 	const available = Number(/^MemAvailable:\s+(\d+) kB$/m.exec(text)?.[1]);
 	if (!(total > 0 && available >= 0 && available <= total)) throw new Error("Invalid memory figures in /proc/meminfo");
-	return Math.round(10000 * available / total);
+	return 100 * available / total;
 }
 
 export function hostProbes(): Record<Metric, () => Promise<number | undefined>> {
@@ -32,7 +32,7 @@ export function hostProbes(): Record<Metric, () => Promise<number | undefined>> 
 	return {
 		"disk-root": async () => {
 			const fs = await statfs("/", { bigint: true });
-			return Number(fs.bavail * fs.bsize);
+			return Number(fs.bavail * fs.bsize) / 1024 ** 3;
 		},
 		cpu: async () => {
 			const before = previous;

@@ -1,6 +1,6 @@
 # Host health
 
-An optional Linux server plugin that wakes a private Pi conversation on host resource pressure. Each enabled check samples once a minute:
+An optional Linux server plugin that wakes a private Pi conversation on host resource pressure. Only metrics with an enabled watch are read, at most once per poll. Watches share a one-minute interval. These presets apply when a subscription omits its rule:
 
 <!-- prettier-ignore -->
 | Check | Warning | Critical | Rearm (two readings) |
@@ -27,6 +27,26 @@ await subscriptions.createTarget({
 ```
 
 Create one subscription per check with a distinct ID; use `cpu` or `memory` instead of `disk-root` for the other checks. Use `list` and `setEnabled` with the current revision to inspect or stop the subscription. There is no separate settings page. A revised binding starts a new watch; previously admitted alerts may still be handled.
+
+## Custom rules
+
+Add a `rule` to the subscription configuration, for example:
+
+```json
+{
+  "check": "memory",
+  "rule": {
+    "trigger": { "op": "below", "value": 33.333 },
+    "rearm": { "op": "above", "value": 40 },
+    "samples": 3,
+    "rearmSamples": 2
+  }
+}
+```
+
+Use `above`, `below`, or inclusive `between` (with `min` and `max`). Disk values are in GiB; CPU and memory use percentages from 0 to 100. Trigger and rearm conditions must not overlap. A custom rule replaces the preset, including its critical threshold. Custom rules default to one trigger reading and two rearm readings.
+
+With owner authorization, an agent can use the `host_health` tools to create a watch for its current private conversation, list watches scoped to its session, and pause or resume them. The server uses Pi’s existing subscription authorization for these calls.
 
 ## Response runbook
 
