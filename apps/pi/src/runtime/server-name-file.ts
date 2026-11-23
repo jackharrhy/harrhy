@@ -6,7 +6,7 @@
 // ("Cristina's MacBook Pro"), read again at every start, so renaming the device renames an unnamed server.
 //
 // The name is a label, never an identity or a credential, and nothing
-// authorizes by name. Places of projects name this machine by `os.hostname()`, not by this name.
+// authorizes by name.
 import { execFile } from "node:child_process";
 import { readFile, rename, rm, writeFile } from "node:fs/promises";
 import { hostname } from "node:os";

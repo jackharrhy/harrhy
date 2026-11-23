@@ -73,13 +73,6 @@ export type Session = Static<typeof SessionSchema>;
 /** Cleanup completed before an archive call returns. */
 export const SessionArchived = keyedRegistry<(session: string, ctx: Ctx) => Promise<void>>("p2.session-archived");
 
-/**
- * What a copy of a session takes over from its source (`/clone`, `/fork`; e.g. its project), called once the copy's row
- * exists and before its copying starts.
- */
-export const SessionCopied =
-	keyedRegistry<(source: string, copy: string, ctx: Ctx) => Promise<void>>("p2.session-copied");
-
 /** Pi Mobile's MAX_SESSION_TITLE. */
 export const MAX_TITLE = 120;
 const Id = obj({ id: str() });
@@ -487,7 +480,7 @@ export const SessionLock = remote("p2.session-lock", {
 export const SidebarWindowSchema = union([literal("1d"), literal("3d"), literal("1w"), literal("forever")]);
 export type SidebarWindow = Static<typeof SidebarWindowSchema>;
 
-/** A rollup's key (plugins/sessions/sidebar/model.ts): `recent`, `projects`, `folders`, `archive`. */
+/** A rollup's key (plugins/sessions/sidebar/model.ts): `other`, `folders`, `archive`. */
 const SidebarKey = str({ minLength: 1, maxLength: 1000 });
 
 const SIDEBAR_SETTINGS_STATE = {

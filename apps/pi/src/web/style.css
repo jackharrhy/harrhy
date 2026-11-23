@@ -396,8 +396,7 @@ textarea.input {
 .footer-action,
 .title-cwd,
 .crumb,
-.cwd-pick span,
-.project-pick span {
+.cwd-pick span {
 	text-decoration: underline dotted;
 	text-decoration-color: var(--faint);
 	text-underline-offset: 3px;
@@ -408,8 +407,7 @@ textarea.input {
 	.footer-action:hover,
 	.title-cwd:hover,
 	.crumb:hover,
-	.cwd-pick:hover span,
-	.project-pick:hover span {
+	.cwd-pick:hover span {
 		color: var(--text);
 		text-decoration-color: currentColor;
 	}
@@ -1435,8 +1433,7 @@ audio.file-media {
 	font-weight: var(--fw-strong);
 	letter-spacing: -0.02em;
 }
-.cwd-pick,
-.project-pick {
+.cwd-pick {
 	display: inline-flex;
 	align-items: center;
 	gap: var(--s2);
@@ -1445,7 +1442,7 @@ audio.file-media {
 	font-family: var(--mono);
 	font-size: var(--fs-sm);
 }
-/* The new-session screen's choices: the project the session joins, then its location, one per line. */
+/* The new-session screen's choices: its location. */
 .new-session-choices {
 	display: flex;
 	flex-direction: column;
@@ -1453,12 +1450,7 @@ audio.file-media {
 	gap: var(--s2);
 	max-width: 100%;
 }
-/* A project is a name, not a path. */
-.project-pick {
-	font-family: inherit;
-}
-.cwd-pick span,
-.project-pick span {
+.cwd-pick span {
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

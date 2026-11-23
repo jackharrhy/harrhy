@@ -1,10 +1,9 @@
 // The sidebar's rules, as pure functions over what p2 already knows. A rollup is a rule that collects sessions into one
-// section of the sidebar: groups of sessions (one per project), a flat list (the sessions without a project), or only a
-// link to its list (the Archive). The sidebar shows each rollup's relevant sessions (relevance and the rollup's
+// section of the sidebar: groups of sessions (one per folder, for rollups made from code), a flat list (the live
+// sessions), or only a link to its list (the Archive). The sidebar shows each rollup's relevant sessions (relevance and the rollup's
 // window); its list page shows them all, those that fell out of the window aged. No React: the views render what these
 // return.
 
-import type { Project } from "../../projects/contract.ts";
 import type { RollupWindow } from "../../rollups/contract.ts";
 import type { RunFailure, Work } from "../../status/contract.ts";
 import type { Child } from "../../subagents/contract.ts";
@@ -41,8 +40,8 @@ export function failureOf(row: SidebarRow): string | undefined {
 	return run.kind === "failed" ? `Failed: ${run.detail ?? failureWords(run.reason)}` : undefined;
 }
 
-/** Where a group's "+" starts a new session: in a folder, or in a project (at one of its places). */
-export type NewTarget = { kind: "folder"; env: string | null; cwd: string } | { kind: "project"; project: Project };
+/** Where a group's "+" starts a new session: in a folder. */
+export type NewTarget = { kind: "folder"; env: string | null; cwd: string };
 
 /**
  * A group a rollup collected: its key, name (and a longer title), its sessions and where a new one starts (none: no
@@ -65,10 +64,8 @@ export type Collected =
 	| { readonly layout: "groups"; readonly groups: readonly Group[] }
 	| { readonly layout: "link"; readonly members: readonly SidebarRow[] };
 
-/** What rollups collect from besides the sessions: projects and their sessions, folder names, sandbox environments. */
+/** What rollups collect from besides the sessions: folder names, sandbox environments. */
 export type RollupContext = {
-	readonly projects: readonly Project[];
-	readonly memberships: Readonly<Record<string, string>>;
 	/** A folder's name in the sidebar; two folders of the same name get their parents (`disambiguate`). */
 	readonly folderName: (env: string | null, cwd: string, segments: number) => string;
 	readonly sandboxes: ReadonlySet<string>;
@@ -93,12 +90,9 @@ export type Rollup = {
 	collect(rows: readonly SidebarRow[], context: RollupContext): Collected;
 };
 
-export const PROJECTS = "projects";
 export const OTHER = "other";
 export const FOLDERS = "folders";
 export const ARCHIVE = "archive";
-
-export const projectKey = (name: string): string => `project:${name}`;
 
 /** A folder's key: its environment and path, encoded (`keyPart`). */
 export const folderKey = (env: string | null, cwd: string): string => `folder:${keyPart(JSON.stringify([env, cwd]))}`;
@@ -112,14 +106,8 @@ export function keyPart(text: string): string {
 
 const live = (rows: readonly SidebarRow[]) => rows.filter((row) => !row.archivedAt);
 
-/** The live project `row` belongs to: the one the owner put it in (none for an archived project's). */
-export const projectOf = (row: SidebarRow, { projects, memberships }: RollupContext): Project | undefined => {
-	const name = memberships[row.id];
-	return name === undefined ? undefined : projects.find((project) => project.name === name);
-};
-
 /**
- * The folders sessions work in, one group each, by name: not a section of the sidebar (it is organised by project), but
+ * The folders sessions work in, one group each, by name: not a section of the sidebar (it lists sessions flat), but
  * where the command menu's folder pages find the folders sessions know.
  */
 export const FOLDER_ROLLUP: Rollup = {
@@ -154,47 +142,14 @@ export const FOLDER_ROLLUP: Rollup = {
 	},
 };
 
-/** The built-in rollups, in their default order: the sessions without a project (no heading), projects, the Archive. */
+/** The built-in rollups, in their default order: the live sessions (no heading), the Archive. */
 export const ROLLUPS: readonly Rollup[] = [
 	{
 		key: OTHER,
-		name: "Other sessions",
+		name: "Sessions",
 		archived: false,
 		headless: true,
-		collect: (rows, context) => ({
-			layout: "sessions",
-			members: live(rows).filter((row) => !projectOf(row, context)),
-		}),
-	},
-	{
-		key: PROJECTS,
-		name: "Projects",
-		archived: false,
-		prefix: "project:",
-		// One group per live project, in the owner's order, sessions or not (a new one starts from its "+").
-		collect: (rows, context) => {
-			const { projects } = context;
-			const byProject = new Map<string, SidebarRow[]>();
-			for (const row of live(rows)) {
-				const project = projectOf(row, context)?.name;
-				if (project === undefined) continue;
-				const members = byProject.get(project);
-				if (members) members.push(row);
-				else byProject.set(project, [row]);
-			}
-			return {
-				layout: "groups",
-				groups: projects.map((project) => ({
-					key: projectKey(project.name),
-					name: project.name,
-					sandboxed: false,
-					members: byProject.get(project.name) ?? [],
-					// Shown without sessions too: its "+" is where a new project's first session starts.
-					keep: true,
-					target: { kind: "project", project },
-				})),
-			};
-		},
+		collect: (rows) => ({ layout: "sessions", members: live(rows) }),
 	},
 	{
 		key: ARCHIVE,

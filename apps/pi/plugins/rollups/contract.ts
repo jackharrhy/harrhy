@@ -16,31 +16,44 @@ export type Member = Static<typeof MemberSchema>;
 
 const Members = arr(MemberSchema, { maxItems: 5000 });
 
-/** Where a group's "+" starts a session: in a folder (env null: this device), or in a project by its name. */
-export const RollupTargetSchema = union([
-	obj({ kind: literal("folder"), env: union([str(), nul()]), cwd: str({ minLength: 1 }) }),
-	obj({ kind: literal("project"), project: str({ minLength: 1 }) }),
-]);
-export type RollupTarget = Static<typeof RollupTargetSchema>;
+const FolderTarget = obj({ kind: literal("folder"), env: union([str(), nul()]), cwd: str({ minLength: 1 }) });
 
-/** A group a rollup returned; `keep`: shown even without a session in its window. */
-export const RollupGroupSchema = obj({
-	key: str({ minLength: 1, maxLength: 200 }),
-	name: str({ minLength: 1, maxLength: 120 }),
-	title: opt(str({ maxLength: 500 })),
-	keep: opt(bool()),
-	target: opt(RollupTargetSchema),
-	members: Members,
-});
-export type RollupGroup = Static<typeof RollupGroupSchema>;
+/** Where a group's "+" starts a session: in a folder (env null: this device). */
+export const RollupTargetSchema = FolderTarget;
 
-/** What a rollup's script returns: a flat list of sessions, groups of sessions, or sessions shown only in its list. */
-export const RollupOutputSchema = union([
-	obj({ layout: literal("sessions"), members: Members }),
-	obj({ layout: literal("groups"), groups: arr(RollupGroupSchema, { maxItems: 500 }) }),
-	obj({ layout: literal("link"), members: Members }),
-]);
+/**
+ * A target as saved: a folder, or a project by its name, which rollups returned before projects were removed. It
+ * stays valid in saved output and starts no session.
+ */
+const StoredTargetSchema = union([FolderTarget, obj({ kind: literal("project"), project: str({ minLength: 1 }) })]);
+export type RollupTarget = Static<typeof StoredTargetSchema>;
+
+/** A group a rollup returned, with the targets `target` may have; `keep`: shown even without a session in its window. */
+const groupOf = <T extends typeof RollupTargetSchema | typeof StoredTargetSchema>(target: T) =>
+	obj({
+		key: str({ minLength: 1, maxLength: 200 }),
+		name: str({ minLength: 1, maxLength: 120 }),
+		title: opt(str({ maxLength: 500 })),
+		keep: opt(bool()),
+		target: opt(target),
+		members: Members,
+	});
+export type RollupGroup = Static<ReturnType<typeof groupOf<typeof StoredTargetSchema>>>;
+
+/** A rollup's output: a flat list of sessions, groups of sessions, or sessions shown only in its list. */
+const outputOf = <T extends typeof RollupTargetSchema | typeof StoredTargetSchema>(target: T) =>
+	union([
+		obj({ layout: literal("sessions"), members: Members }),
+		obj({ layout: literal("groups"), groups: arr(groupOf(target), { maxItems: 500 }) }),
+		obj({ layout: literal("link"), members: Members }),
+	]);
+
+/** What a rollup's script returns. */
+export const RollupOutputSchema = outputOf(RollupTargetSchema);
 export type RollupOutput = Static<typeof RollupOutputSchema>;
+
+/** A saved output: what a script returned, or an earlier one's with a project target. */
+const StoredOutputSchema = outputOf(StoredTargetSchema);
 
 /**
  * A rollup's window: one the owner may change in its options (the sidebar's windows, `SidebarWindowSchema`; spelled out
@@ -83,12 +96,12 @@ export type RollupDefinition = Static<typeof RollupDefinitionSchema>;
 /**
  * A saved rollup and its last result: `output` (null before its first good run; a failed run keeps the last good one),
  * `checkedAt` (when the output was last confirmed current: a run, or a check that found what it read unchanged),
- * `error` (why the last run failed), `reads` (what the last run read: `sessions.cwd`, `projects`, `now`; a failed run
- * counts as having read every session field and the projects) and `fingerprint` (of those values then).
+ * `error` (why the last run failed), `reads` (what the last run read: `sessions.cwd`, `now`; a failed run
+ * counts as having read every session field) and `fingerprint` (of those values then).
  */
 export const RollupEntrySchema = obj({
 	definition: RollupDefinitionSchema,
-	output: union([RollupOutputSchema, nul()]),
+	output: union([StoredOutputSchema, nul()]),
 	checkedAt: union([num(), nul()]),
 	error: union([str(), nul()]),
 	reads: arr(str()),
@@ -103,7 +116,7 @@ export const PreviewSchema = union([
 ]);
 export type Preview = Static<typeof PreviewSchema>;
 
-/** A session as a rollup's script sees it (`sessions`): the catalog row with its project, worker state and unread. */
+/** A session as a rollup's script sees it (`sessions`): the catalog row with its worker state and unread. */
 export const RollupSessionSchema = obj({
 	id: str(),
 	title: str(),
@@ -115,7 +128,6 @@ export const RollupSessionSchema = obj({
 	pinned: bool(),
 	/** `provider/modelId`. */
 	model: str(),
-	project: union([str(), nul()]),
 	state: union([literal("stopped"), literal("idle"), literal("working")]),
 	error: union([str(), nul()]),
 	unread: bool(),

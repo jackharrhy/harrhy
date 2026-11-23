@@ -12,7 +12,6 @@ import {
 	serverHost,
 	sessionHost,
 } from "@p2/app/v1";
-import { ProjectSchema } from "../projects/contract.ts";
 
 /** A session ID as the tool takes it (`to`). */
 const To = str({ minLength: 1, maxLength: 200 });
@@ -30,14 +29,12 @@ export const QuerySchema = union([
 	}),
 	obj({ action: literal("answer"), to: To }),
 	/**
-	 * A new session at `project`'s place on this device (or on `env`) or at `cwd` (on `env`, default this device), with
-	 * `message` as its first input, from the sender.
+	 * A new session at `cwd` (on `env`, default this device), with `message` as its first input, from the sender.
 	 */
 	obj({
 		action: literal("create"),
 		message: str({ minLength: 1, maxLength: 32768 }),
-		project: opt(str({ minLength: 1, maxLength: 64 })),
-		cwd: opt(str({ minLength: 1 })),
+		cwd: str({ minLength: 1 }),
 		env: opt(str({ minLength: 1 })),
 		model: opt(str({ minLength: 1 })),
 		title: opt(str({ minLength: 1, maxLength: 120 })),
@@ -66,12 +63,9 @@ const ReplySchema = union([
 				state: union([literal("working"), literal("idle"), literal("stopped")]),
 				env: union([str(), nul()]),
 				cwd: str(),
-				project: opt(str()),
 			}),
 		),
 		truncated: bool(),
-		/** The owner's projects (`projects.json`): where each lives, by environment (null: this device). */
-		projects: arr(ProjectSchema),
 	}),
 	obj({ action: literal("send"), to: str(), submissionId: num(), citationId: opt(CitationId) }),
 	obj({ action: literal("citation"), citation: union([Citation, nul()]) }),
@@ -92,8 +86,8 @@ export type Reply = Static<typeof ReplySchema>;
 
 /** Server-local broker. Sender identity comes from the authenticated worker, never the prompt text. */
 export const ConversationBroker = local("p2.conversation-broker", {
-	/** 2: no `origin`. */
-	version: 4,
+	/** 2: no `origin`. 5: no projects. */
+	version: 5,
 	params: {},
 	members: {
 		query: method(obj({ source: str(), requestId: str(), query: QuerySchema }), ReplySchema),
@@ -105,10 +99,11 @@ export const Conversations = remote("p2.conversations", {
 	/**
 	 * 2: request IDs up to 500 characters (Pi Mobile's limit: nested code mode calls make long ones). 3: `origin`, the
 	 * sending turn's: `"owner"` or absent. 4: `create`, `stop`, `archive` and `restore`;
-	 * `list` gives each session's location and project, and the projects. 5: no `origin` (p2 has no per-turn
-	 * authority). Only workers hold it, and they reload with the server: no `accepts`.
+	 * `list` gives each session's location. 5: no `origin` (p2 has no per-turn
+	 * authority). 8: no projects: `list` has none and `create` takes a `cwd` only. Only workers hold it, and they reload
+	 * with the server: no `accepts`.
 	 */
-	version: 7,
+	version: 8,
 	params: {},
 	hostAddress: serverHost,
 	variants: {

@@ -57,7 +57,6 @@ const PARAMETERS = obj(
 		message: opt(str({ minLength: 1, maxLength: 32768 })),
 		followUp: opt(bool()),
 		citeCurrentInput: opt(bool()),
-		project: opt(str({ minLength: 1, maxLength: 64 })),
 		cwd: opt(str({ minLength: 1 })),
 		env: opt(str({ minLength: 1 })),
 		model: opt(str({ minLength: 1 })),
@@ -104,12 +103,12 @@ A citation verifies authorship and exact words, not the peer's interpretation or
 				name: "conversations",
 				description: [
 					"List and manage other top-level conversations (sessions) on this server. Root conversations only, not subagents.",
-					"list: IDs, titles, models, working/idle/stopped state, location (env:cwd) and project of each session (excludes archived ones), and the projects with their places.",
+					"list: IDs, titles, models, working/idle/stopped state, location (env:cwd) of each session (excludes archived ones).",
 					"send (to = stable session ID, message; optional followUp): deliver an attributed message; steering by default, followUp queues after current work.",
 					"send with citeCurrentInput: true attaches the exact current owner chat input in full, only for a private, idle recipient. Do not pass quote text or an entry ID. Do not queue or attach private asides.",
 					"citation (id): verify the authorship and exact text of an owner-authored quote in this destination.",
 					"answer (to): read the latest completed answer without sending input or waiting for current work.",
-					"create (message, and project or cwd; optional env, title, model 'provider/modelId': a signed-in one, default your own): start a new session there with message as its first input, from you. Returns its ID.",
+					"create (message and cwd; optional env, title, model 'provider/modelId': a signed-in one, default your own): start a new session there with message as its first input, from you. Returns its ID.",
 					"stop (to): abort the session's current run; queued messages from people go back to their authors' composers, those from agents and sessions stay queued for its next input.",
 					"archive (to) / restore (to): archive a session (its worker stops, its history stays) or bring it back.",
 					"Replies arrive only when the peer explicitly uses send back to your ID. No automatic reports. Do not poll or create reply loops.",
@@ -360,12 +359,11 @@ function queryOf(args: ToolArgs, taskId: number): Query | string {
 			return { action: "list" };
 		case "create": {
 			if (!args.message?.trim()) return "create needs a message: the new session's first input.";
-			if ((args.project === undefined) === (args.cwd === undefined)) return "create needs either a project or a cwd.";
+			if (args.cwd === undefined) return "create needs a cwd.";
 			return {
 				action: "create",
 				message: args.message,
-				...(args.project === undefined ? {} : { project: args.project }),
-				...(args.cwd === undefined ? {} : { cwd: args.cwd }),
+				cwd: args.cwd,
 				...(args.env === undefined ? {} : { env: args.env }),
 				...(args.model === undefined ? {} : { model: args.model }),
 				...(args.title === undefined ? {} : { title: args.title }),
@@ -392,18 +390,9 @@ function replyText(result: Reply): string {
 				`Your ID: ${result.self}`,
 				...result.peers.map(
 					(peer) =>
-						`${peer.id}: ${JSON.stringify(peer.title)} · ${peer.state} · ${peer.model} · ${peer.env ? `${peer.env}:` : ""}${peer.cwd}${peer.project === undefined ? "" : ` · project ${peer.project}`}`,
+						`${peer.id}: ${JSON.stringify(peer.title)} · ${peer.state} · ${peer.model} · ${peer.env ? `${peer.env}:` : ""}${peer.cwd}`,
 				),
 				...(result.truncated ? ["List truncated to 200 conversations."] : []),
-				...(result.projects.length
-					? [
-							"Projects:",
-							...result.projects.map(
-								(project) =>
-									`${project.name}: ${project.places.map((place) => `${place.env ? `${place.env}:` : "this device:"}${place.path}`).join(", ")}`,
-							),
-						]
-					: []),
 			].join("\n");
 		case "citation":
 			return result.citation ? JSON.stringify(result.citation) : "Citation unavailable.";

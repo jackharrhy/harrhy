@@ -16,14 +16,12 @@ export type CodeSource = {
 };
 
 /**
- * The options of rollup `section`: New project for the projects', its window (not for a rollup shown only as a link)
- * and moving it up or down.
+ * The options of rollup `section`: its window (not for a rollup shown only as a link) and moving it up or down.
  */
 export function RollupSheet({
 	section,
 	code,
 	now,
-	onNewProject,
 	onWindow,
 	onMove,
 	onClose,
@@ -32,8 +30,6 @@ export function RollupSheet({
 	/** Present for a rollup made from code. */
 	code?: CodeSource;
 	now: number;
-	/** Present for the projects rollup: picks a folder, then names the project. */
-	onNewProject?: () => void;
 	onWindow: (window: SidebarWindow) => void;
 	/** Moves the rollup up or down; absent: it cannot move that way. */
 	onMove: { up?: () => void; down?: () => void };
@@ -42,11 +38,6 @@ export function RollupSheet({
 	return (
 		<Sheet title={section.name} onClose={onClose}>
 			<div className="list">
-				{onNewProject && (
-					<button type="button" className="row-button" onClick={onNewProject}>
-						<span>New project…</span>
-					</button>
-				)}
 				{code && <CodeOptions code={code} now={now} />}
 				{section.layout !== "link" && section.window !== "none" && (
 					<>

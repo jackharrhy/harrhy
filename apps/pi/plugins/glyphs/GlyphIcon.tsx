@@ -1,4 +1,4 @@
-// A project glyph inline (glyph.ts), for markers in lists: decorative, the row it sits in names the place.
+// A folder glyph inline (glyph.ts), for markers in lists: decorative, the row it sits in names the place.
 import { useMemo } from "react";
 import { glyphOf } from "./glyph.ts";
 

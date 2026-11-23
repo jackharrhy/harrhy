@@ -18,7 +18,6 @@ import {
 } from "@p2/app/v1";
 import { Hosts } from "@p2/app/v1/server";
 import { FamiliarStore } from "../familiar/contract.ts";
-import { ProjectService } from "../projects/contract.ts";
 import { SearchIndex } from "../search/contract.ts";
 import { Catalog } from "../sessions/contract.ts";
 import { StatusStore } from "../status/contract.ts";
@@ -54,7 +53,6 @@ export default defineFacet((host) => {
 		const catalog = self.get(Catalog, {});
 		const statuses = self.get(StatusStore, {});
 		const search = self.get(SearchIndex, {});
-		const projects = self.get(ProjectService, {});
 		const familiar = self.get(FamiliarStore, {});
 		// The runs in progress by token: the context their scripts' `mentions` calls run in, and what those answered.
 		const runs = new Map<string, { ctx: Ctx; mentions: Map<string, Readonly<Record<string, number>>> }>();
@@ -83,17 +81,13 @@ export default defineFacet((host) => {
 				statuses.statuses,
 				search.answers,
 				search.reads,
-				projects.projects,
-				projects.sessions,
 				familiar.session,
 			],
-			([sessions, statuses, answers, reads, projects, memberships, familiar]): RollupFacts => ({
+			([sessions, statuses, answers, reads, familiar]): RollupFacts => ({
 				sessions,
 				statuses,
 				answers,
 				reads,
-				projects,
-				memberships,
 				familiar,
 			}),
 		);
@@ -269,7 +263,7 @@ export default defineFacet((host) => {
 });
 
 /** What a failed run counts as having read. */
-const EVERYTHING = ["sessions.*", "projects"];
+const EVERYTHING = ["sessions.*"];
 
 /** What `update` does when a rollup's reads are unchanged: run anyway, skip quietly, or skip and note the check. */
 type UpdateMode = "force" | "skip" | "check";

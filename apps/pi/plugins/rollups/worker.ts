@@ -32,7 +32,7 @@ const DESCRIPTION = [
 	"list: the saved rollups with their last result. preview (code): run a script against the sessions now, without saving; check its output before saving.",
 	"save (key, name, code; optional window, refresh): save a rollup and run it once; the same key replaces it. refresh (key): run it now. remove (key).",
 	"",
-	"The script is a code mode script body without tools: it reads `sessions` (every session but yours, archived ones included, oldest first), `projects` and `now()`, and returns the rollup.",
+	"The script is a code mode script body without tools: it reads `sessions` (every session but yours, archived ones included, oldest first) and `now()`, and returns the rollup.",
 	'For what conversations say: `await mentions(query, { since })` gives { [sessionId]: time of its latest matching message } over every session\'s user and assistant messages (subagents included; not tool output or thinking), from the search index in one query. Query: words, all required; "a phrase"; prefix*. Words, not substrings: "p2" matches "apps/p2" and "P2", not "p2x".',
 	'For a recent mention, return { id, at } with `at` the mention\'s time and a window ("1d") rather than since + now(): the window keeps the cutoff current without reading now().',
 	`Each session: ${schemaToType(RollupSessionSchema)}`,

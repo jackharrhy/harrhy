@@ -1,4 +1,4 @@
-// Project glyphs: a 3x3 identicon in four colors, hashed from a project's path. Pure and browser-safe:
+// Folder glyphs: a 3x3 identicon in four colors, hashed from a folder path. Pure and browser-safe:
 // the sidebar draws it inline, `/glyph.svg` (server.ts) serves it as a file. It is the "Tiles, 3x3" generator of the
 // project-glyphs prototype with its recommended settings (loose masks, rich shapes, four mirror axes, color regions,
 // calm tone), drawing the same glyph for the same seed. Every glyph is mirror-symmetric, so none is a pinwheel (a
