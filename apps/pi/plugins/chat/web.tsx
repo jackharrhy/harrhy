@@ -70,7 +70,6 @@ import {
 	type PickedFile,
 	Logo,
 	PlusIcon,
-	ReplyTo,
 	RevealEntry,
 	referencedFiles,
 	revealEntry,
@@ -144,7 +143,7 @@ import { isDefaultChoice, newSessionChoice, thinkingLevelOf } from "./model-choi
 import { useModelScreen } from "./model-screens.ts";
 import { type Outgoing, outboxOf } from "./outbox.ts";
 import { sessionStart } from "./session-start.ts";
-import { VIEW_INPUT_ENTRY, viewInputDisplay } from "./view-input.ts";
+import { LEGACY_ENTRY_DISPLAYS } from "./legacy-entries.ts";
 
 /** An upload the server answered with an error status. */
 class UploadError extends Error {
@@ -391,7 +390,6 @@ function Composer({
 	alternate,
 	onStop,
 	attaching,
-	replying,
 	completion,
 	inputRef,
 	children,
@@ -403,8 +401,6 @@ function Composer({
 	alternate?: SendChoice;
 	onStop?: () => void;
 	attaching?: Attaching;
-	/** The message being answered, shown above the text with a way to drop the reply. */
-	replying?: { name: string; onCancel: () => void };
 	/** `@` and Tab file completion (p2 addition, src/web/file-completion.tsx); only where a session exists. */
 	completion?: FileCompletion;
 	inputRef?: React.RefObject<DraftInput | null>;
@@ -442,20 +438,10 @@ function Composer({
 			onPointerDown={keepComposerFocus}
 			onSubmit={(event) => {
 				event.preventDefault();
-				// A form in a sheet a composer control opened (chat-mode's name) is a React child: its submit bubbles here.
+				// A form in a sheet a composer control opened (the agent's name) is a React child: its submit bubbles here.
 				if (event.target === event.currentTarget) send.run();
 			}}
 		>
-			{replying && (
-				<div className="replying">
-					<span>
-						Replying to <strong>{replying.name}</strong>
-					</span>
-					<button type="button" aria-label="Cancel reply" onClick={replying.onCancel}>
-						<CloseIcon />
-					</button>
-				</div>
-			)}
 			{completion && <FileCompletionPopover completion={completion} />}
 			<DraftEditor
 				draft={draft}
@@ -989,10 +975,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 		viewer,
 		stopped,
 		setStopped,
-		replyTo,
-		setReplyTo,
-		canReply,
-		mentionName,
 		focus,
 	} = composer;
 	// `/tree` from a message (docs/tree.md): the owner, in the main conversation. A reference of its own, as the switch
@@ -1016,23 +998,12 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 		[host, nav, sessionId, setDraft, setError],
 	);
 	const canBranch = owner && conversationId === session?.main;
-	// Replies exist while a plugin allows them here (chat-mode, in chat mode); the reply action fills the composer.
-	const startReply = useCallback(
-		(target: { entryId: number; name: string }) => {
-			setReplyTo(target);
-			focus();
-		},
-		[setReplyTo, focus],
-	);
-	// Kept while reconnecting, as the composer is (`canWrite`).
-	const replying = canWrite && canReply ? replyTo : undefined;
-	// `@`/Tab file completion for participants; in chat mode (`canReply`) the agent's mention (`@pi`) is offered first.
+	// `@`/Tab file completion for participants.
 	const { composer: composerRef } = useFrame();
 	const fileCompletion = useFileCompletion(
 		composerRef,
 		setDraft,
 		canWrite ? { session: sessionId, conversation: conversationId } : undefined,
-		{ mention: canReply ? mentionName : undefined },
 	);
 	const metrics = useObject(SessionMetrics, { session: sessionId, viewer });
 	const clients = useReadable(metrics?.clients) ?? 0;
@@ -1067,7 +1038,7 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 		keep(cacheKey, () => ({ view: store.value!.view, sizes: [...keptSizes(cacheKey)] }));
 	}, [owner, liveView, pages, transcriptStore, cacheKey]);
 	const perform = useCallback((action: Promise<unknown> | undefined) => void action?.catch(fail), [fail]);
-	// Plugins show their own display-only entry kinds (chat-mode's chat messages) as people's messages.
+	// Plugins show their own display-only entry kinds (legacy chat messages) as people's messages.
 	const entryKinds = useRegistry(TranscriptEntries);
 	const display = useCallback((kind: string, data: unknown) => entryKinds.get(kind)?.(data), [entryKinds]);
 	const transcript = useMemo(
@@ -1174,12 +1145,10 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 			text,
 			files: referencedFiles(text, files),
 			whenBusy,
-			...(replying ? { replyTo: replying } : {}),
 			item: outgoingItem(id, text, author ?? (owner ? OWNER_AUTHOR : undefined)),
 		});
 		setDraft("");
 		setFiles([]);
-		setReplyTo(undefined);
 	};
 	/**
 	 * Sends the composer's message in a new branch (docs/tree.md): the worker forks this conversation at its end and
@@ -1194,7 +1163,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 		const picked = referencedFiles(text, files);
 		setDraft("");
 		setFiles([]);
-		setReplyTo(undefined);
 		const held = host.hold(SessionTree, { session: sessionId }, BACKGROUND_CONTEXT);
 		whenLive(held)
 			.then(() => {
@@ -1280,7 +1248,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 						requestId: message.id,
 						whenBusy: message.whenBusy,
 						...(ids.length ? { attachments: ids } : {}),
-						...(message.replyTo ? { replyTo: message.replyTo.entryId } : {}),
 					},
 					BACKGROUND_CONTEXT,
 				);
@@ -1290,12 +1257,11 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 			restore: (message, error) => {
 				restore([message.text]);
 				setFiles((current) => [...message.files, ...current]);
-				if (message.replyTo) setReplyTo((current) => current ?? message.replyTo);
 				setError(errorText(error));
 			},
 		});
 		return () => outbox.connect(undefined);
-	}, [live, outbox, started, restore, setFiles, setReplyTo, setError]);
+	}, [live, outbox, started, restore, setFiles, setError]);
 	// Leaving the page loses what the outbox has not delivered: the browser asks first.
 	useEffect(() => {
 		if (outgoing.every((message) => message.sent)) return;
@@ -1429,7 +1395,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 						: undefined
 			}
 			onCost={() => openLayer({ kind: "sheet", name: "cost" })}
-			onClients={owner ? () => openLayer({ kind: "sheet", name: "share" }) : undefined}
 			controls={modelControl}
 		/>
 	);
@@ -1563,9 +1528,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 										onStop: stop,
 										attaching,
 										completion: fileCompletion,
-										...(replying
-											? { replying: { name: replying.name, onCancel: () => setReplyTo(undefined) } }
-											: {}),
 										children: <SlotList prefix="composer" />,
 									},
 									footer,
@@ -1644,33 +1606,31 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 									<ToolActivityContext.Provider value={tools}>
 										<OpenConversation.Provider value={openConversation}>
 											<OneShotAgents.Provider value={oneShots}>
-												<ReplyTo.Provider value={participant && canReply ? startReply : undefined}>
-													<BranchFrom.Provider value={branching}>
-														<RevealEntry.Provider value={reveal}>
-															<FillGap.Provider value={fillGap}>
-																<Messages
-																	transcript={shown}
-																	rows={rows}
-																	list={follow.list}
-																	range={follow.range}
-																	stopped={
-																		stopped?.sessionId === sessionId &&
-																		stopped?.conversationId === conversationId &&
-																		!view?.entries.some((entry) =>
-																			entry.model?.some(
-																				(message) =>
-																					message.role === "assistant" &&
-																					message.stopReason === "aborted",
-																			),
-																		)
-																	}
-																	earlier={earlier}
-																	onEarlier={() => void loadEarlier()}
-																/>
-															</FillGap.Provider>
-														</RevealEntry.Provider>
-													</BranchFrom.Provider>
-												</ReplyTo.Provider>
+												<BranchFrom.Provider value={branching}>
+													<RevealEntry.Provider value={reveal}>
+														<FillGap.Provider value={fillGap}>
+															<Messages
+																transcript={shown}
+																rows={rows}
+																list={follow.list}
+																range={follow.range}
+																stopped={
+																	stopped?.sessionId === sessionId &&
+																	stopped?.conversationId === conversationId &&
+																	!view?.entries.some((entry) =>
+																		entry.model?.some(
+																			(message) =>
+																				message.role === "assistant" &&
+																				message.stopReason === "aborted",
+																		),
+																	)
+																}
+																earlier={earlier}
+																onEarlier={() => void loadEarlier()}
+															/>
+														</FillGap.Provider>
+													</RevealEntry.Provider>
+												</BranchFrom.Provider>
 											</OneShotAgents.Provider>
 										</OpenConversation.Provider>
 									</ToolActivityContext.Provider>
@@ -1984,9 +1944,9 @@ function Main() {
 }
 
 export default defineFacet((host, self) => {
-	// The chat plugin defines the transcript's entry displays (chat-mode adds its own): served on the page too.
+	// The chat plugin defines the transcript's entry displays (the legacy chat entries too): served on the page too.
 	serveKeyed(host, TranscriptEntries);
-	self.contribute(TranscriptEntries, { [VIEW_INPUT_ENTRY]: viewInputDisplay });
+	self.contribute(TranscriptEntries, LEGACY_ENTRY_DISPLAYS);
 	self.contribute(Slots, { main: Main });
 	self.contribute(Commands, MODEL_COMMANDS);
 	self.contribute(CommandPages, MODEL_PAGES);

@@ -89,7 +89,7 @@ export async function openTelemetry(
 
 /**
  * Refuses a data directory still in a layout before the current one: before per-host stores (`server.sqlite`,
- * `sessions/<id>.sqlite`), or with server data still in plain SQLite (`catalog.sqlite`, `shares.sqlite`,
+ * `sessions/<id>.sqlite`), or with server data still in plain SQLite (`catalog.sqlite`, `subagents.sqlite`).
  * `subagents.sqlite`). The server would start on an empty
  * store beside them. `npm run migrate-data` moves them.
  */
@@ -97,10 +97,10 @@ export function assertMigrated(dataDir: string): void {
 	const sessions = join(dataDir, "sessions");
 	const old =
 		existsSync(join(dataDir, "server.sqlite")) ||
-		["catalog.sqlite", "shares.sqlite", "subagents.sqlite"].some((file) => existsSync(join(dataDir, file))) ||
+		["catalog.sqlite", "subagents.sqlite"].some((file) => existsSync(join(dataDir, file))) ||
 		(existsSync(sessions) && readdirSync(sessions).some((name) => name.endsWith(".sqlite")));
 	if (old)
 		throw new Error(
-			`${dataDir} holds data in p2's old layout (server.sqlite, catalog.sqlite, shares.sqlite, subagents.sqlite or sessions/<id>.sqlite): stop p2 and run \`npm run migrate-data\``,
+			`${dataDir} holds data in p2's old layout (server.sqlite, catalog.sqlite, subagents.sqlite or sessions/<id>.sqlite): stop p2 and run \`npm run migrate-data\``,
 		);
 }

@@ -3,7 +3,6 @@ import { it } from "node:test";
 import { INPUT_ENTRY, PEER_MESSAGE_ENTRY, type MessageCitation, BACKGROUND_CONTEXT as TEST } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions, SessionTransfer } from "../../plugins/sessions/contract.ts";
-import { Sharing } from "../../plugins/sharing/contract.ts";
 import { SessionTree } from "../../plugins/tree/contract.ts";
 import { Browser, browserTests } from "./browser.ts";
 import { holdIn, startFixture, until } from "./helpers.ts";
@@ -77,23 +76,5 @@ it(
 		await browser.evaluate("history.back()");
 		await browser.wait(`${quote}?.textContent === ${JSON.stringify(text)}`);
 
-		const sharing = await holdIn(owner, Sharing, { session: to }, "owner");
-		await sharing.link({ mode: "view" }, TEST);
-		const [link] = await until(sharing.links, (links) => links.length > 0);
-		const guest = await Browser.start();
-		t.after(() => guest.close());
-		await guest.open(`${base}/join/${link!.token}`);
-		await guest.wait("document.querySelector('#name')");
-		await guest.evaluate(
-			"document.querySelector('#name').value = 'Reader'; document.querySelector('#join').requestSubmit()",
-		);
-		await guest.wait(`${quote}?.textContent === ${JSON.stringify(text)}`);
-		assert.equal(
-			await guest.evaluate(
-				"document.querySelector('.citation-quote figcaption button, button.incoming-from') !== null",
-			),
-			false,
-		);
-		assert.equal(await guest.evaluate(`fetch('/s/${source}/c/1').then(response => response.status)`), 403);
 	},
 );

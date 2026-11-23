@@ -10,7 +10,6 @@ import { BACKGROUND_CONTEXT as TEST } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Goal } from "../../plugins/goal/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
-import { Sharing } from "../../plugins/sharing/contract.ts";
 import { startServer } from "../../src/hosts/server.ts";
 import { clientHost, holdIn, localOwner, poll, startFixture, until } from "./helpers.ts";
 
@@ -52,10 +51,6 @@ it(
 				goal.start({ conversation: 2, objective: "UI parity fixture", limit: 2 }, TEST),
 				/current main/,
 			);
-			const sharing = await holdIn(owner, Sharing, { session }, "owner");
-			await sharing.link({ mode: "view" }, TEST);
-			await assert.rejects(goal.start({ ...target, objective: "UI parity fixture", limit: 2 }, TEST), /private/);
-			await sharing.disable({}, TEST);
 			await goal.start({ ...target, objective: "UI parity fixture", limit: 2 }, TEST);
 			await poll(
 				async () => (await goal.status(target, TEST))?.phase === "blocked",
@@ -166,8 +161,6 @@ it("preserves a busy-paused goal across restart and requires explicit resume", {
 it("runs two native steps and reports completion", { timeout: 25000 }, async (t) => {
 	const fixture = await startFixture();
 	const rounds: number[] = [];
-	const shareStep = Promise.withResolvers<void>();
-	const finishShareStep = Promise.withResolvers<void>();
 	const blockStep = Promise.withResolvers<void>();
 	const finishBlockStep = Promise.withResolvers<void>();
 	const provider = createServer(async (req, res) => {
@@ -186,10 +179,6 @@ it("runs two native steps and reports completion", { timeout: 25000 }, async (t)
 		if (ownerPaused) {
 			blockStep.resolve();
 			await finishBlockStep.promise;
-		}
-		if (last.includes("Pause on sharing")) {
-			shareStep.resolve();
-			await finishShareStep.promise;
 		}
 		const report = `GOAL ${marker[1]}:${round} ${ownerPaused ? "BLOCKED: workspace unavailable" : round === 1 ? "CONTINUE: desktop checked" : "COMPLETE: both layouts checked"}`;
 		res.writeHead(200, { "Content-Type": "text/event-stream" });
@@ -231,17 +220,7 @@ it("runs two native steps and reports completion", { timeout: 25000 }, async (t)
 		);
 		assert.equal((await goal.status(target, TEST))?.evidence, "workspace unavailable");
 		await assert.rejects(goal.resume(target, TEST), /Only a paused goal/);
-		await goal.start({ ...target, objective: "Pause on sharing", limit: 3 }, TEST);
-		await shareStep.promise;
-		assert.equal((await goal.status(target, TEST))?.pending, true);
-		const sharing = await holdIn(owner, Sharing, { session }, "owner");
-		await sharing.link({ mode: "view" }, TEST);
-		finishShareStep.resolve();
-		await poll(async () => (await goal.status(target, TEST))?.phase === "paused", 5000, "shared goal stopped");
-		assert.equal((await goal.status(target, TEST))?.steps, 1);
-		assert.deepEqual(rounds, [1, 2, 1, 1], "no subsequent step was admitted after sharing");
 	} finally {
-		finishShareStep.resolve();
 		finishBlockStep.resolve();
 		await fixture.close();
 	}

@@ -147,7 +147,6 @@ export default defineFacet((host) => {
 				session.archivedAt !== null ||
 				(session.main !== row.target.conversation &&
 					!session.branches.some((branch) => branch.conversation === row.target.conversation)) ||
-				targets.shared(session.id) ||
 				!sourceConfigCheck.check(row.config) ||
 				row.config.resource !== config.resource ||
 				row.config.articleOrigin !== config.articleOrigin
@@ -164,7 +163,7 @@ export default defineFacet((host) => {
 			}
 			// Recheck server-owned policy after the worker read, including concurrent archive/share changes.
 			const current = targets.get(session.id);
-			if (!current || current.archivedAt !== null || targets.shared(session.id)) return undefined;
+			if (!current || current.archivedAt !== null) return undefined;
 			return current;
 		};
 		// Concurrent catalog reads share provisioning, not an event or a publication attempt.
@@ -200,17 +199,12 @@ export default defineFacet((host) => {
 				const hosts = await ctx.get(Hosts, {});
 				const targets = [];
 				const unavailable: { sessionId: string; label: string; reason: string }[] = [];
-				let omittedPrivacyCount = 0;
 				const registered = await bindings(config, ctx);
 				// Catalog rows are sessions only: subagents/one-shots live in ChildStore, never here.
 				for (const candidate of nativeTargets.list()) {
 					if (candidate.archivedAt !== null) continue;
 					if (config.recipients !== "top-level" && !registered.some((row) => row.target.session === candidate.id))
 						continue;
-					if (nativeTargets.shared(candidate.id)) {
-						omittedPrivacyCount++;
-						continue;
-					}
 					let row = registered.find(
 						(item) => item.target.session === candidate.id && item.target.conversation === candidate.main,
 					);
@@ -238,9 +232,7 @@ export default defineFacet((host) => {
 							throw error;
 					}
 					if (!row || !session || session.id !== candidate.id || session.main !== row.target.conversation) {
-						// Privacy changes during worker validation must not disclose a session's identity.
-						if (nativeTargets.shared(candidate.id)) omittedPrivacyCount++;
-						else if (nativeTargets.get(candidate.id)?.archivedAt === null)
+						if (nativeTargets.get(candidate.id)?.archivedAt === null)
 							unavailable.push({
 								sessionId: candidate.id,
 								label: candidate.title,
@@ -259,7 +251,6 @@ export default defineFacet((host) => {
 					targets,
 					defaultSessionId: config.defaultSessionId ?? null,
 					eligibleCount: targets.length,
-					omittedPrivacyCount,
 					unavailable,
 				};
 			}),

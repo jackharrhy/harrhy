@@ -41,8 +41,6 @@ export function referencedFiles(draft: string, files: readonly PickedFile[]): Pi
 	}
 	return [...picked];
 }
-/** The message the next send answers: an entry of the current conversation, and whose it is (for display only). */
-export type ReplyTarget = { entryId: number; name: string };
 type State = {
 	draft: string;
 	setDraft: Dispatch<SetStateAction<string>>;
@@ -57,14 +55,6 @@ type State = {
 	viewer: string;
 	/** Picks files and places their references at the composer's caret, or at `at` (a drop's point) when it is in it. */
 	addFiles: (files: File[], at?: { readonly x: number; readonly y: number }) => void;
-	replyTo: ReplyTarget | undefined;
-	setReplyTo: Dispatch<SetStateAction<ReplyTarget | undefined>>;
-	/** Whether this conversation accepts replies now; a plugin turns it on (chat-mode, while chat mode is on). */
-	canReply: boolean;
-	setCanReply: Dispatch<SetStateAction<boolean>>;
-	/** The agent's name to mention here (chat-mode's setting, "Pi" by default), offered as `@name` with replies. */
-	mentionName: string;
-	setMentionName: Dispatch<SetStateAction<string>>;
 	/** Focuses the composer now, for an action in the conversation shown (a reply, restored text, dropped files). */
 	focus: ComposerFocus["focus"];
 	/** Focuses an opened conversation's composer when it shows, unless a touch opened it (`ComposerFocus`). */
@@ -83,9 +73,6 @@ export function ComposerState({ children }: { children: ReactNode }) {
 	const fail = useCallback((failure: unknown) => setError(errorText(failure)), []);
 	const [stopped, setStopped] = useState<State["stopped"]>();
 	const viewer = useRef(crypto.randomUUID());
-	const [replyTo, setReplyTo] = useState<ReplyTarget>();
-	const [canReply, setCanReply] = useState(false);
-	const [mentionName, setMentionName] = useState("Pi");
 	const [composerFocus] = useState(() => new ComposerFocus());
 	const input = useRef<DraftInput | null>(null);
 	const registerInput = useCallback(
@@ -100,7 +87,6 @@ export function ComposerState({ children }: { children: ReactNode }) {
 	const key = conversationKey(route);
 	// A reply target is an entry of one conversation: switching conversations drops it.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs when the conversation changes.
-	useEffect(() => setReplyTo(undefined), [key]);
 	// The Stop notice belongs to the conversation it was given in, as in Pi Mobile: another conversation clears it.
 	// biome-ignore lint/correctness/useExhaustiveDependencies: runs when the conversation changes.
 	useEffect(() => setStopped(undefined), [key]);
@@ -151,12 +137,6 @@ export function ComposerState({ children }: { children: ReactNode }) {
 				setStopped,
 				viewer: viewer.current,
 				addFiles,
-				replyTo,
-				setReplyTo,
-				canReply,
-				setCanReply,
-				mentionName,
-				setMentionName,
 				focus: composerFocus.focus,
 				focusWhenOpen: composerFocus.focusWhenOpen,
 				registerInput,

@@ -7,13 +7,12 @@ import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { GoalEligibility } from "../../plugins/goal/contract.ts";
 import { Catalog, SessionLock, Sessions } from "../../plugins/sessions/contract.ts";
-import { Sharing } from "../../plugins/sharing/contract.ts";
 import { holdIn, memoryLinkPair, startFixture, until } from "./helpers.ts";
 
 const Probe = local("test.admission-probe", { version: 1, params: {}, members: { hold: method(obj({})) } });
 
 it(
-	"orders goal admission against sharing, locking and archive, including an unacknowledged reservation",
+	"orders goal admission against locking and archive, including an unacknowledged reservation",
 	{ timeout: 30_000 },
 	async (t) => {
 		const entered = Promise.withResolvers<void>();
@@ -78,12 +77,9 @@ it(
 		worker.connect(up, { principal: SERVER }, TEST);
 		await worker.load([], TEST);
 		const goal = await holdIn(worker, GoalEligibility, {}, "worker");
-		const sharing = await holdIn(owner, Sharing, { session }, "owner");
-		const otherSharing = await holdIn(owner, Sharing, { session: other }, "owner");
 		const locks = await holdIn(owner, SessionLock, {}, "owner");
 		const lock = { mcp: [], projectMcp: false, instructions: false, capabilities: [] };
 		const reserve = () => goal.reserve({ token: randomUUID() }, TEST);
-		const link = () => sharing.link({ mode: "view" }, TEST);
 		const setLock = () => locks.set({ session, lock }, TEST);
 		const archive = () => sessions.archive({ id: session }, TEST);
 
@@ -93,12 +89,9 @@ it(
 		finish.resolve();
 		await writing;
 
-		for (const write of [link, setLock]) {
-			await write();
-			assert.equal(await reserve(), false);
-			await sharing.disable({}, TEST);
-			await locks.set({ session, lock: null }, TEST);
-		}
+		await setLock();
+		assert.equal(await reserve(), false);
+		await locks.set({ session, lock: null }, TEST);
 
 		const token = randomUUID();
 		dropReply = true;
@@ -109,8 +102,7 @@ it(
 		await rejected;
 		const reconnected = await holdIn(fixture.as(principal), GoalEligibility, {}, "worker");
 		await reconnected.releaseReservation({ token: randomUUID() }, TEST);
-		for (const write of [link, setLock, archive]) await assert.rejects(write(), /goal step is being admitted/);
-		await otherSharing.link({ mode: "view" }, TEST);
+		for (const write of [setLock, archive]) await assert.rejects(write(), /goal step is being admitted/);
 		await reconnected.releaseReservation({ token }, TEST);
 		await archive();
 		await fixture.server.host.root(async (ctx) => {

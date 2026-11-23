@@ -32,7 +32,6 @@ export function SessionStats({
 	clients,
 	context,
 	onCost,
-	onClients,
 	controls,
 }: {
 	usage?: Usage;
@@ -41,36 +40,21 @@ export function SessionStats({
 	/** The context bar's numbers; "pending" while they load (the bar's space stays), undefined for none. */
 	context?: { used: number; limit: number } | "pending";
 	onCost?: () => void;
-	/** Owner only: open the share sheet from the viewer count. */
-	onClients?: () => void;
 	controls?: ReactNode;
 }) {
 	return (
 		<div className="session-usage">
 			{controls && <div className="session-controls">{controls}</div>}
 			<div className="session-stats">
-				{onClients ? (
-					<button
-						type="button"
-						className="usage footer-action client-count"
-						aria-label={`${clients} ${clients === 1 ? "browser" : "browsers"} viewing this session; share`}
-						title="Browsers viewing this session, including subagent views. Open sharing."
-						onClick={onClients}
-					>
-						<UsersIcon />
-						{clients}
-					</button>
-				) : (
-					<span
-						className="usage client-count"
-						role="img"
-						aria-label={`${clients} ${clients === 1 ? "browser" : "browsers"} viewing this session`}
-						title="Browsers viewing this session, including subagent views"
-					>
-						<UsersIcon />
-						{clients}
-					</span>
-				)}
+				<span
+					className="usage client-count"
+					role="img"
+					aria-label={`${clients} ${clients === 1 ? "browser" : "browsers"} viewing this session`}
+					title="Browsers viewing this session, including subagent views"
+				>
+					<UsersIcon />
+					{clients}
+				</span>
 				<span className="usage"> · </span>
 				<UsageLine usage={cacheUsage} />
 				{usage && (

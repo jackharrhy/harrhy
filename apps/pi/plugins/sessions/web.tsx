@@ -484,13 +484,11 @@ function Sidebar() {
 	return (
 		<DrawerRowsContext.Provider value={drawerRows}>
 			<SidebarView
-				rows={rows}
 				sections={sections}
 				now={view.now}
 				page={route.page}
 				newSession={route.newSession === true}
 				startRows={startRows}
-				guest={guest}
 				activeId={route.session}
 				conversationId={route.conversation}
 				connected={connected}
@@ -531,7 +529,6 @@ function Sidebar() {
 							catalog.pin({ id: viewed.id, pinned: !viewed.pinned }, BACKGROUND_CONTEXT),
 						)
 					}
-					onShare={() => openLayer({ kind: "sheet", name: "share" })}
 					onCwd={() => openLayer(directoryPickerLayer(viewed.env ?? null, viewed.cwd))}
 					reindex={rebuilds.find((each) => each.session === viewed.id)}
 					onReindex={

@@ -2,8 +2,7 @@
 // src/runtime/completion.ts's: `@` after a token boundary opens a popover of the
 // session's FileIndex matches; a Tab on a path-like token lists that directory. While the popover is open, Enter/Tab
 // apply, arrows move and Escape closes, ahead of send and stop. Keys during IME composition are ignored and the popover
-// never opens mid-composition. `@pi` (chat mode's agent mention) is never completed as a file; in chat mode a
-// synthetic "@pi — mention Pi" item comes first.
+// never opens mid-composition.
 import { BACKGROUND_CONTEXT } from "@earendil-works/chord/context";
 import { type KeyboardEvent, type RefObject, useEffect, useRef, useState } from "react";
 import {
@@ -12,8 +11,6 @@ import {
 	type CompletionItem,
 	extractAtPrefix,
 	extractPathPrefix,
-	isMentionToken,
-	mentionItems,
 	outOfScope,
 	parsePathPrefix,
 	pathCompletion,
@@ -46,8 +43,6 @@ export function useFileCompletion(
 	textarea: RefObject<DraftInput | null>,
 	setDraft: (text: string) => void,
 	scope: { session: string; conversation: number } | undefined,
-	/** `mention`: the agent's name while chat mode is on, offered first as `@name`. */
-	options: { mention: string | undefined },
 ): FileCompletion {
 	const [focused, setFocused] = useState(false);
 	const [held, setHeld] = useState(false);
@@ -84,25 +79,20 @@ export function useFileCompletion(
 		clearTimeout(timer.current);
 		if (at !== null) {
 			const { rawPrefix, isQuotedPrefix } = parsePathPrefix(at);
-			if (isMentionToken(at, options.mention)) {
-				setPopover(undefined);
-				return false;
-			}
-			const mention: CompletionItem[] = mentionItems(rawPrefix, options.mention);
 			if (outOfScope(rawPrefix)) {
-				setPopover({ items: mention, prefix: at, selected: 0, hint: "Completion covers the session directory" });
+				setPopover({ items: [], prefix: at, selected: 0, hint: "Completion covers the session directory" });
 				return true;
 			}
 			timer.current = setTimeout(() => {
 				if (!live) {
-					setPopover(mention.length ? { items: mention, prefix: at, selected: 0 } : undefined);
+					setPopover(undefined);
 					return;
 				}
 				void live
 					.complete({ query: rawPrefix, limit: 20 }, BACKGROUND_CONTEXT)
 					.then((result) => {
 						if (id !== request.current) return;
-						const items = [...mention, ...atItems(result.items, { isQuotedPrefix })];
+						const items = atItems(result.items, { isQuotedPrefix });
 						setPopover(
 							items.length || result.truncated
 								? {

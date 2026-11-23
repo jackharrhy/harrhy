@@ -15,7 +15,7 @@ links rely on p2's explicit conversation routing, including `/c/1`.
 The operator authorizes the recipient role with `recipients: "top-level"`. The adapter derives recipients from the
 native session catalog, including idle/stopped sessions, and provisions native subscriptions on catalog GET. Each
 binding is deterministic for resource/session/current-main conversation. Registration validates native
-private/unarchived/writable policy; no sharing grants are changed. Subagents and one-shot conversations have no
+private/unarchived/writable policy. Subagents and one-shot conversations have no
 session catalog rows and never become recipients. New eligible sessions need no per-agent configuration or code.
 
 Existing explicitly authorized subscription IDs remain available for original-binding retries/readback. For a current
@@ -55,15 +55,14 @@ authenticates this app credential and confines resources/targets. Do not expose 
 ### GET /atlas-feedback/targets
 
 ```json
-{"targets":[{"sessionId":"<stable root UUID>","key":"<opaque sha256 key>","revision":1,"label":"Actual session title"}],"defaultSessionId":"<configured UUID or null>","eligibleCount":1,"omittedPrivacyCount":0,"unavailable":[]}
+{"targets":[{"sessionId":"<stable root UUID>","key":"<opaque sha256 key>","revision":1,"label":"Actual session title"}],"defaultSessionId":"<configured UUID or null>","eligibleCount":1,"unavailable":[]}
 ```
 
 Only authorized, enabled bindings for this source/version/resource/origin whose sessions remain private/unarchived
 and whose current main conversations pass native writable validation appear. Labels are always session titles,
 never branch labels; selection identity is `sessionId`, while Send freezes the returned `key`/`revision`. Never
 rewrite an existing batch with a newer binding. Native validation may start an idle/stopped worker but never submits
-input. Disabled bindings are not automatically re-enabled. Archived sessions are omitted. Shared sessions are omitted
-without identity or sharing details; only `omittedPrivacyCount` is returned. Private unarchived sessions that cannot
+input. Disabled bindings are not automatically re-enabled. Archived sessions are omitted. Unarchived sessions that cannot
 be offered appear in `unavailable` as `{sessionId,label,reason}` (`binding-disabled` or `not-writable`). A known failed
 worker is unavailable without restarting it; other root validation gets a five-second budget. A timed-out root is
 not verified writable and does not prevent healthy roots from appearing. Other infrastructure failures remain
@@ -143,7 +142,7 @@ Use the **original** key/revision/batch ID, not the current target revision. Res
 `chatUrl` is present only when `receipt.state` is `admitted` and `piOrigin` is configured. Its explicit
 `/s/<session>/c/<conversation>` path comes from the immutable saved envelope, never the current binding or latest
 main. Conversation 1 is explicit too. Missing, recorded and uncertain receipts never supply a success link. The
-link is an ordinary private Pi route: existing owner authentication is still required, and no share link is created.
+link is an ordinary private Pi route: existing owner authentication is still required.
 An admitted receipt supports “Sent” (native input accepted), not a claim that the requested work succeeded. A saved
 initial `recorded` response is not current admission status; use receipt GET with the original identity to refresh it.
 
@@ -164,5 +163,5 @@ npm run check
 Tests use disposable real stores, synthetic targets and the fake model. They cover ingress credentials and Origin,
 allowlist/privacy, bounds/resource policy, strict unknown fields/payload version, projection/content digest
 conflicts, concurrent retries, one native external
-entry, retirement, original-binding settlement readback, sharing revocation, and server restart. No real-agent input,
+entry, retirement, original-binding settlement readback, and server restart. No real-agent input,
 real subscriptions, auth keys, host routes or runtime reloads are part of testing.

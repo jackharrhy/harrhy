@@ -58,8 +58,7 @@ export const SendSchema = obj({
 	/** Upload IDs (POST /upload) of this session. */
 	attachments: opt(arr(str(), { maxItems: MAX_ATTACHMENTS })),
 	/**
-	 * The entry of this conversation the message answers. Only a router uses it (chat-mode, in chat mode); it checks
-	 * the entry and derives whom it quotes. Ordinary inputs ignore it.
+	 * Ignored: replies went with chat mode, which was removed. Kept so that a page still sending it is not refused.
 	 */
 	replyTo: opt(int({ minimum: 1 })),
 });
@@ -149,7 +148,7 @@ export const DequeueOwnResultSchema = obj({
 export const SubmitSchema = obj({
 	...propertiesOf(SendSchema),
 	author: AuthorSchema,
-	/** The input's own entry kind and data, for a plugin's inputs (chat-mode's `chat.mention`). */
+	/** The input's own entry kind and data, for a plugin's inputs. */
 	entry: opt(obj({ kind: str({ minLength: 1 }), data: unknown() })),
 	/** Resolved attachments: listed by path, images also inline when the model accepts them. */
 	files: opt(arr(AttachmentSchema)),
@@ -311,22 +310,6 @@ export const ChatImages = remote("p2.chat-images", {
 	},
 });
 
-/** What a participant sent, with the server-stamped author, as `Chat.send` hands it to a router. */
-export type RoutedSend = Omit<Static<typeof SendSchema>, "attachments"> & {
-	readonly conversation: number;
-	readonly author: Author;
-	readonly attachments: readonly string[];
-};
-
-/**
- * Worker extension point of `Chat.send`: each router may take a message (returning its submission) or leave it
- * (`undefined`). Untaken messages become ordinary inputs. Example: chat-mode writes chat entries.
- */
-export const SendRouters =
-	keyedRegistry<(input: RoutedSend, ctx: Ctx) => Promise<{ submissionId: number } | undefined>>(
-		"p2.chat-send-routers",
-	);
-
 /** What a plugin adds to the display of its entry kind's messages: the message it answers, and a short note. */
 export type EntryDisplay = {
 	readonly replyTo?: { readonly entryId: number; readonly name: string; readonly excerpt: string };
@@ -334,7 +317,7 @@ export type EntryDisplay = {
 };
 
 /**
- * Browser extension point of the transcript, keyed by entry kind (e.g. `chat.mention`). The transcript shows every
+ * Browser extension point of the transcript, keyed by entry kind. The transcript shows every
  * entry whose data is a person's message by itself; a registered kind adds to it.
  */
 export const TranscriptEntries =

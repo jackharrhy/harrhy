@@ -13,7 +13,6 @@ import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { DownloadStore, type Uploaded } from "../../plugins/files/contract.ts";
 import { type Session, Sessions } from "../../plugins/sessions/contract.ts";
-import { Sharing } from "../../plugins/sharing/contract.ts";
 import type { RefIn } from "../../src/runtime/chord.ts";
 import { shownImage } from "../../src/runtime/entry-images.ts";
 import { type Fixture, holdIn, http, poll, startFixture, until } from "./helpers.ts";
@@ -74,20 +73,6 @@ describe("files (fake provider)", () => {
 			async (ctx) => (await ctx.get(DownloadStore, {})).save({ session: id, path, ...(name ? { name } : {}) }, ctx),
 			BACKGROUND_CONTEXT,
 		);
-	const guestCookie = async (mode: "view" | "full"): Promise<string> => {
-		const sharing = fixture.browser().hold(Sharing, { session: session.id }, BACKGROUND_CONTEXT);
-		await sharing.link({ mode }, BACKGROUND_CONTEXT);
-		const links = await until(sharing.links, (value) => Boolean(value?.some((link) => link.mode === mode)));
-		const token = links?.find((link) => link.mode === mode)?.token ?? "";
-		const joined = await http(fixture.server.port, "/join", {
-			method: "POST",
-			headers: { ...TUNNEL, "Content-Type": "application/json" },
-			body: JSON.stringify({ token, name: mode }),
-		});
-		assert.equal(joined.status, 200, joined.body);
-		return String(joined.headers["set-cookie"] ?? "").split(";")[0] ?? "";
-	};
-
 	before(async () => {
 		fixture = await startFixture({ allowedHosts: ["share.test"] });
 		local = `http://127.0.0.1:${fixture.server.port}`;
@@ -212,14 +197,7 @@ describe("files (fake provider)", () => {
 		assert.equal((await fixture.http(at({ entry: "x" }))).status, 400);
 		assert.equal((await fixture.http(at({ part: "99" }))).status, 404, "no image there");
 		assert.equal((await fixture.http(at({ session: other.id }))).status, 404, "another session's entries");
-		const viewer = await guestCookie("view");
-		const get = (path: string, cookie: string) =>
-			http(fixture.server.port, path, { headers: { ...TUNNEL, Cookie: cookie } });
-		const guest = await get(src, viewer);
-		assert.equal(guest.status, 200);
-		assert.deepEqual(guest.bytes, PNG);
-		assert.equal((await get(at({ session: other.id }), viewer)).status, 403, "a guest of another session");
-		assert.equal((await get(src, "")).status, 403, "not signed in");
+		assert.equal((await http(fixture.server.port, src, { headers: TUNNEL })).status, 403, "not signed in");
 	});
 
 	it("leaves out an image attachment that cannot be decoded, saying so next to its file", async () => {
@@ -301,26 +279,6 @@ describe("files (fake provider)", () => {
 		assert.equal(partial.body, "234");
 		assert.equal(partial.headers["content-range"], "bytes 2-4/10");
 		assert.equal((await fixture.http(clipPath, { headers: { Range: "bytes=20-" } })).status, 416);
-	});
-
-	it("lets guests download from their session, and only read/write guests upload", async () => {
-		const source = join(fixture.dataDir, "shared.txt");
-		await writeFile(source, "shared");
-		const shared = await snapshot(session.id, source);
-		const hidden = await snapshot(other.id, source);
-		const viewer = await guestCookie("view");
-		const get = (path: string, cookie: string) =>
-			http(fixture.server.port, path, { headers: { ...TUNNEL, Cookie: cookie } });
-		const downloaded = await get(`/download?session=${session.id}&id=${shared.id}`, viewer);
-		assert.equal(downloaded.status, 200);
-		assert.equal(downloaded.body, "shared");
-		assert.equal((await get(`/download?session=${other.id}&id=${hidden.id}`, viewer)).status, 403);
-		assert.equal((await get(`/download?session=${session.id}&id=${shared.id}`, "")).status, 403, "not signed in");
-		assert.equal((await upload(session.id, "a.txt", "x", { ...TUNNEL, Cookie: viewer })).status, 403, "read-only");
-		const writer = await guestCookie("full");
-		const uploaded = await upload(session.id, "guest.txt", "from guest", { ...TUNNEL, Cookie: writer });
-		assert.equal(uploaded.status, 200, uploaded.body);
-		assert.equal((await upload(other.id, "a.txt", "x", { ...TUNNEL, Cookie: writer })).status, 403);
 	});
 
 	it("answers at once for an archived or unknown session, never waiting for its worker", async () => {

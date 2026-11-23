@@ -58,7 +58,6 @@ The main agent's state stays on conversation 1, whichever branch it works in; a 
 | --- | --- |
 | `p2.subagents` | Conversation 1, as before. Subagents are session-wide. A subagent's report goes to the top-level conversation that sent the message (reporter input `parent`), and `team send to: "parent"` to the one that last spawned it or sent it a message (`Subagent.parent`), even after a `/tree` switch; records from before fall back to the current main. TODO on `Subagents`: should probably become session-scoped (a migration). |
 | `p2.location-move` | Conversation 1: the move belongs to the session, whichever top-level conversation asked. |
-| `chat-mode.settings` | `agentConversation(id)`: conversation 1 for a top-level conversation, the conversation itself for a subagent or one-shot agent. No copying at switches, no migration. |
 
 All of these could become session-scoped documents keyed per agent in one later migration.
 

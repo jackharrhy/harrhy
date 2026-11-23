@@ -1,7 +1,6 @@
 import { type Ctx, defineFacet, forbidden, isWorker } from "@p2/app/v1";
 import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { Catalog, SessionLocks } from "../sessions/contract.ts";
-import { Shares } from "../sharing/contract.ts";
 import { GoalEligibility } from "./contract.ts";
 
 export default defineFacet((host) => {
@@ -9,7 +8,6 @@ export default defineFacet((host) => {
 		if (!isWorker(principal)) throw forbidden("Goal eligibility is worker-only");
 		const catalog = self.get(Catalog, {});
 		const locks = self.get(SessionLocks, {});
-		const shares = self.get(Shares, {});
 		const hosts = self.get(Hosts, {});
 		const admission = sessionAdmissionOf(self);
 		const { session, generation } = principal;
@@ -22,7 +20,6 @@ export default defineFacet((host) => {
 		const eligible = async (ctx: Ctx) =>
 			(await catalog.get({ id: session }, ctx)).archivedAt === null &&
 			!Object.hasOwn(locks.locks.value, session) &&
-			!(await shares.isShared({ session }, ctx)) &&
 			running() !== undefined;
 		return {
 			variant: "worker",

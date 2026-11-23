@@ -2,7 +2,7 @@
 
 Ask in ordinary chat, for example: “Could you let Numbers Review know they can use these figures in the private review?” The agent resolves the recipient from context and the session list. It asks if the recipient is genuinely unclear, and sends nothing for advice or drafting alone. On a handoff, it can opt in to attach the exact current owner input using `conversations send`. Attach only when the exact words help and the whole message is appropriate to disclose. If it contains a private aside, relay only the appropriate part without a citation. No special wording, session ID from the owner, or extra confirmation is needed.
 
-A citation becomes part of the destination's history. If the owner later shares or forks the destination, others may see the quote. The web transcript renders it as plain text. A connected owner can select **Show source message** to open the exact entry, even after the source switches its main conversation. A guest reading the historical quote gets no source link or source access.
+A citation becomes part of the destination's history. If the owner later forks the destination, others may see the quote. The web transcript renders it as plain text. A connected owner can select **Show source message** to open the exact entry, even after the source switches its main conversation. A guest reading the historical quote gets no source link or source access.
 
 ## What verification means
 
@@ -14,7 +14,7 @@ The runtime checks that the current conversation tool call is acting on one comm
 
 ## Delivery
 
-Cited sends use the existing conversation tool and fenced citation admission. Both live sessions must be unarchived and private, without a share link or active guest grant. Reservations block conflicting changes and are tied to the destination worker PID and generation. The destination waits for worker readiness when cold, rejects when busy rather than queuing disclosure, and commits the message and receipt in one Durable submission. Equal retries for the same input and destination reuse the receipt; changed content for that pair conflicts. An ambiguous worker response retains the reservations until that process exits. A failed cited send does not silently become an uncited send. Ordinary sends are unchanged.
+Cited sends use the existing conversation tool and fenced citation admission. Both live sessions must be unarchived. Reservations block conflicting changes and are tied to the destination worker PID and generation. The destination waits for worker readiness when cold, rejects when busy rather than queuing disclosure, and commits the message and receipt in one Durable submission. Equal retries for the same input and destination reuse the receipt; changed content for that pair conflicts. An ambiguous worker response retains the reservations until that process exits. A failed cited send does not silently become an uncited send. Ordinary sends are unchanged.
 
 ## Qualification scope
 

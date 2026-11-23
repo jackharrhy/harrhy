@@ -7,7 +7,6 @@ import { BACKGROUND_CONTEXT as TEST, INPUT_ENTRY, PEER_MESSAGE_ENTRY, type Messa
 import { Hosts } from "@p2/app/v1/server";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
-import { Sharing } from "../../plugins/sharing/contract.ts";
 import { startServer } from "../../src/hosts/server.ts";
 import { clientHost, holdIn, localOwner, startFixture, until } from "./helpers.ts";
 
@@ -130,18 +129,8 @@ it("sends and verifies the exact current owner input through the normal agent to
 	assert.deepEqual(results(await turn(otherChat, verify)), ["Citation unavailable."]);
 	assert.equal((await peers(destination)).length, 1);
 
-	const shared = await holdIn(owner, Sharing, { session: to }, "owner");
-	await shared.link({ mode: "view" }, TEST);
-	assert.deepEqual(results(await turn(destination, verify)), ["Citation unavailable."]);
 	const another = "Please tell Numbers Review the west wing can open.";
 	once(another, send());
-	assert.match(results(await turn(sourceChat, another))[0]!, /destination session has a share link or active guest grant/);
-	await shared.disable({}, TEST);
-	const sourceSharing = await holdIn(owner, Sharing, { session: source }, "owner");
-	await sourceSharing.link({ mode: "view" }, TEST);
-	assert.match(results(await turn(sourceChat, another))[0]!, /source session has a share link or active guest grant/);
-	await sourceSharing.disable({}, TEST);
-
 	const guest = fixture.as({ kind: "guest", id: "guest", name: "Owner", home: source, revision: 1, sessions: { [source]: "full" } });
 	const guestChat = await holdIn(guest, Chat, target(source), "participant");
 	// There are real owner inputs in history; neither those nor a forged sender in this input may supply the quote.

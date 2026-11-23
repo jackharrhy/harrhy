@@ -104,7 +104,7 @@ export function Slot({
 
 /**
  * Renders every component registered as `<prefix>:<name>`, in registration order. Several plugins contribute to one
- * place this way, e.g. `composer:chat-mode`.
+ * place this way, e.g. `composer:<plugin>`.
  */
 export function SlotList({ prefix }: { prefix: string }) {
 	const table = useRegistry(Slots);
@@ -478,7 +478,7 @@ export function openLayer(layer: Layer, options: { fromDrawer?: boolean } = {}):
 /**
  * Opens `layer` over a conversation: on the current route when it shows that conversation (one step), else after
  * opening it (two steps: Back closes the layer, then returns to where the reader was). For sheets and viewers that
- * render only on their session's route (the share sheet, the file viewer), opened from outside it (the command
+ * render only on their session's route (the file viewer), opened from outside it (the command
  * menu's target may be a session the reader is not in).
  */
 export function openLayerIn(session: string, conversation: number, layer: Layer): void {

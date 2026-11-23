@@ -25,7 +25,7 @@ import {
 import { Results } from "./activity/Results.tsx";
 import { handoff, type SlotHeights, SlotHeightsContext } from "./activity/ThoughtSlot.tsx";
 import { CopyButton } from "./Code.tsx";
-import { BranchFrom, OpenConversation, OpenPeerConversation, ReplyTo, RevealEntry } from "./chat-context.ts";
+import { BranchFrom, OpenConversation, OpenPeerConversation, RevealEntry } from "./chat-context.ts";
 import {
 	AlertIcon,
 	BotIcon,
@@ -37,7 +37,6 @@ import {
 	SparkIcon,
 	UsersIcon,
 } from "./icons.tsx";
-import { useLongPress } from "./long-press.ts";
 import { Markdown } from "./Markdown.tsx";
 import { RowEstimator, type RowFeatures } from "./row-estimate.ts";
 import { Time } from "./Time.tsx";
@@ -93,7 +92,6 @@ export {
 	OneShotAgents,
 	OpenConversation,
 	OpenPeerConversation,
-	ReplyTo,
 	RevealEntry,
 	relativePath,
 	SessionId,
@@ -171,27 +169,6 @@ export function takeReveal(session: string, conversation: number, loaded: boolea
  */
 export function jumpToEntry(entryId: number): boolean {
 	return revealInTranscripts(entryId);
-}
-
-/**
- * How to start a reply to one message: a button that shows on hover (hidden for coarse pointers), and a long press on
- * touch screens. Nothing when replies are off or the item has no entry yet.
- */
-function useReply(entryId: number | undefined, name: string) {
-	const reply = useContext(ReplyTo);
-	const press = useLongPress(() => {
-		if (reply && entryId !== undefined) reply({ entryId, name });
-	});
-	if (!reply || entryId === undefined) return { button: null, gesture: {} };
-	const start = () => reply({ entryId, name });
-	return {
-		button: (
-			<button type="button" className="reply-button" aria-label={`Reply to ${name}`} onClick={start}>
-				<ReplyIcon />
-			</button>
-		),
-		gesture: press.handlers,
-	};
 }
 
 // Items, tools and their images keep their identity while unchanged (transcript.ts), so these memoized components
@@ -329,7 +306,6 @@ function Incoming({ item }: { item: Extract<Item, { type: "user" }> }) {
 	const reveal = useContext(RevealEntry);
 	const branch = useContext(BranchFrom);
 	const guest = item.author?.kind === "guest" ? item.author : undefined;
-	const reply = useReply(guest ? item.entryId : undefined, guest?.name ?? "");
 	const { agent, peer, citation } = item;
 	const sender: { kind: string; icon: ReactNode; name: string; what: string; open?: () => void } = agent
 		? {
@@ -393,9 +369,8 @@ function Incoming({ item }: { item: Extract<Item, { type: "user" }> }) {
 						<PencilIcon />
 					</button>
 				)}
-				{reply.button}
 			</div>
-			<div className="incoming-content" {...reply.gesture}>
+			<div className="incoming-content">
 				{item.replyTo && (
 					<button
 						type="button"
@@ -483,17 +458,15 @@ function MessageText({ text }: { text: string }) {
 /** The owner's message (or an input without an author): a bubble. People's messages can be replied to. */
 function UserMessage({ item }: { item: Extract<Item, { type: "user" }> }) {
 	const reveal = useContext(RevealEntry);
-	const reply = useReply(item.author ? item.entryId : undefined, item.author?.name ?? "");
 	const branch = useContext(BranchFrom);
-	// Only what reached the agent can be edited: a chat message (chat mode) is not part of its history.
+	// Only what reached the agent can be edited: a legacy chat message is not part of its history.
 	const entryId = item.chat ? undefined : item.entryId;
 	const edit = branch && entryId !== undefined;
 	const text = item.text.trim();
 	return (
 		<div className={`user ${item.chat ? "chat-message" : ""}`} data-entry={item.entryId}>
 			<div className="user-line">
-				{reply.button}
-				<div className="bubble" {...reply.gesture}>
+				<div className="bubble">
 					{item.replyTo && (
 						<button
 							type="button"
@@ -569,12 +542,11 @@ function Thought({ item }: { item: Extract<ChatItem, { type: "thought" }> }) {
  * an error or the length limit below it.
  */
 const Answer = memo(function Answer({ item }: { item: Extract<ChatItem, { type: "answer" }> }) {
-	const reply = useReply(item.streaming ? undefined : item.entryId, "Pi");
 	const branch = useContext(BranchFrom);
 	const { message, entryId } = item;
 	const text = item.text.trim();
 	return (
-		<div className="assistant" data-entry={entryId} {...reply.gesture}>
+		<div className="assistant" data-entry={entryId}>
 			{text && (
 				<div className={item.streaming ? "streaming" : undefined}>
 					<Markdown text={item.text} />
@@ -592,7 +564,6 @@ const Answer = memo(function Answer({ item }: { item: Extract<ChatItem, { type: 
 									<BranchIcon />
 								</button>
 							)}
-							{reply.button}
 							<Time at={message.timestamp} className="message-time" />
 						</div>
 					)}

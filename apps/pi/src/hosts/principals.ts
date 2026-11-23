@@ -73,8 +73,7 @@ export function crossSiteRead(request: IncomingMessage): boolean {
 }
 
 /**
- * App pages a link may open: the app, a session or conversation, a sidebar list, the new-session screen, a share's join
- * page, owner sign-in.
+ * App pages a link may open: the app, a session or conversation, a sidebar list, the new-session screen, owner sign-in.
  */
 const PAGE = /^\/(?:$|s\/|list\/|new$|join\/|owner$)/;
 

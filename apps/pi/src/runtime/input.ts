@@ -1,6 +1,5 @@
 // People's messages as Durable entry data (browser-safe). Every input a person sends is placed as its own entry kind
-// (`p2.input`; chat-mode's `chat.mention`) whose data says who wrote what. Display-only entries (chat-mode's
-// `chat.message`) carry the same data. The model message of an input starts with the sender block (`sender.ts`), which
+// (`p2.input`) whose data says who wrote what. Display-only entries carry the same data. The model message of an input starts with the sender block (`sender.ts`), which
 // nothing reads back: readers use the data.
 
 import { arr, compile, obj, type Static, str, union } from "@earendil-works/pi-schema";

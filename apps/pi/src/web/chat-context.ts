@@ -15,8 +15,6 @@ export const OpenPeerConversation = createContext<((sessionId: string, message?:
 export const WorkingDirectory = createContext<string | undefined>(undefined);
 /** Download locators are scoped to the containing session, including child views. */
 export const SessionId = createContext<string | undefined>(undefined);
-/** Starts a reply to an entry; absent while the conversation accepts no replies (chat-mode turns them on). */
-export const ReplyTo = createContext<((target: { entryId: number; name: string }) => void) | undefined>(undefined);
 /**
  * Continues the session from a message (`/tree`, docs/tree.md): `from` before a user message, whose text goes back to
  * the composer ("Edit"), or after an answer ("Branch from here"). `end` is the conversation's last entry: an answer

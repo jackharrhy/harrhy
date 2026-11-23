@@ -178,7 +178,7 @@ export async function startServer(options: ServerOptions = {}): Promise<P2Server
 	});
 	const allowedHosts = options.allowedHosts ?? parseAllowedHosts(process.env.P2_ALLOWED_HOSTS);
 	// The server's Chord store (`<data>/server/store.sqlite`): persisted documents, tables and job runs of its
-	// host-lifetime objects (the catalog, shares, subagents, session lifecycle operations) and its `Files` index. It keeps
+	// host-lifetime objects (the catalog, subagents, session lifecycle operations) and its `Files` index. It keeps
 	// an outbox while backup is configured (`src/runtime/backup.ts`), which `plugins/backup` uploads.
 	let store: Awaited<ReturnType<typeof openHostStore>>;
 	// The telemetry store (`<data>/telemetry.sqlite`, Chord's §29): the server's host records to it, the ingest facet
