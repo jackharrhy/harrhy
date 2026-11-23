@@ -147,9 +147,6 @@ export const Explorer = clientEntry(
     return () => {
       const { story, query } = handle.props;
       const selected = stories.find((item) => item.id === story)!;
-      const filtered = stories.filter((item) =>
-        item.name.toLowerCase().includes(query.toLowerCase()),
-      );
       return (
         <div
           mix={[
