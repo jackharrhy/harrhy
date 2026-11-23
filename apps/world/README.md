@@ -24,6 +24,19 @@ export CELLD_VAR_HARRHY_WORLD_ORIGIN=http://127.0.0.1:3189
 
 Open `http://127.0.0.1:3189/` directly. `HARRHY_WORLD_ORIGIN` in the Worker must be the exact browser-facing HTTP(S) origin, including a non-default port and no trailing slash. It controls WebSocket admission and the shell's CSP. Origin checking is not account authentication. Keep the listener private. Node and `ws` are not production services.
 
+## Container image
+
+Build from the repository root. The image starts one nonroot Celld runtime on `0.0.0.0:44100`, without a control plane. Set `CELLD_VAR_HARRHY_WORLD_ORIGIN` to the exact browser-facing origin and give World its own persistent volume at `/app/.celld` (writable by UID/GID 1000). The SQLite object store lives at `object-store/objects.sqlite3` within that volume. Do not share it with another service or replica. `/healthz` reports map readiness.
+
+For a disposable image smoke test, run:
+
+```sh
+docker build --platform linux/amd64 -f apps/world/Dockerfile -t harrhy-world-hosting-smoke .
+sh apps/world/__tests__/image-smoke.sh harrhy-world-hosting-smoke
+```
+
+The smoke publishes no ports. It checks the HTTP surface and WebSocket room, then replaces the container and repeats against the same temporary SQLite volume.
+
 ## Boundaries
 
 - `celld/worker.ts` serves `/` through `app/router.tsx`. Static files come from the native `ASSETS` binding over `dist/client`; the Worker serves `/maps/hall.bsp` and `/healthz` from the same deployed map. Only `/room` routes to `WorldRoomCell`.

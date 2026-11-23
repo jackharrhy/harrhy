@@ -3,12 +3,12 @@ import { test } from "node:test";
 import { loadWorkspaces, selectChecks } from "../affected.mjs";
 import { selectPublishedApps } from "../publish-impact.mjs";
 
-const fleet = ["ref", "radio", "worldview", "maps-collaboration"];
+const fleet = ["ref", "radio", "worldview", "maps-collaboration", "world"];
 
 test("canonical runtime changes check Celld consumers without unrelated Node apps", () => {
   for (const path of ["celld.json", "scripts/celld-runtime.mjs"]) {
     const selected = selectChecks([path], loadWorkspaces());
-    for (const app of [...fleet, "4orm", "world"])
+    for (const app of [...fleet, "4orm"])
       assert.ok(selected.includes(`@harrhy/${app}`), app);
     assert.ok(!selected.includes("@harrhy/auth"));
     assert.ok(!selected.includes("@harrhy/cms"));

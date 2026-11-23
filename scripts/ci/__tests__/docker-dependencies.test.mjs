@@ -39,8 +39,15 @@ function selectedWorkspaces(workspace) {
 }
 
 const bundledApps = new Set(["burger", "gurgur", "pool"]);
-const celldApps = new Set(["ref", "radio", "worldview", "maps-collaboration"]);
+const celldApps = new Set([
+  "ref",
+  "radio",
+  "worldview",
+  "maps-collaboration",
+  "world",
+]);
 const rootToolsApps = new Set([
+  "world",
   "artbin",
   "cms",
   "maps-compiler",
