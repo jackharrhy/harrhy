@@ -27,16 +27,19 @@ it("replays a single prefix through both Markdown policies, then changes phone v
   ]) {
     await header.getByRole("button", { name: "Theme", exact: true }).click();
     await page.getByRole("option", { name: skin, exact: true }).click();
+    await page.getByRole("listbox").waitFor({ state: "hidden" });
     await page.locator(`[data-skin=${id}]`).waitFor();
     const session = page.locator(".session").first();
     const prose = page.locator(".measure p").first();
     await header.getByRole("button", { name: "Density", exact: true }).click();
     await page.getByRole("option", { name: "Standard", exact: true }).click();
+    await page.getByRole("listbox").waitFor({ state: "hidden" });
     await page.waitForURL(/density=standard/);
     const standard = await session.boundingBox();
     const textSize = await prose.evaluate((n) => getComputedStyle(n).fontSize);
     await header.getByRole("button", { name: "Density", exact: true }).click();
     await page.getByRole("option", { name: "Compact", exact: true }).click();
+    await page.getByRole("listbox").waitFor({ state: "hidden" });
     await page.waitForURL(/density=compact/);
     const compact = await session.boundingBox();
     assert.ok(standard && compact && compact.height < standard.height);
