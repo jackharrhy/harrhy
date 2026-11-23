@@ -1,27 +1,22 @@
 import { clientEntry, on, ref, type Handle } from "remix/component";
-import {
-  themeRoot,
-  themeStyles,
-  composeTheme,
-  densityOverrides,
-} from "@harrhy/ui/theme";
-import { Button, Inline } from "@harrhy/ui/native";
+import { themeRoot } from "@harrhy/ui/theme";
+import { Button } from "@harrhy/ui/native";
 import { sessions, blocks } from "./fixture.ts";
 import { WorkbenchHeader } from "../workbench.tsx";
 import { WorkbenchWorkspace, workbenchShell } from "../workspace.tsx";
-import { themes, type ThemeName } from "../themes.ts";
+import { type ThemeName, type Density, workbenchTheme } from "../themes.ts";
 import { Words, Settled } from "./markdown.tsx";
 import { Mark } from "./marks.tsx";
 import { shell } from "./styles.ts";
 
 export const Cookoff = clientEntry(
   import.meta.url,
-  function Cookoff(handle: Handle<{ initial: ThemeName }>) {
+  function Cookoff(handle: Handle<{ initial: ThemeName; density: Density }>) {
     let skin = handle.props.initial,
       index = 0,
       pane = "Transcript",
       engine = "Tail";
-    let density: keyof typeof densityOverrides = "compact";
+    let density = handle.props.density;
     let source = blocks(sessions[index]).join("\n\n"),
       length = source.length;
     let timer: ReturnType<typeof setInterval> | undefined,
@@ -72,38 +67,23 @@ export const Cookoff = clientEntry(
       return (
         <div
           data-skin={skin}
-          mix={[
-            themeStyles(composeTheme(themes[skin], densityOverrides[density])),
-            themeRoot,
-            workbenchShell,
-          ]}
+          mix={[workbenchTheme(skin, density), themeRoot, workbenchShell]}
         >
           <WorkbenchHeader
+            density={density}
+            onDensityChange={(next) => {
+              density = next;
+              handle.update();
+            }}
             theme={skin}
             page="scenes"
             title="Clank cook-off"
-            controls={
-              <Inline role="group" aria-label="Density">
-                {(["standard", "compact"] as const).map((value) => (
-                  <Button
-                    variant={density === value ? "secondary" : "quiet"}
-                    aria-pressed={density === value}
-                    mix={on("click", () => {
-                      density = value;
-                      handle.update();
-                    })}
-                  >
-                    {value === "standard" ? "Standard" : "Compact"}
-                  </Button>
-                ))}
-              </Inline>
-            }
             onThemeChange={(next) => {
               skin = next;
               handle.update();
             }}
           />
-          <WorkbenchWorkspace scene="clank" theme={skin}>
+          <WorkbenchWorkspace density={density} scene="clank" theme={skin}>
             <div data-pane={pane} mix={shell}>
               <nav aria-label="Session views" class="mobile">
                 {["Sessions", "Transcript", "Overview"].map((p) => (

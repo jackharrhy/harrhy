@@ -23,7 +23,7 @@ import {
   Tab,
   TabPanel,
 } from "@harrhy/ui/interactive";
-import { themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { themeRoot } from "@harrhy/ui/theme";
 import { CodeDiff } from "@harrhy/ui/code";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { HighlightedCode, prepareCode } from "./highlight.tsx";
@@ -33,7 +33,7 @@ import { WorkbenchWorkspace, workbenchShell } from "./workspace.tsx";
 import { stories, type StoryId } from "./stories.ts";
 export { stories } from "./stories.ts";
 import { themes, themeExports } from "./themes.ts";
-import type { ThemeName } from "./themes.ts";
+import { type ThemeName, type Density, workbenchTheme } from "./themes.ts";
 
 import { isExpandedStory, ExpandedStory } from "./expanded-stories.tsx";
 
@@ -135,9 +135,15 @@ const source = css({ borderTop: "1px solid var(--hui-border)" });
 export const Explorer = clientEntry(
   import.meta.url,
   function Explorer(
-    handle: Handle<{ story: StoryId; theme: ThemeName; query: string }>,
+    handle: Handle<{
+      story: StoryId;
+      theme: ThemeName;
+      query: string;
+      density: Density;
+    }>,
   ) {
     let theme = handle.props.theme;
+    let density = handle.props.density;
     return () => {
       const { story, query } = handle.props;
       const selected = stories.find((item) => item.id === story)!;
@@ -146,7 +152,12 @@ export const Explorer = clientEntry(
       );
       return (
         <div
-          mix={[themeStyles(themes[theme]), themeRoot, workbenchShell, chrome]}
+          mix={[
+            workbenchTheme(theme, density),
+            themeRoot,
+            workbenchShell,
+            chrome,
+          ]}
         >
           <a
             href="#component"
@@ -165,6 +176,11 @@ export const Explorer = clientEntry(
             Skip to component
           </a>
           <WorkbenchHeader
+            density={density}
+            onDensityChange={(next) => {
+              density = next;
+              handle.update();
+            }}
             theme={theme}
             page="explorer"
             title={selected.name}
@@ -173,11 +189,21 @@ export const Explorer = clientEntry(
               handle.update();
             }}
           />
-          <WorkbenchWorkspace story={story} theme={theme} query={query}>
+          <WorkbenchWorkspace
+            density={density}
+            story={story}
+            theme={theme}
+            query={query}
+          >
             <main id="component" mix={contentStyle}>
               <h1>{selected.name}</h1>
               <p mix={introStyle}>{selected.summary}</p>
-              <Story key={story} story={story} theme={theme} />
+              <Story
+                key={story}
+                story={story}
+                theme={theme}
+                density={density}
+              />
             </main>
           </WorkbenchWorkspace>
         </div>
@@ -258,6 +284,7 @@ function Story(
   handle: Handle<{
     story: StoryId;
     theme: ThemeName;
+    density: Density;
   }>,
 ) {
   let variant: "primary" | "secondary" | "quiet" | "danger" = "primary";
@@ -308,7 +335,7 @@ function Story(
     handle.update();
   }
   return () => {
-    const { story, theme } = handle.props;
+    const { story, theme, density } = handle.props;
     if (isExpandedStory(story))
       return <ExpandedStory story={story} theme={theme} />;
     const shownSource =
@@ -388,7 +415,7 @@ function Story(
           <div
             data-preview={story}
             data-theme={theme}
-            mix={[themeStyles(themes[theme]), themeRoot, stage]}
+            mix={[workbenchTheme(theme, density), themeRoot, stage]}
           >
             <div
               style={{

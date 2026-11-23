@@ -1,11 +1,17 @@
-import { css, type Handle, type RemixNode } from "remix/component";
+import { css, type Handle } from "remix/component";
 import { ButtonLink, Inline } from "@harrhy/ui/native";
 import { Select } from "@harrhy/ui/interactive";
-import { themeOptions, type ThemeName } from "./themes.ts";
+import {
+  densityOptions,
+  themeOptions,
+  themes,
+  type Density,
+  type ThemeName,
+} from "./themes.ts";
 
-function setThemeUrl(theme: ThemeName) {
+function setPreference(key: string, value: string) {
   const url = new URL(location.href);
-  url.searchParams.set("theme", theme);
+  url.searchParams.set(key, value);
   history.replaceState(null, "", url);
 }
 
@@ -14,17 +20,19 @@ export function WorkbenchHeader(
     theme: ThemeName;
     page: "explorer" | "scenes";
     title: string;
-    controls?: RemixNode;
+    density: Density;
+    onDensityChange: (density: Density) => void;
     onThemeChange: (theme: ThemeName) => void;
   }>,
 ) {
   return () => {
-    const { theme, page, title, controls, onThemeChange } = handle.props;
+    const { theme, page, title, density, onDensityChange, onThemeChange } =
+      handle.props;
     return (
       <header mix={headerStyles}>
         <div mix={brandCell}>
           <ButtonLink
-            href={`/explorer?theme=${theme}`}
+            href={`/explorer?theme=${theme}&density=${density}`}
             variant="quiet"
             mix={brandStyles}
           >
@@ -42,18 +50,56 @@ export function WorkbenchHeader(
             aria-label="Theme"
             defaultValue={theme}
             options={themeOptions}
+            optionLabelMix={(option) => optionFonts[option.value as ThemeName]}
             onValueChange={(value) => {
               const next = value as ThemeName;
-              setThemeUrl(next);
+              setPreference("theme", next);
               onThemeChange(next);
             }}
           />
-          {controls}
+          <Select
+            id="workbench-density"
+            aria-label="Density"
+            defaultValue={density}
+            options={densityOptions}
+            onValueChange={(value) => {
+              const next = value === "compact" ? "compact" : "standard";
+              setPreference("density", next);
+              onDensityChange(next);
+            }}
+          />
         </Inline>
       </header>
     );
   };
 }
+const optionFonts = Object.fromEntries(
+  Object.entries(themes).map(([id, theme]) => [
+    id,
+    [
+      css({
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "8px",
+        "&::before": {
+          content: '""',
+          width: "9px",
+          height: "9px",
+          borderRadius: "2px",
+          background: theme.accent,
+        },
+        fontFamily:
+          theme.fontDisplay === "var(--hui-font-ui)"
+            ? theme.fontUi
+            : theme.fontDisplay,
+        fontVariationSettings: theme.fontDisplayVariation,
+        fontOpticalSizing:
+          theme.fontDisplayOpticalSizing === "none" ? "none" : "auto",
+      }),
+    ],
+  ]),
+) as Record<ThemeName, ReturnType<typeof css>[]>;
+
 const headerStyles = css({
   display: "grid",
   gridTemplateColumns: "var(--workbench-rail-width) minmax(0, 1fr) auto",
@@ -105,16 +151,20 @@ const contextStyles = css({
   "@media (max-width: 760px)": { display: "none" },
 });
 const pickerStyles = css({
+  flexWrap: "nowrap",
   paddingBlock: "4px",
   gap: "8px",
   justifyContent: "flex-end",
   "& > div": { flexShrink: 0 },
-  "& #workbench-theme": {
+  "& #workbench-density, & #workbench-theme": {
     width: "auto",
-    minWidth: "100px",
     height: "var(--workbench-picker-height)",
     paddingBlock: "4px",
     fontSize: "0.875rem",
+  },
+  "& #workbench-theme": {
+    width: "auto",
+    minWidth: "100px",
     "&::before": {
       content: '""',
       width: "9px",
@@ -125,5 +175,8 @@ const pickerStyles = css({
     },
     "& > span": { marginRight: "auto" },
   },
-  "@media (max-width: 760px)": { maxWidth: "min(60vw, 240px)" },
+  "@media (max-width: 760px)": {
+    gap: "4px",
+    "& button": { paddingInline: "6px" },
+  },
 });

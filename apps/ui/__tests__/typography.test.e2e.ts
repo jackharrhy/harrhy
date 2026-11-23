@@ -17,16 +17,30 @@ it("loads Artbin's three font roles on demand without changing Clean/Radio fonts
     () => document.documentElement.dataset.uiReady === "true",
   );
   await page.evaluate(() => document.fonts.ready);
-  assert.deepEqual(fonts, []);
+  assert.equal(fonts.length, 0);
   await page.getByRole("button", { name: "Theme", exact: true }).click();
+  const newspaper = page.getByRole("option", {
+    name: "Newspaper",
+    exact: true,
+  });
+  assert.match(
+    await newspaper
+      .locator("span")
+      .evaluate((label) => getComputedStyle(label).fontFamily),
+    /Fraunces/,
+  );
   await page.getByRole("option", { name: "Dial", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("theme") === "dial");
-  assert.deepEqual(fonts, []);
+  await page.evaluate(() => document.fonts.ready);
+  assert.ok(fonts.some((url) => url.includes("fraunces")));
+  assert.ok(!fonts.some((url) => url.includes("ibm-plex")));
   await page.getByRole("button", { name: "Theme", exact: true }).click();
   await page.getByRole("option", { name: "Newspaper", exact: true }).click();
   await page.waitForURL((url) => url.searchParams.get("theme") === "newspaper");
   await page.evaluate(() => document.fonts.ready);
-  assert.equal(fonts.length, 3);
+  for (const family of ["fraunces", "ibm-plex-sans", "ibm-plex-mono"]) {
+    assert.ok(fonts.some((url) => url.includes(family)));
+  }
   assert.equal(
     fonts.every((url) => new URL(url).origin === new URL(page.url()).origin),
     true,

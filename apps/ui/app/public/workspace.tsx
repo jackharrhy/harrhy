@@ -1,7 +1,7 @@
 import { css, type Handle, type RemixNode } from "remix/component";
 import { Button, ButtonLink, Input } from "@harrhy/ui/native";
 import { stories, type StoryId } from "./stories.ts";
-import type { ThemeName } from "./themes.ts";
+import type { Density, ThemeName } from "./themes.ts";
 
 export const workbenchShell = css({
   height: "100dvh",
@@ -138,6 +138,7 @@ const groups = [...new Set(stories.map((item) => item.group))];
 export function WorkbenchWorkspace(
   handle: Handle<{
     theme: ThemeName;
+    density: Density;
     story?: StoryId;
     scene?: string;
     query?: string;
@@ -145,7 +146,7 @@ export function WorkbenchWorkspace(
   }>,
 ) {
   return () => {
-    const { theme, story, scene, query = "", children } = handle.props;
+    const { theme, density, story, scene, query = "", children } = handle.props;
     const filtered = stories.filter((item) =>
       item.name.toLowerCase().includes(query.toLowerCase()),
     );
@@ -176,6 +177,7 @@ export function WorkbenchWorkspace(
             </svg>
           </Button>
           <input type="hidden" name="theme" value={theme} />
+          <input type="hidden" name="density" value={density} />
         </form>
         <nav aria-label="Scenes">
           <h2>Scenes</h2>
@@ -183,7 +185,7 @@ export function WorkbenchWorkspace(
             <ButtonLink
               variant="quiet"
               data-example-link
-              href={`${path}?theme=${theme}`}
+              href={`${path}?theme=${theme}&density=${density}`}
               aria-current={scene === id ? "page" : undefined}
             >
               {name}
@@ -201,7 +203,7 @@ export function WorkbenchWorkspace(
                     <ButtonLink
                       variant="quiet"
                       data-example-link
-                      href={`/explorer/${item.id}?theme=${theme}&q=${encodeURIComponent(query)}`}
+                      href={`/explorer/${item.id}?theme=${theme}&density=${density}&q=${encodeURIComponent(query)}`}
                       aria-current={item.id === story ? "page" : undefined}
                     >
                       {item.name}
@@ -215,7 +217,9 @@ export function WorkbenchWorkspace(
         {filtered.length === 0 && (
           <p mix={empty}>
             No components found.{" "}
-            <a href={`${searchPath}?theme=${theme}`}>Clear search</a>
+            <a href={`${searchPath}?theme=${theme}&density=${density}`}>
+              Clear search
+            </a>
           </p>
         )}
       </>

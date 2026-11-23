@@ -19,9 +19,9 @@ import {
   WorkbenchWorkspace,
   workbenchShell,
 } from "./workspace.tsx";
-import { displayStyles, themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { displayStyles, themeRoot } from "@harrhy/ui/theme";
 import { themes, themeLabels } from "./themes.ts";
-import type { ThemeName } from "./themes.ts";
+import { type ThemeName, type Density, workbenchTheme } from "./themes.ts";
 import { RadioScene } from "./radio/scene.tsx";
 import { SluggersScene } from "./sluggers/scene.tsx";
 
@@ -53,13 +53,23 @@ const muted = css({ margin: 0, color: "var(--hui-muted)", fontSize: "14px" });
 
 export const Scenes = clientEntry(
   import.meta.url,
-  function Scenes(handle: Handle<{ theme: ThemeName; scene: string }>) {
+  function Scenes(
+    handle: Handle<{ theme: ThemeName; scene: string; density: Density }>,
+  ) {
     let theme = handle.props.theme;
+    let density = handle.props.density;
     let access: "pending" | "allowed" | "denied" = "pending";
     let board: string | null = null;
     return () => (
-      <div mix={[themeStyles(themes[theme]), themeRoot, workbenchShell, shell]}>
+      <div
+        mix={[workbenchTheme(theme, density), themeRoot, workbenchShell, shell]}
+      >
         <WorkbenchHeader
+          density={density}
+          onDensityChange={(next) => {
+            density = next;
+            handle.update();
+          }}
           theme={theme}
           page="scenes"
           title={sceneLabel(handle.props.scene)}
@@ -68,7 +78,11 @@ export const Scenes = clientEntry(
             handle.update();
           }}
         />
-        <WorkbenchWorkspace scene={handle.props.scene} theme={theme}>
+        <WorkbenchWorkspace
+          density={density}
+          scene={handle.props.scene}
+          theme={theme}
+        >
           <main mix={main}>
             <div>
               <h1
@@ -242,7 +256,7 @@ export const Scenes = clientEntry(
                       <div
                         data-comparison={name}
                         mix={[
-                          themeStyles(themes[name]),
+                          workbenchTheme(name, density),
                           themeRoot,
                           css({ padding: "12px" }),
                         ]}

@@ -46,6 +46,12 @@ export function createApp(
       (!scenes && slug && !story)
     )
       return new Response("Not found", { status: 404 });
+    const requestedDensity = url.searchParams.get("density");
+    const density =
+      requestedDensity === "compact" ||
+      (requestedDensity !== "standard" && cookoff)
+        ? "compact"
+        : "standard";
     const candidate = url.searchParams.get("theme");
     const theme: ThemeName =
       candidate && Object.hasOwn(themes, candidate)
@@ -84,12 +90,13 @@ export function createApp(
         </head>
         <body mix={css({ margin: 0 })}>
           {cookoff ? (
-            <Cookoff initial={theme} />
+            <Cookoff initial={theme} density={density} />
           ) : scenes ? (
-            <Scenes theme={theme} scene={scene} />
+            <Scenes theme={theme} scene={scene} density={density} />
           ) : (
             <Explorer
               theme={theme}
+              density={density}
               story={story?.id ?? "button"}
               query={(url.searchParams.get("q") ?? "").slice(0, 100)}
             />

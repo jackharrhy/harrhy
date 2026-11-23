@@ -1,4 +1,7 @@
 import {
+  composeTheme,
+  densityOverrides,
+  themeStyles,
   brutalistTheme,
   cleanTheme,
   graphiteTheme,
@@ -32,3 +35,12 @@ export const themeExports: Record<ThemeName, string> = {
 export const themeOptions = (Object.keys(themes) as ThemeName[]).map(
   (value) => ({ value, label: themeLabels[value] }),
 );
+
+export type Density = keyof typeof densityOverrides;
+export const densityOptions = [
+  { value: "standard", label: "Standard" },
+  { value: "compact", label: "Compact" },
+];
+export function workbenchTheme(theme: ThemeName, density: Density) {
+  return themeStyles(composeTheme(themes[theme], densityOverrides[density]));
+}
