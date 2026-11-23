@@ -58,7 +58,6 @@ import {
 	OperationSchema,
 	type Session,
 	SessionArchived,
-	SessionCopied,
 	SessionIndex,
 	SessionMoves,
 	SessionOperations,
@@ -130,7 +129,7 @@ function stateAs<T>(as: (row: Session) => T) {
 const SAME_ARGS = { args: <T>(old: T) => old };
 
 /**
- * Older `Sessions` consumers (a page or TUI loaded before a deploy, a worker not restarted yet) read rows mapped
+ * Older `Sessions` consumers (a page loaded before a deploy, a worker not restarted yet) read rows mapped
  * back; their `treeSelf` branches (v4's labels are text, none has a `parent`) are taken as they are. Before 6 none sees
  * `operations`.
  */
@@ -295,7 +294,6 @@ export default defineFacet((host) => {
 	serveLocks(host);
 	serveSidebarSettings(host);
 	serveKeyed(host, SessionArchived);
-	serveKeyed(host, SessionCopied);
 
 	host.serve(
 		Catalog,
@@ -393,7 +391,6 @@ export default defineFacet((host) => {
 		const children = self.get(ChildStore, {});
 		const archivedStarts = self.get(ArchivedStarts, {});
 		const archived = self.registry(SessionArchived);
-		const copied = self.registry(SessionCopied);
 		const failed = self.state(Failed);
 		/** Copies whose row is being made: their worker waits like one whose files are being copied. */
 		const preparing = self.writable<readonly string[]>([]);
@@ -637,7 +634,6 @@ export default defineFacet((host) => {
 			preparing.set([...preparing.value, copy]);
 			try {
 				const row = await copyOf(source, copy, mark, ctx);
-				for (const take of copied.value.values()) await take(source.id, copy, ctx);
 				await start();
 				return row;
 			} catch (error) {

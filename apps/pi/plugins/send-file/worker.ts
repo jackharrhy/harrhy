@@ -1,19 +1,8 @@
-import { canView, contribute, defineFacet, forbidden } from "@p2/app/v1";
-import { DownloadError, Files, findDownload, saveDownload } from "@p2/app/v1/node";
+import { contribute, defineFacet } from "@p2/app/v1";
+import { Files, saveDownload } from "@p2/app/v1/node";
 import { Extensions, workerOf } from "@p2/app/v1/worker";
-import { MAX_SENT_PREVIEW, offeredBy, SentFiles } from "./contract.ts";
+import { offeredBy } from "./contract.ts";
 import { createSendFileExtension, type SaveSnapshot } from "./tool.ts";
-
-/** Text when `bytes` is UTF-8 without NUL; a code point cut at the end of a partial read is dropped. */
-export function previewText(bytes: Buffer, partial: boolean): string | null {
-	if (bytes.includes(0)) return null;
-	const decoder = new TextDecoder("utf-8", { fatal: true });
-	for (let cut = 0; cut <= (partial ? 3 : 0); cut++)
-		try {
-			return decoder.decode(bytes.subarray(0, bytes.length - cut));
-		} catch {}
-	return null;
-}
 
 export default defineFacet((host) => {
 	contribute(host, "p2.send-file-tools", (self) => {
@@ -32,29 +21,5 @@ export default defineFacet((host) => {
 			);
 		const extension = createSendFileExtension(save);
 		self.contribute(Extensions, { [extension.name]: extension });
-	});
-
-	host.serve(SentFiles, ({ session }, principal, self) => {
-		if (!canView(principal, session)) throw forbidden("viewers only");
-		const files = self.get(Files, {});
-		return {
-			variant: "reader",
-			members: {
-				preview: async ({ id }, ctx) => {
-					const found = await findDownload(files, id, ctx);
-					if (found === undefined) throw new DownloadError(404, "File not found");
-					const length = Math.min(found.file.size, MAX_SENT_PREVIEW);
-					const bytes =
-						length === 0 ? new Uint8Array() : await files.read({ id: found.file.id, offset: 0, length }, ctx);
-					const truncated = found.file.size > bytes.length;
-					return {
-						name: found.name,
-						size: found.file.size,
-						text: previewText(Buffer.from(bytes), truncated),
-						truncated,
-					};
-				},
-			},
-		};
 	});
 });

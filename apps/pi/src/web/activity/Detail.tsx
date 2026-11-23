@@ -1,11 +1,11 @@
 // A call's inline detail: its tool's own (`ToolActivity.Detail`, contributed by the plugin that owns the tool),
 // or the generic one: the input as JSON, then the output. The parts tools build theirs from are here too: sections,
-// a command and its output as a terminal, a file with a way into the workspace, images, prose, a call's own calls.
+// a command and its output as a terminal, a file path, images, prose, a call's own calls.
 import { Button } from "@earendil-works/elanor-react";
 import { type ReactNode, useContext, useState } from "react";
 import type { ShownImage } from "../../runtime/entry-images.ts";
 import { CodeBlock } from "../Code.tsx";
-import { OpenWorkspaceFile, relativePath, ToolActivityContext, WorkingDirectory } from "../chat-context.ts";
+import { relativePath, ToolActivityContext, WorkingDirectory } from "../chat-context.ts";
 import { Timeline } from "../elanor-extra/timeline.tsx";
 import { Markdown } from "../Markdown.tsx";
 import { KindIcon, LabelText } from "./Label.tsx";
@@ -82,7 +82,7 @@ export const DetailProse = ({ text }: { text: string }) => (
 	</div>
 );
 
-/** A button below a detail that leads somewhere (a conversation, a terminal). */
+/** A button below a detail that leads somewhere (a conversation). */
 export const DetailLink = ({
 	children,
 	onClick,
@@ -97,23 +97,16 @@ export const DetailLink = ({
 	</Button>
 );
 
-/** A file a tool used, with a way into the workspace (at a line) when it is inside the working directory. */
-export function FilePath({ path, line, range }: { path: string; line?: number; range?: string }) {
+/** A file a tool used, shown relative to the working directory. */
+export function FilePath({ path, range }: { path: string; range?: string }) {
 	const cwd = useContext(WorkingDirectory)?.replace(/\/+$/, "");
-	const openWorkspace = useContext(OpenWorkspaceFile);
 	const relative = relativePath(cwd, path);
-	const inside = path && !relative.startsWith("/") && relative !== "." && !relative.split("/").includes("..");
 	return (
 		<div className="detail-file">
 			<span className="detail-path">
 				{relative}
 				{range}
 			</span>
-			{openWorkspace && inside && (
-				<Button hierarchy="tertiary" data-testid="tool-link" onClick={() => openWorkspace(relative, line)}>
-					Open in workspace
-				</Button>
-			)}
 		</div>
 	);
 }

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { test } from "node:test";
 import { readCelldRuntime } from "../../celld-runtime.mjs";
 
-const apps = ["ref", "radio", "worldview", "maps-collaboration"];
+const apps = ["ref", "radio", "worldview", "maps-collaboration", "world"];
 
 test("all Celld container defaults and provenance labels use the canonical artifact", async () => {
   const record = await readCelldRuntime();

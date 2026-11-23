@@ -1,11 +1,11 @@
 // What a turn made for the person, after its answer: each call's result as its tool's plugin shows it
-// (`ToolActivity.Result`: an artifact or a sent file as a card, an opened port's links). The same calls are in their
+// (`ToolActivity.Result`: a sent file as a card, an opened port's links). The same calls are in their
 // run's sheet too.
 import { useContext } from "react";
 import { ToolActivityContext } from "../chat-context.ts";
 import type { ToolView } from "../transcript.ts";
 
-/** One call's result, by its tool's contribution; `inline`: in the chat, where an inline artifact shows itself too. */
+/** One call's result, by its tool's contribution; `inline`: in the chat. */
 export function Result({ tool, inline = false }: { tool: ToolView; inline?: boolean }) {
 	const View = useContext(ToolActivityContext).get(tool.name)?.Result;
 	return View ? <View tool={tool} inline={inline} /> : null;

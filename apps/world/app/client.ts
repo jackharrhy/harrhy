@@ -286,6 +286,12 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           : undefined;
     }
     let joiningTable: string | undefined;
+    function clearTravel() {
+      keys.clear();
+      destination = undefined;
+      gesture = undefined;
+      joiningTable = undefined;
+    }
     let keyboardCharge: { at: number; token: number } | undefined;
     let lastCuePacket = -Infinity;
     let tablePan:
@@ -535,6 +541,24 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
           case "pool-shot-ack":
             shotPrediction.acknowledge(message);
             break;
+          case "respawn": {
+            const { pose } = message;
+            if (pose.id === me) {
+              clearTravel();
+              pending = [];
+              correction = predicted ? undefined : pose;
+              predicted?.reset(pose);
+              yaw = facing = pose.yaw;
+              pitch = mode === "walk" ? -0.28 : pose.pitch;
+            } else {
+              // Do not interpolate the teleport from the old location.
+              for (const sample of samples)
+                sample.players = sample.players.map((p) =>
+                  p.id === pose.id ? pose : p,
+                );
+            }
+            break;
+          }
           case "motion": {
             const self = message.players.find((p) => p.id === me);
             if (!self) break;
@@ -936,6 +960,32 @@ export function mount(canvas: HTMLCanvasElement, lifetime: AbortSignal) {
     window.addEventListener(
       "keydown",
       (e) => {
+        if (e.code === "KeyR") {
+          if (
+            !predicted ||
+            seated() ||
+            e.repeat ||
+            e.isComposing ||
+            e.ctrlKey ||
+            e.metaKey ||
+            e.altKey ||
+            e.defaultPrevented ||
+            e
+              .composedPath()
+              .some(
+                (target) =>
+                  target instanceof HTMLElement &&
+                  (target.isContentEditable ||
+                    target.matches("input, textarea, select, [role=textbox]")),
+              ) ||
+            ws?.readyState !== WebSocket.OPEN
+          )
+            return;
+          e.preventDefault();
+          clearTravel();
+          ws.send(JSON.stringify({ type: "respawn" }));
+          return;
+        }
         if (e.key === "Escape" && pendingPromotion) {
           clearChessSelection();
           showTables();

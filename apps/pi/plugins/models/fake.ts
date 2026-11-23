@@ -19,14 +19,6 @@ const SCRIPTED: Record<string, () => ReturnType<typeof fauxToolCall>> = {
 	edit: () => fauxToolCall("edit", { path: "created.txt", edits: [{ oldText: "before", newText: "after" }] }),
 	bash: () => fauxToolCall("bash", { command: "pwd" }),
 	"send-file": () => fauxToolCall("send_file", { path: "created.txt" }),
-	artifact: () =>
-		fauxToolCall("codemode", {
-			code: [
-				'const { id } = await tools.artifact_write({ id: "demo", kind: "html", title: "Demo artifact", content: "<!doctype html><title>Demo</title><h1>Artifact demo</h1>" });',
-				"await tools.artifact_show({ id });",
-				"return id;",
-			].join("\n"),
-		}),
 	subagent: () =>
 		fauxToolCall("subagent", {
 			action: "spawn",
@@ -195,28 +187,6 @@ export function createFakeModels(options: CreateModelsOptions = {}) {
 							fauxText(`Echo: steps. ${"Both reads show the same text, so the file is stable. ".repeat(8)}`),
 						]);
 					}
-					// `inline-steps`: a call, an inline artifact, another call, the answer (the artifact shows in place, between
-					// two wheels).
-					if (text === "inline-steps") {
-						const asked = transcript.messages.findLastIndex((message) => message.role === "user");
-						const results = transcript.messages
-							.slice(asked + 1)
-							.filter((message) => message.role === "toolResult").length;
-						const steps = [
-							() => fauxToolCall("read", { path: "fixture.txt" }),
-							() =>
-								fauxToolCall("codemode", {
-									code: [
-										'await tools.artifact_write({ id: "steps", kind: "md", title: "Steps", content: "# Between the calls\\n\\nShown where it was made." });',
-										'await tools.artifact_show({ id: "steps" });',
-									].join("\n"),
-								}),
-							() => fauxToolCall("read", { path: "fixture.txt" }),
-						];
-						const next = steps[results];
-						if (next) return fauxAssistantMessage([next()], { stopReason: "toolUse" });
-						return fauxAssistantMessage([fauxText("Echo: inline-steps. The artifact is above.")]);
-					}
 					// A section that changed during the run (tools loaded by `tool_search`) adds a system message after the result.
 					const last = transcript.messages.findLast((message) => message.role !== "system");
 					if (last?.role !== "toolResult") {
@@ -231,7 +201,7 @@ export function createFakeModels(options: CreateModelsOptions = {}) {
 												? fauxToolCall("subagent", JSON.parse(text.slice("subagent ".length)))
 												: text.startsWith("team ")
 													? fauxToolCall("team", JSON.parse(text.slice("team ".length)))
-													: /^(view_\w+|artifact_\w+|bash|read|write|edit|reload_plugins|history_(search|read|handoff)|location_(envs|dirs|move)|tool_search|terminal|sidebar_rollups|mcp__\w+) /.test(
+													: /^(bash|read|write|edit|reload_plugins|history_(search|read|handoff)|location_(envs|dirs|move)|tool_search|sidebar_rollups|mcp__\w+) /.test(
 																text,
 															)
 														? fauxToolCall(

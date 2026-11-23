@@ -10,9 +10,8 @@ import { Chat } from "../../plugins/chat/contract.ts";
 import { ProviderLogin } from "../../plugins/login/contract.ts";
 import { Models } from "../../plugins/models/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
-import { Terminals } from "../../plugins/terminals/contract.ts";
-import { Workspace } from "../../plugins/workspace/contract.ts";
 import { listPlugins, selectPlugins } from "../../src/hosts/plugins.ts";
+import { FileIndex } from "../../src/runtime/file-index.ts";
 import { failureOf, holdIn, settled, startFixture, until } from "./helpers.ts";
 
 /** What a chat session needs; a fixture names every plugin it loads. */
@@ -78,14 +77,9 @@ describe("plugin listing and selection", () => {
 		await models.setDefault(choice, BACKGROUND_CONTEXT);
 		// The answer follows its state: the new default is on the page when the call resolves.
 		assert.deepEqual(models.defaultModel.value, choice);
-		const unavailable = fixture
-			.browser()
-			.hold(Terminals, { session: "not-opened", view: crypto.randomUUID() }, BACKGROUND_CONTEXT);
-		const error = await failureOf(unavailable);
-		assert.equal(error.code, "unavailable");
 		const files = await readdir(fixture.dataDir);
-		assert(!files.some((name) => ["shares.sqlite", "terminals.log", "downloads", "artifacts"].includes(name)));
-		await assert.rejects(fixture.server.reload(["terminals"]), /Cannot reload unloaded p2 plugin: terminals/);
+		assert(!files.some((name) => ["shares.sqlite", "downloads"].includes(name)));
+		await assert.rejects(fixture.server.reload(["workspace"]), /Cannot reload unloaded p2 plugin: workspace/);
 	});
 
 	it("starts only a chat subset in the worker and streams with the fake provider", async (t) => {
@@ -109,8 +103,8 @@ describe("plugin listing and selection", () => {
 			),
 		);
 		// Unnamed plugins' worker facets are absent.
-		const workspace = browser.hold(Workspace, { session: session.id, conversation: 1 }, BACKGROUND_CONTEXT);
-		assert.equal((await failureOf(workspace)).code, "unavailable");
+		const index = browser.hold(FileIndex, { session: session.id, conversation: 1 }, BACKGROUND_CONTEXT);
+		assert.equal((await failureOf(index)).code, "unavailable");
 		await fixture.server.reload(["chat"]);
 		await chat.send({ text: "after subset reload", requestId: "reload" }, BACKGROUND_CONTEXT);
 		await until(chat.view, (value) =>

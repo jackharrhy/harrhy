@@ -1,4 +1,4 @@
-// The session's prompt templates and skills for participants (p2-tui-port.md 10.8), served by the session worker.
+// The session's prompt templates and skills for participants, served by the session worker.
 
 import { arr, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { literal, method, param, remote, sessionHost } from "@p2/app/v1";

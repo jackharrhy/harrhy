@@ -1,7 +1,7 @@
-// `@` and Tab file completion text handling, shared by the TUI provider and the web composers (p2-tui-port.md section
-// 8.4). Pure copies of pi-tui autocomplete.ts helpers (token boundaries, quoting, `@`/path prefix extraction,
-// completion insertion, forced-Tab gating) without its filesystem and `fd` parts: suggestions come from the session's
-// `FileIndex`. Completion is cwd-relative only: `~`, absolute and `..` prefixes complete nothing (section 8.2).
+// `@` and Tab file completion text handling of the web composers. Pure copies of pi-tui autocomplete.ts helpers
+// (token boundaries, quoting, `@`/path prefix extraction, completion insertion, forced-Tab gating) without its
+// filesystem and `fd` parts: suggestions come from the session's `FileIndex`. Completion is cwd-relative only: `~`,
+// absolute and `..` prefixes complete nothing.
 
 const cjkBreak =
 	/[\p{Script_Extensions=Han}\p{Script_Extensions=Hiragana}\p{Script_Extensions=Katakana}\p{Script_Extensions=Hangul}\p{Script_Extensions=Bopomofo}]/u;

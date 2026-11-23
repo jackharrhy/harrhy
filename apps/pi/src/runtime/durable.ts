@@ -34,7 +34,7 @@ const CODEMODE_EXTENSION = "codemode";
 /**
  * Durable's registry over the worker's `Extensions` and `ExtensionSwitches`: a snapshot per (extensions, switched-off
  * set), made once and kept while the composition lives. Without code mode, deferred tools the model may call (MCP
- * tools, the terminal tool) are reachable only through `tool_search`, as pi falls back: it is installed then, once,
+ * tools) are reachable only through `tool_search`, as pi falls back: it is installed then, once,
  * whichever plugins offer such tools; `subscribe` observes both registries' compositions (its
  * listener called inside the Chord batch that composed, so it only wakes the scheduler). `context` ends the
  * observations.

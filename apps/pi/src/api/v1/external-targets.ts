@@ -1,9 +1,6 @@
-// Native target information for trusted external adapters; no project paths or share grants are returned.
+// Native target information for trusted external adapters; no session paths or share grants are returned.
 import type { Ctx } from "@p2/app/v1";
 import { FamiliarStore } from "../../../plugins/familiar/contract.ts";
-import { glyphOf } from "../../../plugins/glyphs/contract.server.ts";
-import { placeSeed } from "../../../plugins/projects/contract.server.ts";
-import { ProjectService } from "../../../plugins/projects/contract.ts";
 import { Catalog, type Session } from "../../../plugins/sessions/contract.ts";
 import { Shares } from "../../../plugins/sharing/contract.ts";
 
@@ -22,17 +19,6 @@ export async function externalTargets(ctx: Ctx) {
 			return session && targetOf(session);
 		},
 		shared: (id: string) => shares.links.value.some((row) => row.session === id),
-	};
-}
-
-/** Read native project-aware glyphs without exposing their path seeds. */
-export async function externalTargetGlyphs(ctx: Ctx) {
-	const projects = await ctx.get(ProjectService, {});
-	const catalog = await ctx.get(Catalog, {});
-	return (id: string) => {
-		const session = catalog.sessions.value.find((row) => row.id === id);
-		if (!session) throw new Error("Target session is unavailable");
-		return glyphOf(placeSeed(projects.projects.value, session.env ?? null, session.cwd, projects.sessions.value[id]));
 	};
 }
 

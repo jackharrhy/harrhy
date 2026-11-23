@@ -93,8 +93,6 @@ export {
 	OneShotAgents,
 	OpenConversation,
 	OpenPeerConversation,
-	OpenTerminal,
-	OpenWorkspaceFile,
 	ReplyTo,
 	RevealEntry,
 	relativePath,
@@ -259,12 +257,13 @@ function rowFeatures(row: TranscriptRow, width: number): RowFeatures {
 				kind: [
 					incoming(item) ? "incoming" : "user",
 					item.author ? "named" : "",
+					item.citation ? "citation" : "",
 					item.images.length ? "images" : "",
 					// The owner's sent messages have a line of actions (Copy, the time) below the bubble; queued ones not yet.
 					!incoming(item) && item.entryId !== undefined ? "actions" : "",
 					spacing,
 				].join(":"),
-				text: item.text.length,
+				text: item.text.length + (item.citation?.quote.text.length ?? 0),
 				fixed: imagesHeight(item.images, width),
 			};
 		case "activity": {
@@ -331,7 +330,7 @@ function Incoming({ item }: { item: Extract<Item, { type: "user" }> }) {
 	const branch = useContext(BranchFrom);
 	const guest = item.author?.kind === "guest" ? item.author : undefined;
 	const reply = useReply(guest ? item.entryId : undefined, guest?.name ?? "");
-	const { agent, peer } = item;
+	const { agent, peer, citation } = item;
 	const sender: { kind: string; icon: ReactNode; name: string; what: string; open?: () => void } = agent
 		? {
 				kind: "agent",
@@ -415,6 +414,21 @@ function Incoming({ item }: { item: Extract<Item, { type: "user" }> }) {
 						<Markdown text={plainReferences(item.text)} />
 					)}
 				</Clamped>
+				{citation && (
+					<figure className="citation-quote">
+						<figcaption>
+							<span>Quoted from <strong>{citation.quote.name}</strong></span>
+							{openPeer && (
+								<button type="button" onClick={() => openPeer(citation.cite.session, citation.cite)}>
+									Show source message
+								</button>
+							)}
+						</figcaption>
+						<Clamped text={citation.quote.text}>
+							<blockquote className="incoming-plain">{citation.quote.text}</blockquote>
+						</Clamped>
+					</figure>
+				)}
 				{item.files.length > 0 && (
 					<div className="bubble-files">
 						{item.files.map((file) => (

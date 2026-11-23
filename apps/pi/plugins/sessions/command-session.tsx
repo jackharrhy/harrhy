@@ -1,12 +1,9 @@
-// What the command menu's session commands share, here and in other plugins (workspace, terminals, subagents): the
-// session a command acts on, opening a panel in it, opening a conversation from a menu row, and the wrapper that hides
+// What the command menu's session commands share, here and in other plugins (subagents): the
+// session a command acts on, opening a conversation from a menu row, and the wrapper that hides
 // a command while its session is archived.
 import { keptIn } from "@p2/app/v1";
 import {
 	type CommandTarget,
-	conversationRoute,
-	getNavigation,
-	knownMain,
 	navigate,
 	type Route,
 	useCommandMenu,
@@ -25,18 +22,6 @@ import { type Session, Sessions } from "./contract.ts";
  */
 export const commandSession = (target: CommandTarget | undefined, route: Route): string | undefined =>
 	target?.type === "session" ? target.id : route.session;
-
-/**
- * Opens a panel of `session` (the workspace, the terminal: `change` adds it to the route): on the current route when it
- * shows the session, else with the session's main conversation, in one step, so Back returns to where the reader was.
- * Unlike a layer over a conversation (`openLayerIn`: two steps), a panel is part of the session's route, as the panels
- * a session opens with are (`conversationRoute`).
- */
-export function openPanelIn(session: string, change: (route: Route) => Route): void {
-	const nav = getNavigation();
-	if (nav.route.session === session) void nav.push(change(nav.route));
-	else void nav.closeThenPush((route) => change(conversationRoute(route, session, knownMain(session))));
-}
 
 /** Closes the menu, then opens the conversation with its composer focused. */
 export function useOpenFromMenu(): (target: {

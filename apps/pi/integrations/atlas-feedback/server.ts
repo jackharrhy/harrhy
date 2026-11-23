@@ -17,7 +17,6 @@ import { optionalText, processLogs } from "@p2/app/v1/node";
 import {
 	bindStimulusPublisher,
 	type EventReadbackSchema,
-	externalTargetGlyphs,
 	externalTargets,
 	Hosts,
 	type RouteHandler,
@@ -197,7 +196,6 @@ export default defineFacet((host) => {
 		};
 		self.contribute(Routes, {
 			"GET /atlas-feedback/targets": guarded(async (_request, config, ctx) => {
-				const glyph = await externalTargetGlyphs(ctx);
 				const nativeTargets = await externalTargets(ctx);
 				const hosts = await ctx.get(Hosts, {});
 				const targets = [];
@@ -255,7 +253,6 @@ export default defineFacet((host) => {
 						key: keyOf(config.resource, row.id),
 						revision: row.revision,
 						label: session.title,
-						glyph: glyph(session.id),
 					});
 				}
 				return {

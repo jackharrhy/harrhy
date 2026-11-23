@@ -17,6 +17,7 @@ const checkedApps = [
   "radio",
   "ref",
   "rotund",
+  "world",
 ];
 const games = ["pool", "burger", "gurgur"];
 const worldview = [
@@ -79,7 +80,10 @@ function selectApps({ BEFORE: before, EVENT: event, IMAGE: image }, sha) {
   // Keep the old per-workflow path gates before running dependency selection.
   return groups.flatMap((apps) => {
     const usesCelld =
-      apps === worldview || apps.includes("radio") || apps.includes("ref");
+      apps === worldview ||
+      apps.includes("radio") ||
+      apps.includes("ref") ||
+      apps.includes("world");
     const triggered = paths.some(
       (path) =>
         sharedPaths.has(path) ||

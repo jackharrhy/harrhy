@@ -73,13 +73,6 @@ export type Session = Static<typeof SessionSchema>;
 /** Cleanup completed before an archive call returns. */
 export const SessionArchived = keyedRegistry<(session: string, ctx: Ctx) => Promise<void>>("p2.session-archived");
 
-/**
- * What a copy of a session takes over from its source (`/clone`, `/fork`; e.g. its project), called once the copy's row
- * exists and before its copying starts.
- */
-export const SessionCopied =
-	keyedRegistry<(source: string, copy: string, ctx: Ctx) => Promise<void>>("p2.session-copied");
-
 /** Pi Mobile's MAX_SESSION_TITLE. */
 export const MAX_TITLE = 120;
 const Id = obj({ id: str() });
@@ -265,7 +258,7 @@ const SessionsV3 = remote("p2.sessions", {
 				archive: method(Id),
 				restore: method(Id),
 				/**
-				 * A copy of the session as it is now (pi's `/clone`): its store with every conversation, and its artifacts,
+				 * A copy of the session as it is now (pi's `/clone`): its store with every conversation, and its
 				 * downloads and uploads, under a new ID. Refused while the session's worker has work running.
 				 */
 				clone: method(Id, SessionSchemaV3),
@@ -349,7 +342,7 @@ const SessionsV6 = evolve(SessionsV5, (e) =>
 /**
  * Sessions as a principal sees them. The owner lists and manages all; a guest sees its own session; a worker sees
  * only its own session (its principal names it). The provider still serves 3, 4, 5 and 6 (its
- * `accepts`): pages and TUIs loaded before a deploy keep working. 7: a branch's `parent` (the sidebar's tree), in rows
+ * `accepts`): pages loaded before a deploy keep working. 7: a branch's `parent` (the sidebar's tree), in rows
  * and in `treeSelf`.
  *
  * The worker's `treeSelf`: the session's main conversation or its branches changed (a `/tree` switch or fork, a branch
@@ -487,7 +480,7 @@ export const SessionLock = remote("p2.session-lock", {
 export const SidebarWindowSchema = union([literal("1d"), literal("3d"), literal("1w"), literal("forever")]);
 export type SidebarWindow = Static<typeof SidebarWindowSchema>;
 
-/** A rollup's key (plugins/sessions/sidebar/model.ts): `recent`, `projects`, `folders`, `archive`. */
+/** A rollup's key (plugins/sessions/sidebar/model.ts): `other`, `folders`, `archive`. */
 const SidebarKey = str({ minLength: 1, maxLength: 1000 });
 
 const SIDEBAR_SETTINGS_STATE = {

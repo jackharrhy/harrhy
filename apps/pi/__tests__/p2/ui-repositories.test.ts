@@ -1,11 +1,10 @@
-// The owner-local pane shows URL rows and disables an expiring link without refreshing.
+// The owner-only Previews sheet shows URL rows and disables an expiring link without refreshing.
 import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Sessions } from "../../plugins/sessions/contract.ts";
-import { Views } from "../../plugins/views/contract.ts";
 import { Browser, browserTests } from "./browser.ts";
 import { holdIn, startFixture } from "./helpers.ts";
 
@@ -15,7 +14,6 @@ test("Previews is a private URL list on desktop and phone", { skip: !browserTest
 	const owner = fixture.browser();
 	const sessions = await holdIn(owner, Sessions, {}, "owner");
 	const { id: session } = await sessions.create({ cwd: fixture.workspace }, BACKGROUND_CONTEXT);
-	const views = await holdIn(owner, Views, { session }, "editor");
 	const browser = await Browser.start();
 	t.after(() => browser.close());
 	await browser.signIn(fixture.owner);
@@ -24,15 +22,15 @@ test("Previews is a private URL list on desktop and phone", { skip: !browserTest
 	writeFileSync(config, JSON.stringify({ previews: [permanent] }));
 	await browser.metrics(1440, 1000);
 	await browser.open(`http://127.0.0.1:${fixture.server.port}/s/${session}`);
-	await browser.click(".views-toggle");
-	await browser.wait(`document.querySelector('.views-add')`);
+	await browser.wait(`document.querySelector('.composer .draft-editor')`);
 	await browser.evaluate(
-		`Array.from(document.querySelectorAll('.views-add button')).find(b=>b.textContent==='Previews').click()`,
+		`(() => { const apple = /Mac|iPhone|iPad/.test(navigator.platform); window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', metaKey: apple, ctrlKey: !apple, bubbles: true, cancelable: true })); })()`,
 	);
+	const choice = `[...document.querySelectorAll('.command-menu [role=option]')].find(row => row.querySelector('.command-title')?.textContent === 'Previews')`;
+	await browser.wait(choice);
+	await browser.evaluate(`(${choice}).click()`);
 	await browser.wait(`document.querySelector('.registered-preview a')`);
 	assert.equal(await browser.evaluate(`document.querySelector('.registered-preview a').rel`), "noopener noreferrer");
-	assert.equal(await browser.evaluate(`document.querySelector('[data-owner-view] [data-view-pane]')`), null);
-	assert.deepEqual(views.views.value, []);
 	await browser.metrics(390, 844);
 	await browser.wait(`document.querySelector('.registered-previews')?.clientWidth > 0`);
 	const expiring = { id: "lease", name: "Lease", url: "https://lease.preview.example/", expiresAt: Date.now() + 2500 };

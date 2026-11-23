@@ -1,5 +1,5 @@
 import { common, createLowlight } from "lowlight";
-import { type CSSProperties, Fragment, type ReactNode, useEffect, useMemo, useState } from "react";
+import { type CSSProperties, type ReactNode, useEffect, useMemo, useState } from "react";
 import { CheckIcon, CopyIcon } from "./icons.tsx";
 
 const lowlight = createLowlight(common);
@@ -78,72 +78,8 @@ export function DiffBlock({ diff, language }: { diff: string; language?: string 
 /** One rendered line of a file or patch; `number` is its line in the file version shown (deleted lines: old). */
 export type CodeLine = { kind: "" | "add" | "del" | "hunk" | "meta"; number?: number; text: string };
 
-/**
- * A git unified patch as lines: the new line number for context and additions, the
- * old one for deletions. Git's file headers are dropped (the caller shows the path);
- * hunk headers stay as separators unless `full` (whole-file context) makes them noise.
- */
-export function patchLines(patch: string, full = false): CodeLine[] {
-	let oldLine = 0;
-	let newLine = 0;
-	let inHunk = false;
-	const lines: CodeLine[] = [];
-	for (const line of (patch.endsWith("\n") ? patch.slice(0, -1) : patch).split("\n")) {
-		const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/.exec(line);
-		if (hunk) {
-			oldLine = Number(hunk[1]);
-			newLine = Number(hunk[2]);
-			inHunk = true;
-			if (!full) lines.push({ kind: "hunk", text: line });
-		} else if (!inHunk || line.startsWith("diff --git ")) {
-			inHunk = false;
-			// Only notes a reader needs survive from the file header.
-			if (/^(Binary files|similarity index|rename from|rename to|old mode|new mode)/.test(line))
-				lines.push({ kind: "meta", text: line });
-		} else if (line.startsWith("\\")) lines.push({ kind: "meta", text: line });
-		else {
-			const kind = line.startsWith("+") ? "add" : line.startsWith("-") ? "del" : "";
-			const number = kind === "del" ? oldLine++ : newLine++;
-			if (kind === "") oldLine++;
-			lines.push({ kind, number, text: line.slice(1) });
-		}
-	}
-	return lines;
-}
-
-export function textLines(text: string): CodeLine[] {
-	return (text.endsWith("\n") ? text.slice(0, -1) : text).split("\n").map((line, index) => ({
-		kind: "",
-		number: index + 1,
-		text: line,
-	}));
-}
-
-/**
- * Lines with one compact gutter, sized to the largest number. Each row is a grid, so
- * wrapped code keeps its indent instead of flowing back under the gutter. With
- * `onLine`, numbers are buttons (for selecting lines); `after` renders content
- * below a line, such as review comments.
- */
-export function LinesBlock({
-	lines,
-	language,
-	selected,
-	marked,
-	onLine,
-	onHunk,
-	after,
-}: {
-	lines: CodeLine[];
-	language?: string;
-	/** Index of a line to highlight, such as a search hit. */
-	marked?: number;
-	/** Hunk separators become buttons that load more context. */
-	onHunk?: () => void;
-	selected?: (index: number) => boolean;
-	onLine?: (index: number) => void;
-	after?: (index: number) => ReactNode;
-}) {
+/** Lines with one compact gutter, sized to the largest number. Each row is a grid, so wrapped code keeps its indent. */
+export function LinesBlock({ lines, language }: { lines: CodeLine[]; language?: string }) {
 	const resolved = languageOf(language);
 	const size = lines.reduce((total, line) => total + line.text.length, 0);
 	const highlighted = useMemo(
@@ -160,32 +96,10 @@ export function LinesBlock({
 		<pre className="diff patch hljs" style={{ "--gutter": `${digits}ch` } as CSSProperties}>
 			<code className="diff-lines">
 				{lines.map((line, index) => (
-					<Fragment key={`${index}:${line.kind}`}>
-						<span
-							className={`diff-line ${line.kind} ${selected?.(index) ? "selected" : ""} ${marked === index ? "marked" : ""}`}
-						>
-							{onLine && line.number !== undefined ? (
-								<button
-									type="button"
-									className="diff-number"
-									onClick={() => onLine(index)}
-									aria-label={`Line ${line.number}`}
-								>
-									{line.number}
-								</button>
-							) : (
-								<span className="diff-number">{line.number}</span>
-							)}
-							{line.kind === "hunk" && onHunk ? (
-								<button type="button" className="diff-code" onClick={onHunk} title="Show more context">
-									{highlighted[index]} ⋯
-								</button>
-							) : (
-								<span className="diff-code">{highlighted[index]}</span>
-							)}
-						</span>
-						{after?.(index)}
-					</Fragment>
+					<span key={`${index}:${line.kind}`} className={`diff-line ${line.kind}`}>
+						<span className="diff-number">{line.number}</span>
+						<span className="diff-code">{highlighted[index]}</span>
+					</span>
 				))}
 			</code>
 		</pre>

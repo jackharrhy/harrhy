@@ -68,10 +68,6 @@
       "@earendil-works/chord/react": [
         "./compat/packages/chord/src/react/index.ts"
       ],
-      "@earendil-works/chord/tui": ["./compat/packages/chord/src/tui/index.ts"],
-      "@earendil-works/chord/tui/launcher": [
-        "./compat/packages/chord/src/node/tui/index.ts"
-      ],
       "@earendil-works/chord/sync": [
         "./compat/packages/chord/src/sync/index.ts"
       ],
@@ -141,8 +137,6 @@
         "./compat/packages/coding-agent/src/*"
       ],
       "typebox": ["./compat/node_modules/typebox"],
-      "@earendil-works/pi-tui": ["./compat/packages/tui/src/index.ts"],
-      "@earendil-works/pi-tui/*": ["./compat/packages/tui/src/*"],
       "@earendil-works/pi-agent-old": [
         "./compat/packages/agent-old/src/index.ts"
       ],

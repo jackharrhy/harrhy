@@ -332,9 +332,8 @@ describe("files (fake provider)", () => {
 			{ session: archived.id, conversation: 1 },
 			"participant",
 		);
-		await archivedChat.send({ text: "artifact", requestId: "archived-artifact" }, BACKGROUND_CONTEXT);
-		const artifact = `/artifact-frame?${new URLSearchParams({ session: archived.id, id: "demo", version: "1" })}`;
-		await poll(async () => (await fixture.http(artifact)).status === 200, 30_000, "the artifact is saved");
+		await archivedChat.send({ text: "hello", requestId: "archived-hello" }, BACKGROUND_CONTEXT);
+		await until(archivedChat.view, (value) => JSON.stringify(value?.entries ?? []).includes("Echo: hello"));
 		archivedChat.release();
 		const source = join(fixture.dataDir, "archived.txt");
 		await writeFile(source, "archived");
@@ -344,18 +343,11 @@ describe("files (fake provider)", () => {
 		await sessions.archive({ id: archived.id }, BACKGROUND_CONTEXT);
 		await until(sessions.sessions, (rows) => rows?.find((row) => row.id === archived.id)?.archivedAt !== null);
 		const started = Date.now();
-		// Artifacts are the server's: an archived session's pages still show, without its worker.
-		assert.equal((await fixture.http(artifact)).status, 200);
 		assert.equal((await fixture.http(download)).status, 404);
 		assert.equal((await fixture.http(download, { method: "HEAD" })).status, 404);
 		assert.equal((await upload(archived.id, "late.txt", "x")).status, 409);
 		const unknown = randomUUID();
 		assert.equal((await fixture.http(`/download?session=${unknown}&id=${sent.id}`)).status, 404);
-		assert.equal(
-			(await fixture.http(`/artifact-frame?${new URLSearchParams({ session: unknown, id: "demo", version: "1" })}`))
-				.status,
-			404,
-		);
 		await assert.rejects(snapshot(archived.id, source), /archived/);
 		// A worker start that is refused would take a minute per request.
 		assert.ok(Date.now() - started < 5_000, `answered in ${Date.now() - started} ms`);

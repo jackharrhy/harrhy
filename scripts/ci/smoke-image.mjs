@@ -16,6 +16,17 @@ function smoke(script, ...args) {
 if (nodeImageApps.includes(app)) {
   smoke("./node-image-smoke.mjs");
   if (app === "maps-compiler") smoke("./node-image-smoke.mjs", "gower");
+} else if (app === "world") {
+  execFileSync(
+    "sh",
+    [
+      fileURLToPath(
+        new URL("../../apps/world/__tests__/image-smoke.sh", import.meta.url),
+      ),
+      image,
+    ],
+    { stdio: "inherit" },
+  );
 } else if (runtimeApps.includes(app)) {
   smoke("./selected-image-smoke.mjs");
 } else {

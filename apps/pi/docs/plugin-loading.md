@@ -1,5 +1,7 @@
 # Plugin loading
 
+> **Historical.** This is a design document. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 Status: **design, not implemented** (revision 4), except for the built-in parts of 4.1 and 4.2 (listing, runtime
 resolution), which are. Revision 4 aligns the document with `target-design.md`: a plugin reload swaps code on each host
 without waiting for running work (documents migrate, resources are replaced in place, section 15 there), and the

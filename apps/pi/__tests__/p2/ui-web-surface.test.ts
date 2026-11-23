@@ -1,5 +1,5 @@
 // Browser: pages on Chord's web surface. A plugin's web change rolled out applies in the open page in place (no reload:
-// the transcript's scroll and the other panes stay); a base change (the server's base bundle, answered here by CDP)
+// the transcript's scroll and the page's elements stay); a base change (the server's base bundle, answered here by CDP)
 // reloads the page; a link naming another base is refused at once, telling the owner which device it was; a page the
 // service worker started from its kept page while the server was down takes the changed plugin in place once the
 // server is back. A user plugin's web facet (`stamp`) is the changed plugin. Fake provider, its own data directory and
@@ -9,14 +9,12 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
-import WebSocket from "ws";
 import { BACKGROUND_CONTEXT } from "@p2/app/v1";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { LogNotices, Logs } from "../../plugins/logs/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
-import { Views } from "../../plugins/views/contract.ts";
 import { type P2Server, startServer } from "../../src/hosts/server.ts";
-import { LINK_CLIENTS, STALE_PAGE_CODE } from "../../src/runtime/stale-page.ts";
+import { STALE_PAGE_CODE } from "../../src/runtime/stale-page.ts";
 import { Browser, browserTests, COMPOSER } from "./browser.ts";
 import { clientHost, holdIn, type LocalOwner, localOwner, poll, until, webAssets } from "./helpers.ts";
 
@@ -59,7 +57,6 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 				await chat.send({ text, requestId: `fill-${index}` }, BACKGROUND_CONTEXT);
 				await until(chat.view, (view) => JSON.stringify(view?.entries ?? []).includes(`Echo: line ${index}`));
 			}
-			await (await holdIn(host, Views, { session }, "editor")).open({ kind: "changes" }, BACKGROUND_CONTEXT);
 		} finally {
 			await host.close(BACKGROUND_CONTEXT);
 		}
@@ -72,17 +69,17 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 		rmSync(root, { recursive: true, force: true });
 	});
 
-	it("applies a plugin's web change in place: the transcript's scroll and the other panes stay", async () => {
+	it("applies a plugin's web change in place: the transcript's scroll and the page's elements stay", async () => {
 		await browser.metrics(1280, 900);
 		await browser.open(`http://127.0.0.1:${port}/s/${session}`);
-		await browser.wait(`${shows("one")} && document.querySelector('.views-pane.kind-changes')`);
+		await browser.wait(`${shows("one")} && document.querySelector('.chat')`);
 		const scroller = "document.querySelector('.scroller.transcript')";
 		await browser.wait(`${scroller}?.scrollHeight > ${scroller}?.clientHeight * 2`);
 		await browser.evaluate(`${scroller}.scrollTop = 400`);
 		const scrolled = await browser.evaluate<number>(`${scroller}.scrollTop`);
 		// Marks a remount or a reload would lose.
 		await browser.evaluate(
-			`window.__sameDocument = true; document.querySelector('.views-pane.kind-changes').dataset.kept = 'yes'; ${scroller}.dataset.kept = 'yes'`,
+			`window.__sameDocument = true; document.querySelector('.chat').dataset.kept = 'yes'; ${scroller}.dataset.kept = 'yes'`,
 		);
 		const before = await webAssets(port, { Cookie: owner.cookie });
 		stamp("two");
@@ -93,7 +90,7 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 		assert.notEqual(after.plugins, before.plugins);
 		assert.deepEqual(
 			await browser.evaluate<unknown[]>(
-				`[window.__sameDocument, document.querySelector('.views-pane.kind-changes').dataset.kept, ${scroller}.dataset.kept, ${scroller}.scrollTop]`,
+				`[window.__sameDocument, document.querySelector('.chat').dataset.kept, ${scroller}.dataset.kept, ${scroller}.scrollTop]`,
 			),
 			[true, "yes", "yes", scrolled],
 		);
@@ -156,19 +153,6 @@ describe("pages on the web surface", { skip: !browserTests }, () => {
 			assert.equal(await closeOf(""), STALE_PAGE_CODE);
 			await told(/web bundle unnamed: from before/);
 			assert.equal(await closeOf("?client=nobody"), STALE_PAGE_CODE);
-			for (const client of LINK_CLIENTS.filter((client) => client !== "script")) {
-				// The script client already proved it could hold Logs above. Require a real reply for the others too.
-				const socket = new WebSocket(`ws://127.0.0.1:${port}/chord?client=${client}`, {
-					headers: { Cookie: owner.cookie },
-				});
-				const link = clientHost(socket);
-				try {
-					const ref = link.hold(Logs, { source: "stale-pages" }, BACKGROUND_CONTEXT);
-					await until(ref.state, (state) => state.kind === "live");
-				} finally {
-					await link.close(BACKGROUND_CONTEXT);
-				}
-			}
 			// The page reloads by itself: nothing for the owner to act on, so no notice.
 			assert.equal(
 				notices.notices.value.some((each) => each.source === "stale-pages"),

@@ -11,7 +11,7 @@ Every piece of state has exactly one owner: the host and object that is the auth
 from the server to a session (or back), write down for each field who enforces it.
 
 - **The host that enforces a fact owns it.** The server decides where a session runs (relocation fence, MCP placement,
-  where terminals open, which ports a session may forward) and whether a worker may start (archive). Those facts are
+  which ports a session may forward) and whether a worker may start (archive). Those facts are
   the server's, even if a copy also lives in the session.
 - **Content belongs to the session.** A title, the model and thinking level, the transcript: the session's worker owns
   them and reports them.
@@ -137,7 +137,7 @@ shared module both import. A second copy drifts.
 A plugin's web script must not share module state with another plugin's files. Each plugin's web facet is built into
 a script of its own, and a file it imports from another plugin is copied into it: a `Map`, a `let`, a store or a React
 context in that file is a second instance there, which the other plugin never sees. Reach another plugin's page state
-through a registry it serves (the views plugin's `ViewsPages`, `plugins/views/contract.web.ts`), and share a React
+through a registry it serves, and share a React
 context with `sharedContext(name, initial)` from `@p2/app/v1/web` (one per name, kept by the page's core). Pure
 functions, types and components without state may be imported as before.
 

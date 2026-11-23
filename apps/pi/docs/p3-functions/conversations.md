@@ -1,5 +1,7 @@
 # Functionality map: conversations, agent loop, chat mode, drafts, cross-session messages, sent files, artifacts
 
+> **Historical.** This table inventories p2 as it was when it was written. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 Read-only, based on origin/private `5abe3f6d6`. Abbreviations:
 - **who:** O owner, GR guest who can read, GW guest who can write (full grant), W session worker, S system.
 - **where:** srv server, wkr session worker, web, tui, env (remote execution environment).

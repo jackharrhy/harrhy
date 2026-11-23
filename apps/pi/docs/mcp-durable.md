@@ -1,5 +1,7 @@
 # MCP for Durable and p2: work plan
 
+> **Historical.** This is a work plan written against p2's earlier plugins. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 This file is the brief for agents implementing MCP (Model Context Protocol) support for p2, the Durable-based app in
 `apps/p2`. Every work package (WP) below is self-contained: it says where the work happens, what to build, how to test
 it, and when it is done. Read sections 1 to 4 before any work package, then only the package you are given.
@@ -166,7 +168,7 @@ export class RemoteProcess {
   `apps/p2/plugins/terminals/main.ts` (the server opening its own pi-env connections per environment),
   `apps/p2/plugins/envs` (environment configuration, SSH options, host keys), `apps/p2/plugins/login` (provider OAuth
   with `remote: principal.access !== "local"`), `apps/p2/plugins/radius/relay-access.ts` (requests relayed through
-  Radius), `apps/p2/plugins/powershell/worker.ts` (a deferred tool offered per conversation), `apps/p2/src/runtime/principals.ts`
+  Radius), `apps/p2/src/runtime/principals.ts`
   (`OwnerPrincipal.access` is `"local" | "relay" | "device"`). After the port these files move or change; find their
   v2 equivalents.
 

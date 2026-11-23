@@ -3,7 +3,7 @@
 // skills, and pi-telemetry's trace renderer (a trace as text, for tools that hand traces to the agent).
 
 export { renderTrace } from "@earendil-works/pi-telemetry/render";
-export { Admission } from "../../../plugins/stimuli/contract.ts";
+export { Admission, Subscriptions } from "../../../plugins/stimuli/contract.ts";
 export * from "../../runtime/commits.ts";
 export * from "../../runtime/conversation-stats.ts";
 export * from "../../runtime/main-conversation.ts";

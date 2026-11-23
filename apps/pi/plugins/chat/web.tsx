@@ -10,7 +10,6 @@ import {
 	grantMode,
 	type Held,
 	isChordError,
-	keptIn,
 	liveIn,
 	plainReferences,
 	renameReferences,
@@ -51,7 +50,6 @@ import {
 	keepSessions,
 	keptSizes,
 	knownMain,
-	ListIcon,
 	LockIcon,
 	lightTap,
 	loadKept,
@@ -66,8 +64,6 @@ import {
 	navigate,
 	OneShotAgents,
 	OpenConversation,
-	OpenTerminal,
-	OpenWorkspaceFile,
 	openCommandPage,
 	openLayer,
 	openSidebar,
@@ -134,11 +130,8 @@ import { createPortal } from "react-dom";
 import { Drafts } from "../drafts/contract.ts";
 import { Envs } from "../envs/contract.ts";
 import { DirectoryPicker, directoryPickerLayer } from "../envs/contract.web.tsx";
-import { GlyphIcon } from "../glyphs/GlyphIcon.tsx";
 import { Models } from "../models/contract.ts";
 import type { ResourceSnapshot } from "../models/resources.ts";
-import { Projects } from "../projects/contract.ts";
-import { placeSeed } from "../projects/glyph-seed.ts";
 import { type Session, Sessions } from "../sessions/contract.ts";
 import { SessionMetrics, SessionStatus, WorkerControl } from "../status/contract.ts";
 import { type Child, conversationLocation, SubagentControl, Subagents } from "../subagents/contract.ts";
@@ -253,8 +246,6 @@ type PageObjects = {
 	readonly models: Held<typeof Models> | undefined;
 	/** The owner's only. */
 	readonly envs: Held<typeof Envs> | undefined;
-	/** The owner's only: projects.json and the sessions' projects, for the top bar's project glyph. */
-	readonly projects: Held<typeof Projects> | undefined;
 };
 
 const PageObjectsContext = createContext<PageObjects | undefined>(undefined);
@@ -727,16 +718,6 @@ function TopBar({
 	const objects = usePageObjects();
 	const envs = useReadable(objects.envs?.envs);
 	const sandboxed = envs?.find((env) => env.name === session?.env)?.config.type === "gondolin";
-	// The project glyph the sidebar shows for this session (guests read no projects: the path's own glyph).
-	const kept = keptIn(objects.projects, "owner");
-	const projects = useReadable(kept?.projects);
-	const memberships = useReadable(kept?.sessions);
-	const glyph = session && (
-		<GlyphIcon
-			seed={placeSeed(projects ?? [], session.env ?? null, session.cwd, memberships?.[session.id])}
-			size={11}
-		/>
-	);
 	const lock = sandboxed && (
 		<span className="title-lock">
 			<LockIcon size={11} />
@@ -775,14 +756,12 @@ function TopBar({
 									) : (
 										<>
 											{lock}
-											{glyph}
 											{locationLabel(session.env, session.cwd)}
 										</>
 									)}
 								</button>
 							) : (
 								<p>
-									{glyph}
 									{locationLabel(session.env, session.cwd)}
 								</p>
 							))}
@@ -790,11 +769,7 @@ function TopBar({
 				)}
 			</div>
 			{offline && <span className="offline">Offline</span>}
-			<Slot name="view-actions" />
-			<Slot name="artifact-actions" />
-			<Slot name="tree-actions" />
-			<Slot name="terminal-actions" />
-			<Slot name="workspace-actions" />
+			<SlotList prefix="topbar-end" />
 			<Slot name="session-options" />
 			<Slot name="session-actions" />
 		</header>
@@ -887,31 +862,6 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 			void nav.push(conversationRoute(nav.route, sessionId, conversation));
 		},
 		[nav, sessionId],
-	);
-	const openWorkspaceFile = useCallback(
-		(path: string, line?: number) => {
-			const current = nav.route;
-			void nav.push({
-				...current,
-				workspace: {
-					...(current.workspace ?? { tab: "files", directory: "" }),
-					file: { path, view: "file", line },
-				},
-			});
-		},
-		[nav],
-	);
-	// The terminal panel where it is open (the workspace's tab), else below the chat.
-	const openTerminal = useCallback(
-		(terminalId: string) => {
-			const current = nav.route;
-			void nav.push(
-				current.workspace?.tab === "terminal"
-					? { ...current, workspace: { ...current.workspace, terminal: terminalId, startTerminal: undefined } }
-					: { ...current, terminal: terminalId, startTerminal: undefined },
-			);
-		},
-		[nav],
 	);
 	const connected = useConnected();
 	const host = useHost();
@@ -1693,37 +1643,33 @@ function SessionChat({ sessionId, conversationId }: { sessionId: string; convers
 									<ToolActivityContext.Provider value={tools}>
 										<OpenConversation.Provider value={openConversation}>
 											<OneShotAgents.Provider value={oneShots}>
-												<OpenWorkspaceFile.Provider value={canWrite ? openWorkspaceFile : undefined}>
-													<OpenTerminal.Provider value={owner ? openTerminal : undefined}>
-														<ReplyTo.Provider value={participant && canReply ? startReply : undefined}>
-															<BranchFrom.Provider value={branching}>
-																<RevealEntry.Provider value={reveal}>
-																	<FillGap.Provider value={fillGap}>
-																		<Messages
-																			transcript={shown}
-																			rows={rows}
-																			list={follow.list}
-																			range={follow.range}
-																			stopped={
-																				stopped?.sessionId === sessionId &&
-																				stopped?.conversationId === conversationId &&
-																				!view?.entries.some((entry) =>
-																					entry.model?.some(
-																						(message) =>
-																							message.role === "assistant" &&
-																							message.stopReason === "aborted",
-																					),
-																				)
-																			}
-																			earlier={earlier}
-																			onEarlier={() => void loadEarlier()}
-																		/>
-																	</FillGap.Provider>
-																</RevealEntry.Provider>
-															</BranchFrom.Provider>
-														</ReplyTo.Provider>
-													</OpenTerminal.Provider>
-												</OpenWorkspaceFile.Provider>
+												<ReplyTo.Provider value={participant && canReply ? startReply : undefined}>
+													<BranchFrom.Provider value={branching}>
+														<RevealEntry.Provider value={reveal}>
+															<FillGap.Provider value={fillGap}>
+																<Messages
+																	transcript={shown}
+																	rows={rows}
+																	list={follow.list}
+																	range={follow.range}
+																	stopped={
+																		stopped?.sessionId === sessionId &&
+																		stopped?.conversationId === conversationId &&
+																		!view?.entries.some((entry) =>
+																			entry.model?.some(
+																				(message) =>
+																					message.role === "assistant" &&
+																					message.stopReason === "aborted",
+																			),
+																		)
+																	}
+																	earlier={earlier}
+																	onEarlier={() => void loadEarlier()}
+																/>
+															</FillGap.Provider>
+														</RevealEntry.Provider>
+													</BranchFrom.Provider>
+												</ReplyTo.Provider>
 											</OneShotAgents.Provider>
 										</OpenConversation.Provider>
 									</ToolActivityContext.Provider>
@@ -1761,8 +1707,6 @@ function NewSession() {
 	const {
 		location: selectedLocation,
 		setLocation,
-		join,
-		setJoin,
 		choice: selectedChoice,
 		setChoice,
 	} = useNewSessionState();
@@ -1815,7 +1759,7 @@ function NewSession() {
 				item: outgoingItem(id, text, OWNER_AUTHOR),
 			},
 			// The page chooses the session's ID: a retried creation answers the same session.
-			{ session: crypto.randomUUID(), location, choice, ...(join ? { join } : {}) },
+			{ session: crypto.randomUUID(), location, choice },
 		);
 		setDraft("");
 		setFiles([]);
@@ -1835,7 +1779,7 @@ function NewSession() {
 			return;
 		}
 		sessionStart.connect({
-			create: async ({ session, location, choice, join }) => {
+			create: async ({ session, location, choice }) => {
 				// The new session's worker starts beside the creation, not after it (its start waits for the row): held
 				// here and lingering for the session's view, which holds it next.
 				const chat = host.hold(Chat, { session, conversation: 1 }, BACKGROUND_CONTEXT);
@@ -1855,15 +1799,10 @@ function NewSession() {
 					chat.release();
 					throw error;
 				}
-				// A project's "+": the session joins the project once it exists, so a refused creation leaves no membership
-				// behind; a failed join leaves the session as it is, and the toast says why.
-				if (join) void join.run(session).catch(composer.fail);
 			},
 			// The server's own errors (a missing directory, an unknown model) refuse; a lost connection is tried again.
 			refused: (error) => !isChordError(error) || refused(error),
 			created: (session) => {
-				// The next new session starts in no project unless its "+" is used again.
-				setJoin(undefined);
 				if (shownHere.current) navigate({ session }, { replace: true });
 			},
 			restore: (messages, error) => {
@@ -1873,7 +1812,7 @@ function NewSession() {
 			},
 		});
 		return () => sessionStart.connect(undefined);
-	}, [connected, sessions, host, setDraft, setFiles, setError, setJoin, composer.fail]);
+	}, [connected, sessions, host, setDraft, setFiles, setError]);
 	// Leaving the page loses a session not created yet: the browser asks first.
 	useEffect(() => {
 		if (!start) return;
@@ -1938,20 +1877,8 @@ function NewSession() {
 								<Logo />
 								<h2>What should Pi do?</h2>
 							</div>
-							{/* The project the session joins, then where it starts: each opens its own picker. */}
+							{/* Where the session starts opens the directory picker. */}
 							<div className="new-session-choices">
-								{owner && (
-									<button
-										type="button"
-										className="project-pick"
-										aria-label={`Project: ${join?.label ?? "No project"}`}
-										onClick={() => openCommandPage("new-session-project", NEW_SESSION_TARGET)}
-									>
-										<ListIcon />
-										<span>{join?.label ?? "No project"}</span>
-										<ChevronIcon size={14} />
-									</button>
-								)}
 								<button
 									type="button"
 									className="cwd-pick"
@@ -2004,10 +1931,9 @@ function Main() {
 	const status = useObject(SessionStatus, {});
 	const models = useObject(Models, owner ? {} : undefined);
 	const envs = useObject(Envs, owner ? {} : undefined);
-	const projects = useObject(Projects, owner ? {} : undefined);
 	const objects = useMemo(
-		() => ({ sessions, access, subagents, status, models, envs, projects }),
-		[sessions, access, subagents, status, models, envs, projects],
+		() => ({ sessions, access, subagents, status, models, envs }),
+		[sessions, access, subagents, status, models, envs],
 	);
 	const grant = useReadable(liveIn(access, "guest")?.grant);
 	// A guest stays within the sessions shared with it; anywhere else it lands in the one shared or joined last.
@@ -2037,10 +1963,8 @@ function Main() {
 				{ended ? (
 					<ShareEnded />
 				) : route.session ? (
-					<Slot name="chat-content">
-						<Slot name="chat-attribution">
-							<SessionChat key={conversation} sessionId={route.session} conversationId={shownConversation} />
-						</Slot>
+					<Slot name="chat-attribution">
+						<SessionChat key={conversation} sessionId={route.session} conversationId={shownConversation} />
 					</Slot>
 				) : route.newSession ? (
 					<NewSession />
@@ -2049,12 +1973,10 @@ function Main() {
 					<Slot name="home" fallback={<NewSession />} />
 				)}
 				{/* The transcript of the screen above goes into the view (`useChatScreen`), the dock floats over its bottom. */}
-				<div className="chat">
+				<div className="chat" data-transcript-pane>
 					<div className="chat-view" ref={setView} />
 					<Dock frame={frame} dockRef={setDock} />
 				</div>
-				{/* Below the chat, per conversation (the bottom terminal panel). */}
-				{conversation && !ended && <Slot key={conversation} name="chat-bottom" />}
 			</ChatFrame.Provider>
 		</PageObjectsContext.Provider>
 	);

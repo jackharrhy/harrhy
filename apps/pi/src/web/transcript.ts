@@ -13,7 +13,7 @@ import type {
 	TranscriptView,
 } from "@earendil-works/pi-durable";
 import { type AssistantCost, cacheHitRate } from "../runtime/conversation-stats.ts";
-import { type AgentMessage, agentMessage, type PeerMessage, peerMessage } from "../runtime/entries.ts";
+import { type AgentMessage, agentMessage, type MessageCitation, type PeerMessage, peerCitation, peerMessage } from "../runtime/entries.ts";
 import { type ShownImage, shownImage } from "../runtime/entry-images.ts";
 import { type MessageData, messageData } from "../runtime/input.ts";
 import { fileReferences } from "../runtime/references.ts";
@@ -68,6 +68,7 @@ export type Item =
 			text: string;
 			author?: Author;
 			peer?: PeerMessage["from"];
+			citation?: MessageCitation;
 			/** A subagent's message (its report, a question or a note), from the entry's data. */
 			agent?: Pick<AgentMessage, "from" | "intent">;
 			images: ShownImage[];
@@ -423,7 +424,10 @@ export function buildTranscript(
 					const peer = peerMessage(entry.kind, entry.data);
 					if (peer)
 						return [
-							{ type: "user", key, entryId: entry.id, at, images, peer: peer.from, text: peer.text, files: [] },
+							{
+								type: "user", key, entryId: entry.id, at, images, peer: peer.from,
+								citation: peerCitation(peer), text: peer.text, files: [],
+							},
 						];
 					return [{ type: "user", key, entryId: entry.id, at, images, text: text(message.content), files: [] }];
 				}),
@@ -522,7 +526,7 @@ export function buildTranscript(
 			compactionFailureItems.set(compactionFailure, item);
 		}
 		// State-derived, not a retained entry: it persists while idle and disappears when Durable clears it.
-		// Both the browser and p2 TUI render failure items in their existing error-notice style.
+		// The browser renders failure items in its existing error-notice style.
 		items.push(item);
 	}
 	// Why the last run ended without an answer, until the next run starts; a blocking compaction failure is shown once.

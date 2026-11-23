@@ -71,14 +71,6 @@ export const MoreIcon = () => (
 		<circle cx="19" cy="12" r="1" />
 	</Icon>
 );
-export const ArtifactIcon = () => (
-	<Icon>
-		<rect x="3.5" y="3.5" width="7" height="7" rx="1" />
-		<circle cx="17" cy="7" r="3.5" />
-		<path d="M7 13.5l4 7H3z" />
-		<rect x="13.5" y="13.5" width="7" height="7" rx="3.5" />
-	</Icon>
-);
 export const PinIcon = ({ size = 18 }: { size?: number }) => (
 	<Icon size={size}>
 		<path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z" />
@@ -106,12 +98,6 @@ export const TerminalIcon = ({ size = 15 }: { size?: number }) => (
 	<Icon size={size}>
 		<rect x="2.5" y="4" width="19" height="16" rx="2" />
 		<path d="M7 9.5l3 2.5-3 2.5M12.5 15H17" />
-	</Icon>
-);
-/** Plus over minus: changed files. */
-export const DiffIcon = () => (
-	<Icon>
-		<path d="M12 4v10M7 9h10M7 19h10" />
 	</Icon>
 );
 export const CommentIcon = () => (
@@ -220,25 +206,11 @@ export const AttachIcon = () => (
 		<path d="M20 11.5l-8.2 8.2a5 5 0 0 1-7.1-7.1l8.5-8.5a3.3 3.3 0 0 1 4.7 4.7L9.4 17.3a1.7 1.7 0 0 1-2.4-2.4l7.8-7.8" />
 	</Icon>
 );
-/** A panel docked at the bottom of a window: the terminal's bottom position. */
-export const PanelBottomIcon = () => (
-	<Icon size={18}>
-		<rect x="3" y="4" width="18" height="16" rx="2" />
-		<path d="M3 14h18" />
-	</Icon>
-);
-/** A panel docked at the side of a window: the terminal's side (workspace) position. */
+/** A panel docked at the side of a window: a side panel's position. */
 export const PanelSideIcon = () => (
 	<Icon size={18}>
 		<rect x="3" y="4" width="18" height="16" rx="2" />
 		<path d="M14 4v16" />
-	</Icon>
-);
-/** A keyboard: the terminal's row of extra keys. */
-export const KeyboardIcon = () => (
-	<Icon size={18}>
-		<rect x="2" y="6" width="20" height="12" rx="2" />
-		<path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10" />
 	</Icon>
 );
 /** Hide a panel without closing what it shows. */
@@ -308,25 +280,6 @@ export const SidebarIcon = ({ size = 16 }: { size?: number }) => (
 	<Icon size={size}>
 		<rect x="3" y="4" width="18" height="16" rx="2" />
 		<path d="M9 4v16" />
-	</Icon>
-);
-/** An eye: show a view. */
-export const EyeIcon = ({ size = 16 }: { size?: number }) => (
-	<Icon size={size}>
-		<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" />
-		<circle cx="12" cy="12" r="3" />
-	</Icon>
-);
-/** An eye struck through: hide a view. */
-export const EyeOffIcon = ({ size = 16 }: { size?: number }) => (
-	<Icon size={size}>
-		<path d="M10.6 5.1A9.8 9.8 0 0 1 12 5c6.5 0 10 7 10 7a17 17 0 0 1-2.2 3.2M6.6 6.6C3.8 8.4 2 12 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6M9.9 9.9a3 3 0 0 0 4.2 4.2M3 3l18 18" />
-	</Icon>
-);
-/** A bookmark: a saved view. */
-export const BookmarkIcon = ({ size = 16 }: { size?: number }) => (
-	<Icon size={size}>
-		<path d="M6 3h12v18l-6-4-6 4z" />
 	</Icon>
 );
 /** A star: make a choice the default (the footer's model). */

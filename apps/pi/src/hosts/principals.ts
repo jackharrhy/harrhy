@@ -46,7 +46,7 @@ const FRAMES: ReadonlySet<string> = new Set(["iframe", "frame", "embed", "object
  * Whether a browser sent this request for another site (Fetch Metadata): a cross-site or same-site (another local port)
  * page, link, form, fetch or WebSocket, or a frame or embed another site holds. Such a request never gets the loopback
  * owner: a page anywhere could otherwise frame the owner UI (clickjacking) or drive it. Requests without the headers
- * (the TUI, scripts, older browsers) are unaffected; the page's CSP `frame-ancestors` still refuses framing there.
+ * (scripts, older browsers) are unaffected; the page's CSP `frame-ancestors` still refuses framing there.
  */
 export function foreignBrowserRequest(request: IncomingMessage): boolean {
 	const site = request.headers["sec-fetch-site"];
@@ -96,13 +96,13 @@ export function pageNavigation(request: IncomingMessage): boolean {
 
 /**
  * The CSP of every response (as Pi Mobile's): the app's own scripts (the page's inline ones carry the nonce), its
- * WebSocket, and frames only from its own origin (artifact previews). Nothing may frame it.
+ * WebSocket, and frames only from its own origin. Nothing may frame it.
  */
 export function contentSecurityPolicy(nonce: string, origin: RequestOrigin | undefined): string {
 	const socketOrigin = origin?.origin.replace(/^http/, "ws") ?? "";
 	return [
 		"default-src 'none'",
-		`script-src 'self' 'nonce-${nonce}' 'wasm-unsafe-eval'`,
+		`script-src 'self' 'nonce-${nonce}'`,
 		`connect-src 'self' ${socketOrigin}`.trimEnd(),
 		"style-src 'self' 'unsafe-inline'",
 		"img-src 'self' data: blob:",

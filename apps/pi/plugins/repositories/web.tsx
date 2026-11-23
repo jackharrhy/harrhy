@@ -1,9 +1,45 @@
-// Owner-private list of registered URLs, with expiry enforced while the pane is open.
+// Owner-private list of registered URLs, with expiry enforced while the sheet is open.
 import { Access, BACKGROUND_CONTEXT, contribute, defineFacet, withCancel } from "@p2/app/v1";
-import { OwnerViewKinds, RefreshIcon, useConnected, useObject } from "@p2/app/v1/web";
+import {
+	type Command,
+	Commands,
+	closeLayers,
+	ListIcon,
+	openLayer,
+	RefreshIcon,
+	Sheet,
+	Slots,
+	useConnected,
+	useObject,
+	useSheet,
+} from "@p2/app/v1/web";
 import { useEffect, useState } from "react";
 import { type Preview, type PreviewRead, Previews } from "./contract.ts";
 import "./style.css";
+
+const SHEET = "previews";
+
+/** The Previews sheet while it is the top layer; an owner with a live connection only. */
+function PreviewsSheet() {
+	if (useSheet(SHEET) === undefined) return null;
+	return (
+		<Sheet title="Previews" onClose={closeLayers} testId="previews-sheet">
+			<PreviewsPane />
+		</Sheet>
+	);
+}
+
+const PREVIEWS_COMMANDS: Readonly<Record<string, Command>> = {
+	"repositories.previews": {
+		title: "Previews",
+		group: "Previews",
+		order: 50,
+		icon: ListIcon,
+		keywords: ["preview urls", "registered links"],
+		owner: true,
+		action: { kind: "run", run: () => openLayer({ kind: "sheet", name: SHEET }) },
+	},
+};
 
 function PreviewsPane() {
 	const access = useObject(Access, {}, { variant: "owner" });
@@ -55,7 +91,6 @@ function PreviewList() {
 	return (
 		<section className="registered-previews" aria-label="Previews">
 			<header className="registered-previews-head">
-				<h2>Previews</h2>
 				<button
 					type="button"
 					className="icon-button"
@@ -125,7 +160,8 @@ function PreviewRow({ preview, now }: { preview: Preview; now: number }) {
 }
 
 export default defineFacet((host) => {
-	contribute(host, "p2.web-repositories", (self) =>
-		self.contribute(OwnerViewKinds, { repositories: { title: "Previews", Pane: PreviewsPane } }),
-	);
+	contribute(host, "p2.web-repositories", (self) => {
+		self.contribute(Slots, { "overlay:previews": PreviewsSheet });
+		self.contribute(Commands, PREVIEWS_COMMANDS);
+	});
 });

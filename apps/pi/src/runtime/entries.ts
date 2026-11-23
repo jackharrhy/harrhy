@@ -2,8 +2,34 @@
 // and a subagent's message. Their entry kinds and data are read across plugins (attribution, search) and by both UIs
 // (transcript rows).
 
-import { compile, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
+import { compile, int, num, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { literal } from "./schema.ts";
+
+const SessionId = str({ minLength: 1, maxLength: 200 });
+export const Cite = obj({
+	session: SessionId,
+	conversation: literal(1),
+	entryId: int({ minimum: 1 }),
+});
+export const CitationId = str({
+	minLength: 64,
+	maxLength: 64,
+	pattern: "^[0-9a-f]{64}$",
+});
+export const CitationQuote = obj({
+	text: str({ minLength: 1, maxLength: 8192 }),
+	name: str(),
+});
+export const Citation = obj({
+	id: CitationId,
+	cite: Cite,
+	quote: CitationQuote,
+	destination: SessionId,
+});
+
+export type MessageCitation = Static<typeof Citation>;
+
+export const isCitation = compile(Citation).check;
 
 /**
  * A peer's message: the conversations tool records a real local session; optional `from.kind: "external"` records
@@ -21,6 +47,14 @@ const isPeerMessage = compile(PeerMessageSchema).check;
 /** The peer message an entry of kind `kind` with `data` records, if it is one. */
 export const peerMessage = (kind: string, data: unknown): PeerMessage | undefined =>
 	kind === PEER_MESSAGE_ENTRY && isPeerMessage(data) ? data : undefined;
+
+/** Optional metadata: a malformed citation does not turn the peer message back into raw model text. */
+export function peerCitation(peer: PeerMessage): MessageCitation | undefined {
+	const citation = "citation" in peer ? peer.citation : undefined;
+	return peer.from.kind !== "external" && isCitation(citation) && citation.cite.session === peer.from.id
+		? citation
+		: undefined;
+}
 
 /**
  * An agent's task for another agent: a main agent's message to its subagent (`subagent spawn`/`send`) or a script's

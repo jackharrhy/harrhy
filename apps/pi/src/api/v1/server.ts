@@ -21,4 +21,4 @@ export * from "../../runtime/http.ts";
 export { LOCAL_CHALLENGE_PATH, LOCAL_CLAIM_PATH, localOwnerProof } from "../../runtime/local-owner.ts";
 export * from "../../runtime/page.ts";
 export * from "../../runtime/server.ts";
-export { externalTargetGlyphs, externalTargets, familiarIngressAvailable } from "./external-targets.ts";
+export { externalTargets, familiarIngressAvailable } from "./external-targets.ts";

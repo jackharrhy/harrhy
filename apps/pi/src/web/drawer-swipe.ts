@@ -11,9 +11,9 @@
 // stricter than its 45 degree split). Should the page scroll under such a drag anyway, the drawer gives the touch up
 // and settles back.
 //
-// Left to the page: text fields, elements with `touch-action: none` (the terminal, resize handles: they handle their
+// Left to the page: text fields, elements with `touch-action: none` (resize handles: they handle their
 // own drags), horizontal scrollers that can still scroll in the drag's direction (a code block scrolled away from its
-// start), drags extending a text selection, and the workspace panel (full screen above the drawer on phones).
+// start), and drags extending a text selection.
 import { type RefObject, useEffect, useRef } from "react";
 import { getNavigation, modalShown, setDrawer } from "../runtime/web.tsx";
 import { FLING, SETTLE_EASING, settleDuration, trackDrags } from "./drag-gesture.ts";

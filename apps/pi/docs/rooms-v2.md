@@ -1,5 +1,7 @@
 # Rooms, second version: shared state, peer state, events
 
+> **Historical.** This spec was written when views and artifacts existed; the views it builds on are gone, so the room kit it describes has no host in Pi today. Pi has since removed Radius, voice, Discord, the telemetry panel, the terminal UI, the web terminal, artifacts and views, and the workspace panel; see [removed features](../../../docs/pi-removed-features.md). Read mentions of them as a record of the design, not of the current app.
+
 Status: spec, fourth draft, 2026-11-11, by the p3 session (8b6ab5cc). Reviewed three times by gpt-6-astra and
 gpt-6.1-sol (`/tmp/rooms-v2-{astra,sol}.md`, `-2.md`, `-3.md`); both accept the core (the leader view as the sketch's
 server object, one batch in flight, an explicit leader grant, one write gateway); section 11 says how each round was

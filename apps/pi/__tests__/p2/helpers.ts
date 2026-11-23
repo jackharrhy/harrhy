@@ -83,10 +83,10 @@ export const TEST = BACKGROUND_CONTEXT;
 /** What `clientHost` connects over: a WebSocket to a p2 server's `/chord` (`ws`'s or the global one). */
 export type ClientSocket = NodeWebSocket | WebSocket;
 
-/** A local owner session at a p2 server: its port, and the cookie pair the owner's browser or TUI sends there. */
+/** A local owner session at a p2 server: its port, and the cookie pair the owner's browser sends there. */
 export type LocalOwner = { readonly port: number; readonly cookie: string };
 
-/** Signs in to `server` as its local owner, as the TUI on its host does (with the owner key of its data directory). */
+/** Signs in to `server` as its local owner (with the owner key of its data directory). */
 export async function localOwner(server: Pick<P2Server, "port" | "dataDir">): Promise<LocalOwner> {
 	const signIn = await localOwnerSignIn(new URL(`http://127.0.0.1:${server.port}`), server.dataDir);
 	if (signIn.kind === "unavailable") throw new Error(signIn.message);
@@ -140,7 +140,7 @@ export async function startFixture(
 		/** settings.json written into the data directory before the server starts (keys read at the start: `telemetry`). */
 		readonly settings?: Readonly<Record<string, unknown>>;
 		/** Install the checked-in integration directories into this fixture's actual user plugin root. */
-		readonly integrations?: readonly ("atlas-feedback" | "ingress")[];
+		readonly integrations?: readonly ("atlas-feedback" | "github-checks" | "ingress" | "peers")[];
 	} = {},
 ): Promise<Fixture> {
 	const root = mkdtempSync(join(tmpdir(), "p2-test-"));
@@ -416,7 +416,7 @@ export type TestHost = {
 	root<T>(fn: (ctx: Ctx) => T | Promise<T>, options?: { readonly principal?: P2Principal }): Promise<T>;
 	/** A memory-linked client whose principal is stamped by the bare host, just as by the server. */
 	client(principal: P2Principal): Host;
-	/** `client`, once it loaded `facets` (TUI facets, say). */
+	/** `client`, once it loaded `facets`. */
 	clientWith(principal: P2Principal, facets: readonly PluginFacet<P2Principal>[]): Promise<Host>;
 	/** Reloads the host with `facets` in place of the loaded ones (the same base and stubs); rejects a failed plugin. */
 	reload(facets: readonly Facet[]): Promise<void>;

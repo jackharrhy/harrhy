@@ -9,7 +9,8 @@ start with `packages/`. "Owner/guest" says which principals reach a hook's effec
 that the server or the visitor's process runs.
 
 How plugins are loaded (and the planned single pipeline) is in [plugin-loading.md](plugin-loading.md). How to write
-one, step by step: Chord's [tutorial](../../../packages/chord/docs/tutorial/). TUI design: [p2-tui-port.md](p2-tui-port.md) §6-7.
+one, step by step: Chord's [tutorial](../../../packages/chord/docs/tutorial/). The terminal UI (section 5 and the TUI
+rows and comparisons elsewhere) is [removed](../../../docs/pi-removed-features.md#terminal-ui).
 
 ## 1. Cross-cutting
 
@@ -38,7 +39,7 @@ export default defineFacet((host) =>
 ```
 
 A plugin that needs state, resources or other objects serves its own object of lifetime "host" and registers from its factory
-(e.g. `plugins/codemode/worker.ts:39-60`, `plugins/terminals/server.ts:10-30`).
+(e.g. `plugins/codemode/worker.ts:39-60`).
 
 Registries are plain descriptors (`defineRegistry`, `packages/chord/src/old/registry.ts:11`):
 
@@ -108,7 +109,7 @@ contracts and factories are the enforcement.
 | Registry | Key → value | Consulted | Used by | Notes |
 | --- | --- | --- | --- | --- |
 | `Routes` | `"METHOD /path"` or `"METHOD /prefix/*"` → `(req, res, {principal, origin}, ctx)` | after host paths, longest prefix wins (`src/hosts/server.ts:459`, `src/runtime/server.ts:124`) | files, artifacts, workspace, sharing, devices | Handler authorizes itself; `principal` may be `undefined` (stranger), owner, guest. |
-| `Upgrades` | exact path → `(req, socket, head, principal, ctx)` | WebSocket upgrades other than `/chord` (`src/hosts/server.ts`) | terminals `/terminal` (`plugins/terminals/server.ts:22`) | Only authenticated principals reach it. |
+| `Upgrades` | exact path → `(req, socket, head, principal, ctx)` | WebSocket upgrades other than `/chord` (`src/hosts/server.ts`) | none at present | Only authenticated principals reach it. |
 | `Authenticators` | name → `(req, origin, ctx) => principal` | every request; first owner wins, else first principal (`src/hosts/server.ts:343-355`) | devices (owner cookie), sharing (guest cookie) | |
 | `RequestResolvers` | name → `(req, ctx) => {principal, origin}` | before Host checks (`src/hosts/server.ts:357`) | radius, devices | Trusted transports only. |
 | `SessionAccess` | name → `(principal, session, ctx) => boolean` | `mayReach`: worker routes, files (`src/runtime/server.ts:158-165`) | sharing (`plugins/sharing/server.ts:332`) | Any yes admits a non-owner. |
@@ -133,7 +134,7 @@ Reserved host endpoints are `/health`, `/__p2_dev`, `/__p2_tui[/<hash>.mjs]` and
 
 - **Logs:** `processLogs` (`src/runtime/logs.ts:196`) is a process global: `append(source, level, text)`,
   `notice(source, message)` (error-level owner notice, one per source, `:157-164`), `redactor.addSecret/addDirectory`
-  (models, login, radius use it), `persistLogSource`/`capturePublishedLogs` for detached processes (terminals).
+  (models, login, radius use it), `persistLogSource`/`capturePublishedLogs` for detached processes (the dev supervisor).
   Worker stderr lines starting `p2 worker:` become notices (`src/runtime/server.ts:335-343`).
 - **Notices:** surfaced by the logs plugin's owner-only `LogNotices` (`plugins/logs/contract.ts:24`), rendered by the
   core web lane (`src/web/OwnerNotices.tsx:30-31`) and the logs TUI facet. There is no tone, action or dismiss API for
@@ -153,7 +154,7 @@ through `durableRegistry` (`src/runtime/durable.ts:41`).
 
 | Part | Field | What | p2 users |
 | --- | --- | --- | --- |
-| Tools | `tools` (`defineTool`, `types.ts:293`) | `parameters`, `execute(args, api, ctx)` returning `output`/`structuredOutput`/`details`; `replay: "safe" \| "unsafe"` (rerun after a crash, `:298`); `callers: ["model" \| "tools"]` (`:317`); `structuredOutputSchema` (`:311`); `deferred` (`:322`); `executionMode`, `prepareArguments`, `outputLimits`; `api.executeTool` for nested calls (`:281`) | coding-tools, artifacts, send-file, ports, conversations, sessions, subagents, dev-tools, codemode, powershell; `agent` is `callers: ["tools"]`, replay-safe with a schema (`plugins/agent/tool.ts:53-57`) |
+| Tools | `tools` (`defineTool`, `types.ts:293`) | `parameters`, `execute(args, api, ctx)` returning `output`/`structuredOutput`/`details`; `replay: "safe" \| "unsafe"` (rerun after a crash, `:298`); `callers: ["model" \| "tools"]` (`:317`); `structuredOutputSchema` (`:311`); `deferred` (`:322`); `executionMode`, `prepareArguments`, `outputLimits`; `api.executeTool` for nested calls (`:281`) | coding-tools, artifacts, send-file, ports, conversations, sessions, subagents, dev-tools, codemode; `agent` is `callers: ["tools"]`, replay-safe with a schema (`plugins/agent/tool.ts:53-57`) |
 | Prompt | `sections` (`section(key, render, {tag})`, `types.ts:349`) | rendered before each request, in extension order | prompt (`plugins/prompt/worker.ts:185-191`), coding-tools, ports, conversations, dev-tools |
 | Hooks | `hooks: [hook(Task, handlers)]` | `GenerationTask`: `beforeRequest`, `afterResponse`, `onYield`, `afterTools` (`types.ts:757`); `ToolTask`: `beforeTool`, `afterTool` (`:778`); `CompactionTask`: `beforeCompact` (`:795`); handlers get `HookApi` (doc reads, memos, models, `:745`) | cache-warming (`afterResponse`; the request from `HarnessParts.requestOf(message)`, a read-only `ModelRequest`) |
 | Wraps | `wraps: [wrapTool(tool, fn) \| wrapSection(section, fn)]` (`types.ts:360`) | replace another extension's tool or section where selected | none yet |
@@ -180,7 +181,7 @@ that must survive reload reads live resources through getters (`plugins/codemode
 
 | Hook | Kind | What | Consulted | Used by |
 | --- | --- | --- | --- | --- |
-| `ExtensionSwitches` | registry: extension name → `Readable<boolean>` | `false` leaves that extension out of new snapshots | `src/runtime/durable.ts:31,43-93` | codemode (`codemode` setting), powershell (Windows), dev-tools (dev checkout) |
+| `ExtensionSwitches` | registry: extension name → `Readable<boolean>` | `false` leaves that extension out of new snapshots | `src/runtime/durable.ts:31,43-93` | codemode (`codemode` setting), dev-tools (dev checkout) |
 | `InputGates` | registry: name → `(ctx) => Promise` | awaited before any input is submitted | `plugins/chat/worker.ts:320,380,404`, `plugins/conversations/worker.ts:132` | prompt (first AGENTS.md load) |
 | `SendRouters` | registry (chat): name → `(RoutedSend, ctx) => {submissionId} \| undefined` | `Chat.send` asks each; untaken sends become `p2.input` | `plugins/chat/worker.ts:571` | chat-mode (`plugins/chat-mode/worker.ts:134`) |
 | `ReadOnlyConversations` | registry: name → `(conversation, ctx) => reason?` | refuses `Chat.send`/`dequeue`/`configure` | `plugins/chat/worker.ts:514` | subagents (one-shot agents) |
@@ -229,16 +230,13 @@ self.register(SendRouters, {
 | `app` | `src/hosts/web/main.tsx` (`startWeb`) | single | web-shell |
 | `sidebar` | `src/web/AppLayout.tsx:21` | single | sessions |
 | `main` | `src/web/AppLayout.tsx:60` | single | chat |
-| `workspace-panel` | `src/web/AppLayout.tsx:62` | single | workspace |
-| `artifact-actions`, `terminal-actions`, `workspace-actions`, `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | artifacts, terminals, workspace, sessions, sharing |
+| `session-options`, `session-actions` | chat top bar, `plugins/chat/web.tsx:327-331` | single each | sessions, sharing |
 | `composer:*` | `plugins/chat/web.tsx:925` (`SlotList`) | list | chat-mode |
-| `chat-bottom` | `plugins/chat/web.tsx:934` | single | terminals |
 | `chat-content` | `plugins/chat/web.tsx:1133` | wrapper (gets `children`) | artifacts (card contexts, the sent-file viewer, the artifacts side panel) |
 | `chat-attribution` | `plugins/chat/web.tsx:1134` | wrapper | conversations |
 | `sidebar-actions:*` | `plugins/sessions/web.tsx` (`SlotList`) | list: icon buttons before the theme switch | settings |
 | `sidebar-start:*` | `plugins/sessions/web.tsx` (`SlotList`) | list: rows (list items) before "New session" | familiar |
 | `envs-actions:*` | `plugins/envs/EnvsPanel.tsx:524` (`SlotList`) | list | ports |
-| `workspace-terminal` | `src/web/Workspace.tsx:730` | single | terminals |
 | `workbench` | `src/web/AppLayout.tsx` | wrapper (gets the `main` slot as `children`) | views |
 | `view-actions` | chat top bar, `plugins/chat/web.tsx` | single | views |
 
@@ -273,7 +271,7 @@ Pattern: the plugin's slot component renders its button and, when `useSheet(name
   adds to a person's message (chat-mode, shared with the TUI). Tool cards are a fixed `switch (tool.name)` in
   `src/web/Chat.tsx:303-511` (bash, codemode, read, write, subagent, artifact, ports, send_file, edit, generic). React
   contexts the chat plugin provides to cards (`src/web/Chat.tsx:65-77`: `OpenConversation`, `OneShotAgents`,
-  `OpenPeerConversation`, `WorkingDirectory`, `OpenWorkspaceFile`, `SessionId`, `ReplyTo`) are not a plugin API.
+  `OpenPeerConversation`, `WorkingDirectory`, `SessionId`, `ReplyTo`) are not a plugin API.
 - **Owner notices:** one core lane (`src/web/OwnerNotices.tsx`) fed by `LogNotices` and the dev status; plugins can only
   publish server errors (2.3).
 - **Theme:** `src/web/theme.ts` (system/light/dark, `setTheme`/`subscribeTheme`) and CSS in `src/web/style.css`; plugins
@@ -320,7 +318,7 @@ Prompt registers templates and skills (`plugins/prompt/tui.ts:87`).
 
 | Registry | Key → value | Order | Users |
 | --- | --- | --- | --- |
-| `TuiToolRenderers` | tool name → pi `ToolRenderers` (`renderCall`, `renderResult`, `renderShell`, p2's `nestedCalls`; `src/tui/tools/types.ts`) | — (without one: pi's generic card) | coding-tools, powershell, codemode, artifacts, ports, send-file, subagents, history |
+| `TuiToolRenderers` | tool name → pi `ToolRenderers` (`renderCall`, `renderResult`, `renderShell`, p2's `nestedCalls`; `src/tui/tools/types.ts`) | — (without one: pi's generic card) | coding-tools, codemode, artifacts, ports, send-file, subagents, history |
 | `TuiToolRendererResolvers` | `<order>:<plugin>` → `(toolName, next) => renderers` | key order, then the registry (`src/tui/tools/index.ts`); the registry's `nestedCalls` stays | quiet-tools (`10:`: one line per call, full content when expanded or failed) |
 | `TuiSettingFields` | `<plugin>.<name>` → `/settings` row (label, values, fallback), stored at `settings.plugins.<plugin>.<name>` of the visitor's prefs; read with `pluginSetting`; resolvers get the settings, a change redraws every card (`src/runtime/tui-preferences.ts`) | after the built-in rows, key order | quiet-tools |
 | `TuiEntryRenderers` | entry kind → `(entry, ctx) => Component \| undefined` (replaces the display; `undefined` hides) | — | core `p2.shell` (`src/tui/core-commands.ts:290`) |
@@ -385,14 +383,12 @@ actions can be requested; `K` actions fire on the visitor's own key and may ask 
    (`chat-content`, `chat-attribution`) admit one plugin each.
 7. **Slots as lifecycle.** TUI plugins register invisible `service:*` / `widget-above:*` slots to get a per-runtime
    object, then find it with `ctx.surface(name)` (`plugins/prompt/tui.ts:74-80`, `plugins/models/tui.ts:116-118`).
-   The designed `widget-above`/`widget-below` rendering (`docs/p2-tui-port.md` §7.2) does not exist.
+   The designed `widget-above`/`widget-below` rendering does not exist.
 8. **The chat surface as API.** TUI plugins import `ChatSurface` and call its methods (`toolViews`, `setCanReply`);
    web plugins use `useComposerState()` from `src/web`. Neither is a declared contract.
-9. **Core knows plugins.** `Route` has `workspace`/`terminal`
-   fields (`src/web/navigation.ts:20-23`); `OwnerNotices` imports the logs contract (`src/web/OwnerNotices.tsx:3`);
+9. **Core knows plugins.** `OwnerNotices` imports the logs contract (`src/web/OwnerNotices.tsx:3`);
    the server reports `hasLogs: plugins.includes("logs")` (`src/hosts/server.ts:424`); `settings.json` has a closed
-   schema with plugin keys such as `codemode` (`src/runtime/settings.ts:63-68`); `src/web/Workspace.tsx` is the
-   workspace plugin's UI in core.
+   schema with plugin keys such as `codemode` (`src/runtime/settings.ts:63-68`).
 10. **Built-ins use internals.** dev-tools imports `src/hosts/dev-channel.ts`; devices imports `src/hosts/principals.ts`;
    sessions and status drive `HostLifecycle.manager` (opaque `SessionHosts`); models, login and radius call the process-global
    `processLogs.redactor`. Single-key registries (`HarnessConfig["default"]`, `HarnessEnvironments["remote"]`) and

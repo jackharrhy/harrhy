@@ -87,6 +87,7 @@ try {
   assert(socket && self && samples.at(-1));
   const hall = page.locator("#hall");
   await expect(hall).toHaveAttribute("data-mode", "walk");
+  const spawn = samples.find(Boolean);
   const beforeClick = samples.at(-1).z;
   await page.bringToFront();
   await page.mouse.click(400, 275);
@@ -151,6 +152,35 @@ try {
   await expect(hall).toHaveAttribute("data-mode", "walk");
   if (process.env.HARRHY_WORLD_TEST_SCREENSHOT)
     await page.screenshot({ path: process.env.HARRHY_WORLD_TEST_SCREENSHOT });
+  let respawn;
+  let respawnRequests = 0;
+  socket.on("framesent", ({ payload }) => {
+    if (JSON.parse(payload.toString()).type === "respawn") respawnRequests++;
+  });
+  socket.on("framereceived", ({ payload }) => {
+    const message = JSON.parse(payload.toString());
+    if (message.type === "respawn" && message.pose.id === self)
+      respawn = message.pose;
+  });
+  const input = await page.evaluateHandle(() => {
+    const element = document.createElement("input");
+    document.body.append(element);
+    element.focus();
+    return element;
+  });
+  await page.keyboard.press("r");
+  assert.equal(await input.evaluate((element) => element.value), "r");
+  await input.evaluate((element) => element.remove());
+  await canvas.focus();
+  await page.keyboard.press("r");
+  await expect
+    .poll(() => respawn && [respawn.x, respawn.y, respawn.z])
+    .toEqual([spawn.x, spawn.y, spawn.z]);
+  assert.equal(respawnRequests, 1);
+  assert.equal(
+    Math.hypot(respawn.velocityX, respawn.velocityZ, respawn.verticalVelocity),
+    0,
+  );
   await other.goto("about:blank");
   await expect(page.getByRole("status")).toHaveText(/1 player$/);
   await other.goBack();

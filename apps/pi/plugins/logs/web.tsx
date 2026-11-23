@@ -18,7 +18,7 @@ import "./style.css";
 
 function sourceLabel(source: string): string {
 	if (source.startsWith("session:")) return `Worker ${source.slice(8)}`;
-	return source === "dev" ? "Dev supervisor" : source === "terminals" ? "Terminal host" : "Server";
+	return source === "dev" ? "Dev supervisor" : "Server";
 }
 
 function LogsSheet({ source }: { source: string }) {
@@ -47,7 +47,7 @@ function LogsSheet({ source }: { source: string }) {
 			current = false;
 		};
 	}, [logs]);
-	const choices = [...new Set(["server", "terminals", "dev", source, ...sources.map((entry) => entry.id)])];
+	const choices = [...new Set(["server", "dev", source, ...sources.map((entry) => entry.id)])];
 	return (
 		<Sheet title="Logs" onClose={closeLayers} className="logs-sheet">
 			<div className="logs-controls">

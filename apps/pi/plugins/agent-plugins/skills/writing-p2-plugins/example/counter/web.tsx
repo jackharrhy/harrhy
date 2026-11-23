@@ -1,10 +1,25 @@
-// The counter's pane: view kind "counter", beside the transcript (a view) or in it (`inline`, a tool card's).
+// The counter's sheet: a command of the command menu opens it, and the `overlay:counter` slot renders it while it is
+// the top layer.
 import { BACKGROUND_CONTEXT, contribute, defineFacet, liveIn } from "@p2/app/v1";
-import { type PaneProps, useObject, useReadable, useStatus, ViewKinds } from "@p2/app/v1/web";
+import {
+	type Command,
+	Commands,
+	closeLayers,
+	openLayer,
+	Sheet,
+	Slots,
+	useCanWrite,
+	useObject,
+	useReadable,
+	useRoute,
+	useSheet,
+	useStatus,
+} from "@p2/app/v1/web";
 import { useEffect, useState } from "react";
 import { Counter } from "./contract.ts";
 
-function CounterPane({ session, editable, inline }: PaneProps) {
+function CounterPane({ session }: { session: string }) {
+	const editable = useCanWrite(session);
 	const ref = useObject(Counter, { session });
 	useStatus(ref);
 	const board = liveIn(ref, "player");
@@ -26,7 +41,7 @@ function CounterPane({ session, editable, inline }: PaneProps) {
 		return () => stop();
 	}, [board]);
 	return (
-		<div style={{ padding: inline ? 0 : "var(--x)" }}>
+		<div>
 			<p className="counter-count">{count ?? "…"}</p>
 			<p className="muted">Here: {present.join(", ")}</p>
 			{editable && board && (
@@ -44,8 +59,30 @@ function CounterPane({ session, editable, inline }: PaneProps) {
 	);
 }
 
+/** The sheet, while it is the top layer in a session. */
+function CounterSheet() {
+	const { session } = useRoute();
+	if (useSheet("counter") === undefined || session === undefined) return null;
+	return (
+		<Sheet title="Counter" onClose={closeLayers}>
+			<CounterPane session={session} />
+		</Sheet>
+	);
+}
+
+const COMMANDS: Readonly<Record<string, Command>> = {
+	"counter.open": {
+		title: "Counter",
+		group: "Counter",
+		order: 50,
+		target: ["session"],
+		action: { kind: "run", run: () => openLayer({ kind: "sheet", name: "counter" }) },
+	},
+};
+
 export default defineFacet((host) => {
 	contribute(host, "counter.web", (self) => {
-		self.contribute(ViewKinds, { counter: { Pane: CounterPane } });
+		self.contribute(Slots, { "overlay:counter": CounterSheet });
+		self.contribute(Commands, COMMANDS);
 	});
 });

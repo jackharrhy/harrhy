@@ -14,7 +14,7 @@ const value = await tools.agent({
 	label, // optional: the name of its row in the script's calls
 	model, // optional 'provider/modelId'; default: the caller's
 	thinkingLevel, // optional
-	tools, // optional subset of read, write, edit, bash, send_file, artifact; default: all
+	tools, // optional subset of read, write, edit, bash, send_file; default: all
 });
 ```
 

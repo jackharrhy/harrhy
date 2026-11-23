@@ -1,6 +1,6 @@
 # Remote environments
 
-`plugins/envs` manages SSH environments and sandboxes (Gondolin VMs on an SSH environment, see Sandboxes). Tools and workspace files live on the remote host; the worker,
+`plugins/envs` manages SSH environments and sandboxes (Gondolin VMs on an SSH environment, see Sandboxes). Tools and files live on the remote host; the worker,
 Durable history, provider credentials and model calls stay on this device. Remote sessions never fall back
 to local execution when configuration, trust or a connection is unavailable.
 
@@ -8,7 +8,7 @@ to local execution when configuration, trust or a connection is unavailable.
 
 1. Sidebar → **Envs** → **Add environment**. Give it a lowercase name (e.g. `gpu`), an SSH host or
    `~/.ssh/config` alias, and optional user, port, identity file, shell, login-shell setting and `KEY=value` overrides.
-2. **Upload private key** is available to every owner, locally or remotely (associated cookie-authenticated device or Radius),
+2. **Upload private key** is available to every owner, locally or remotely (an associated cookie-authenticated device),
    never guests; so is **Generate key**. Both store a passphrase-less key in the server's private data
    directory. Add its public key to the host's `~/.ssh/authorized_keys`. Existing identity files/agent keys work;
    passwords do not. Private keys are never returned to the browser. Uploads pass through your tunnel/relay, so use
@@ -22,7 +22,7 @@ to local execution when configuration, trust or a connection is unavailable.
 Session groups and the top bar display `gpu:/path`. The catalog stores the raw cwd and a separate `env` field.
 Every conversation works at a location `{ env, cwd }`: the main conversation at the session's; a subagent spawned
 without a cwd follows it; a subagent spawned with a cwd keeps its own, on the environment of the conversation that
-spawned it (its sidebar row, bar, workspace header and terminal tabs show `env:/path`). Deleting an environment
+spawned it (its sidebar row and bar show `env:/path`). Deleting an environment
 lists the sessions using it (working there or with a subagent there, archived ones included) and asks for a
 confirmation while there are any: their history stays, and their tools refuse to run until they move to another
 location (they never fall back to this device). An SSH environment with sandboxes on it is deleted only after them. Editing a valid
@@ -31,10 +31,9 @@ Opening the session again loads the new revision without replaying a prompt.
 
 Moving a session to another machine (Relocate, `/cd gpu:/path`) needs no worker restart when it is idle: the worker
 opens the new machine's environment (reading `envs.json` then), moves the main conversation and the subagents following
-it, reloads prompt resources and workspace watches there, and closes the old connection unless a subagent with its
+it, reloads prompt resources there, and closes the old connection unless a subagent with its
 own location still works on that machine. Open chats stay connected. Subagents spawned with their own cwd stay
-where they are, on their machine, and keep running their tools there. Terminals already running stay on the machine
-they were started on; new ones open where the viewed conversation works.
+where they are, on their machine, and keep running their tools there.
 
 ## Sandboxes
 
@@ -87,10 +86,10 @@ starts, stops and deletes sandboxes, in the Envs sheet; plugins pick an existing
   serve --token …`. The launcher starts the sandbox's supervisor if needed (`p2-sandbox.mjs serve`, one process holding
   the VM; socket and log under `~/.pi/p2/sandbox/run/<key>/`, `<key>` being the sandbox's name prefixed by a hash of this
   p2 installation's machine and data directory), copies the daemon into the VM and passes its stdin and stdout through.
-  Tools, the workspace, terminals, uploads and `send_file` then work as on any remote environment. Hosts must be
+  Tools, uploads and `send_file` then work as on any remote environment. Hosts must be
   Linux. Connections to a sandbox are keyed by its configuration and its host's: editing either opens new ones.
 - **Secrets:** per sandbox, in `<data>/sandbox-secrets.json` (0600, `plugins/envs/secrets.ts`; Envs sheet → the
-  sandbox → Secrets, presets for GitHub, Radius, npm and any header). Each has a name (the VM's environment variable),
+  sandbox → Secrets, presets for GitHub, npm and any header). Each has a name (the VM's environment variable),
   the hosts it is sent to (which must be allowed hosts) and a value. The VM sees only Gondolin placeholders; its HTTP
   proxy replaces them with the value in requests to those hosts. Presets add aliases (`GH_TOKEN` for GitHub) and a git
   credential helper (`GIT_CONFIG_*`, nothing written in the VM). Values reach the launcher only on `start`'s stdin and
@@ -107,8 +106,7 @@ starts, stops and deletes sandboxes, in the Envs sheet; plugins pick an existing
   owner's Relocate moves a session out (the web UI asks first, also for a move to another sandbox). Confinement is decided per
   conversation from its current location and the environment's configured `type`, never its name:
   `conversationConfinement(harness.environments, id, ctx)` (`@p2/app/v1/worker`), backed by
-  `HarnessEnvironmentEntry.sandbox`. The `terminal` tool lists and drives only the session's terminals in the
-  caller's sandbox. Tools that run on the p2 machine or reach unconfined places (MCP, ports, conversations, …) are a
+  `HarnessEnvironmentEntry.sandbox`. Tools that run on the p2 machine or reach unconfined places (MCP, conversations, …) are a
   session tool policy's job, not the location's.
 
 ## Data and execution
@@ -143,15 +141,10 @@ remote `~/.pi/mobile/tools/`; this fixed package path is not an import from apps
 
 Attachments are copied to remote `~/.pi/p2/uploads/<session>/` on the machine of the receiving conversation before
 prompt admission. The message lists remote paths; inline images still read the private local upload copy.
-`send_file`, workspace reads/uploads and coding tools use the conversation's environment. Global `<data>/AGENTS.md`
+`send_file`, uploads and coding tools use the conversation's environment. Global `<data>/AGENTS.md`
 remains local; project instructions are read from the conversation's cwd ancestors, and skills from its machine's
 `~/.pi/p2/skills/` and `<cwd>/.pi/skills/`. Prompt watches run through
 the same environment; remote prompt loading is background work so an offline host does not block worker startup.
-
-The terminals plugin opens a terminal at the viewed conversation's location (the server reads it from the catalog
-and its subagent list) with the same SSH configuration/known-hosts file. The former
-`terminal-sessions.json` mapping is no longer read. Detached terminals still outlive server/worker restarts;
-Windows PTYs remain unsupported.
 
 Read/write remote sharing requires explicit confirmation in the UI and `remoteConfirmed: true` at link creation
 or reset, whenever the session or one of its subagents works on a remote environment. Guests with send access can
@@ -169,4 +162,4 @@ host key, authorized client key and remote HOME. The SSH case skips if sshd or a
 it never contacts a real host. Coverage includes validation, observation/last-valid state, permissions, owner-only
 key generation, owner-only remote uploads (`remote-env-keys.test.ts`), lazy construction/no local fallback,
 fingerprints, key storage, local/remote directories, remote tools,
-workspace, uploads, prompt resources, downloads, terminal environment selection, busy-edit/idle restart and shares.
+uploads, prompt resources, downloads, busy-edit/idle restart and shares.

@@ -37,7 +37,7 @@ export function openActivity(row: string, step?: string): void {
  */
 export function toggleActivity(row: string, step?: string): void {
 	const { route } = getNavigation();
-	if (!route.workspace && route.activity?.row === row && route.activity.step === step) closePanel();
+	if (route.activity?.row === row && route.activity.step === step) closePanel();
 	else openActivity(row, step);
 }
 

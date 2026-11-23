@@ -4,7 +4,7 @@ import { loadWorldAssets } from "../viewer/assets.js";
 import type { WarningDetail, WorldSource } from "../viewer/types.js";
 import { TypeGpuWorldRenderer } from "./renderer.js";
 import { createSceneOverlay } from "./scene-overlay.js";
-import type { CameraState } from "./types.js";
+import type { CameraState, DistanceFog } from "./types.js";
 
 export interface EmbeddedMapsScene {
   readonly world: ParsedWorld;
@@ -26,9 +26,22 @@ export async function createEmbeddedMapsScene(options: {
   source: WorldSource;
   /** Optional atlas; the caller retains ownership of this bitmap. */
   overlayAtlas?: ImageBitmap;
+  /** Radial distances in BSP units for fading surfaces into the clear color. Off by default. */
+  fog?: DistanceFog;
 }): Promise<EmbeddedMapsScene> {
   if (!globalThis.navigator?.gpu)
     throw new Error("BSP rendering requires WebGPU");
+  const { fog } = options;
+  if (
+    fog &&
+    (!Number.isFinite(fog.start) ||
+      !Number.isFinite(fog.end) ||
+      fog.start < 0 ||
+      fog.end <= fog.start)
+  )
+    throw new RangeError(
+      "Fog requires finite BSP distances with 0 <= start < end",
+    );
   const loaded = await loadWorldAssets(options.source, {
     fetch: globalThis.fetch.bind(globalThis),
     signal: new AbortController().signal,
@@ -68,6 +81,7 @@ export async function createEmbeddedMapsScene(options: {
       loaded,
       "nearest",
       [0.04, 0.03, 0.02, 1],
+      fog,
     );
     await renderer.initialize();
     if (options.overlayAtlas)

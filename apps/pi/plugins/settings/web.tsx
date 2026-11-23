@@ -251,20 +251,6 @@ function SettingsSection({ id }: { id: OwnSection }) {
 					options={THINKING_LEVELS.map((level) => ({ value: level, label: level }))}
 					onChange={(value) => save({ thinkingLevel: THINKING_LEVELS.find((level) => level === value) })}
 				/>
-				<TextSetting
-					label="Models for cycling in the TUI (one pattern per line)"
-					value={(settings.enabledModels ?? []).join("\n")}
-					placeholder="All models"
-					rows={3}
-					mono
-					onSave={(text) => {
-						const patterns = text
-							.split("\n")
-							.map((line) => line.trim())
-							.filter(Boolean);
-						save({ enabledModels: patterns.length ? patterns : undefined });
-					}}
-				/>
 			</>
 		),
 		agent: (

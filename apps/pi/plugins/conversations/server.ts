@@ -1,20 +1,22 @@
-import { createHash } from "node:crypto";
-import { hostname } from "node:os";
+import { createHash, randomUUID } from "node:crypto";
 import {
 	awaitWithContext,
 	type Ctx,
 	defineFacet,
 	forbidden,
 	isChordError,
+	isOwner,
 	isWorker,
-	LOCAL,
 	nativeOf,
 	signalOf,
+	until,
+	withAbortSignal,
+	withoutAbortSignal,
 } from "@p2/app/v1";
-import { Hosts } from "@p2/app/v1/server";
+import { Hosts, sessionAdmissionOf } from "@p2/app/v1/server";
 import { ModelResources } from "../models/contract.ts";
-import { ProjectService, placeOn } from "../projects/contract.ts";
 import { Catalog, isThinkingLevel, type Session, SessionOperations } from "../sessions/contract.ts";
+import { Shares } from "../sharing/contract.ts";
 import { StatusStore } from "../status/contract.ts";
 import { ConversationBroker, Conversations, PeerConversation, type Query } from "./contract.ts";
 
@@ -23,9 +25,11 @@ import { ConversationBroker, Conversations, PeerConversation, type Query } from 
 export default defineFacet((host) => {
 	host.serve(ConversationBroker, (_params, self) => {
 		const catalog = self.get(Catalog, {});
+		const hosts = self.get(Hosts, {});
+		const shares = self.get(Shares, {});
+		const admission = sessionAdmissionOf(self);
 		const statuses = self.get(StatusStore, {});
 		const operations = self.get(SessionOperations, {});
-		const projects = self.get(ProjectService, {});
 		const resources = nativeOf(self, ModelResources, "The model configuration");
 
 		/**
@@ -53,21 +57,11 @@ export default defineFacet((host) => {
 			} catch (error) {
 				// The worker went away under the reference (killed, stopped idle, paused): retry once with a fresh reference.
 				// The worker deduplicates a send by its request ID, so a send that did arrive is not repeated.
-				if (signalOf(ctx).aborted || !(isChordError(error, "unavailable") || isChordError(error, "gone")))
-					throw error;
+				if (signalOf(ctx).aborted || !(isChordError(error, "unavailable") || isChordError(error, "gone"))) throw error;
 				result = await attempt();
 			}
 			if (await archived()) throw forbidden("Conversation is archived; the action may already have taken effect");
 			return result;
-		};
-
-		/** Where project `name` lives on `env` (null: this device). */
-		const placeOf = (name: string, env: string | null): string => {
-			const project = projects.projects.value.find((each) => each.name === name);
-			if (!project) throw new Error(`No project "${name}"; list shows the projects`);
-			const place = placeOn(project, env ?? LOCAL, hostname());
-			if (!place) throw new Error(`Project "${name}" has no place on ${env ?? "this device"}`);
-			return place.path;
 		};
 
 		/**
@@ -82,7 +76,10 @@ export default defineFacet((host) => {
 				};
 			const slash = named.indexOf("/");
 			if (slash <= 0) throw new Error("model must be 'provider/modelId'");
-			const model = { provider: named.slice(0, slash), modelId: named.slice(slash + 1) };
+			const model = {
+				provider: named.slice(0, slash),
+				modelId: named.slice(slash + 1),
+			};
 			const available = await resources().resources.models.getAvailable(model.provider);
 			if (!available.some((each) => each.id === model.modelId))
 				throw new Error(`${named} is not a signed-in model; leave model out to use yours`);
@@ -96,25 +93,81 @@ export default defineFacet((host) => {
 			query: Extract<Query, { action: "create" }>,
 			ctx: Ctx,
 		): Promise<Session> => {
-			if (query.project !== undefined && query.cwd !== undefined)
-				throw new Error("create takes either a project or a cwd, not both");
 			const env = query.env ?? null;
-			const cwd = query.project === undefined ? query.cwd : placeOf(query.project, env);
-			if (cwd === undefined) throw new Error("create needs either a project or a cwd");
 			const row = await operations.create(
 				{
 					id: idOf(`${sender.id}:${requestId}`),
 					env,
-					cwd,
+					cwd: query.cwd,
 					...(query.title === undefined ? {} : { title: query.title }),
 					...(await modelOf(query.model, sender)),
 				},
 				ctx,
 			);
-			if (query.project !== undefined) await projects.assign({ session: row.id, project: query.project }, ctx);
 			return row;
 		};
 
+		const sendWithCitation = async (
+			sender: Session,
+			to: string,
+			message: string,
+			taskId: number,
+			ctx: Ctx,
+		) => {
+			const session = sender.id;
+			const { entryId, quote } = await (await holdPeer(session, ctx)).currentQuote(taskId, ctx);
+			const cite = { session, conversation: 1 as const, entryId };
+			const destination = await holdPeer(to, ctx);
+			// Holding the remote reference starts the worker but does not await its published PID.
+			const timeout = AbortSignal.timeout(10_000);
+			const states = await until(
+				hosts.workers,
+				(workers) => !!(workers[to]?.running && workers[to]?.pid) || !!workers[to]?.error,
+				withAbortSignal(AbortSignal.any([signalOf(ctx), timeout]), ctx),
+			).catch((error: unknown) => {
+				if (signalOf(ctx).aborted || !timeout.aborted) throw error;
+				throw forbidden("Citation destination worker is not ready; retry shortly");
+			});
+			const worker = states[to];
+			if (!worker?.running || !worker.pid) throw forbidden("Citation destination worker is not ready; retry shortly");
+			const { generation, pid } = worker;
+			// Complete the fenced admission independently of the sending worker's connection. If the
+			// worker RPC fails ambiguously, retain both reservations until that PID exits.
+			const scope = withoutAbortSignal(ctx);
+			const sessions = [session, to];
+			const token = randomUUID();
+			const reserved = await admission().reserveGroup(
+				sessions,
+				{ generation, pid },
+				token,
+				async () => {
+					for (const id of sessions) {
+						const side = id === session ? "source" : "destination";
+						if ((await catalog.get({ id }, scope)).archivedAt !== null)
+							throw forbidden(`Citation ${side} session is archived`);
+						if (await shares.isShared({ session: id }, scope))
+							throw forbidden(`Citation ${side} session has a share link or active guest grant`);
+					}
+					return true;
+				},
+				scope,
+			);
+			if (!reserved) throw forbidden("Citation admission is reserved by another operation; retry shortly");
+			// One receipt per source input and destination, including across tool retries.
+			const id = createHash("sha256").update(JSON.stringify([session, to, String(entryId), "turn"])).digest("hex");
+			const result = await destination.citationSend(
+				{
+					generation,
+					title: sender.title,
+					message,
+					citation: { id, cite, quote, destination: to },
+				},
+				scope,
+			);
+			await admission().releaseGroup(sessions, token, scope);
+			if (result.submissionId === null) throw forbidden("Citation destination busy or request conflicts");
+			return { citationId: id, submissionId: result.submissionId };
+		};
 		return {
 			query: async ({ source, requestId, query }, ctx) => {
 				const sender = await catalog.get({ id: source }, ctx);
@@ -137,17 +190,25 @@ export default defineFacet((host) => {
 						ctx,
 					);
 				switch (query.action) {
+					case "citation": {
+						const peer = await holdPeer(source, ctx);
+						return {
+							action: "citation",
+							citation: await admission().mutate(
+								source,
+								async () => ((await shares.isShared({ session: source }, ctx)) ? null : peer.citation(query.id, ctx)),
+								ctx,
+							),
+						};
+					}
 					case "list": {
 						const sessions = catalog.sessions.value.filter((session) => session.archivedAt === null);
-						const memberships = projects.sessions.value;
 						return {
 							action: "list",
 							self: source,
 							truncated: sessions.length > 200,
-							projects: projects.projects.value,
 							peers: sessions.slice(0, 200).map((session) => {
 								const status = statuses.statuses.value[session.id];
-								const project = memberships[session.id];
 								return {
 									id: session.id,
 									title: session.title,
@@ -159,7 +220,6 @@ export default defineFacet((host) => {
 											: ("idle" as const),
 									env: session.env ?? null,
 									cwd: session.cwd,
-									...(project === undefined ? {} : { project }),
 								};
 							}),
 						};
@@ -167,7 +227,13 @@ export default defineFacet((host) => {
 					case "create": {
 						const row = await create(sender, requestId, query, ctx);
 						await send(row.id, query.message, undefined);
-						return { action: "create", to: row.id, title: row.title, env: row.env ?? null, cwd: row.cwd };
+						return {
+							action: "create",
+							to: row.id,
+							title: row.title,
+							env: row.env ?? null,
+							cwd: row.cwd,
+						};
 					}
 					case "restore":
 						await catalog.get({ id: query.to }, ctx);
@@ -183,7 +249,11 @@ export default defineFacet((host) => {
 				switch (query.action) {
 					case "send": {
 						if (!query.message.trim()) throw new Error("send needs a message");
-						const result = await send(recipient.id, query.message, query.followUp);
+						if (query.citationTaskId !== undefined && query.followUp)
+							throw forbidden("A citation cannot be queued; retry when the destination is idle");
+						const result = query.citationTaskId === undefined
+							? await send(recipient.id, query.message, query.followUp)
+							: await sendWithCitation(sender, recipient.id, query.message, query.citationTaskId, ctx);
 						return { action: "send", to: recipient.id, ...result };
 					}
 					case "answer":

@@ -1,5 +1,5 @@
 // Worker-side contracts of the subagents plugin: the session's subagent registry (a Durable document other worker
-// plugins read: one-shot agents, search, PowerShell), the tool choices subagents and one-shot agents resolve alike
+// plugins read: one-shot agents, search), the tool choices subagents and one-shot agents resolve alike
 // from their caller's tools, and giving a subagent its own location (a granted `location_move`).
 
 import type { ModelThinkingLevel } from "@earendil-works/pi-ai";
@@ -153,7 +153,7 @@ export function stillGiven(
 
 /**
  * The tools an agent of `kind` gets from a caller with tools `caller`: `names` among its choosable tools (default: all),
- * with code mode the caller's script-only tools (MCP tools, the terminal, `agent`, code mode's own), and for a
+ * with code mode the caller's script-only tools (MCP tools, `agent`, code mode's own), and for a
  * subagent the `scope: "subagent"` ones. Deferred tools stay deferred, except those in `load`. Text names the tools
  * `names` may not choose.
  */

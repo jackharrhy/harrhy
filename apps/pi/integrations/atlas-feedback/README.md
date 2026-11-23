@@ -55,7 +55,7 @@ authenticates this app credential and confines resources/targets. Do not expose 
 ### GET /atlas-feedback/targets
 
 ```json
-{"targets":[{"sessionId":"<stable root UUID>","key":"<opaque sha256 key>","revision":1,"label":"Actual session title","glyph":{"paths":[{"fill":"#4d9abf","d":"M...Z"}]}}],"defaultSessionId":"<configured UUID or null>","eligibleCount":1,"omittedPrivacyCount":0,"unavailable":[]}
+{"targets":[{"sessionId":"<stable root UUID>","key":"<opaque sha256 key>","revision":1,"label":"Actual session title"}],"defaultSessionId":"<configured UUID or null>","eligibleCount":1,"omittedPrivacyCount":0,"unavailable":[]}
 ```
 
 Only authorized, enabled bindings for this source/version/resource/origin whose sessions remain private/unarchived
@@ -69,8 +69,7 @@ worker is unavailable without restarting it; other root validation gets a five-s
 not verified writable and does not prevent healthy roots from appearing. Other infrastructure failures remain
 errors, not fabricated eligibility.
 
-Render glyph paths with SVG viewBox `0 0 3 3`; these are actual Pi glyph geometry, including project membership.
-No cwd, project path seed or authentication details are returned. The default may be unavailable: clients must show
+No cwd, project path or authentication details are returned. The default may be unavailable: clients must show
 that fact rather than silently choosing another recipient.
 
 ### POST /atlas-feedback/batches
@@ -163,7 +162,7 @@ npm run check
 ```
 
 Tests use disposable real stores, synthetic targets and the fake model. They cover ingress credentials and Origin,
-allowlist/privacy/glyphs, bounds/resource policy, strict unknown fields/payload version, projection/content digest
+allowlist/privacy, bounds/resource policy, strict unknown fields/payload version, projection/content digest
 conflicts, concurrent retries, one native external
 entry, retirement, original-binding settlement readback, sharing revocation, and server restart. No real-agent input,
 real subscriptions, auth keys, host routes or runtime reloads are part of testing.
