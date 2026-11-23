@@ -92,7 +92,7 @@ const usePageVisible = () => useSyncExternalStore(subscribeVisibility, () => doc
 const startRows = <SlotList prefix="sidebar-start" />;
 /** Icon buttons at the footer's end, before the theme switch (`sidebar-actions:<name>`, e.g. the Settings gear). */
 const actions = <SlotList prefix="sidebar-actions" />;
-/** Icon buttons in the header, before the collapse button (`sidebar-header:<name>`, e.g. the scope prompt's). */
+/** Icon buttons in the header, before the collapse button (`sidebar-header:<name>`). */
 const headerActions = <SlotList prefix="sidebar-header" />;
 
 /** The sidebar's New session: the new-session screen, without the model chosen before. */

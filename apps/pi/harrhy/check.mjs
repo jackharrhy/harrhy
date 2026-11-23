@@ -43,7 +43,7 @@ sandbox([
   "__tests__/p2/github-checks.test.ts",
   "__tests__/p2/repositories.test.ts",
   "__tests__/p2/work-context-previews.test.ts",
-  "__tests__/p2/scope-prompt.test.ts",
+  "__tests__/p2/view-input-notes.test.ts",
   "__tests__/p2/stimuli-lifecycle.test.ts",
   "__tests__/p2/addressed-stimuli.test.ts",
   "__tests__/p2/local-inbox.test.ts",

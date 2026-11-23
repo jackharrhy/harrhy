@@ -1,10 +1,10 @@
-// How a message that carried scope context shows in the transcript: the person's text as always, with a
-// note of what came along. The entry kind and data shape are those of the removed views plugin, so messages sent
-// before still show their selections and annotations.
-import type { EntryDisplay } from "../chat/contract.ts";
+// Notes on messages sent before the views and scope prompt plugins were removed. Their entries are kind `p2.view-input`
+// with the message data plus `views` (counts of selections and annotations, and other plugins' notes). The transcript
+// still shows the person's text; this keeps the note of what came along.
+import type { EntryDisplay } from "./contract.ts";
 
-/** The entry kind of a person's message that carried context to the agent (the views plugin's kind, kept for old entries). */
-export const SCOPE_INPUT = "p2.view-input";
+/** The entry kind of a person's message that carried views context to the agent (kept for old entries). */
+export const VIEW_INPUT_ENTRY = "p2.view-input";
 
 /** The note on a `p2.view-input` entry: how many selections and annotations it carried, and other plugins' notes. */
 export function viewInputDisplay(data: unknown): EntryDisplay | undefined {

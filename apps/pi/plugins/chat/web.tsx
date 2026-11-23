@@ -144,6 +144,7 @@ import { isDefaultChoice, newSessionChoice, thinkingLevelOf } from "./model-choi
 import { useModelScreen } from "./model-screens.ts";
 import { type Outgoing, outboxOf } from "./outbox.ts";
 import { sessionStart } from "./session-start.ts";
+import { VIEW_INPUT_ENTRY, viewInputDisplay } from "./view-input.ts";
 
 /** An upload the server answered with an error status. */
 class UploadError extends Error {
@@ -1985,6 +1986,7 @@ function Main() {
 export default defineFacet((host, self) => {
 	// The chat plugin defines the transcript's entry displays (chat-mode adds its own): served on the page too.
 	serveKeyed(host, TranscriptEntries);
+	self.contribute(TranscriptEntries, { [VIEW_INPUT_ENTRY]: viewInputDisplay });
 	self.contribute(Slots, { main: Main });
 	self.contribute(Commands, MODEL_COMMANDS);
 	self.contribute(CommandPages, MODEL_PAGES);

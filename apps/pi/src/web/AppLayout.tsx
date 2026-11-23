@@ -104,7 +104,7 @@ function Layout() {
 			</main>
 			<div id="side-dock" className="side-dock" />
 			<SettingsSectionSheets />
-			{/* Layers over the whole page (`overlay:<name>`), e.g. the scope prompt's highlight and composer. */}
+			{/* Layers over the whole page (`overlay:<name>`), */}
 			<SlotList prefix="overlay" />
 		</div>
 	);

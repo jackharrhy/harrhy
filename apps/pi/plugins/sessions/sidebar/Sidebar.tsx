@@ -291,7 +291,7 @@ export const SidebarView = memo(function SidebarView({
 	/** Opens a rollup's or a group's list in the main area. */
 	onPage: (key: string) => void;
 	onCollapseSidebar: () => void;
-	/** Icon buttons in the owner's header, before the collapse button (e.g. the scope prompt's). */
+	/** Icon buttons in the owner's header, before the collapse button. */
 	headerActions?: ReactNode;
 	/** Icon buttons at the footer's end, before the theme switch (the owner's), e.g. the Settings gear. */
 	footerActions?: ReactNode;
