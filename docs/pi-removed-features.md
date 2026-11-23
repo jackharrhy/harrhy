@@ -19,6 +19,7 @@ at that commit.
 | Vendored TUI package | `9041e2c9` | `compat/packages/tui` (`@earendil-works/pi-tui`), `compat/packages/chord/src/tui`, `compat/packages/chord/src/node/tui`, the `/tui` and `/tui/launcher` Chord entry points |
 | Projects | `ef8c5dbc` | `plugins/projects`, `plugins/sessions/{project-commands.tsx,sidebar/NewProjectSheet.tsx,sidebar/drag.ts}`, the `SessionCopied` hook, the new-session screen's project picker, the sidebar's Projects rollup |
 | Session tree UI | `15f6ce2f` | `plugins/tree/{web.tsx,TreePanel.tsx,toc.ts,entry-in-view.ts,tree.css,branch-target.ts}`, `plugins/sessions/BranchSheet.tsx`, the `sessions.rename-branch` command, the `tree-actions` slot and `.tree-toggle` style |
+| Glyphs | `d78f5ad5` | `plugins/glyphs`, the chat header icon, `externalTargetGlyphs` |
 
 Paths are under `apps/pi/`.
 
@@ -276,8 +277,8 @@ good deal more in the sessions plugin's sidebar.
   the projects first.
 - A rollup's script saw `projects` and each session's `project`, and a group's target could name a project.
 - The glyph of a session's row and top bar came from its project's first place when it had one, so a project, its
-  folders and its sessions looked alike. Without projects the glyph is the session's own folder (`glyphOf(cwd)`); the
-  `glyphs` plugin and `/glyph.svg` are unchanged.
+  folders and its sessions looked alike. Without projects the glyph is the session's own folder (`glyphOf(cwd)`).
+  The `glyphs` plugin was removed later; see Glyphs.
 
 What stayed:
 
@@ -329,3 +330,22 @@ Worth bringing back:
   only by a link naming its conversation. A branch switcher on the session or a plain branch list would restore this;
   the panel's turn nesting was more than that needs.
 - Renaming a branch. Labels are still stored (the start of the branch's first message), but nothing can change them.
+
+## Glyphs
+
+A small colored picture per session, a stand-in for the session's folder so sessions in the same folder looked alike.
+
+- `plugins/glyphs/glyph.ts`: `glyphOf(seed)` hashed a folder path (short form, so `/Users/me/x` and `~/x` agreed) with
+  SHA-256 (`glyph-v1:` prefix) into a 3x3 identicon: four colors (coral, blue, gold, teal), loose masks, rich cell
+  shapes, four mirror axes and color regions. Every glyph was mirror-symmetric, so none could be a pinwheel. The result
+  was one SVG path per color in a `0 0 3 3` view box. `glyphSvg` wrapped it as a standalone SVG file.
+- `GlyphIcon.tsx`: the inline SVG. The chat header drew it at 11px next to the folder under the session title.
+- `server.ts`: the public `GET /glyph.svg?seed=&size=` route, for `<img src>` use, cached for a day.
+- `contract.server.ts` and `externalTargetGlyphs(ctx)` in `src/api/v1/external-targets.ts`: native glyph geometry for
+  trusted server adapters, looked up by session id so the folder path never left the server.
+- The Atlas feedback integration sent each session's `glyph` (`{ paths: [{ fill, d }] }`) in
+  `GET /atlas-feedback/targets`. Pi now sends `glyph: { paths: [] }` because Atlas's bridge still rejects a target
+  without the field.
+
+Worth bringing back: a per-session "flavor" (an identity mark in the header, the sidebar and Atlas's recipient list).
+`glyph.ts` at the last commit is a pure function and can be lifted as is, with whatever seed the new mark needs.
