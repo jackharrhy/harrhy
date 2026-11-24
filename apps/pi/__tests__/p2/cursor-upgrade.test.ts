@@ -66,6 +66,7 @@ const going: RunRecordV1 = {
 	session: SESSION,
 	conversation: 1,
 	agentId: "agent-3",
+	cwd: "/tmp/work",
 	deadline: 4_000_000_000_000,
 	text: "",
 	notified: "no",
@@ -131,14 +132,14 @@ it("loads settings and runs stored by version 1, keeps their values and gives th
 		assert.deepEqual(
 			listed.map((run) => [run.id, run.status, run.sandbox]),
 			[
-				[going.id, "failed", undefined],
+				[going.id, "interrupted", undefined],
 				[failed.id, "failed", undefined],
 				[finished.id, "finished", undefined],
 			],
 		);
-		// A run an older version was running in the server process left no worker: it ends as failed, saying why, with its agent id.
+		// A run an older version was running in the server process left no worker, but its Cursor agent is known: interrupted.
 		const legacy = await runs.status({ id: going.id }, TEST);
-		assert.match(legacy.error!, /older version of this plugin.*left no worker.*agent-3/);
+		assert.match(legacy.interruption!, /older version of this plugin/);
 		const result = await runs.result({ id: finished.id }, TEST);
 		assert.equal(result.text, "It is a game.");
 		assert.deepEqual(result.run.usage, finished.usage);

@@ -8,7 +8,7 @@
 // starts a new worker that resumes the same agent with a message saying what happened.
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
-import { rm, writeFile } from "node:fs/promises";
+import { mkdir, rm, writeFile } from "node:fs/promises";
 import { uptime } from "node:os";
 import { join } from "node:path";
 import { type Ctx, type Ref, signalOf } from "@p2/app/v1";
@@ -584,7 +584,19 @@ export function createManager(deps: Deps) {
 					entry.directory = directory;
 					void observe(record.id, key ?? "", true);
 				} else {
-					await finish(record.id, "failed", undefined, `This run was going inside the Pi server process of an older version of this plugin, which stopped; it left no worker and no record Pi can resume from.${record.agentId ? ` Its Cursor agent id is ${record.agentId}: the Cursor CLI can resume it (cursor-agent --resume).` : ""}`, key ?? "");
+					// Version 2 of this plugin ran the agent inside the server process, which a stop or reload ends. The Cursor agent
+					// and its edits are still there, so the run is interrupted (resumable), not failed, when its id is known.
+					const resumable = record.agentId !== undefined && record.cwd !== undefined;
+					await finish(
+						record.id,
+						resumable ? "interrupted" : "failed",
+						undefined,
+						resumable ? undefined : "This run was going inside the Pi server process of an older version of this plugin, which stopped; it left no worker and no Cursor agent id Pi can resume.",
+						key ?? "",
+						resumable
+							? { interruption: "the Pi server (or this plugin) stopping: this run was going inside the server process of an older version of this plugin, which ends it", interruptedAt: Date.now() }
+							: {},
+					);
 				}
 				continue;
 			}
@@ -745,7 +757,28 @@ export function createManager(deps: Deps) {
 		try {
 			if (record.runtime === "local") {
 				const directory = directoryOf(id);
-				const old = await readJson<WorkerRequest>(join(directory, FILES.request));
+				let old = await readJson<WorkerRequest>(join(directory, FILES.request));
+				if (old === undefined && record.cwd !== undefined) {
+					// A run an older version of this plugin ran inside the server process: no request was kept, so it is rebuilt from
+					// the record (its directory was checked when it started; it is checked again).
+					await mkdir(directory, { recursive: true, mode: 0o700 });
+					old = {
+						version: 1,
+						runId: id,
+						prompt: record.prompt,
+						model: (record.model ?? "").split(" (")[0] ?? "",
+						mode: record.mode,
+						base: record.cwd,
+						cwd: record.cwd,
+						allowEdits: false,
+						sandboxMode: "when-possible",
+						sandbox: false,
+						deadline,
+						heartbeatMs: deps.heartbeatMs,
+						pollMs: deps.pollMs,
+						attempt: 1,
+					};
+				}
 				if (old === undefined) throw new Error("The run's record of what it was asked is gone");
 				const edits = store.config.value.allowLocalEdits;
 				const sandboxMode = store.config.value.sandbox ?? "when-possible";
