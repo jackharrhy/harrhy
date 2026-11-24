@@ -27,6 +27,9 @@ function CursorSheet() {
 	const repos = useReadable(settings?.repos);
 	const allowLocalEdits = useReadable(settings?.allowLocalEdits);
 	const allowCloudEdits = useReadable(settings?.allowCloudEdits);
+	const sandbox = useReadable(settings?.sandbox);
+	const sandboxStatus = useReadable(settings?.sandboxStatus);
+	const [sandboxNote, setSandboxNote] = useState<string>();
 	const [key, setKey] = useState("");
 	const [repo, setRepo] = useState("");
 	const [models, setModels] = useState<Models>([]);
@@ -227,8 +230,54 @@ function CursorSheet() {
 					onChange={(allow) => run(() => settings?.setAllowLocalEdits({ allow }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
 				/>
 				<p className="muted small">
-					Off: local agents only read (ask and plan). On: agent mode, in the session&apos;s directory, with Cursor&apos;s
-					shell sandbox.
+					Off: local agents only read (ask and plan). On: agent mode, in the session&apos;s directory.
+				</p>
+				<label className="field">
+					<span className="label">Sandbox local agents</span>
+					<select
+						className="input"
+						aria-label="Sandbox local agents"
+						value={sandbox ?? "when-possible"}
+						disabled={busy || !settings}
+						onChange={(event) => {
+							const mode = event.target.value === "required" ? "required" : event.target.value === "off" ? "off" : "when-possible";
+							run(() => settings?.setSandbox({ mode }, BACKGROUND_CONTEXT) ?? Promise.resolve());
+						}}
+					>
+						<option value="when-possible">When possible</option>
+						<option value="required">Required</option>
+						<option value="off">Off</option>
+					</select>
+				</label>
+				<div className="inline-form">
+					<output className="muted small" aria-label="Sandbox status">
+						Sandbox:{" "}
+						{sandboxStatus?.status === "supported"
+							? "supported"
+							: sandboxStatus?.status === "unsupported"
+								? "not supported on this machine"
+								: "not checked"}
+					</output>
+					<button
+						type="button"
+						className="button"
+						disabled={busy || !settings}
+						onClick={() =>
+							run(async () => {
+								setSandboxNote(undefined);
+								const checked = await settings?.checkSandbox({}, BACKGROUND_CONTEXT);
+								setSandboxNote(checked?.detail);
+							})
+						}
+					>
+						Check sandbox
+					</button>
+				</div>
+				{sandboxNote && <p className="muted small">{sandboxNote}</p>}
+				<p className="muted small">
+					Cursor&apos;s shell sandbox keeps an agent-mode shell inside the working directory. When possible: ask for it, and run
+					without it if this machine cannot (the result says so). Required: fail instead. Off: never ask. The check makes one
+					small request to Cursor.
 				</p>
 				<Switch
 					label="Allow cloud agents to change repositories"

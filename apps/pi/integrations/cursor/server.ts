@@ -7,7 +7,7 @@ import { CursorRuns, CursorSettings } from "./contract.ts";
 import { type Deps, createManager, type Manager } from "./runs.ts";
 import { openSecrets, type CursorSecrets } from "./secrets.ts";
 import { sdkClient } from "./sdk.ts";
-import { ConfigState, CursorStore, MAX_REPOS, RunsState } from "./store.ts";
+import { ConfigState, CursorStore, MAX_REPOS, RunsState, SandboxState } from "./store.ts";
 
 const ALLOW = /^(?!\.{1,2}\/)[A-Za-z0-9._-]+\/(?:\*|(?!\.{1,2}$)[A-Za-z0-9._-]+)$/;
 const KEY = /^\S{8,512}$/;
@@ -36,9 +36,18 @@ export default defineFacet((host) => {
 	host.serve(CursorStore, (_params, self) => {
 		const config = self.state(ConfigState);
 		const runs = self.state(RunsState);
+		const sandbox = self.state(SandboxState);
 		return {
 			config: deriveTyped(self, [config], ([value]) => value),
 			runs: deriveTyped(self, [runs], ([value]) => value.runs),
+			sandboxStatus: deriveTyped(self, [sandbox], ([value]) => value),
+			setSandboxStatus: async (status, ctx) => {
+				await sandbox.change((draft) => {
+					draft.status = status.status;
+					draft.detail = status.detail;
+				}, ctx);
+				return null;
+			},
 			patchConfig: async (patch, ctx) => {
 				await config.change((draft) => {
 					if (patch.keyStored !== undefined) draft.keyStored = patch.keyStored;
@@ -46,6 +55,7 @@ export default defineFacet((host) => {
 					if (patch.runtime !== undefined) draft.runtime = patch.runtime;
 					if (patch.allowLocalEdits !== undefined) draft.allowLocalEdits = patch.allowLocalEdits;
 					if (patch.allowCloudEdits !== undefined) draft.allowCloudEdits = patch.allowCloudEdits;
+					if (patch.sandbox !== undefined) draft.sandbox = patch.sandbox;
 					const allow = patch.allowRepo;
 					if (allow !== undefined && !draft.repos.some((have) => have.toLowerCase() === allow.toLowerCase())) {
 						if (draft.repos.length >= MAX_REPOS) throw invalid("args", `At most ${MAX_REPOS} repositories`);
@@ -91,6 +101,8 @@ export default defineFacet((host) => {
 				repos: deriveTyped(self, [store.config], ([value]) => value.repos),
 				allowLocalEdits: deriveTyped(self, [store.config], ([value]) => value.allowLocalEdits),
 				allowCloudEdits: deriveTyped(self, [store.config], ([value]) => value.allowCloudEdits),
+				sandbox: deriveTyped(self, [store.config], ([value]) => value.sandbox ?? "when-possible"),
+				sandboxStatus: deriveTyped(self, [store.sandboxStatus], ([value]) => value),
 				setKey: async ({ key }, ctx) => {
 					const trimmed = key.trim();
 					// The message never repeats the key.
@@ -122,7 +134,7 @@ export default defineFacet((host) => {
 					const key = await manager.apiKey();
 					if (key === undefined) return { ok: false, message: "No API key", models: [] };
 					try {
-						const models = (await (await manager.clientFor(key)).models()).slice(0, 300);
+						const models = (await (await manager.clientFor(key)).models()).slice(0, 300).map(({ id, name }) => ({ id, name }));
 						return { ok: true, message: `${models.length} models`, models };
 					} catch (error) {
 						return { ok: false, message: manager.safe(error, key), models: [] };
@@ -151,6 +163,11 @@ export default defineFacet((host) => {
 					await patch({ allowCloudEdits: allow }, ctx);
 					return null;
 				},
+				setSandbox: async ({ mode }, ctx) => {
+					await patch({ sandbox: mode }, ctx);
+					return null;
+				},
+				checkSandbox: async (_args, ctx) => (await open(ctx)).manager.checkSandbox(),
 			},
 		};
 	});
@@ -166,6 +183,7 @@ export default defineFacet((host) => {
 				result: async ({ id, maxChars }, ctx) => (await open(ctx)).manager.result(session, id, maxChars),
 				cancel: async ({ id }, ctx) => (await open(ctx)).manager.cancel(session, id),
 				list: async (_args, ctx) => (await open(ctx)).manager.list(session),
+				models: async (_args, ctx) => (await open(ctx)).manager.models(),
 			},
 		};
 	});

@@ -1,7 +1,7 @@
 // What a `cursor.run` subscription and its events are, the agent's remote (start, look at and stop runs) and the owner's
 // settings. Descriptions only: the rules are in policy.ts and runs.ts. Shared by the server, the worker and the web facet.
 import { arr, bool, int, nul, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
-import { literal, method, remote, serverHost } from "@p2/app/v1";
+import { literal, method, record, remote, serverHost } from "@p2/app/v1";
 
 export const SOURCE_ID = "cursor.run";
 export const SOURCE_VERSION = 1;
@@ -35,6 +35,18 @@ export const StatusSchema = union([
 	literal("timed-out"),
 ]);
 export type Status = Static<typeof StatusSchema>;
+
+/** Local agent runs and Cursor's shell sandbox: ask for it when possible (default), require it, or never ask. */
+export const SandboxModeSchema = union([literal("when-possible"), literal("required"), literal("off")]);
+export type SandboxMode = Static<typeof SandboxModeSchema>;
+/** What this machine can do, as far as Pi has found out (this process only). */
+export const SandboxStatusSchema = obj({
+	status: union([literal("unknown"), literal("supported"), literal("unsupported")]),
+	detail: str({ maxLength: 300 }),
+});
+export type SandboxStatus = Static<typeof SandboxStatusSchema>;
+/** How a local agent-mode run went: `on` (sandboxed), `off` (the owner turned it off), `unavailable` (asked for, not supported here). */
+export const RunSandboxSchema = union([literal("on"), literal("off"), literal("unavailable")]);
 
 /** `owner/name` (GitHub), the only repository form a cloud run takes. */
 export const REPO_PATTERN = "^(?!\\.{1,2}/)[A-Za-z0-9._-]+/(?!\\.{1,2}$)[A-Za-z0-9._-]+$";
@@ -70,6 +82,8 @@ export const RUN_VIEW = {
 	git: opt(GitSchema),
 	/** How much final text is kept for `cursor_result`. */
 	resultChars: opt(int({ minimum: 0 })),
+	/** Local agent-mode runs only. */
+	sandbox: opt(RunSandboxSchema),
 };
 export const RunViewSchema = obj(RUN_VIEW);
 export type RunView = Static<typeof RunViewSchema>;
@@ -86,6 +100,7 @@ export const EventSchema = obj({
 	/** The start of the run's final text (at most `LIMITS.summary` characters), and whether there was more. */
 	summary: str({ maxLength: LIMITS.summary }),
 	truncated: bool(),
+	sandbox: opt(RunSandboxSchema),
 	error: opt(str({ maxLength: 500 })),
 	git: opt(GitSchema),
 	durationMs: opt(int({ minimum: 0 })),
@@ -99,6 +114,8 @@ const StartArgs = obj({
 	runtime: opt(RuntimeSchema),
 	mode: opt(ModeSchema),
 	model: opt(str({ minLength: 1, maxLength: 200 })),
+	/** Parameters of the model (`{ effort: "high", thinking: "true" }`), as `cursor_models` lists them. */
+	modelParams: opt(record(str({ maxLength: 50 }))),
 	repo: opt(str({ maxLength: 200 })),
 	branch: opt(str({ minLength: 1, maxLength: 255 })),
 	/** Local runs: a directory inside the session's, relative to it (default: the session's own). */
@@ -113,7 +130,7 @@ export type StartArgs = Static<typeof StartArgs>;
 
 /** The server's side of the agent's tools. Every method is about the calling session's own runs. */
 export const CursorRuns = remote("p2.cursor-runs", {
-	version: 1,
+	version: 2,
 	params: {},
 	hostAddress: serverHost,
 	variants: {
@@ -127,6 +144,15 @@ export const CursorRuns = remote("p2.cursor-runs", {
 				),
 				cancel: method(obj({ id: str() }), RunViewSchema),
 				list: method(obj({}), arr(RunViewSchema)),
+				/** The model ids the key may use, from the SDK's live list (kept ten minutes), with their parameters. */
+				models: method(
+					obj({}),
+					obj({
+						default: str(),
+						models: arr(obj({ id: str(), name: str(), default: bool(), params: str() })),
+						note: str(),
+					}),
+				),
 			},
 		},
 	},
@@ -136,7 +162,7 @@ const ModelInfo = obj({ id: str({ maxLength: 200 }), name: str({ maxLength: 200 
 
 /** The owner's settings (Settings › Cursor). The API key goes in and never comes out. */
 export const CursorSettings = remote("p2.cursor-settings", {
-	version: 1,
+	version: 2,
 	params: {},
 	hostAddress: serverHost,
 	variants: {
@@ -150,6 +176,8 @@ export const CursorSettings = remote("p2.cursor-settings", {
 				repos: arr(str()),
 				allowLocalEdits: bool(),
 				allowCloudEdits: bool(),
+				sandbox: SandboxModeSchema,
+				sandboxStatus: SandboxStatusSchema,
 			},
 			methods: {
 				setKey: method(obj({ key: str({ minLength: 8, maxLength: 512 }) })),
@@ -163,6 +191,9 @@ export const CursorSettings = remote("p2.cursor-settings", {
 				remove: method(obj({ repo: str({ maxLength: 200 }) })),
 				setAllowLocalEdits: method(obj({ allow: bool() })),
 				setAllowCloudEdits: method(obj({ allow: bool() })),
+				setSandbox: method(obj({ mode: SandboxModeSchema })),
+				/** Asks the SDK, with one tiny request, whether it can sandbox a local agent here. */
+				checkSandbox: method(obj({}), SandboxStatusSchema),
 			},
 		},
 	},

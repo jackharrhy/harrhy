@@ -2,8 +2,9 @@
 // place that says where a local run may work, which repositories a cloud run may use and when files may change.
 import { realpath, stat } from "node:fs/promises";
 import { isAbsolute, resolve, sep } from "node:path";
-import type { StartSpec } from "./client.ts";
-import { type Mode, REPO_PATTERN, type Runtime, type StartArgs } from "./contract.ts";
+import type { ModelInfo, StartSpec } from "./client.ts";
+import { type Mode, REPO_PATTERN, type Runtime, type SandboxMode, type StartArgs } from "./contract.ts";
+import { modelLabel, type Resolved, resolveModel } from "./models.ts";
 
 /** The owner's choices (Settings › Cursor) that decide a run. */
 export type Policy = {
@@ -12,9 +13,21 @@ export type Policy = {
 	repos: readonly string[];
 	allowLocalEdits: boolean;
 	allowCloudEdits: boolean;
+	/** Absent in settings stored before the sandbox choice existed: `when-possible`. */
+	sandbox?: SandboxMode;
 };
 
-export type Plan = { runtime: Runtime; mode: Mode; spec: StartSpec; cwd?: string; repo?: string; branch?: string; model?: string };
+export type Plan = {
+	runtime: Runtime;
+	mode: Mode;
+	spec: StartSpec;
+	cwd?: string;
+	repo?: string;
+	branch?: string;
+	/** The model as a run's view shows it, parameters included. */
+	model?: string;
+	sandbox: SandboxMode;
+};
 
 const REPO = new RegExp(REPO_PATTERN);
 const MODEL = /^[\w.:/@+-]{1,200}$/;
@@ -34,11 +47,22 @@ export function repoAllowed(repo: string, patterns: readonly string[]): boolean 
 export const within = (outer: string, inner: string) => inner === outer || inner.startsWith(outer.endsWith(sep) ? outer : outer + sep);
 
 /** The plan for a request, or the reason it is refused (an Error whose message is for the agent). */
-export async function plan(args: Omit<StartArgs, "runId">, policy: Policy): Promise<Plan> {
+export async function plan(args: Omit<StartArgs, "runId">, policy: Policy, models?: readonly ModelInfo[]): Promise<Plan> {
 	const runtime = args.runtime ?? policy.runtime;
 	const mode = args.mode ?? "ask";
-	const model = args.model ?? (policy.model || undefined);
-	if (model !== undefined && !MODEL.test(model)) throw new Error("That is not a model id");
+	const name = args.model ?? (policy.model || undefined);
+	if (name !== undefined && !MODEL.test(name)) throw new Error("That is not a model id");
+	let chosen: Resolved | undefined;
+	if (name !== undefined) {
+		// The live list decides; when it cannot be had, the name goes to Cursor as it is and Cursor decides.
+		if (models !== undefined && models.length > 0) chosen = resolveModel(name, args.modelParams, models);
+		else if (args.modelParams !== undefined && Object.keys(args.modelParams).length > 0)
+			throw new Error("The model list is not available, so model parameters cannot be checked: try again, or leave them out");
+		else chosen = { id: name, params: [] };
+	}
+	const model = chosen === undefined ? undefined : modelLabel(chosen);
+	const modelSpec = chosen === undefined ? {} : { model: chosen.id, ...(chosen.params.length ? { modelParams: chosen.params } : {}) };
+	const sandbox = policy.sandbox ?? "when-possible";
 	if (runtime === "cloud") {
 		if (args.path !== undefined) throw new Error("`path` is for local runs: a cloud run works on a repository, not a directory");
 		if (args.repo === undefined) throw new Error("A cloud run needs `repo` (owner/name)");
@@ -53,6 +77,7 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy): Prom
 		return {
 			runtime,
 			mode,
+			sandbox,
 			repo: args.repo,
 			...(args.branch === undefined ? {} : { branch: args.branch }),
 			...(model === undefined ? {} : { model }),
@@ -62,7 +87,7 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy): Prom
 				mode: cloudMode,
 				repo: args.repo,
 				...(args.branch === undefined ? {} : { branch: args.branch }),
-				...(model === undefined ? {} : { model }),
+				...modelSpec,
 			},
 		};
 	}
@@ -70,7 +95,7 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy): Prom
 	if (args.env !== null) throw new Error(`This session works on ${args.env}, not on the Pi server: local Cursor runs work only on the server's machine. Use a cloud run`);
 	if (mode === "agent" && !policy.allowLocalEdits)
 		throw new Error("Local agents may not edit files (agent mode): the owner can allow it in Settings › Cursor. Use mode `ask` or `plan`");
-	if (model === undefined) throw new Error("No model: the owner can choose a default in Settings › Cursor, or pass `model`");
+	if (chosen === undefined || model === undefined) throw new Error("No model: the owner can choose a default in Settings › Cursor, or pass `model`");
 	if (args.path !== undefined && isAbsolute(args.path)) throw new Error("`path` is relative to the session's directory");
 	let base: string;
 	let cwd: string;
@@ -84,5 +109,12 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy): Prom
 	if (!within(base, cwd)) throw new Error("`path` is outside this session's directory");
 	if (base === sep) throw new Error("A local run will not work in the filesystem root");
 	if (!(await stat(cwd)).isDirectory()) throw new Error("`path` is not a directory");
-	return { runtime, mode, cwd, model, spec: { runtime: "local", prompt: args.prompt, model, cwd, mode } };
+	return {
+		runtime,
+		mode,
+		cwd,
+		model,
+		sandbox,
+		spec: { runtime: "local", prompt: args.prompt, model: chosen.id, ...(chosen.params.length ? { modelParams: chosen.params } : {}), cwd, mode, sandbox: mode === "agent" && sandbox !== "off" },
+	};
 }

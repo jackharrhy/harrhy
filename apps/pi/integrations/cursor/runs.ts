@@ -2,17 +2,29 @@
 // it is done. Cloud and long local runs never hold a turn: the tool returns at once, this wakes the session later.
 import { type Ctx, type Ref, signalOf } from "@p2/app/v1";
 import { bindStimulusPublisher, WakeStore } from "@p2/app/v1/server";
-import { type ClientFactory, type CursorClient, oneLine, type Outcome, type RunHandle, redact } from "./client.ts";
+import {
+	type ClientFactory,
+	type CursorClient,
+	isSandboxUnsupported,
+	type ModelInfo,
+	oneLine,
+	type Outcome,
+	type RunHandle,
+	redact,
+	SandboxUnsupportedError,
+} from "./client.ts";
 import { CursorRun } from "./contract.server.ts";
 import {
 	type CursorEvent,
 	LIMITS,
 	type RunView,
+	type SandboxStatus,
 	SOURCE_ID,
 	SOURCE_VERSION,
 	type StartArgs,
 	type Status,
 } from "./contract.ts";
+import { paramsText } from "./models.ts";
 import { plan } from "./policy.ts";
 import type { CursorSecrets } from "./secrets.ts";
 import type { CursorStore, RunRecord } from "./store.ts";
@@ -56,6 +68,11 @@ export function createManager(deps: Deps) {
 	});
 	const active = new Map<string, Active>();
 	const clients = new Map<string, CursorClient>();
+	/** The live model list, kept ten minutes (per key). */
+	let catalog: { key: string; at: number; list: ModelInfo[] } | undefined;
+	let probing: Promise<SandboxStatus> | undefined;
+	/** What this process knows about sandboxing; the store only mirrors it for the Settings page. */
+	let sandboxSeen: SandboxStatus = { status: "unknown", detail: "" };
 
 	async function apiKey(): Promise<string | undefined> {
 		const stored = await deps.secrets.read();
@@ -71,6 +88,41 @@ export function createManager(deps: Deps) {
 	}
 	const safe = (error: unknown, key: string | undefined, max = 500) =>
 		oneLine(redact(error instanceof Error ? error.message : String(error), key), max);
+
+	const CATALOG_MS = 600_000;
+	async function catalogOf(client: CursorClient, key: string): Promise<ModelInfo[] | undefined> {
+		if (catalog?.key === key && Date.now() - catalog.at < CATALOG_MS) return catalog.list;
+		try {
+			const list = await client.models();
+			catalog = { key, at: Date.now(), list };
+			return list;
+		} catch {
+			// A stale list is better than none; with none the name goes to Cursor as it is.
+			return catalog?.key === key ? catalog.list : undefined;
+		}
+	}
+
+	const UNSUPPORTED = "Cursor's SDK says sandboxing is not supported on this machine";
+	/** One tiny request asks the SDK whether it can sandbox here; concurrent askers share it. Throws when the SDK cannot say. */
+	function probe(client: CursorClient, model: string): Promise<SandboxStatus> {
+		probing ??= (async () => {
+			try {
+				const result = await client.probeSandbox(model);
+				const status: SandboxStatus =
+					result === "supported" ? { status: "supported", detail: "Checked with one small request" } : { status: "unsupported", detail: UNSUPPORTED };
+				await setSandbox(status);
+				return status;
+			} finally {
+				probing = undefined;
+			}
+		})();
+		return probing;
+	}
+	async function setSandbox(status: SandboxStatus) {
+		sandboxSeen = status;
+		const { ctx, store } = await whenReady;
+		await store.setSandboxStatus(status, ctx);
+	}
 
 	async function put(record: RunRecord) {
 		const { ctx, store } = await whenReady;
@@ -189,6 +241,7 @@ export function createManager(deps: Deps) {
 			status,
 			summary: record.text.slice(0, LIMITS.summary),
 			truncated: record.text.length > LIMITS.summary,
+			...(record.sandbox === "off" || record.sandbox === "unavailable" ? { sandbox: record.sandbox } : {}),
 			...(record.error === undefined ? {} : { error: record.error }),
 			...(record.git === undefined ? {} : { git: record.git }),
 			...(record.durationMs === undefined ? {} : { durationMs: record.durationMs }),
@@ -261,7 +314,13 @@ export function createManager(deps: Deps) {
 			if (existing !== undefined) return view(mine(session, args.runId));
 			const key = await apiKey();
 			if (key === undefined) throw new Error("No Cursor API key: the owner can set one in Settings › Cursor");
-			const chosen = await plan(args, store.config.value);
+			let client: CursorClient;
+			try {
+				client = await clientFor(key);
+			} catch (error) {
+				throw new Error(safe(error, key));
+			}
+			const chosen = await plan(args, store.config.value, await catalogOf(client, key));
 			if (active.size >= LIMITS.active) throw new Error(`${LIMITS.active} Cursor runs are already going: wait for one to end or cancel one`);
 			if ([...active.values()].filter((entry) => entry.session === session).length >= LIMITS.activePerSession)
 				throw new Error(`This session already has ${LIMITS.activePerSession} Cursor runs going: wait for one to end or cancel one`);
@@ -285,18 +344,49 @@ export function createManager(deps: Deps) {
 				...(chosen.branch === undefined ? {} : { branch: chosen.branch }),
 				...(chosen.cwd === undefined ? {} : { cwd: chosen.cwd }),
 			};
-			let client: CursorClient;
 			let handle: RunHandle;
+			let sandbox: RunRecord["sandbox"];
 			try {
 				await store.put(record, ctx);
-				client = await clientFor(key);
-				handle = await client.start(chosen.spec);
+				let spec = chosen.spec;
+				const required = (why: string) =>
+					new Error(`Local sandboxing is set to “required” in Settings › Cursor, but ${why}. Set it to “when possible” or “off”, or use a cloud run`);
+				if (spec.runtime === "local" && chosen.mode === "agent") {
+					if (chosen.sandbox === "off") sandbox = "off";
+					else {
+						// Ask once per process before a real run has to fail; if the probe cannot tell, the run itself is the test.
+						if (sandboxSeen.status === "unknown") await probe(client, spec.model).catch(() => undefined);
+						if (sandboxSeen.status === "unsupported") {
+							if (chosen.sandbox === "required") throw required(UNSUPPORTED);
+							spec = { ...spec, sandbox: false };
+							sandbox = "unavailable";
+						} else sandbox = "on";
+					}
+				}
+				try {
+					handle = await client.start(spec);
+				} catch (error) {
+					const refused = error instanceof SandboxUnsupportedError || (error instanceof Error && isSandboxUnsupported(error.message));
+					if (!refused || spec.runtime !== "local" || !spec.sandbox) throw error;
+					await setSandbox({ status: "unsupported", detail: UNSUPPORTED });
+					if (chosen.sandbox === "required") throw required(UNSUPPORTED);
+					spec = { ...spec, sandbox: false };
+					sandbox = "unavailable";
+					handle = await client.start(spec);
+				}
+				if (sandbox === "on" && sandboxSeen.status !== "supported")
+					await setSandbox({ status: "supported", detail: "A sandboxed run started" });
 			} catch (error) {
 				active.delete(args.runId);
 				await store.remove({ id: args.runId }, ctx).catch(() => {});
 				throw new Error(safe(error, key));
 			}
-			const started: RunRecord = { ...record, agentId: handle.agentId, cursorRunId: handle.runId };
+			const started: RunRecord = {
+				...record,
+				agentId: handle.agentId,
+				cursorRunId: handle.runId,
+				...(sandbox === undefined ? {} : { sandbox }),
+			};
 			await store.put(started, ctx);
 			void supervise(args.runId, handle, client, key);
 			return view(started);
@@ -328,6 +418,36 @@ export function createManager(deps: Deps) {
 			setTimeout(() => entry.force(), deps.graceMs).unref?.();
 			await entry.handle?.cancel().catch(() => {});
 			return view(find(id) ?? record);
+		},
+
+		/** Asks the SDK again whether it can sandbox here (the owner's button). */
+		async checkSandbox(): Promise<SandboxStatus> {
+			const { store } = await whenReady;
+			const key = await apiKey();
+			if (key === undefined) return { status: sandboxSeen.status, detail: "No API key: the check needs one" };
+			try {
+				const client = await clientFor(key);
+				const model = store.config.value.model || (await catalogOf(client, key))?.[0]?.id;
+				if (!model) return { status: sandboxSeen.status, detail: "Choose a default model first: the check makes one small request" };
+				return await probe(client, model);
+			} catch (error) {
+				return { status: sandboxSeen.status, detail: safe(error, key, 300) };
+			}
+		},
+
+		/** The model ids the key may use (the live list), the default marked, and how to pass parameters. */
+		async models() {
+			const { store } = await whenReady;
+			const key = await apiKey();
+			if (key === undefined) throw new Error("No Cursor API key: the owner can set one in Settings › Cursor");
+			const list = await catalogOf(await clientFor(key), key);
+			if (list === undefined) throw new Error("Cursor's model list is not available now: try again shortly");
+			const chosen = store.config.value.model;
+			return {
+				default: chosen,
+				models: list.map((model) => ({ id: model.id, name: model.name, default: model.id === chosen, params: paramsText(model) })),
+				note: "Pass `model` as one of these ids. A model's parameters go in `modelParams`, for example {\"effort\":\"high\",\"thinking\":\"true\"}; a CLI-style name such as claude-opus-5-thinking-high is also understood when its id and every extra word match a parameter. The default is used when `model` is left out.",
+			};
 		},
 
 		async list(session: string): Promise<RunView[]> {

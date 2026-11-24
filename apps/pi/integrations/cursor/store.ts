@@ -1,7 +1,7 @@
 // What the server keeps: the owner's settings and the runs (both in p2 state, no config files; the key is in secrets.ts).
 import { arr, bool, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { defineState, literal, local, method } from "@p2/app/v1";
-import { LIMITS, RUN_VIEW, RuntimeSchema } from "./contract.ts";
+import { LIMITS, RUN_VIEW, RuntimeSchema, SandboxModeSchema, SandboxStatusSchema } from "./contract.ts";
 
 export const MAX_REPOS = 256;
 
@@ -17,6 +17,8 @@ const ConfigSchema = obj({
 	repos: arr(str({ maxLength: 200 }), { maxItems: MAX_REPOS }),
 	allowLocalEdits: bool(),
 	allowCloudEdits: bool(),
+	/** Added after version 1 shipped: absent in settings stored before, which reads as `when-possible`. */
+	sandbox: opt(SandboxModeSchema),
 });
 export type Config = Static<typeof ConfigSchema>;
 export const ConfigState = defineState("p2.cursor-config", {
@@ -32,6 +34,13 @@ export const ConfigState = defineState("p2.cursor-config", {
 	}),
 	persist: true,
 	checkpointWhen: () => true,
+});
+
+/** What Pi found out about sandboxing on this machine: kept for this process only, so a new machine or OS asks again. */
+export const SandboxState = defineState("p2.cursor-sandbox", {
+	version: 1,
+	schema: SandboxStatusSchema,
+	initial: () => ({ status: "unknown" as const, detail: "" }),
 });
 
 /** A run as kept: its view, whose it is, what Cursor called it and its final text. */
@@ -64,6 +73,7 @@ const ConfigPatch = obj({
 	runtime: opt(RuntimeSchema),
 	allowLocalEdits: opt(bool()),
 	allowCloudEdits: opt(bool()),
+	sandbox: opt(SandboxModeSchema),
 	allowRepo: opt(str({ maxLength: 200 })),
 	removeRepo: opt(str({ maxLength: 200 })),
 });
@@ -75,6 +85,8 @@ export const CursorStore = local("p2.cursor-store", {
 	members: {
 		config: ConfigSchema,
 		runs: arr(RunRecordSchema),
+		sandboxStatus: SandboxStatusSchema,
+		setSandboxStatus: method(SandboxStatusSchema),
 		patchConfig: method(ConfigPatch),
 		put: method(RunRecordSchema),
 		remove: method(obj({ id: str() })),

@@ -12,6 +12,11 @@ test("the owner sets the key (write-only), the defaults and the allowed reposito
 	(globalThis as { __cursorFake?: unknown }).__cursorFake = {
 		me: async () => ({ apiKeyName: "ui-key" }),
 		models: async () => [{ id: "composer-2", displayName: "Composer 2" }],
+		create: async () => ({
+			agentId: "probe",
+			close() {},
+			send: async () => ({ wait: async () => ({ status: "finished" }), cancel: async () => {} }),
+		}),
 	};
 	t.after(() => delete (globalThis as { __cursorFake?: unknown }).__cursorFake);
 	const fixture = await startFixture({
@@ -60,6 +65,15 @@ test("the owner sets the key (write-only), the defaults and the allowed reposito
 		select.dispatchEvent(new Event('change', { bubbles: true }));
 	})()`);
 	await browser.wait(`document.querySelector('select[aria-label="Default model"]').value === 'composer-2'`);
+	await browser.wait(`document.body.textContent.includes('Sandbox: not checked')`);
+	await browser.evaluate(`(() => {
+		const select = document.querySelector('select[aria-label="Sandbox local agents"]');
+		Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'required');
+		select.dispatchEvent(new Event('change', { bubbles: true }));
+	})()`);
+	await browser.wait(`document.querySelector('select[aria-label="Sandbox local agents"]').value === 'required'`);
+	await clickText("Check sandbox");
+	await browser.wait(`document.body.textContent.includes('Sandbox: supported')`);
 	await type("Repository", "not a repo");
 	await clickText("Allow");
 	await browser.wait(`document.querySelector('[role=alert]')?.textContent.includes('owner/name')`);

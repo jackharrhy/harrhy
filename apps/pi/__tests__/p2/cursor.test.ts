@@ -6,11 +6,13 @@ import { join } from "node:path";
 import { afterEach, it } from "node:test";
 import { compile } from "@earendil-works/pi-schema";
 import { BACKGROUND_CONTEXT, whenLive } from "@p2/app/v1";
-import { redact } from "../../integrations/cursor/client.ts";
+import { isSandboxUnsupported, redact } from "../../integrations/cursor/client.ts";
 import { CursorRun } from "../../integrations/cursor/contract.server.ts";
 import { CursorRuns, CursorSettings, LIMITS, WatchSchema } from "../../integrations/cursor/contract.ts";
+import { resolveModel } from "../../integrations/cursor/models.ts";
 import { plan, repoAllowed, within } from "../../integrations/cursor/policy.ts";
 import { quote, renderEvent } from "../../integrations/cursor/render.ts";
+import { ConfigState } from "../../integrations/cursor/store.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
 import { Sessions } from "../../plugins/sessions/contract.ts";
 import { Subscriptions } from "../../plugins/stimuli/contract.ts";
@@ -19,6 +21,8 @@ import { userPluginsDirectory } from "../../src/runtime/host-dirs.ts";
 import { APP, expectChord, holdIn, poll, startFixture, until } from "./helpers.ts";
 
 const TEST = BACKGROUND_CONTEXT;
+const SANDBOX_MESSAGE =
+	"Local SDK sandboxing was requested, but sandboxing is not supported in this environment. Disable local.sandboxOptions.enabled or remove ~/.cursor/sandbox.json to run without sandboxing.";
 const KEY = "crsr_TESTKEYnotarealsecret0123456789abcdef";
 const SOURCE = { id: CursorRun.id, version: 1 };
 let counter = 0;
@@ -54,12 +58,18 @@ type Fake = {
 	runs: FakeRun[];
 	meError?: Error;
 	createError?: Error;
+	/** Agents created with sandbox options are refused, as the real SDK does where it cannot sandbox. */
+	sandboxUnsupported?: boolean;
+	/** The same, but only for real runs: the probe gets through (or fails for another reason). */
+	sandboxUnsupportedForRuns?: boolean;
+	probeError?: Error;
+	probes: number;
 	[name: string]: unknown;
 };
 
 /** What `globalThis.__cursorFake` does for the fake package: the call shapes of the real SDK, scripted by the test. */
 function newFake(): Fake {
-	const fake: Fake = { keys: [], created: [], runs: [] };
+	const fake: Fake = { keys: [], created: [], runs: [], probes: 0 };
 	Object.assign(fake, {
 		me: async (options: { apiKey: string }) => {
 			fake.keys.push(options.apiKey);
@@ -68,14 +78,36 @@ function newFake(): Fake {
 		},
 		models: async (options: { apiKey: string }) => {
 			fake.keys.push(options.apiKey);
+			const flag = (id: string) => ({ id, values: [{ value: "false" }, { value: "true" }] });
 			return [
-				{ id: "composer-2", displayName: "Composer 2" },
+				{ id: "composer-2", displayName: "Composer 2", parameters: [flag("fast")] },
 				{ id: "claude-sonnet", displayName: "Claude Sonnet" },
+				{
+					id: "claude-opus-5",
+					displayName: "Claude Opus 5",
+					aliases: ["opus", "opus-5"],
+					parameters: [flag("thinking"), { id: "effort", values: ["low", "medium", "high", "max"].map((value) => ({ value })) }, flag("fast")],
+				},
+				{ id: "claude-opus-5-5", displayName: "Claude Opus 5.5", aliases: ["opus"], parameters: [] },
+				...Array.from({ length: 30 }, (_, index) => ({ id: `extra-model-${index}`, displayName: `Extra ${index}` })),
 			];
 		},
 		create: async (options: Record<string, unknown>) => {
 			fake.keys.push(String(options.apiKey));
+			const local = options.local as { sandboxOptions?: { enabled: boolean } } | undefined;
+			if (options.name === "pi-sandbox-probe") {
+				fake.probes++;
+				if (fake.probeError) throw fake.probeError;
+				if (fake.sandboxUnsupported && local?.sandboxOptions?.enabled) throw new Error(SANDBOX_MESSAGE);
+				return {
+					agentId: "probe",
+					close() {},
+					getUsage: async () => ({}),
+					send: async () => ({ id: "probe-run", agentId: "probe", wait: async () => ({ status: "finished" }), cancel: async () => {} }),
+				};
+			}
 			if (fake.createError) throw fake.createError;
+			if ((fake.sandboxUnsupported || fake.sandboxUnsupportedForRuns) && local?.sandboxOptions?.enabled) throw new Error(SANDBOX_MESSAGE);
 			fake.created.push(options);
 			const agentId = `bc-agent-${fake.created.length}`;
 			return {
@@ -310,7 +342,7 @@ it("takes the API key in and never gives it back", { timeout: 60_000 }, async ()
 	assert.deepEqual(tested, { ok: true, message: "The key works (named “work-laptop”)" });
 	assert.deepEqual(fake.keys, [KEY], "the SDK got the key, trimmed");
 	const models = await settings.listModels({}, TEST);
-	assert.deepEqual(models.models, [
+	assert.deepEqual(models.models.slice(0, 2), [
 		{ id: "composer-2", name: "Composer 2" },
 		{ id: "claude-sonnet", name: "Claude Sonnet" },
 	]);
@@ -601,10 +633,178 @@ it("lets the agent's tools start a run, read its status and be woken", { timeout
 	await call(`return await tools.cursor_result({ id: "${runId}" })`);
 	await until(chat.view, () => model().includes('"text":"Tests cover the board."'));
 	assert.match(model(), /untrusted input to verify/);
+	await call("return await tools.cursor_models({})");
+	await until(chat.view, () => model().includes('"default":"composer-2"') && model().includes('"id":"claude-opus-5"'));
+	await call('return await tools.cursor_task({ prompt: "x", model: "gpt-9-turbo-ultra" })');
+	await until(chat.view, () => model().includes("is not a model in the live list") && model().includes("cursor_models"));
 	await call("return await tools.cursor_list({})");
 	await until(chat.view, () => model().includes(`"status":"finished"`));
 	await call(`return await tools.cursor_cancel({ id: "${runId}" })`);
 	await until(chat.view, () => model().split("\n").filter((line) => line.includes(runId)).length >= 4);
 	assert.equal(wakes().length, 1);
 	chat.release();
+});
+
+const CATALOG = [
+	{ id: "composer-2", name: "Composer 2", aliases: [], params: [{ id: "fast", values: ["false", "true"] }] },
+	{
+		id: "claude-opus-5",
+		name: "Claude Opus 5",
+		aliases: ["opus", "opus-5"],
+		params: [
+			{ id: "thinking", values: ["false", "true"] },
+			{ id: "effort", values: ["low", "medium", "high", "extra-high"] },
+			{ id: "fast", values: ["false", "true"] },
+		],
+	},
+	{ id: "claude-opus-5-5", name: "Claude Opus 5.5", aliases: ["opus"], params: [] },
+	{ id: "claude-fable-5-2", name: "Fable", aliases: [], params: [] },
+];
+
+it("recognises the SDK's sandbox refusal and nothing else", () => {
+	assert.equal(isSandboxUnsupported(SANDBOX_MESSAGE), true);
+	assert.equal(isSandboxUnsupported("Sandboxing is not available on this host"), true);
+	assert.equal(isSandboxUnsupported("401 unauthorized"), false);
+	assert.equal(isSandboxUnsupported("Model not supported"), false);
+	assert.equal(isSandboxUnsupported("The sandbox directory could not be created."), false);
+});
+
+it("maps CLI-style model names to an id and parameters only when every word fits, and otherwise says what is allowed", () => {
+	assert.deepEqual(resolveModel("claude-opus-5", undefined, CATALOG), { id: "claude-opus-5", params: [] });
+	assert.deepEqual(resolveModel("claude-opus-5-thinking-high", undefined, CATALOG), {
+		id: "claude-opus-5",
+		params: [
+			{ id: "thinking", value: "true" },
+			{ id: "effort", value: "high" },
+		],
+	});
+	assert.deepEqual(resolveModel("claude-opus-5-fast-extra-high", undefined, CATALOG).params, [
+		{ id: "fast", value: "true" },
+		{ id: "effort", value: "extra-high" },
+	]);
+	assert.equal(resolveModel("claude-opus-5-5", undefined, CATALOG).id, "claude-opus-5-5", "the longest id wins");
+	assert.equal(resolveModel("opus-5", undefined, CATALOG).id, "claude-opus-5", "an alias only one model has");
+	assert.deepEqual(resolveModel("composer-2", { fast: "false" }, CATALOG).params, [{ id: "fast", value: "false" }]);
+	assert.deepEqual(resolveModel("claude-opus-5-high", { effort: "low" }, CATALOG).params, [{ id: "effort", value: "low" }], "explicit parameters win");
+	assert.throws(() => resolveModel("opus", undefined, CATALOG), /not a model in the live list/, "an alias two models share");
+	assert.throws(() => resolveModel("claude-opus-5-turbo", undefined, CATALOG), /not a model in the live list for this key\. Closest: claude-opus-5/);
+	assert.throws(() => resolveModel("composer-2-thinking", undefined, CATALOG), /cursor_models/);
+	assert.throws(() => resolveModel("claude-opus-5", { effort: "ludicrous" }, CATALOG), /Allowed: low, medium, high, extra-high/);
+	assert.throws(() => resolveModel("claude-opus-5", { colour: "red" }, CATALOG), /no parameter “colour”.*thinking=false\|true/);
+	assert.throws(() => resolveModel("claude-fable-5-2", { effort: "high" }, CATALOG), /It has none/);
+	const many = Array.from({ length: 40 }, (_, index) => ({ id: `m-${index}`, name: "", aliases: [], params: [] }));
+	const message = (() => {
+		try {
+			resolveModel("claude-opus-5-thinking-high", undefined, many);
+		} catch (error) {
+			return (error as Error).message;
+		}
+		return "";
+	})();
+	assert.match(message, /Allowed ids \(20 of 40\)/);
+	assert.equal((/Allowed ids[^:]*: ([^.]*)\./.exec(message)![1] ?? "").split(", ").length, 20);
+});
+
+it("starts a run on a CLI-style model name, refuses an unknown one clearly, and lists the models", { timeout: 90_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	const session = await h.session("Models");
+	const { view } = await session.start({ model: "claude-opus-5-thinking-high" });
+	assert.equal(view.model, "claude-opus-5 (thinking=true, effort=high)");
+	assert.deepEqual((h.fake.created[0] as { model: unknown }).model, {
+		id: "claude-opus-5",
+		params: [
+			{ id: "thinking", value: "true" },
+			{ id: "effort", value: "high" },
+		],
+	});
+	await session.start({ model: "composer-2", modelParams: { fast: "false" } });
+	assert.deepEqual((h.fake.created[1] as { model: unknown }).model, { id: "composer-2", params: [{ id: "fast", value: "false" }] });
+	await assert.rejects(session.start({ model: "gpt-9-turbo-ultra" }), (error: Error) => {
+		assert.match(error.message, /“gpt-9-turbo-ultra” is not a model in the live list/);
+		assert.match(error.message, /Allowed ids \(20 of 34\)/);
+		assert.match(error.message, /`cursor_models`/);
+		return true;
+	});
+	assert.equal(h.fake.created.length, 2, "Cursor was not asked to start it");
+	const listed = await session.runs.models({}, TEST);
+	assert.equal(listed.default, "composer-2");
+	assert.equal(listed.models.length, 34);
+	assert.deepEqual(listed.models.filter((entry) => entry.default).map((entry) => entry.id), ["composer-2"]);
+	assert.match(listed.models.find((entry) => entry.id === "claude-opus-5")!.params, /thinking=false\|true; effort=low\|medium\|high\|max; fast=false\|true/);
+	assert.match(listed.note, /modelParams/);
+	for (const run of h.fake.runs) run.finish(finishedRun("ok"));
+	session.chat.release();
+});
+
+it("asks for the sandbox when possible, says when a run went without it, and honours required and off", { timeout: 120_000 }, async () => {
+	assert.equal(compile(ConfigState.schema).check({ keyStored: false, model: "", runtime: "local", repos: [], allowLocalEdits: false, allowCloudEdits: false }), true, "settings stored before the sandbox choice still load");
+	const h = await harness();
+	await h.withKey();
+	await h.settings.setAllowLocalEdits({ allow: true }, TEST);
+	assert.equal(h.settings.sandbox.value, "when-possible");
+	assert.equal(h.settings.sandboxStatus.value.status, "unknown");
+	const session = await h.session("Sandbox");
+
+	// Supported: the SDK is asked once, the run is sandboxed and nothing is said.
+	const first = await session.start({ mode: "agent" });
+	assert.equal(h.fake.probes, 1);
+	assert.equal(first.view.sandbox, "on");
+	assert.deepEqual((h.fake.created[0] as { local: { sandboxOptions: unknown } }).local.sandboxOptions, { enabled: true });
+	await poll(async () => h.settings.sandboxStatus.value.status === "supported", 5000, "status supported");
+	h.fake.runs[0]!.finish(finishedRun("done"));
+	await until(session.chat.view, () => session.wakes().length === 1);
+	assert.doesNotMatch(session.wakes()[0]!, /sandbox/);
+
+	// Not supported here: when possible runs without it, once told so, and labels the run everywhere.
+	h.fake.sandboxUnsupported = true;
+	assert.deepEqual(await h.settings.checkSandbox({}, TEST), { status: "unsupported", detail: "Cursor's SDK says sandboxing is not supported on this machine" });
+	await poll(async () => h.settings.sandboxStatus.value.status === "unsupported", 5000, "status unsupported");
+	const probes = h.fake.probes;
+	const second = await session.start({ mode: "agent" });
+	assert.equal(h.fake.probes, probes, "the answer is kept: no new probe, no failed real run");
+	assert.equal(second.view.sandbox, "unavailable");
+	assert.equal((h.fake.created[1] as { local: { sandboxOptions?: unknown } }).local.sandboxOptions, undefined);
+	h.fake.runs[1]!.finish(finishedRun("done without"));
+	await until(session.chat.view, () => session.wakes().length === 2);
+	assert.match(session.wakes()[1]!, /It ran without Cursor's shell sandbox\./);
+	assert.equal((await session.runs.status({ id: second.runId }, TEST)).sandbox, "unavailable");
+
+	// Required: a clear refusal, and no agent is started.
+	await h.settings.setSandbox({ mode: "required" }, TEST);
+	await assert.rejects(session.start({ mode: "agent" }), /“required” in Settings › Cursor, but .*not supported on this machine.*“when possible” or “off”/);
+	assert.equal(h.fake.created.length, 2);
+	// Read-only modes never involve the sandbox.
+	await session.start({ mode: "ask" });
+	assert.equal(h.fake.created.length, 3);
+
+	// Off: never asked for, never probed, labelled.
+	await h.settings.setSandbox({ mode: "off" }, TEST);
+	h.fake.sandboxUnsupported = false;
+	const probesBefore = h.fake.probes;
+	const off = await session.start({ mode: "agent" });
+	assert.equal(off.view.sandbox, "off");
+	assert.equal(h.fake.probes, probesBefore);
+	assert.equal((h.fake.created[3] as { local: { sandboxOptions?: unknown } }).local.sandboxOptions, undefined);
+	for (const run of h.fake.runs.slice(2)) run.finish(finishedRun("x"));
+	session.chat.release();
+});
+
+it("falls back when only the real run finds out sandboxing is unsupported, and keeps the answer", { timeout: 120_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	await h.settings.setAllowLocalEdits({ allow: true }, TEST);
+	const session = await h.session("Reactive");
+	// The probe cannot say (the network is down), the run itself gets the SDK's refusal.
+	h.fake.probeError = new Error("socket hang up");
+	h.fake.sandboxUnsupportedForRuns = true;
+	const run = await session.start({ mode: "agent" });
+	assert.equal(run.view.sandbox, "unavailable");
+	await poll(async () => h.settings.sandboxStatus.value.status === "unsupported", 5000, "status unsupported");
+	assert.equal(h.fake.created.length, 1);
+	assert.equal((h.fake.created[0] as { local: { sandboxOptions?: unknown } }).local.sandboxOptions, undefined);
+	await h.settings.setSandbox({ mode: "required" }, TEST);
+	await assert.rejects(session.start({ mode: "agent" }), /“required”/);
+	h.fake.runs[0]!.finish(finishedRun("ok"));
+	session.chat.release();
 });

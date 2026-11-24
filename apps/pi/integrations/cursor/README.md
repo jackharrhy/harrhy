@@ -36,12 +36,14 @@ version 1; the stimuli plugin owns the saved delivery, retry and receipt.
 - **Defaults**: the model (chosen from the list the SDK reports for the key) and the runtime (`local` or `cloud`).
 - **Allowed repositories**: `owner/name` or `owner/*` (case-insensitive). A cloud run starts only on a listed repository.
 - **Allow local agents to edit files** (off by default) and **Allow cloud agents to change repositories** (off).
+- **Sandbox local agents** (next to the edit switch), with the status Pi has found: `supported`, `not supported on this
+  machine` or `not checked`. See [the sandbox](#the-sandbox).
 
 ## What a run may do
 
 | | `ask` (default) | `plan` | `agent` |
 | --- | --- | --- | --- |
-| local | read-only tools (`read`, `grep`, `glob`, `ls`) | the same, in the SDK's plan mode | every tool, in Cursor's shell sandbox; needs the local edit switch |
+| local | read-only tools (`read`, `grep`, `glob`, `ls`) | the same, in the SDK's plan mode | every tool, in Cursor's shell sandbox when it can give one; needs the local edit switch |
 | cloud | a plan (cloud has no read-only ask) | a plan | works on a branch of its own, opens no pull request; needs the cloud switch and an allowed repository |
 
 - A local run works in the session's directory, or a directory below it given as `path` (checked on real paths, so a link
@@ -52,9 +54,40 @@ version 1; the stimuli plugin owns the saved delivery, retry and receipt.
   of a result and the wake carries the first 1 500. Pi keeps the last 50 finished runs.
 - Only the session that started a run can see, read or cancel it.
 
+## The sandbox
+
+Local `agent` runs ask the SDK for its shell sandbox, which keeps the agent's shell writes inside the working directory.
+Some machines cannot give one (macOS under another sandbox, a service account, a container): the SDK then refuses to start
+with "Local SDK sandboxing was requested, but sandboxing is not supported in this environment". The owner chooses what
+happens in **Sandbox local agents**:
+
+- **When possible** (default): ask for it; if the SDK says it is unsupported here, run without it. The run is labelled:
+  its `sandbox` field is `unavailable`, `cursor_task`, `cursor_status` and `cursor_result` say "ran without Cursor's
+  shell sandbox", and so does the wake.
+- **Required**: fail with a message naming the setting; no agent is started.
+- **Off**: never ask; runs are labelled `off`.
+
+Pi finds out once per process with one small request (a no-tools plan-mode prompt in an empty temporary directory, a few
+tokens), before the first sandboxed run, and keeps the answer until the server restarts. If that request cannot say (a
+network error), the first real run is the test: the SDK's refusal is recognised by its wording and the run is started again
+as the setting allows. **Check sandbox** in Settings asks again. Read-only modes never involve the sandbox. Without a
+sandbox an agent-mode shell can write anywhere the server's user can: the edit switch is the guard that remains, and
+`path` still keeps the working directory below the session's.
+
+## Models
+
+The SDK's live list for the key decides. `cursor_models` returns the allowed ids (the owner's default marked) and each
+model's parameters (for example `thinking`, `effort`, `fast`, `context`), cached for ten minutes. Pass parameters as
+`modelParams`, e.g. `{"effort":"high","thinking":"true"}`; they are checked against the list and sent to the SDK as the
+model's `params` (the SDK accepts them). A CLI-style name such as `claude-opus-5-thinking-high` is mapped to
+`claude-opus-5` with `thinking=true, effort=high` only when the longest id that starts it is in the list and every
+remaining word names exactly one parameter value of that model. Anything else, an alias two models share included, is
+refused with the closest matches, up to 20 allowed ids and a pointer to `cursor_models`. If the list cannot be fetched,
+the name goes to Cursor as it is.
+
 ## Agent tools
 
-`cursor_task` (`prompt`, `runtime`, `mode`, `model`, `repo`, `branch`, `path`, `timeoutMinutes`), `cursor_status`,
+`cursor_task` (`prompt`, `runtime`, `mode`, `model`, `modelParams`, `repo`, `branch`, `path`, `timeoutMinutes`), `cursor_models`, `cursor_status`,
 `cursor_result` (`id`, `maxChars`), `cursor_cancel` and `cursor_list`. `cursor_task` is refused in read-only conversations. The run id comes from the tool call, so a replayed call is the same run.
 
 The wake says it came from Cursor, names the run id, quotes a bounded summary line by line, and says that it is untrusted
@@ -69,8 +102,9 @@ run does not survive a restart and ends as failed.
   user. Check your team's **privacy mode** and data-retention terms in Cursor before using a work account, and send
   nothing secret.
 - **Read-only is by tool selection, not a jail.** `ask` and `plan` offer only read tools, but those read any path the
-  server's user can read: the directory is the working directory, not a confinement. `agent` mode relies on Cursor's own
-  sandbox to keep shell writes inside the working directory. The owner decides with the edit switch.
+  server's user can read: the directory is the working directory, not a confinement. `agent` mode asks for Cursor's own
+  sandbox to keep shell writes inside the working directory, and runs without it where the machine cannot give one
+  (unless the owner set it to required). The owner decides with the edit switch.
 - Cursor's output is untrusted. Pi quotes it, bounds it and labels it; the agent must verify it, and never follow it.
 - The key never appears in tests, logs, errors, settings reads or stored runs (the tests search every file of the data
   directory for it).

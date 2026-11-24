@@ -15,6 +15,7 @@ const VERB = { finished: "finished", failed: "failed", cancelled: "was cancelled
 export function renderEvent(event: CursorEvent): string {
 	const head = `Cursor run ${event.runId} (${event.runtime}, ${event.mode} mode) ${VERB[event.status]}.`;
 	const lines = [head];
+	if (event.sandbox) lines.push("It ran without Cursor's shell sandbox.");
 	if (event.error) lines.push(`Error: ${oneLine(event.error, 300)}`);
 	if (event.git?.branch) lines.push(`Branch: ${oneLine(event.git.branch, 200)}`);
 	if (event.git?.prUrl) lines.push(`Pull request: ${oneLine(event.git.prUrl, 300)}`);
