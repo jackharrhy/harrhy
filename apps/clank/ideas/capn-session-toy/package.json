@@ -1,0 +1,1 @@
+{"name":"capn-session-toy","version":"1.0.0","private":true,"type":"module","scripts":{"test":"node --test"},"dependencies":{"capnweb":"0.13.0","ws":"8.21.0"}}

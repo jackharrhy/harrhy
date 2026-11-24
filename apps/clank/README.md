@@ -21,3 +21,7 @@ For a read-only installation, start this same app in [read-only mode](../../docs
 ## Other preserved fixture work
 
 `preview/` is the existing, separate loopback Go color-demo service; it is not part of session synchronization. Test in that directory with `go test main.go main_test.go`.
+
+## Ideas
+
+- [Cap’n Web session and multiplayer toy](ideas/capn-session-toy/README.md): standalone loopback experiment, not part of the Clank runtime.
