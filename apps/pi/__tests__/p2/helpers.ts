@@ -142,7 +142,7 @@ export async function startFixture(
 		/** Install the checked-in integration directories into this fixture's actual user plugin root. */
 		readonly integrations?: readonly ("atlas-feedback" | "cursor" | "github-checks" | "ingress" | "peers")[];
 		/** Runs after the integrations are installed and before the server starts (a plugin's node_modules, say). */
-		readonly prepare?: (dataDir: string) => void;
+		readonly prepare?: (dataDir: string) => void | Promise<void>;
 	} = {},
 ): Promise<Fixture> {
 	const root = mkdtempSync(join(tmpdir(), "p2-test-"));
@@ -164,7 +164,7 @@ export async function startFixture(
 				cpSync(join(APP, "integrations", name), join(userPluginsDirectory(dataDir), name), { recursive: true });
 			}
 		}
-		prepare?.(dataDir);
+		await prepare?.(dataDir);
 		server = await startServer({
 			dataDir,
 			port: 0,

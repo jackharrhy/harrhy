@@ -8,11 +8,11 @@
     "public": "3a8eb512e07bb10696af6322f8c5963dcaf47e506352c69e091561437b0b9c3d",
     "scripts": "91abc0fc8729d447a3f96a6018cf173d76db749c088076e0d3752d24cb761afb",
     "docs": "2f12faa24529e62e152b0592d31b93f888a3350ee479b4b990210b66cf2aa424",
-    "__tests__/p2": "389dbfc677daf0bc3fb175af8286e9018e08a3137b1012165c84cb8c8ba62346",
-    "__tests__/fixtures": "bb72ce874498165ccd56295b38cc94f3ae033ff0586ea2f075268420206f53fc",
+    "__tests__/p2": "100cf2116e3990357052bc4f370ecd11dd7f313461332e021fab40a86e2b7d81",
+    "__tests__/fixtures": "b435da854638e56a4661a3eb415fd559297d5825f62bd86c68c752df269eab3c",
     "compat/packages": "7403343bba3ffbc0ae15c4cbb6ef24b348a11789b337ca2cafb6b52425e046e5",
     "compat/scripts": "a2cfb55cbe0e8ca7db6243bc73b928d5311da6281fa762bc2a507b6c5ebc8cd0",
-    "integrations": "2f61c418a696b3c6e8205bff930a648764d4b7864264bbc1914abbc60c6a850a"
+    "integrations": "1bb9576f0366087070bc128573e5cdeaf6d75d413b32869eb7e3a5a134a0d203"
   },
   "adaptations": [
     {

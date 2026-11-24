@@ -41,6 +41,7 @@ sandbox([
   "__tests__/p2/atlas-feedback.test.ts",
   "__tests__/p2/github-checks.test.ts",
   "__tests__/p2/cursor.test.ts",
+  "__tests__/p2/cursor-upgrade.test.ts",
   "__tests__/p2/legacy-entries.test.ts",
   "__tests__/p2/stimuli-lifecycle.test.ts",
   "__tests__/p2/addressed-stimuli.test.ts",

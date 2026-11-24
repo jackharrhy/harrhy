@@ -114,3 +114,13 @@ run does not survive a restart and ends as failed.
 `__tests__/p2/cursor.test.ts` and `ui-cursor.test.ts` run against a fake `@cursor/sdk` package
 (`__tests__/fixtures/fake-cursor-sdk`) installed into the fixture plugin's `node_modules`, with the real adapter, server,
 worker and stimuli. Cloud mode is tested only against that fake.
+
+## Developer notes
+
+- Changing a stored schema needs version+1 and migrate. That holds for `p2.cursor-config` and `p2.cursor-runs` (the
+  states) and for every contract and local store (`p2.cursor-store`, `p2.cursor-runs`, `p2.cursor-settings`): a changed
+  shape under the same version fails to load where the old object is stored. `__tests__/p2/cursor-upgrade.test.ts` starts the
+  plugin on a data directory written by the first release (`__tests__/fixtures/cursor-v1-store.ts`, frozen); when you
+  bump a version, add what that version wrote to the fixture the same way.
+- The stimulus source `cursor.run` stays at version 1: its event gained an optional field only, so stored events remain
+  valid. A change that makes an old event invalid needs source version 2 with the old one kept registered.
