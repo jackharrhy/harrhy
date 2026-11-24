@@ -61,7 +61,8 @@ export const RunRecordSchema = obj({
 });
 export type RunRecord = Static<typeof RunRecordSchema>;
 export const RunsState = defineState("p2.cursor-runs", {
-	version: 1,
+	version: 2,
+	migrate: (old) => old as { runs: RunRecord[] },
 	schema: obj({ runs: arr(RunRecordSchema, { maxItems: LIMITS.kept + LIMITS.active * 4 }) }),
 	initial: () => ({ runs: [] as RunRecord[] }),
 	persist: true,
