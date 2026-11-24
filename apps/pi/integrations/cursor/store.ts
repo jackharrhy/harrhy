@@ -6,8 +6,8 @@ import { LIMITS, RUN_VIEW, RuntimeSchema, SandboxModeSchema, SandboxStatusSchema
 export const MAX_REPOS = 256;
 
 /**
- * The owner's settings. Changing this schema needs `version: 2` and a `migrate`, or the object fails to load where
- * version 1 is stored.
+ * The owner's settings. Version 2 added `sandbox` (optional, so version 1's stored object is already valid). Changing the
+ * schema without a version bump makes the object fail to load where the old one is stored.
  */
 const ConfigSchema = obj({
 	/** A key is in cursor-secrets.json (the file is the truth; this mirrors it for the Settings page). */
@@ -22,7 +22,8 @@ const ConfigSchema = obj({
 });
 export type Config = Static<typeof ConfigSchema>;
 export const ConfigState = defineState("p2.cursor-config", {
-	version: 1,
+	version: 2,
+	migrate: (old) => old as Config,
 	schema: ConfigSchema,
 	initial: (): Config => ({
 		keyStored: false,
