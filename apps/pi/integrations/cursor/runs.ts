@@ -90,6 +90,9 @@ type Active = {
 	savedAt?: number;
 };
 
+/** Work that goes on by itself: a failure (the server stopping under it, say) is no one's to catch, and must not escape. */
+const background = (work: Promise<unknown>) => void work.catch(() => {});
+
 const clean = (text: string) => text.replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f\u2028\u2029]/g, " ");
 
 /** Said when the service manager seems to take detached workers down with the server. */
@@ -582,7 +585,7 @@ export function createManager(deps: Deps) {
 				active.set(record.id, entry);
 				if ((await readJson(join(directory, FILES.request))) !== undefined) {
 					entry.directory = directory;
-					void observe(record.id, key ?? "", true);
+					background(observe(record.id, key ?? "", true));
 				} else {
 					// Version 2 of this plugin ran the agent inside the server process, which a stop or reload ends. The Cursor agent
 					// and its edits are still there, so the run is interrupted (resumable), not failed, when its id is known.
@@ -605,7 +608,7 @@ export function createManager(deps: Deps) {
 					const client = await clientFor(key);
 					const handle = await client.attach({ agentId: record.agentId, runId: record.cursorRunId });
 					active.set(record.id, entry);
-					void supervise(record.id, handle, client, key);
+					background(supervise(record.id, handle, client, key));
 					continue;
 				} catch {
 					// Not found again: it is over as far as Pi can tell.
@@ -810,8 +813,8 @@ export function createManager(deps: Deps) {
 			await finish(id, "failed", { status: "error", text: record.text }, `It could not be resumed: ${safe(error, key)}`, key, { ...(record.activity === undefined ? {} : { activity: record.activity }) }).catch(() => {});
 			throw new Error(`It could not be resumed: ${safe(error, key)}`);
 		}
-		if (handle !== undefined) void supervise(id, handle, client, key);
-		else void observe(id, key);
+		if (handle !== undefined) background(supervise(id, handle, client, key));
+		else background(observe(id, key));
 		return viewOf(find(id) ?? running);
 	}
 
@@ -910,8 +913,8 @@ export function createManager(deps: Deps) {
 				throw new Error(safe(error, key));
 			}
 			await store.put(started, ctx);
-			if (handle !== undefined) void supervise(args.runId, handle, client, key);
-			else void observe(args.runId, key);
+			if (handle !== undefined) background(supervise(args.runId, handle, client, key));
+			else background(observe(args.runId, key));
 			return viewOf(started);
 		},
 
