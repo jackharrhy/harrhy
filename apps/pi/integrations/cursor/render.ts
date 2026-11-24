@@ -12,6 +12,13 @@ export function quote(text: string, max: number): { text: string; truncated: boo
 
 const VERB = { finished: "finished", failed: "failed", cancelled: "was cancelled", "timed-out": "timed out", interrupted: "was interrupted" } as const;
 
+/** `files` relative to `cwd` where they lie under it (the same directory is long and says nothing), else as they are. */
+export function relativeFiles(files: readonly string[], cwd: string | undefined): string[] {
+	if (cwd === undefined || cwd === "") return [...files];
+	const prefix = cwd.endsWith("/") ? cwd : `${cwd}/`;
+	return files.map((file) => (file.startsWith(prefix) ? file.slice(prefix.length) : file));
+}
+
 const when = (at: number | undefined) => (at === undefined ? "an unrecorded time" : new Date(at).toISOString());
 
 export function renderEvent(event: CursorEvent): string {
@@ -22,7 +29,7 @@ export function renderEvent(event: CursorEvent): string {
 	const lines = [head];
 	if (interrupted) {
 		if (event.activity) lines.push(`Its last recorded activity: ${oneLine(event.activity, 200)}`);
-		if (event.files?.length) lines.push(`Files its editing tools named: ${event.files.slice(0, 20).map((file) => oneLine(file, 120)).join(", ")}`);
+		if (event.files?.length) lines.push(`Files its editing tools named: ${relativeFiles(event.files, event.cwd).slice(0, 20).map((file) => oneLine(file, 120)).join(", ")}`);
 		if (event.cwd) lines.push(`Its work so far is on disk in ${oneLine(event.cwd, 300)}.`);
 		lines.push(
 			event.autoResumed

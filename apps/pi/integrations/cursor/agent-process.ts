@@ -59,25 +59,29 @@ const status = (): WorkerStatus => ({
 });
 const writeStatus = () => writeJsonAtomic(join(directory, FILES.status), status()).catch(() => {});
 
-async function record(event: RunEvent): Promise<void> {
+/** The files are written in the order things happened, one at a time. */
+let writes: Promise<unknown> = Promise.resolve();
+const write = (name: string, text: string) => void (writes = writes.then(() => appendText(join(directory, name), text)).catch(() => {}));
+
+function record(event: RunEvent): void {
+	// State first, all at once: the order of events is the order of the stream.
+	let piece = "";
 	if (event.type === "text") {
-		const text = safe(event.text);
-		activity = `said: ${oneLine(text, 120)}`;
-		if (partial.length < PARTIAL_MAX) {
-			const room = PARTIAL_MAX - partial.length;
-			const piece = text.slice(0, room) + (text.endsWith("\n") ? "" : "\n");
-			partial += piece;
-			chars = partial.length;
-			await appendText(join(directory, FILES.partial), piece).catch(() => {});
-		}
+		// The SDK streams the answer as small deltas: they are joined as they come, with nothing between them (the text's own
+		// line breaks are the only ones).
+		piece = safe(event.text).slice(0, Math.max(0, PARTIAL_MAX - partial.length));
+		partial += piece;
+		chars = partial.length;
+		activity = `said: …${oneLine(partial.slice(-100), 100)}`;
 	} else {
 		activity = oneLine(safe(`${event.name}${event.path ? ` ${event.path}` : ""} (${event.status})`), 200);
 		if (event.path && WRITING.test(event.name)) files.add(safe(event.path).slice(0, 300));
 	}
+	if (piece !== "") write(FILES.partial, piece);
 	const line = `${JSON.stringify({ at: Date.now(), ...(event.type === "text" ? { type: "text", text: safe(event.text).slice(0, 200) } : { ...event, name: safe(event.name), path: event.path && safe(event.path) }) })}\n`;
 	if (eventBytes + line.length < EVENTS_MAX) {
 		eventBytes += line.length;
-		await appendText(join(directory, FILES.events), line).catch(() => {});
+		write(FILES.events, line);
 	}
 }
 
@@ -85,6 +89,7 @@ async function record(event: RunEvent): Promise<void> {
 async function end(result: Pick<WorkerExit, "status"> & Partial<WorkerExit>, text: string): Promise<never> {
 	if (ended) return new Promise<never>(() => {});
 	ended = true;
+	await writes;
 	const bounded = safe(text).slice(0, LIMITS.result);
 	try {
 		if (bounded !== "") await writeJsonAtomic(join(directory, FILES.result), { text: bounded });
@@ -162,7 +167,7 @@ async function main(): Promise<void> {
 		sandbox = "unavailable";
 		handle = await client.start({ ...base, sandbox: false });
 	}
-	handle.watch?.((event) => void record(event));
+	handle.watch?.((event) => record(event));
 	state = "running";
 	await writeStatus();
 	if (cancelRequested) void handle.cancel().catch(() => {});

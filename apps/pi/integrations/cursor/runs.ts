@@ -37,6 +37,7 @@ import {
 import { LIMITS, STALE_BEATS } from "./limits.ts";
 import { checkRequest } from "./local-policy.ts";
 import { paramsText } from "./models.ts";
+import { relativeFiles } from "./render.ts";
 import { plan } from "./policy.ts";
 import {
 	archiveAttempt,
@@ -164,7 +165,7 @@ export function createManager(deps: Deps) {
 			health,
 			...(beat === undefined ? {} : { heartbeatAt: beat }),
 			...(activity === undefined ? {} : { activity }),
-			...(files === undefined || files.length === 0 ? {} : { files }),
+			...(files === undefined || files.length === 0 ? {} : { files: relativeFiles(files, record.cwd) }),
 		};
 	};
 

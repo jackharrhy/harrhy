@@ -2,7 +2,7 @@
 // node_modules and disposable real stores with the fake model: never touches Cursor, the network or a real credential.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, it } from "node:test";
@@ -143,7 +143,7 @@ class World {
 				},
 				finish: (outcome) => writeFileSync(join(this.control, `finish-${id}.json`), JSON.stringify(outcome)),
 				fail: (error) => writeFileSync(join(this.control, `fail-${id}`), error.message),
-				say: (text) => write(`stream-${id}.txt`, `${text}\n`),
+				say: (text) => write(`stream-${id}.txt`, `${JSON.stringify(text)}\n`),
 				tool: (call) => write(`tool-${id}.jsonl`, `${JSON.stringify(call)}\n`),
 			};
 		});
@@ -1036,20 +1036,23 @@ it("calls a run whose worker died interrupted, keeps what it had produced and re
 	const session = await h.session("Interrupted");
 	const { runId } = await session.start({ mode: "agent" });
 	const first = h.fake.runs[0]!;
-	first.say("I have read the files and started on src/a.ts.");
-	first.tool({ name: "edit", status: "completed", args: { path: "src/a.ts" } });
+	// The SDK streams the answer in small deltas: they join into one sentence, with only the text's own line breaks.
+	for (const delta of ["I have", " read the", " files and", " started on", " src/a.ts.", "\nNext: the tests."]) first.say(delta);
+	const edited = `${realpathSync(h.fixture.workspace)}/src/a.ts`;
+	first.tool({ name: "edit", status: "completed", args: { path: edited } });
 	await poll(async () => (await session.runs.status({ id: runId }, TEST)).files?.length === 1, 10_000, "the worker's progress");
 	const { pid } = h.workerOf(runId);
-	await poll(async () => (await session.runs.result({ id: runId }, TEST)).text.includes("started on src/a.ts"), 5000, "streamed text");
+	await poll(async () => (await session.runs.result({ id: runId }, TEST)).text.includes("Next: the tests."), 5000, "streamed text");
 	kill(pid);
 
 	await until(session.chat.view, () => session.wakes().length > 0);
 	const wake = session.wakes()[0]!;
 	assert.match(wake, new RegExp(`${runId} \\(local, agent mode\\) was interrupted by a worker process that died without a recorded reason at \\d{4}-`));
 	assert.match(wake, /It did not finish\./);
-	assert.match(wake, /Its last recorded activity: edit src\/a\.ts \(completed\)/);
-	assert.match(wake, /Files its editing tools named: src\/a\.ts/);
-	assert.match(wake, /> I have read the files and started on src\/a\.ts\./);
+	assert.match(wake, new RegExp(`Its last recorded activity: edit ${edited.replaceAll("/", "\\/")} \\(completed\\)`));
+	assert.match(wake, /Files its editing tools named: src\/a\.ts\n/, "relative to the run's directory, not long absolute paths");
+	assert.match(wake, /\n> I have read the files and started on src\/a\.ts\.\n> Next: the tests\.\n/, "one coherent text, not one delta per line");
+	assert.equal((await session.runs.result({ id: runId }, TEST)).text, "I have read the files and started on src/a.ts.\nNext: the tests.");
 	assert.match(wake, /call `cursor_resume`/);
 	assert.match(wake, /not .* the guarantees of a Pi subagent/);
 	const interrupted = await session.runs.status({ id: runId }, TEST);
@@ -1063,7 +1066,7 @@ it("calls a run whose worker died interrupted, keeps what it had produced and re
 	assert.equal(resumed.attempt, 2);
 	const second = h.fake.runs[1]!;
 	assert.match(second.prompt, /^You were interrupted by a worker process that died without a recorded reason at \d{4}-.*; your previous partial work is on disk in .*; check the state of the files, then continue the task\./);
-	assert.match(second.prompt, /Your last recorded activity was: edit src\/a\.ts \(completed\)\./);
+	assert.match(second.prompt, /Your last recorded activity was: edit .*src\/a\.ts \(completed\)\./);
 	assert.match(second.prompt, /Extra instruction from the Pi session:\nSkip the tests\./);
 	assert.deepEqual((second.sendOptions as { local: unknown }).local, { force: true }, "the dead worker's active run is expired");
 	assert.equal(h.fake.workerCreated()[1]!.resumeId, first.agentId, "the same Cursor agent");

@@ -78,7 +78,7 @@ function fileAgent(options, resumeId) {
 					while (!done) {
 						const text = lines(`stream-${id}.txt`);
 						for (; seen < text.length; seen++)
-							yield { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: text[seen] }] } };
+							yield { type: "assistant", message: { role: "assistant", content: [{ type: "text", text: JSON.parse(text[seen]) }] } };
 						const tools = lines(`tool-${id}.jsonl`);
 						for (; toolsSeen < tools.length; toolsSeen++) yield { type: "tool_call", ...JSON.parse(tools[toolsSeen]) };
 						await sleep(20);
