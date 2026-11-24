@@ -1,21 +1,20 @@
-import test from "node:test";
+import test, {type TestContext} from "node:test";
 import assert from "node:assert/strict";
 import {once} from "node:events";
 import {mkdtempSync, rmSync} from "node:fs";
 import {join} from "node:path";
 import WS from "ws";
-import {newWebSocketRpcSession} from "capnweb";
-import {boot} from "../toy.js";
+import {boot, socketSession, type Host, type Principal} from "../toy.ts";
 
-async function connect(url, authorization, extra = {}) {
+async function connect(url: string, authorization?: string, extra: Record<string, string> = {}) {
   const headers = authorization === undefined ? extra : {...extra,authorization};
   const ws = new WS(url,{headers,handshakeTimeout:1000});
   await once(ws,"open");
-  return newWebSocketRpcSession(ws);
+  return socketSession(ws);
 }
-const login = (app,h,p) => connect(app.urls[h],`Bearer fixture-${h}-${p}`);
-const deny = promise => assert.rejects(async () => await promise,/DENIED/);
-async function setup(t) {
+const login = (app: Awaited<ReturnType<typeof boot>>, h: Host, p: Principal) => connect(app.urls[h],`Bearer fixture-${h}-${p}`);
+const deny = (promise: PromiseLike<unknown>) => assert.rejects(async () => await promise,/DENIED/);
+async function setup(t: TestContext) {
   const dir = mkdtempSync("./state-");
   const path = join(dir,"toy.sqlite");
   let app = await boot(path);
@@ -34,14 +33,17 @@ test("host-bound authentication, Familiar default, scoped target and outsider", 
   const away = await login(app,"away","owner");
   const outsider = await login(app,"home","outsider");
   assert.deepEqual(await home.whoami(),{host:"home",principal:"owner"});
+  // @ts-expect-error Intentionally send an extra identity argument over the wire.
   assert.deepEqual(await outsider.whoami("owner"),{host:"home",principal:"outsider"});
-  for (const [api, host] of [[home,"home"],[away,"away"]]) {
+  for (const [api, host] of [[home,"home"],[away,"away"]] as const) {
     assert.match((await api.open().read())[0].text,new RegExp(`${host}/familiar`));
     assert.match((await api.open("scoped").read())[0].text,new RegExp(`${host}/scoped`));
   }
   await deny(outsider.open());
   await deny(outsider.setMarty("familiar",true,true));
+  // @ts-expect-error The server must reject out-of-contract targets on the wire.
   await assert.rejects(async () => await home.open("away/scoped"),/BAD_TARGET/);
+  // @ts-expect-error The server must reject out-of-contract targets on the wire.
   await assert.rejects(async () => await home.open("__proto__"),/BAD_TARGET/);
   for (const [url, auth, extra] of [
     [app.urls.home,undefined,{"X-Principal":"owner"}],
@@ -49,7 +51,7 @@ test("host-bound authentication, Familiar default, scoped target and outsider", 
     [app.urls.away,"Bearer fixture-home-owner"],
     [app.urls.home,"Bearer fixture-home-owner",{Origin:"https://example.invalid"}],
     [app.urls.home+"?target=scoped","Bearer fixture-home-owner"]
-  ]) await assert.rejects(connect(url,auth,extra),/403/);
+  ] as const) await assert.rejects(connect(url,auth,extra),/403/);
 });
 
 test("viewer to participant, independent send/read, retry conflict, revocation", async t => {

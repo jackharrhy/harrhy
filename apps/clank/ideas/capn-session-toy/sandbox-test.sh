@@ -9,4 +9,4 @@ exec timeout -k 2s 30s bwrap --unshare-net --unshare-pid --die-with-parent --new
   --ro-bind /usr/lib /usr/lib --symlink usr/lib /lib --symlink usr/lib/x86_64-linux-gnu /lib64 \
   --ro-bind "$node_bin" /bin/node --ro-bind "$PWD" /src --bind "$PWD/.sandbox" /work \
   --dev /dev --proc /proc --setenv HOME /work --setenv TMPDIR /work --setenv UV_THREADPOOL_SIZE 2 \
-  --chdir /work /bin/node --max-old-space-size=128 --test /src/__tests__/wire.test.js
+  --chdir /work /bin/node --max-old-space-size=128 --test /src/__tests__/wire.test.ts
