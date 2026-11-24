@@ -1,9 +1,9 @@
 // What a run may do, decided before Cursor sees anything: the owner's settings against what the agent asked for. The one
 // place that says where a local run may work, which repositories a cloud run may use and when files may change.
-import { realpath, stat } from "node:fs/promises";
-import { isAbsolute, resolve, sep } from "node:path";
 import type { ModelInfo, StartSpec } from "./client.ts";
-import { type Mode, REPO_PATTERN, type Runtime, type SandboxMode, type StartArgs } from "./contract.ts";
+import type { Mode, Runtime, SandboxMode, StartArgs } from "./contract.ts";
+import { MODEL_PATTERN, REPO_PATTERN } from "./limits.ts";
+import { resolveBelow } from "./local-policy.ts";
 import { modelLabel, type Resolved, resolveModel } from "./models.ts";
 
 /** The owner's choices (Settings › Cursor) that decide a run. */
@@ -21,6 +21,8 @@ export type Plan = {
 	runtime: Runtime;
 	mode: Mode;
 	spec: StartSpec;
+	/** Local runs: the session's real directory and the real directory the agent works in. */
+	base?: string;
 	cwd?: string;
 	repo?: string;
 	branch?: string;
@@ -30,7 +32,7 @@ export type Plan = {
 };
 
 const REPO = new RegExp(REPO_PATTERN);
-const MODEL = /^[\w.:/@+-]{1,200}$/;
+const MODEL = MODEL_PATTERN;
 /** A branch name for git, without anything that makes it an option, a revision expression or a path escape. */
 const BRANCH = /^(?!-)(?!.*\.\.)(?!.*[\s~^:?*[\\])[^\p{C}]{1,255}$/u;
 
@@ -42,9 +44,6 @@ export function repoAllowed(repo: string, patterns: readonly string[]): boolean 
 		return wanted.endsWith("/*") ? lower.startsWith(wanted.slice(0, -1)) : wanted === lower;
 	});
 }
-
-/** Whether `inner` is `outer` or below it (both real paths). */
-export const within = (outer: string, inner: string) => inner === outer || inner.startsWith(outer.endsWith(sep) ? outer : outer + sep);
 
 /** The plan for a request, or the reason it is refused (an Error whose message is for the agent). */
 export async function plan(args: Omit<StartArgs, "runId">, policy: Policy, models?: readonly ModelInfo[]): Promise<Plan> {
@@ -96,22 +95,11 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy, model
 	if (mode === "agent" && !policy.allowLocalEdits)
 		throw new Error("Local agents may not edit files (agent mode): the owner can allow it in Settings › Cursor. Use mode `ask` or `plan`");
 	if (chosen === undefined || model === undefined) throw new Error("No model: the owner can choose a default in Settings › Cursor, or pass `model`");
-	if (args.path !== undefined && isAbsolute(args.path)) throw new Error("`path` is relative to the session's directory");
-	let base: string;
-	let cwd: string;
-	try {
-		base = await realpath(args.cwd);
-		cwd = await realpath(resolve(base, args.path ?? "."));
-	} catch {
-		throw new Error("That directory does not exist");
-	}
-	// Real paths on both sides: a link that leaves the session's directory is outside.
-	if (!within(base, cwd)) throw new Error("`path` is outside this session's directory");
-	if (base === sep) throw new Error("A local run will not work in the filesystem root");
-	if (!(await stat(cwd)).isDirectory()) throw new Error("`path` is not a directory");
+	const { base, cwd } = await resolveBelow(args.cwd, args.path);
 	return {
 		runtime,
 		mode,
+		base,
 		cwd,
 		model,
 		sandbox,

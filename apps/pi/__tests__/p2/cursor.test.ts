@@ -1,7 +1,9 @@
 // The Cursor integration against a fake `@cursor/sdk` package (fixtures/fake-cursor-sdk) in the fixture plugin's
 // node_modules and disposable real stores with the fake model: never touches Cursor, the network or a real credential.
 import assert from "node:assert/strict";
-import { cpSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, it } from "node:test";
 import { compile } from "@earendil-works/pi-schema";
@@ -10,7 +12,8 @@ import { isSandboxUnsupported, redact } from "../../integrations/cursor/client.t
 import { CursorRun } from "../../integrations/cursor/contract.server.ts";
 import { CursorRuns, CursorSettings, LIMITS, WatchSchema } from "../../integrations/cursor/contract.ts";
 import { resolveModel } from "../../integrations/cursor/models.ts";
-import { plan, repoAllowed, within } from "../../integrations/cursor/policy.ts";
+import { within } from "../../integrations/cursor/local-policy.ts";
+import { plan, repoAllowed } from "../../integrations/cursor/policy.ts";
 import { quote, renderEvent } from "../../integrations/cursor/render.ts";
 import { ConfigState } from "../../integrations/cursor/store.ts";
 import { Chat } from "../../plugins/chat/contract.ts";
@@ -28,9 +31,12 @@ const SOURCE = { id: CursorRun.id, version: 1 };
 let counter = 0;
 const newId = () => `cursor-${(++counter).toString(16).padStart(24, "0")}`;
 
-// A "minute" of a run's allowed time is 200 ms here, and a run that ignores its cancellation is given up on after 300.
-process.env.P2_CURSOR_MINUTE_MS = "200";
+// A "minute" of a run's allowed time is 2 s here (a local run's worker takes a moment to start); a run that ignores its
+// cancellation is given up on after 300 ms; workers report every 100 ms and the server looks every 50 ms.
+process.env.P2_CURSOR_MINUTE_MS = "2000";
 process.env.P2_CURSOR_GRACE_MS = "300";
+process.env.P2_CURSOR_HEARTBEAT_MS = "100";
+process.env.P2_CURSOR_POLL_MS = "50";
 
 type FakeOutcome = {
 	status: "finished" | "error" | "cancelled";
@@ -44,118 +50,217 @@ type FakeRun = {
 	id: string;
 	agentId: string;
 	prompt: string;
-	created: Record<string, unknown>;
 	sendOptions: unknown;
 	cancelled: number;
 	/** The run does not end when cancelled. */
 	ignoreCancel: boolean;
 	finish(outcome: FakeOutcome): void;
 	fail(error: Error): void;
-};
-type Fake = {
-	keys: string[];
-	created: Record<string, unknown>[];
-	runs: FakeRun[];
-	meError?: Error;
-	createError?: Error;
-	/** Agents created with sandbox options are refused, as the real SDK does where it cannot sandbox. */
-	sandboxUnsupported?: boolean;
-	/** The same, but only for real runs: the probe gets through (or fails for another reason). */
-	sandboxUnsupportedForRuns?: boolean;
-	probeError?: Error;
-	probes: number;
-	[name: string]: unknown;
+	/** Something the agent says (streamed), and a tool it uses. */
+	say(text: string): void;
+	tool(call: { name: string; status: string; args?: Record<string, unknown> }): void;
 };
 
-/** What `globalThis.__cursorFake` does for the fake package: the call shapes of the real SDK, scripted by the test. */
-function newFake(): Fake {
-	const fake: Fake = { keys: [], created: [], runs: [], probes: 0 };
-	Object.assign(fake, {
-		me: async (options: { apiKey: string }) => {
-			fake.keys.push(options.apiKey);
-			if (fake.meError) throw fake.meError;
-			return { apiKeyName: "work-laptop" };
-		},
-		models: async (options: { apiKey: string }) => {
-			fake.keys.push(options.apiKey);
-			const flag = (id: string) => ({ id, values: [{ value: "false" }, { value: "true" }] });
-			return [
-				{ id: "composer-2", displayName: "Composer 2", parameters: [flag("fast")] },
-				{ id: "claude-sonnet", displayName: "Claude Sonnet" },
-				{
-					id: "claude-opus-5",
-					displayName: "Claude Opus 5",
-					aliases: ["opus", "opus-5"],
-					parameters: [flag("thinking"), { id: "effort", values: ["low", "medium", "high", "max"].map((value) => ({ value })) }, flag("fast")],
-				},
-				{ id: "claude-opus-5-5", displayName: "Claude Opus 5.5", aliases: ["opus"], parameters: [] },
-				...Array.from({ length: 30 }, (_, index) => ({ id: `extra-model-${index}`, displayName: `Extra ${index}` })),
-			];
-		},
-		create: async (options: Record<string, unknown>) => {
-			fake.keys.push(String(options.apiKey));
-			const local = options.local as { sandboxOptions?: { enabled: boolean } } | undefined;
-			if (options.name === "pi-sandbox-probe") {
-				fake.probes++;
-				if (fake.probeError) throw fake.probeError;
-				if (fake.sandboxUnsupported && local?.sandboxOptions?.enabled) throw new Error(SANDBOX_MESSAGE);
-				return {
-					agentId: "probe",
-					close() {},
-					getUsage: async () => ({}),
-					send: async () => ({ id: "probe-run", agentId: "probe", wait: async () => ({ status: "finished" }), cancel: async () => {} }),
-				};
-			}
-			if (fake.createError) throw fake.createError;
-			if ((fake.sandboxUnsupported || fake.sandboxUnsupportedForRuns) && local?.sandboxOptions?.enabled) throw new Error(SANDBOX_MESSAGE);
-			fake.created.push(options);
-			const agentId = `bc-agent-${fake.created.length}`;
+/**
+ * The fake `@cursor/sdk`'s world. Cloud runs and the sandbox probe happen in this process (`globalThis.__cursorFake`); local
+ * runs happen in detached agent processes, which the fake package drives through files in `control` (index.cjs).
+ */
+class World {
+	readonly control = mkdtempSync(join(tmpdir(), "p2-cursor-fake-"));
+	keys: string[] = [];
+	probes = 0;
+	meError?: Error;
+	probeError?: Error;
+	cloudCreated: Record<string, unknown>[] = [];
+	cloudRuns: FakeRun[] = [];
+	#createError?: Error;
+	#sandboxUnsupported = false;
+	#sandboxUnsupportedForRuns = false;
+
+	constructor() {
+		this.#write();
+	}
+	#write() {
+		writeFileSync(
+			join(this.control, "config.json"),
+			JSON.stringify({
+				createError: this.#createError?.message,
+				sandboxUnsupported: this.#sandboxUnsupported || this.#sandboxUnsupportedForRuns,
+				// A resume that does not ask to expire the dead worker's run fails, as the real SDK's does.
+				activeRunBlocks: true,
+			}),
+		);
+	}
+	/** Agents created with sandbox options are refused, as the real SDK does where it cannot sandbox. */
+	set sandboxUnsupported(value: boolean) {
+		this.#sandboxUnsupported = value;
+		this.#write();
+	}
+	/** The same, but the probe gets through (or fails for another reason): only real runs are refused. */
+	set sandboxUnsupportedForRuns(value: boolean) {
+		this.#sandboxUnsupportedForRuns = value;
+		this.#write();
+	}
+	set createError(error: Error | undefined) {
+		this.#createError = error;
+		this.#write();
+	}
+	get createError() {
+		return this.#createError;
+	}
+
+	#lines(name: string): string[] {
+		try {
+			return readFileSync(join(this.control, name), "utf8").split("\n").filter(Boolean);
+		} catch {
+			return [];
+		}
+	}
+	/** What the agent processes made: each agent's options as the SDK got them, and how the process was started. */
+	workerCreated(): { number: number; options: Record<string, unknown>; argv: string[]; envHasKey: boolean; resumeId?: string }[] {
+		return this.#lines("created.jsonl").map((line) => JSON.parse(line));
+	}
+	get created(): Record<string, unknown>[] {
+		return [...this.workerCreated().map((entry) => entry.options), ...this.cloudCreated];
+	}
+	get runs(): FakeRun[] {
+		const write = (name: string, text: string) => appendFileSync(join(this.control, name), text);
+		const fileRuns = this.#lines("runs.jsonl").map((line): FakeRun => {
+			const { id, agentId, prompt, sendOptions } = JSON.parse(line) as { id: string; agentId: string; prompt: string; sendOptions: unknown };
 			return {
+				id,
 				agentId,
-				close() {},
-				getUsage: async () => ({ cost: { chargedCents: 12.4 } }),
-				send: async (prompt: string, sendOptions: unknown) => {
-					let settle!: (outcome: FakeOutcome) => void;
-					let reject!: (error: Error) => void;
-					const done = new Promise<FakeOutcome>((resolve, rejectPromise) => {
-						settle = resolve;
-						reject = rejectPromise;
-					});
-					const run: FakeRun = {
-						id: `run-${fake.runs.length + 1}`,
-						agentId,
-						prompt,
-						created: options,
-						sendOptions,
-						cancelled: 0,
-						ignoreCancel: false,
-						finish: settle,
-						fail: reject,
-					};
-					fake.runs.push(run);
-					return {
-						id: run.id,
-						agentId,
-						wait: () => done,
-						cancel: async () => {
-							run.cancelled++;
-							if (!run.ignoreCancel) settle({ status: "cancelled" });
-						},
-					};
+				prompt,
+				sendOptions,
+				get cancelled() {
+					return 0;
 				},
+				set ignoreCancel(value: boolean) {
+					if (value) write(`ignore-cancel-${id}`, "x");
+				},
+				get ignoreCancel() {
+					return false;
+				},
+				finish: (outcome) => writeFileSync(join(this.control, `finish-${id}.json`), JSON.stringify(outcome)),
+				fail: (error) => writeFileSync(join(this.control, `fail-${id}`), error.message),
+				say: (text) => write(`stream-${id}.txt`, `${text}\n`),
+				tool: (call) => write(`tool-${id}.jsonl`, `${JSON.stringify(call)}\n`),
 			};
-		},
-		getRun: async (runId: string) => {
-			const run = fake.runs.find((entry) => entry.id === runId);
-			if (!run) throw new Error("no such run");
-			let again!: (outcome: FakeOutcome) => void;
-			const done = new Promise<FakeOutcome>((resolve) => (again = resolve));
-			run.finish = again;
-			return { id: run.id, agentId: run.agentId, wait: () => done, cancel: async () => again({ status: "cancelled" }) };
-		},
-	});
-	return fake;
+		});
+		// How many times Cursor was asked to cancel a run: the fake writes a byte for each.
+		for (const run of fileRuns) {
+			const name = `cancelled-${run.id}`;
+			Object.defineProperty(run, "cancelled", { get: () => (existsSync(join(this.control, name)) ? readFileSync(join(this.control, name), "utf8").length : 0) });
+		}
+		return [...this.cloudRuns, ...fileRuns];
+	}
+	/** The worker processes' ids (their status files), for killing what a test leaves behind. */
+	static workers(dataDir: string): number[] {
+		const root = join(dataDir, "cursor-runs");
+		if (!existsSync(root)) return [];
+		return readdirSync(root).flatMap((name) => {
+			try {
+				return [(JSON.parse(readFileSync(join(root, name, "status.json"), "utf8")) as { pid: number }).pid];
+			} catch {
+				return [];
+			}
+		});
+	}
+
+	/** What `globalThis.__cursorFake` is: the call shapes of the real SDK for the server's own calls. */
+	api() {
+		const world = this;
+		const cloudAgent = (options: Record<string, unknown>, agentId: string) => ({
+			agentId,
+			close() {},
+			getUsage: async () => ({ cost: { chargedCents: 12.4 } }),
+			send: async (prompt: string, sendOptions: unknown) => {
+				let settle!: (outcome: FakeOutcome) => void;
+				let reject!: (error: Error) => void;
+				const done = new Promise<FakeOutcome>((resolve, rejectPromise) => {
+					settle = resolve;
+					reject = rejectPromise;
+				});
+				const run: FakeRun = {
+					id: `run-${world.cloudRuns.length + 1}`,
+					agentId,
+					prompt,
+					sendOptions,
+					cancelled: 0,
+					ignoreCancel: false,
+					finish: (outcome) => settle(outcome),
+					fail: (error) => reject(error),
+					say() {},
+					tool() {},
+				};
+				world.cloudRuns.push(run);
+				return {
+					id: run.id,
+					agentId,
+					wait: () => done,
+					cancel: async () => {
+						run.cancelled++;
+						if (!run.ignoreCancel) settle({ status: "cancelled" });
+					},
+				};
+			},
+		});
+		return {
+			me: async (options: { apiKey: string }) => {
+				world.keys.push(options.apiKey);
+				if (world.meError) throw world.meError;
+				return { apiKeyName: "work-laptop" };
+			},
+			models: async (options: { apiKey: string }) => {
+				world.keys.push(options.apiKey);
+				const flag = (id: string) => ({ id, values: [{ value: "false" }, { value: "true" }] });
+				return [
+					{ id: "composer-2", displayName: "Composer 2", parameters: [flag("fast")] },
+					{ id: "claude-sonnet", displayName: "Claude Sonnet" },
+					{
+						id: "claude-opus-5",
+						displayName: "Claude Opus 5",
+						aliases: ["opus", "opus-5"],
+						parameters: [flag("thinking"), { id: "effort", values: ["low", "medium", "high", "max"].map((value) => ({ value })) }, flag("fast")],
+					},
+					{ id: "claude-opus-5-5", displayName: "Claude Opus 5.5", aliases: ["opus"], parameters: [] },
+					...Array.from({ length: 30 }, (_, index) => ({ id: `extra-model-${index}`, displayName: `Extra ${index}` })),
+				];
+			},
+			create: async (options: Record<string, unknown>) => {
+				world.keys.push(String(options.apiKey));
+				const local = options.local as { sandboxOptions?: { enabled: boolean } } | undefined;
+				if (options.name === "pi-sandbox-probe") {
+					world.probes++;
+					if (world.probeError) throw world.probeError;
+					if (world.#sandboxUnsupported && local?.sandboxOptions?.enabled) throw new Error(SANDBOX_MESSAGE);
+					return {
+						agentId: "probe",
+						close() {},
+						getUsage: async () => ({}),
+						send: async () => ({ id: "probe-run", agentId: "probe", wait: async () => ({ status: "finished" }), cancel: async () => {} }),
+					};
+				}
+				if (world.#createError) throw world.#createError;
+				world.cloudCreated.push(options);
+				return cloudAgent(options, `bc-agent-${world.cloudCreated.length}`);
+			},
+			resume: async (agentId: string, options: Record<string, unknown>) => {
+				world.cloudCreated.push({ ...options, resumedFrom: agentId });
+				return cloudAgent(options, agentId);
+			},
+			getRun: async (runId: string) => {
+				const run = world.cloudRuns.find((entry) => entry.id === runId);
+				if (!run) throw new Error("no such run");
+				let again!: (outcome: FakeOutcome) => void;
+				const done = new Promise<FakeOutcome>((resolve) => (again = resolve));
+				run.finish = again;
+				return { id: run.id, agentId: run.agentId, wait: () => done, cancel: async () => again({ status: "cancelled" }) };
+			},
+		};
+	}
 }
+type Fake = World;
 
 const open: { close(): Promise<void> }[] = [];
 afterEach(async () => {
@@ -172,8 +277,9 @@ function walk(directory: string): string[] {
 }
 
 async function harness() {
-	const fake = newFake();
-	(globalThis as { __cursorFake?: unknown }).__cursorFake = fake;
+	const fake = new World();
+	(globalThis as { __cursorFake?: unknown }).__cursorFake = fake.api();
+	process.env.CURSOR_FAKE_CONTROL = fake.control;
 	const logged: string[] = [];
 	const original = { error: console.error, log: console.log, warn: console.warn };
 	for (const name of ["error", "log", "warn"] as const) console[name] = (...args: unknown[]) => void logged.push(args.map(String).join(" "));
@@ -184,18 +290,23 @@ async function harness() {
 				recursive: true,
 			}),
 	});
-	const holds: { release(): void }[] = [];
-	const settings = await holdIn(fixture.browser(), CursorSettings, {}, "owner");
+	let holds: { release(): void }[] = [];
+	let settings = await holdIn(fixture.browser(), CursorSettings, {}, "owner");
 	holds.push(settings);
-	const sessions = await holdIn(fixture.browser(), Sessions, {}, "owner");
-	const subscriptions = await holdIn(fixture.browser(), Subscriptions, {}, "owner");
+	let sessions = await holdIn(fixture.browser(), Sessions, {}, "owner");
+	let subscriptions = await holdIn(fixture.browser(), Subscriptions, {}, "owner");
+	const reconnects: (() => Promise<void>)[] = [];
 	const session = async (title: string) => {
 		const row = await sessions.create({ cwd: fixture.workspace, title }, TEST);
-		const chat = await holdIn(fixture.browser(), Chat, { session: row.id, conversation: 1 }, "participant");
+		const connect = async () => {
+			const chat = await holdIn(fixture.browser(), Chat, { session: row.id, conversation: 1 }, "participant");
+			const runs = await holdIn(fixture.as({ kind: "worker", session: row.id, generation: 1 }), CursorRuns, {}, "worker");
+			holds.push(runs, chat);
+			return { chat, runs };
+		};
+		let { chat, runs } = await connect();
 		const wakes = () =>
 			(chat.view.value?.entries ?? []).filter((entry) => entry.kind === PEER_MESSAGE_ENTRY).map((entry) => (entry.data as { text: string }).text);
-		const runs = await holdIn(fixture.as({ kind: "worker", session: row.id, generation: 1 }), CursorRuns, {}, "worker");
-		holds.push(runs);
 		/** What the worker's `cursor_task` does: the wake first (a subscription named for the run), then the server's start. */
 		const start = async (args: Record<string, unknown> = {}) => {
 			const runId = newId();
@@ -203,22 +314,63 @@ async function harness() {
 			const view = await runs.start({ runId, prompt: "look at the repo", cwd: fixture.workspace, env: null, conversation: 1, ...args }, TEST);
 			return { runId, view };
 		};
-		return { row, chat, wakes, runs, start };
+		const made = {
+			row,
+			get chat() {
+				return chat;
+			},
+			wakes,
+			get runs() {
+				return runs;
+			},
+			start,
+		};
+		reconnects.push(async () => {
+			({ chat, runs } = await connect());
+		});
+		return made;
 	};
 	const h = {
 		fake,
 		fixture,
-		settings,
+		get settings() {
+			return settings;
+		},
 		session,
 		logged,
 		async withKey() {
 			await settings.setKey({ key: KEY }, TEST);
 			await settings.setDefaults({ model: "composer-2", runtime: "local" }, TEST);
 		},
+		/** Restarts the server on the same data directory (workers are detached and go on); sessions and holds are made again. */
+		async restart(between?: () => void | Promise<void>) {
+			for (const hold of holds.splice(0)) hold.release();
+			await fixture.restart(between);
+			holds = [];
+			settings = await holdIn(fixture.browser(), CursorSettings, {}, "owner");
+			sessions = await holdIn(fixture.browser(), Sessions, {}, "owner");
+			subscriptions = await holdIn(fixture.browser(), Subscriptions, {}, "owner");
+			holds.push(settings);
+			for (const reconnect of reconnects) await reconnect();
+		},
+		/** The worker processes of this fixture's runs, by run id. */
+		workerOf(id: string): { pid: number; start: string; heartbeatAt: number; bootAt: number } & Record<string, unknown> {
+			return JSON.parse(readFileSync(join(fixture.dataDir, "cursor-runs", id, "status.json"), "utf8"));
+		},
 		async close() {
 			for (const hold of holds) hold.release();
 			Object.assign(console, original);
+			// Workers are detached: nothing a test leaves going may outlive it.
+			for (const pid of World.workers(fixture.dataDir)) {
+				try {
+					process.kill(-pid, "SIGKILL");
+				} catch {
+					// Already gone.
+				}
+			}
 			await fixture.close();
+			rmSync(fake.control, { recursive: true, force: true });
+			delete process.env.CURSOR_FAKE_CONTROL;
 		},
 	};
 	open.push(h);
@@ -633,6 +785,8 @@ it("lets the agent's tools start a run, read its status and be woken", { timeout
 	await call(`return await tools.cursor_result({ id: "${runId}" })`);
 	await until(chat.view, () => model().includes('"text":"Tests cover the board."'));
 	assert.match(model(), /untrusted input to verify/);
+	await call(`return await tools.cursor_resume({ id: "${runId}" })`);
+	await until(chat.view, () => model().includes("only an interrupted run can be resumed"));
 	await call("return await tools.cursor_models({})");
 	await until(chat.view, () => model().includes('"default":"composer-2"') && model().includes('"id":"claude-opus-5"'));
 	await call('return await tools.cursor_task({ prompt: "x", model: "gpt-9-turbo-ultra" })');
@@ -806,5 +960,254 @@ it("falls back when only the real run finds out sandboxing is unsupported, and k
 	await h.settings.setSandbox({ mode: "required" }, TEST);
 	await assert.rejects(session.start({ mode: "agent" }), /“required”/);
 	h.fake.runs[0]!.finish(finishedRun("ok"));
+	session.chat.release();
+});
+
+// What follows is the part of the integration that is not durable the way a Pi session is: a local run is a detached worker
+// process, and when it dies the run is interrupted and has to be resumed.
+
+const kill = (pid: number, signal: NodeJS.Signals = "SIGKILL") => {
+	try {
+		process.kill(-pid, signal);
+	} catch {
+		process.kill(pid, signal);
+	}
+};
+const alive = (pid: number) => {
+	try {
+		process.kill(pid, 0);
+		return true;
+	} catch {
+		return false;
+	}
+};
+const noKeyAnywhere = (h: Awaited<ReturnType<typeof harness>>) => {
+	for (const path of walk(h.fixture.dataDir))
+		if (!path.endsWith("cursor-secrets.json")) assert(!readFileSync(path).includes(KEY), `${path} holds the key`);
+	for (const created of h.fake.workerCreated()) {
+		assert(!created.argv.join(" ").includes(KEY), "the key was on the worker's command line");
+		assert.equal(created.envHasKey, false, "the agent's environment still held the key");
+	}
+	assert(!h.logged.join("\n").includes(KEY), "the key was logged");
+};
+
+it("keeps a local run going across a Pi restart and wakes the session once", { timeout: 120_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	const session = await h.session("Restart");
+	const { runId } = await session.start();
+	const run = h.fake.runs[0]!;
+	run.say("Reading the repository.");
+	run.tool({ name: "edit", status: "completed", args: { path: "src/a.ts" } });
+	await poll(async () => (await session.runs.status({ id: runId }, TEST)).files?.[0] === "src/a.ts", 10_000, "the worker's progress");
+	const { pid } = h.workerOf(runId);
+	// The key is not on the worker's command line while it runs.
+	assert(!execFileSync("ps", ["-o", "args=", "-p", String(pid)], { encoding: "utf8" }).includes(KEY));
+
+	await h.restart();
+	assert.equal(alive(pid), true, "the detached worker outlived the server");
+	const going = await session.runs.status({ id: runId }, TEST);
+	assert.equal(going.status, "running");
+	assert.equal(going.health, "running");
+	assert.equal(going.activity, "edit src/a.ts (completed)");
+	assert.deepEqual(going.files, ["src/a.ts"]);
+	assert.match((await session.runs.result({ id: runId }, TEST)).text, /Reading the repository\./, "what it has streamed so far");
+
+	run.finish(finishedRun("Done after the restart."));
+	await until(session.chat.view, () => session.wakes().length > 0);
+	await new Promise((resolve) => setTimeout(resolve, 600));
+	assert.equal(session.wakes().length, 1, "one wake, not one per server");
+	assert.match(session.wakes()[0]!, new RegExp(`${runId} \\(local, ask mode\\) finished\\.`));
+	assert.match(session.wakes()[0]!, /> Done after the restart\./);
+	const done = await session.runs.result({ id: runId }, TEST);
+	assert.equal(done.run.status, "finished");
+	assert.equal(done.text, "Done after the restart.");
+	await poll(async () => h.settings.workerSurvival.value.status === "survives", 5000, "the survival note");
+	noKeyAnywhere(h);
+	// Nothing that is finished can be resumed.
+	await assert.rejects(session.runs.resume({ id: runId }, TEST), /only an interrupted run can be resumed/);
+	session.chat.release();
+});
+
+it("calls a run whose worker died interrupted, keeps what it had produced and resumes the same agent on request", { timeout: 120_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	await h.settings.setAllowLocalEdits({ allow: true }, TEST);
+	const session = await h.session("Interrupted");
+	const { runId } = await session.start({ mode: "agent" });
+	const first = h.fake.runs[0]!;
+	first.say("I have read the files and started on src/a.ts.");
+	first.tool({ name: "edit", status: "completed", args: { path: "src/a.ts" } });
+	await poll(async () => (await session.runs.status({ id: runId }, TEST)).files?.length === 1, 10_000, "the worker's progress");
+	const { pid } = h.workerOf(runId);
+	await poll(async () => (await session.runs.result({ id: runId }, TEST)).text.includes("started on src/a.ts"), 5000, "streamed text");
+	kill(pid);
+
+	await until(session.chat.view, () => session.wakes().length > 0);
+	const wake = session.wakes()[0]!;
+	assert.match(wake, new RegExp(`${runId} \\(local, agent mode\\) was interrupted by a worker process that died without a recorded reason at \\d{4}-`));
+	assert.match(wake, /It did not finish\./);
+	assert.match(wake, /Its last recorded activity: edit src\/a\.ts \(completed\)/);
+	assert.match(wake, /Files its editing tools named: src\/a\.ts/);
+	assert.match(wake, /> I have read the files and started on src\/a\.ts\./);
+	assert.match(wake, /call `cursor_resume`/);
+	assert.match(wake, /not .* the guarantees of a Pi subagent/);
+	const interrupted = await session.runs.status({ id: runId }, TEST);
+	assert.equal(interrupted.status, "interrupted");
+	assert.equal(interrupted.health, "interrupted");
+	assert(interrupted.resultChars! > 0, "never an empty result when text was streamed");
+	assert.match(interrupted.interruption!, /died without a recorded reason/);
+
+	const resumed = await session.runs.resume({ id: runId, instruction: "Skip the tests." }, TEST);
+	assert.equal(resumed.status, "running");
+	assert.equal(resumed.attempt, 2);
+	const second = h.fake.runs[1]!;
+	assert.match(second.prompt, /^You were interrupted by a worker process that died without a recorded reason at \d{4}-.*; your previous partial work is on disk in .*; check the state of the files, then continue the task\./);
+	assert.match(second.prompt, /Your last recorded activity was: edit src\/a\.ts \(completed\)\./);
+	assert.match(second.prompt, /Extra instruction from the Pi session:\nSkip the tests\./);
+	assert.deepEqual((second.sendOptions as { local: unknown }).local, { force: true }, "the dead worker's active run is expired");
+	assert.equal(h.fake.workerCreated()[1]!.resumeId, first.agentId, "the same Cursor agent");
+	// The resumed worker is told the same guards: sandbox asked for, the directory, no ambient settings.
+	const resumedOptions = h.fake.workerCreated()[1]!.options as { local: { sandboxOptions: unknown; settingSources: string[] } };
+	assert.deepEqual(resumedOptions.local.sandboxOptions, { enabled: true });
+	assert.deepEqual(resumedOptions.local.settingSources, []);
+	await assert.rejects(session.runs.resume({ id: runId }, TEST), /still going/);
+
+	second.finish(finishedRun("Finished the rest."));
+	await until(session.chat.view, () => session.wakes().length === 2);
+	assert.match(session.wakes()[1]!, new RegExp(`${runId} \\(local, agent mode\\) finished\\.`));
+	const done = await session.runs.result({ id: runId }, TEST);
+	assert.equal(done.run.status, "finished");
+	assert.equal(done.text, "Finished the rest.");
+	await new Promise((resolve) => setTimeout(resolve, 400));
+	assert.equal(session.wakes().length, 2, "one wake per ending");
+	// The first worker's files are kept.
+	assert(existsSync(join(h.fixture.dataDir, "cursor-runs", runId, "attempt-1", "partial.txt")));
+	// Only the session's own run, and only while edits are allowed.
+	const other = await h.session("Other");
+	await assert.rejects(other.runs.resume({ id: runId }, TEST), /No such run/);
+	noKeyAnywhere(h);
+	session.chat.release();
+	other.chat.release();
+});
+
+it("says what interrupted a run when Pi stopped under it: the operator's note, or Pi's own record", { timeout: 120_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	const session = await h.session("Planned");
+	const planned = await session.start();
+	const unplanned = await session.start();
+	await poll(async () => true, 100, "x");
+	// The service manager takes the workers down with the server, and the operator wrote a note first.
+	await h.restart(() => {
+		for (const id of [planned.runId, unplanned.runId]) kill(h.workerOf(id).pid);
+		writeFileSync(
+			join(h.fixture.dataDir, "cursor-runs", "_interruption.json"),
+			JSON.stringify({ event: "Pi restart to install plugin version 9", by: "the caretaker", at: "2030-01-02T03:04:05Z" }),
+		);
+	});
+	await until(session.chat.view, () => session.wakes().length === 2);
+	for (const wake of session.wakes()) {
+		assert.match(wake, /was interrupted by Pi restart to install plugin version 9 \(noted by the caretaker\) at 2030-01-02T03:04:05\.000Z\./);
+		assert.match(wake, /launchd|AbandonProcessGroup|cursor_resume/);
+	}
+	assert(!existsSync(join(h.fixture.dataDir, "cursor-runs", "_interruption.json")), "the note is read once and removed");
+	const status = await session.runs.status({ id: planned.runId }, TEST);
+	assert.equal(status.status, "interrupted");
+	assert.match(status.interruption!, /Pi restart to install plugin version 9/);
+	await poll(async () => h.settings.workerSurvival.value.status === "killed", 5000, "the survival note");
+	assert.match(h.settings.workerSurvival.value.detail, /AbandonProcessGroup/);
+
+	// Without a note, Pi's own record of its graceful stop names the event.
+	const third = await session.start();
+	await h.restart(() => kill(h.workerOf(third.runId).pid));
+	await until(session.chat.view, () => session.wakes().length === 3);
+	assert.match(session.wakes()[2]!, /was interrupted by the Pi server stopping or restarting/);
+	assert.match((await session.runs.status({ id: third.runId }, TEST)).interruption!, /AbandonProcessGroup/);
+	session.chat.release();
+});
+
+it("shows a stale heartbeat while a worker is frozen, and says the machine rebooted when its boot time changed", { timeout: 120_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	const session = await h.session("Health");
+	const { runId } = await session.start();
+	const { pid } = h.workerOf(runId);
+	const health = async () => (await session.runs.status({ id: runId }, TEST)).health;
+	assert.equal(await health(), "running");
+	process.kill(pid, "SIGSTOP");
+	await poll(async () => (await health()) === "stale-heartbeat", 10_000, "a stale heartbeat");
+	assert.equal((await session.runs.list({}, TEST))[0]!.health, "stale-heartbeat");
+	process.kill(pid, "SIGCONT");
+	await poll(async () => (await health()) === "running", 10_000, "the heartbeat back");
+	// A frozen worker killed after the machine's boot time moved on: a reboot.
+	process.kill(pid, "SIGSTOP");
+	const file = join(h.fixture.dataDir, "cursor-runs", runId, "status.json");
+	writeFileSync(file, JSON.stringify({ ...h.workerOf(runId), bootAt: Date.now() - 10 * 86_400_000 }));
+	kill(pid);
+	await until(session.chat.view, () => session.wakes().length > 0);
+	assert.match(session.wakes()[0]!, /was interrupted by the machine rebooting/);
+	session.chat.release();
+});
+
+it("resumes an interrupted run by itself, at most twice, only when the owner allows it", { timeout: 180_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	const session = await h.session("Auto");
+	// Off by default: the run waits.
+	assert.equal(h.settings.autoResume.value, false);
+	const waiting = await session.start();
+	kill(h.workerOf(waiting.runId).pid);
+	await until(session.chat.view, () => session.wakes().length === 1);
+	assert.doesNotMatch(session.wakes()[0]!, /automatically/);
+	await new Promise((resolve) => setTimeout(resolve, 500));
+	assert.equal(h.fake.runs.length, 1, "nothing was resumed");
+
+	await h.settings.setAutoResume({ allow: true }, TEST);
+	const { runId } = await session.start();
+	const killCurrent = async (attempt: number) => {
+		await poll(async () => {
+			try {
+				return h.workerOf(runId).pid > 0 && (await session.runs.status({ id: runId }, TEST)).status === "running" && (await session.runs.status({ id: runId }, TEST)).attempt === (attempt === 1 ? undefined : attempt);
+			} catch {
+				return false;
+			}
+		}, 10_000, `attempt ${attempt} going`);
+		kill(h.workerOf(runId).pid);
+	};
+	await killCurrent(1);
+	await poll(async () => h.fake.runs.length === 3, 15_000, "the first automatic resume");
+	assert.match(h.fake.runs[2]!.prompt, /Pi resumed you automatically/);
+	await killCurrent(2);
+	await poll(async () => h.fake.runs.length === 4, 15_000, "the second automatic resume");
+	await killCurrent(3);
+	await until(session.chat.view, () => session.wakes().filter((wake) => wake.includes(runId)).length === 3);
+	await new Promise((resolve) => setTimeout(resolve, 800));
+	assert.equal(h.fake.runs.length, 4, "no third automatic resume");
+	const wakes = session.wakes().filter((wake) => wake.includes(runId));
+	assert.match(wakes[0]!, /Pi resumed it automatically \(resume 1 of 2/);
+	assert.match(wakes[1]!, /Pi resumed it automatically \(resume 2 of 2/);
+	assert.match(wakes[2]!, /call `cursor_resume`/);
+	assert.equal((await session.runs.status({ id: runId }, TEST)).status, "interrupted");
+	assert.equal((await session.runs.status({ id: runId }, TEST)).autoResumes, 2);
+	session.chat.release();
+});
+
+it("ends a run as failed when it cannot be resumed", { timeout: 90_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	const session = await h.session("Unresumable");
+	const { runId } = await session.start();
+	h.fake.runs[0]!.say("Some work.");
+	await poll(async () => (await session.runs.result({ id: runId }, TEST)).text.includes("Some work."), 5000, "streamed text");
+	kill(h.workerOf(runId).pid);
+	await until(session.chat.view, () => session.wakes().length === 1);
+	// Cursor no longer knows the agent: the SDK refuses the resume.
+	h.fake.createError = new Error("Agent not found");
+	await assert.rejects(session.runs.resume({ id: runId }, TEST), /It could not be resumed: Agent not found/);
+	const failed = await session.runs.result({ id: runId }, TEST);
+	assert.equal(failed.run.status, "failed");
+	assert.equal(failed.text.trim(), "Some work.", "what it had produced is kept");
+	await assert.rejects(session.runs.resume({ id: runId }, TEST), /failed and cannot be resumed/);
 	session.chat.release();
 });

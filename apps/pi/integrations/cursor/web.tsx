@@ -29,6 +29,8 @@ function CursorSheet() {
 	const allowCloudEdits = useReadable(settings?.allowCloudEdits);
 	const sandbox = useReadable(settings?.sandbox);
 	const sandboxStatus = useReadable(settings?.sandboxStatus);
+	const autoResume = useReadable(settings?.autoResume);
+	const survival = useReadable(settings?.workerSurvival);
 	const [sandboxNote, setSandboxNote] = useState<string>();
 	const [key, setKey] = useState("");
 	const [repo, setRepo] = useState("");
@@ -286,6 +288,28 @@ function CursorSheet() {
 					onChange={(allow) => run(() => settings?.setAllowCloudEdits({ allow }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
 				/>
 				<p className="muted small">Off: cloud agents only plan. On: agent mode, on a branch of the agent&apos;s own, no pull request opened.</p>
+			</div>
+			<div className="list">
+				<span className="label">Interrupted runs</span>
+				<Switch
+					label="Auto-resume interrupted runs"
+					checked={autoResume ?? false}
+					disabled={busy || !settings}
+					onChange={(allow) => run(() => settings?.setAutoResume({ allow }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
+				/>
+				<p className="muted small">
+					Off: an interrupted run waits for the agent to call cursor_resume. On: Pi resumes it by itself, at most twice per run,
+					telling the Cursor agent what interrupted it.
+				</p>
+				<output className="muted small" aria-label="Worker survival">
+					Detached workers:{" "}
+					{survival?.status === "survives"
+						? "outlived the last Pi stop"
+						: survival?.status === "killed"
+							? "were killed at the last Pi stop"
+							: "not observed yet"}
+					{survival?.detail ? `. ${survival.detail}` : ""}
+				</output>
 			</div>
 			{error && (
 				<p className="notice error" role="alert">

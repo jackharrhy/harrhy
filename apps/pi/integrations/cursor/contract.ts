@@ -2,25 +2,12 @@
 // settings. Descriptions only: the rules are in policy.ts and runs.ts. Shared by the server, the worker and the web facet.
 import { arr, bool, int, nul, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { literal, method, record, remote, serverHost } from "@p2/app/v1";
+import { LIMITS, REPO_PATTERN } from "./limits.ts";
 
 export const SOURCE_ID = "cursor.run";
 export const SOURCE_VERSION = 1;
 
-/** Hard limits: what crosses to Cursor, what is kept and what the agent and the wake text get back. */
-export const LIMITS = {
-	prompt: 20_000,
-	/** What Pi keeps of a run's final text, and the most `cursor_result` returns. */
-	result: 16_000,
-	/** What a wake says of the result. */
-	summary: 1_500,
-	/** Runs at once (all sessions) and per session; runs kept after they finish. */
-	active: 4,
-	activePerSession: 2,
-	kept: 50,
-	/** Wall time of a run, in minutes: default and most. */
-	defaultMinutes: 30,
-	maxMinutes: 120,
-} as const;
+export { LIMITS, REPO_PATTERN } from "./limits.ts";
 
 export const RuntimeSchema = union([literal("local"), literal("cloud")]);
 export type Runtime = Static<typeof RuntimeSchema>;
@@ -33,8 +20,35 @@ export const StatusSchema = union([
 	literal("failed"),
 	literal("cancelled"),
 	literal("timed-out"),
+	/**
+	 * The worker died (Pi stopped, a crash, a kill, a reboot) before the run ended. The Cursor agent keeps its conversation
+	 * and its edits are on disk: `cursor_resume` continues it. Not finished, and not as clean as a Pi session resuming.
+	 */
+	literal("interrupted"),
 ]);
 export type Status = Static<typeof StatusSchema>;
+
+/**
+ * How a run looks right now. Cursor runs have no Pi-durable guarantees: a local run is a worker process Pi watches by its
+ * heartbeat. One that dies is `interrupted`: it can be resumed with a nudge, but it does not come back by itself.
+ */
+export const HealthSchema = union([
+	literal("running"),
+	literal("stale-heartbeat"),
+	literal("interrupted"),
+	literal("finished"),
+	literal("failed"),
+	literal("cancelled"),
+	literal("timed-out"),
+]);
+export type Health = Static<typeof HealthSchema>;
+
+/** Whether detached workers have been seen to outlive a Pi restart (what the service manager does to them). */
+export const SurvivalSchema = obj({
+	status: union([literal("unknown"), literal("survives"), literal("killed")]),
+	detail: str({ maxLength: 400 }),
+});
+export type Survival = Static<typeof SurvivalSchema>;
 
 /** Local agent runs and Cursor's shell sandbox: ask for it when possible (default), require it, or never ask. */
 export const SandboxModeSchema = union([literal("when-possible"), literal("required"), literal("off")]);
@@ -48,8 +62,6 @@ export type SandboxStatus = Static<typeof SandboxStatusSchema>;
 /** How a local agent-mode run went: `on` (sandboxed), `off` (the owner turned it off), `unavailable` (asked for, not supported here). */
 export const RunSandboxSchema = union([literal("on"), literal("off"), literal("unavailable")]);
 
-/** `owner/name` (GitHub), the only repository form a cloud run takes. */
-export const REPO_PATTERN = "^(?!\\.{1,2}/)[A-Za-z0-9._-]+/(?!\\.{1,2}$)[A-Za-z0-9._-]+$";
 const Repo = str({ pattern: REPO_PATTERN, maxLength: 200 });
 
 const UsageSchema = obj({
@@ -84,8 +96,17 @@ export const RUN_VIEW = {
 	resultChars: opt(int({ minimum: 0 })),
 	/** Local agent-mode runs only. */
 	sandbox: opt(RunSandboxSchema),
+	/** Local runs: when the worker last reported, what it last did and the files an editing tool named. */
+	heartbeatAt: opt(int()),
+	activity: opt(str({ maxLength: 200 })),
+	files: opt(arr(str({ maxLength: 300 }), { maxItems: 20 })),
+	/** Interrupted runs: what interrupted them and when; how many times the run has been resumed (by hand or automatically). */
+	interruption: opt(str({ maxLength: 500 })),
+	interruptedAt: opt(int()),
+	attempt: opt(int({ minimum: 1 })),
+	autoResumes: opt(int({ minimum: 0 })),
 };
-export const RunViewSchema = obj(RUN_VIEW);
+export const RunViewSchema = obj({ ...RUN_VIEW, health: HealthSchema });
 export type RunView = Static<typeof RunViewSchema>;
 
 /** The config of a `cursor.run` subscription: which run it is about. */
@@ -96,11 +117,19 @@ export const EventSchema = obj({
 	runId: str({ pattern: "^cursor-[0-9a-f]{24}$" }),
 	runtime: RuntimeSchema,
 	mode: ModeSchema,
-	status: union([literal("finished"), literal("failed"), literal("cancelled"), literal("timed-out")]),
+	status: union([literal("finished"), literal("failed"), literal("cancelled"), literal("timed-out"), literal("interrupted")]),
 	/** The start of the run's final text (at most `LIMITS.summary` characters), and whether there was more. */
 	summary: str({ maxLength: LIMITS.summary }),
 	truncated: bool(),
 	sandbox: opt(RunSandboxSchema),
+	/** Interrupted runs: what interrupted it and when, how it can go on, and the last thing the worker did. */
+	interruption: opt(str({ maxLength: 500 })),
+	interruptedAt: opt(int()),
+	/** Pi already resumed it this many times by itself (the owner's setting). */
+	autoResumed: opt(int({ minimum: 0 })),
+	cwd: opt(str({ maxLength: 1024 })),
+	activity: opt(str({ maxLength: 200 })),
+	files: opt(arr(str({ maxLength: 300 }), { maxItems: 20 })),
 	error: opt(str({ maxLength: 500 })),
 	git: opt(GitSchema),
 	durationMs: opt(int({ minimum: 0 })),
@@ -130,7 +159,7 @@ export type StartArgs = Static<typeof StartArgs>;
 
 /** The server's side of the agent's tools. Every method is about the calling session's own runs. */
 export const CursorRuns = remote("p2.cursor-runs", {
-	version: 2,
+	version: 3,
 	params: {},
 	hostAddress: serverHost,
 	variants: {
@@ -144,6 +173,8 @@ export const CursorRuns = remote("p2.cursor-runs", {
 				),
 				cancel: method(obj({ id: str() }), RunViewSchema),
 				list: method(obj({}), arr(RunViewSchema)),
+				/** Continues an interrupted run: the same Cursor agent, with a message saying what happened. */
+				resume: method(obj({ id: str(), instruction: opt(str({ maxLength: 2000 })) }), RunViewSchema),
 				/** The model ids the key may use, from the SDK's live list (kept ten minutes), with their parameters. */
 				models: method(
 					obj({}),
@@ -162,7 +193,7 @@ const ModelInfo = obj({ id: str({ maxLength: 200 }), name: str({ maxLength: 200 
 
 /** The owner's settings (Settings › Cursor). The API key goes in and never comes out. */
 export const CursorSettings = remote("p2.cursor-settings", {
-	version: 2,
+	version: 3,
 	params: {},
 	hostAddress: serverHost,
 	variants: {
@@ -177,7 +208,9 @@ export const CursorSettings = remote("p2.cursor-settings", {
 				allowLocalEdits: bool(),
 				allowCloudEdits: bool(),
 				sandbox: SandboxModeSchema,
+				autoResume: bool(),
 				sandboxStatus: SandboxStatusSchema,
+				workerSurvival: SurvivalSchema,
 			},
 			methods: {
 				setKey: method(obj({ key: str({ minLength: 8, maxLength: 512 }) })),
@@ -192,6 +225,7 @@ export const CursorSettings = remote("p2.cursor-settings", {
 				setAllowLocalEdits: method(obj({ allow: bool() })),
 				setAllowCloudEdits: method(obj({ allow: bool() })),
 				setSandbox: method(obj({ mode: SandboxModeSchema })),
+				setAutoResume: method(obj({ allow: bool() })),
 				/** Asks the SDK, with one tiny request, whether it can sandbox a local agent here. */
 				checkSandbox: method(obj({}), SandboxStatusSchema),
 			},

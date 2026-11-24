@@ -66,6 +66,9 @@ test("the owner sets the key (write-only), the defaults and the allowed reposito
 	})()`);
 	await browser.wait(`document.querySelector('select[aria-label="Default model"]').value === 'composer-2'`);
 	await browser.wait(`document.body.textContent.includes('Sandbox: not checked')`);
+	await browser.wait(`document.body.textContent.includes('Detached workers: not observed yet')`);
+	await browser.wait(`[...document.querySelectorAll('[role=switch]')].length === 3`);
+	await browser.wait(`document.body.textContent.includes('Auto-resume interrupted runs')`);
 	await browser.evaluate(`(() => {
 		const select = document.querySelector('select[aria-label="Sandbox local agents"]');
 		Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, 'required');

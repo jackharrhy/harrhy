@@ -1,7 +1,8 @@
 // What the server keeps: the owner's settings and the runs (both in p2 state, no config files; the key is in secrets.ts).
 import { arr, bool, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { defineState, literal, local, method } from "@p2/app/v1";
-import { LIMITS, RUN_VIEW, RuntimeSchema, SandboxModeSchema, SandboxStatusSchema } from "./contract.ts";
+import { RUN_VIEW, RuntimeSchema, SandboxModeSchema, SandboxStatusSchema, SurvivalSchema } from "./contract.ts";
+import { LIMITS } from "./limits.ts";
 
 export const MAX_REPOS = 256;
 
@@ -19,12 +20,14 @@ const ConfigSchema = obj({
 	allowCloudEdits: bool(),
 	/** Added after version 1 shipped: absent in settings stored before, which reads as `when-possible`. */
 	sandbox: opt(SandboxModeSchema),
+	/** Added in version 3: resume interrupted runs by itself, at most twice each. Absent reads as off. */
+	autoResume: opt(bool()),
 });
 export type Config = Static<typeof ConfigSchema>;
 export const ConfigState = defineState("p2.cursor-config", {
-	version: 2,
-	// Version 1 had no `sandbox`: it gains the default.
-	migrate: (old) => ({ ...(old as Config), sandbox: (old as Config).sandbox ?? "when-possible" }),
+	version: 3,
+	// Version 1 had no `sandbox` (it gains the default), version 2 no `autoResume` (off).
+	migrate: (old) => ({ ...(old as Config), sandbox: (old as Config).sandbox ?? "when-possible", autoResume: (old as Config).autoResume ?? false }),
 	schema: ConfigSchema,
 	initial: (): Config => ({
 		keyStored: false,
@@ -45,6 +48,15 @@ export const SandboxState = defineState("p2.cursor-sandbox", {
 	initial: () => ({ status: "unknown" as const, detail: "" }),
 });
 
+/** Whether detached workers outlived the last Pi restart: kept, because the evidence comes at the restart after it. */
+export const SurvivalState = defineState("p2.cursor-survival", {
+	version: 1,
+	schema: SurvivalSchema,
+	initial: () => ({ status: "unknown" as const, detail: "" }),
+	persist: true,
+	checkpointWhen: () => true,
+});
+
 /** A run as kept: its view, whose it is, what Cursor called it and its final text. */
 export const RunRecordSchema = obj({
 	...RUN_VIEW,
@@ -62,7 +74,8 @@ export const RunRecordSchema = obj({
 });
 export type RunRecord = Static<typeof RunRecordSchema>;
 export const RunsState = defineState("p2.cursor-runs", {
-	version: 2,
+	// Version 3: runs may be `lost` and carry a heartbeat, last activity and files (all optional).
+	version: 3,
 	migrate: (old) => old as { runs: RunRecord[] },
 	schema: obj({ runs: arr(RunRecordSchema, { maxItems: LIMITS.kept + LIMITS.active * 4 }) }),
 	initial: () => ({ runs: [] as RunRecord[] }),
@@ -77,19 +90,22 @@ const ConfigPatch = obj({
 	allowLocalEdits: opt(bool()),
 	allowCloudEdits: opt(bool()),
 	sandbox: opt(SandboxModeSchema),
+	autoResume: opt(bool()),
 	allowRepo: opt(str({ maxLength: 200 })),
 	removeRepo: opt(str({ maxLength: 200 })),
 });
 
 /** The server-local store behind both remotes. */
 export const CursorStore = local("p2.cursor-store", {
-	version: 2,
+	version: 3,
 	params: {},
 	members: {
 		config: ConfigSchema,
 		runs: arr(RunRecordSchema),
 		sandboxStatus: SandboxStatusSchema,
 		setSandboxStatus: method(SandboxStatusSchema),
+		survival: SurvivalSchema,
+		setSurvival: method(SurvivalSchema),
 		patchConfig: method(ConfigPatch),
 		put: method(RunRecordSchema),
 		remove: method(obj({ id: str() })),

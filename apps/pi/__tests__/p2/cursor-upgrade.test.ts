@@ -55,6 +55,22 @@ const failed: RunRecordV1 = {
 	notified: "gave-up",
 };
 
+/** A run version 2 of the plugin left going inside the server process: no worker directory, so no way to follow it. */
+const going: RunRecordV1 = {
+	id: `cursor-${"c".repeat(24)}`,
+	runtime: "local",
+	mode: "ask",
+	status: "running",
+	prompt: "still going when the server stopped",
+	createdAt: 1_700_000_200_000,
+	session: SESSION,
+	conversation: 1,
+	agentId: "agent-3",
+	deadline: 4_000_000_000_000,
+	text: "",
+	notified: "no",
+};
+
 /** Writes version 1's stored objects into `dataDir` with the first release's schemas, as that release did. */
 async function writeVersion1(dataDir: string): Promise<void> {
 	const store = await openHostStore(join(dataDir, "server"), { outbox: false }, TEST);
@@ -62,7 +78,7 @@ async function writeVersion1(dataDir: string): Promise<void> {
 	const report = await old.load([{ name: "cursor-v1", facet: writerV1 }], TEST);
 	assert.deepEqual(report.failed, []);
 	try {
-		await old.root(async (ctx) => (await ctx.get(StoreV1, {})).seed({ runs: [finished, failed] }, ctx), TEST);
+		await old.root(async (ctx) => (await ctx.get(StoreV1, {})).seed({ runs: [finished, failed, going] }, ctx), TEST);
 	} finally {
 		await old.close(TEST);
 		await store.close(TEST);
@@ -92,8 +108,10 @@ it("loads settings and runs stored by version 1, keeps their values and gives th
 				allowLocalEdits: true,
 				allowCloudEdits: false,
 				sandbox: "when-possible",
+				autoResume: false,
 			});
-			assert.deepEqual(store.runs.value, [finished, failed]);
+			assert.deepEqual(store.runs.value.slice(0, 2), [finished, failed]);
+			assert.equal(store.config.value.autoResume, false, "settings stored before auto-resume read as off");
 		}, TEST);
 
 		// What the owner sees.
@@ -104,6 +122,8 @@ it("loads settings and runs stored by version 1, keeps their values and gives th
 		assert.equal(settings.allowLocalEdits.value, true);
 		assert.equal(settings.allowCloudEdits.value, false);
 		assert.equal(settings.sandbox.value, "when-possible");
+		assert.equal(settings.autoResume.value, false);
+		assert.equal(settings.workerSurvival.value.status, "unknown");
 
 		// What the session's agent sees: its old runs, readable, without a sandbox label.
 		const runs = await holdIn(fixture.as({ kind: "worker", session: SESSION, generation: 1 }), CursorRuns, {}, "worker");
@@ -111,10 +131,14 @@ it("loads settings and runs stored by version 1, keeps their values and gives th
 		assert.deepEqual(
 			listed.map((run) => [run.id, run.status, run.sandbox]),
 			[
+				[going.id, "failed", undefined],
 				[failed.id, "failed", undefined],
 				[finished.id, "finished", undefined],
 			],
 		);
+		// A run an older version was running in the server process left no worker: it ends as failed, saying why, with its agent id.
+		const legacy = await runs.status({ id: going.id }, TEST);
+		assert.match(legacy.error!, /older version of this plugin.*left no worker.*agent-3/);
 		const result = await runs.result({ id: finished.id }, TEST);
 		assert.equal(result.text, "It is a game.");
 		assert.deepEqual(result.run.usage, finished.usage);

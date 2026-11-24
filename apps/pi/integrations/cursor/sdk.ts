@@ -10,6 +10,7 @@ import {
 	isSandboxUnsupported,
 	type ModelInfo,
 	type Outcome,
+	type RunEvent,
 	type RunHandle,
 	SandboxUnsupportedError,
 	type StartSpec,
@@ -29,16 +30,18 @@ type SdkRun = {
 		git?: { branches: { branch?: string; prUrl?: string }[] };
 	}>;
 	cancel(): Promise<void>;
+	stream(): AsyncGenerator<unknown, void>;
 };
 type SdkAgent = {
 	agentId: string;
-	send(message: string, options?: { mode?: "agent" | "plan" }): Promise<SdkRun>;
+	send(message: string, options?: { mode?: "agent" | "plan"; local?: { force?: boolean } }): Promise<SdkRun>;
 	close(): void;
 	getUsage(options?: { runId?: string }): Promise<{ cost?: { chargedCents: number } }>;
 };
 type Sdk = {
 	Agent: {
 		create(options: Record<string, unknown>): Promise<SdkAgent>;
+		resume(agentId: string, options: Record<string, unknown>): Promise<SdkAgent>;
 		getRun(runId: string, options: Record<string, unknown>): Promise<SdkRun>;
 	};
 	Cursor: {
@@ -74,6 +77,18 @@ const usageOf = (usage: { inputTokens: number; outputTokens: number; totalTokens
 	usage === undefined
 		? undefined
 		: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, totalTokens: usage.totalTokens };
+
+/** The SDK's stream messages that tell what the agent says and does. */
+function eventsOf(message: unknown): RunEvent[] {
+	const value = message as { type?: string; message?: { content?: { type?: string; text?: string }[] }; name?: string; status?: string; args?: Record<string, unknown> };
+	if (value.type === "assistant")
+		return (value.message?.content ?? []).flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [{ type: "text" as const, text: block.text }] : []));
+	if (value.type === "tool_call" && typeof value.name === "string") {
+		const path = [value.args?.path, value.args?.file_path, value.args?.target_file, value.args?.filePath].find((entry) => typeof entry === "string");
+		return [{ type: "tool", name: value.name, status: String(value.status ?? ""), ...(typeof path === "string" ? { path } : {}) }];
+	}
+	return [];
+}
 
 function handle(run: SdkRun, agent: SdkAgent | undefined): RunHandle {
 	let closed = false;
@@ -118,6 +133,15 @@ function handle(run: SdkRun, agent: SdkAgent | undefined): RunHandle {
 			return outcome;
 		},
 		cancel: () => run.cancel(),
+		watch(onEvent) {
+			void (async () => {
+				try {
+					for await (const message of run.stream()) for (const event of eventsOf(message)) onEvent(event);
+				} catch {
+					// The stream is only for progress: the run's end is wait()'s.
+				}
+			})();
+		},
 		dispose,
 	};
 }
@@ -178,7 +202,12 @@ export const sdkClient: ClientFactory = async (apiKey): Promise<CursorClient> =>
 				throw sandboxAware(error);
 			}
 			try {
-				return handle(await agent.send(spec.prompt, spec.mode === "plan" ? { mode: "plan" } : undefined), agent);
+				// A resumed local agent still has the run its dead worker left active: `force` expires it (verified against the SDK).
+				const options = {
+					...(spec.mode === "plan" ? { mode: "plan" as const } : {}),
+					...(spec.resume !== undefined && spec.runtime === "local" ? { local: { force: true } } : {}),
+				};
+				return handle(await agent.send(spec.resume?.message ?? spec.prompt, Object.keys(options).length ? options : undefined), agent);
 			} catch (error) {
 				agent.close();
 				throw sandboxAware(error);
@@ -189,11 +218,14 @@ export const sdkClient: ClientFactory = async (apiKey): Promise<CursorClient> =>
 		},
 	};
 	async function create(spec: StartSpec): Promise<SdkAgent> {
+		const make = (options: Record<string, unknown>) =>
+			spec.resume === undefined ? sdk.Agent.create(options) : sdk.Agent.resume(spec.resume.agentId, options);
 		{
 			let agent: SdkAgent;
 			if (spec.runtime === "local") {
 				const readOnly = spec.mode !== "agent";
-				agent = await sdk.Agent.create({
+				// What an agent does is not stored with it: a resume says it all again (tools, sandbox, directory, mode).
+				agent = await make({
 					apiKey,
 					model: modelOf(spec),
 					// No ambient hooks, rules or MCP servers from the machine's Cursor settings.
@@ -202,7 +234,7 @@ export const sdkClient: ClientFactory = async (apiKey): Promise<CursorClient> =>
 					...(spec.mode === "plan" ? { mode: "plan" } : {}),
 				});
 			} else {
-				agent = await sdk.Agent.create({
+				agent = await make({
 					apiKey,
 					...(spec.model === undefined ? {} : { model: modelOf(spec) }),
 					cloud: {

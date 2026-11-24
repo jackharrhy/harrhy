@@ -16,6 +16,11 @@ export type Outcome = {
 	git?: { branch?: string; prUrl?: string };
 };
 
+/** What a running agent does, as the SDK streams it. */
+export type RunEvent =
+	| { type: "text"; text: string }
+	| { type: "tool"; name: string; status: string; path?: string };
+
 /** One run Pi started or found again. */
 export type RunHandle = {
 	agentId: string;
@@ -24,6 +29,8 @@ export type RunHandle = {
 	/** Resolves when the run ends. Rejects on a lost connection: ask again with `attach` (cloud runs only). */
 	wait(): Promise<Outcome>;
 	cancel(): Promise<void>;
+	/** Reports what the agent does while it runs (text, tools). Best effort: the stream may end or fail without the run doing so. */
+	watch?(onEvent: (event: RunEvent) => void): void;
 	/** Frees what the handle holds (a local agent's resources); the run itself is not stopped. */
 	dispose(): void;
 };
@@ -41,6 +48,8 @@ export type StartSpec =
 			cwd: string;
 			/** `ask`: read-only tools. `plan`: read-only tools, plan mode. `agent`: every tool, in the SDK's sandbox. */
 			mode: "ask" | "plan" | "agent";
+			/** Go on with an interrupted agent: its id, and the message to send it. */
+			resume?: { agentId: string; message: string };
 	  }
 	| {
 			runtime: "cloud";
@@ -52,6 +61,7 @@ export type StartSpec =
 			branch?: string;
 			/** `plan` reads and drafts; `agent` may change the repository on a branch of its own. */
 			mode: "plan" | "agent";
+			resume?: { agentId: string; message: string };
 	  };
 
 export type CursorClient = {
