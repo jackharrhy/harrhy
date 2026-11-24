@@ -40,6 +40,7 @@ version 1; the stimuli plugin owns the saved delivery, retry and receipt.
 - **Defaults**: the model (chosen from the list the SDK reports for the key) and the runtime (`local` or `cloud`).
 - **Allowed repositories**: `owner/name` or `owner/*` (case-insensitive). A cloud run starts only on a listed repository.
 - **Allow local agents to edit files** (off by default) and **Allow cloud agents to change repositories** (off).
+- **Runs at once**, all sessions (default 6) and per session (default 4), 1 to 12 each; a session cannot have more than the total.
 - **Auto-resume interrupted runs** (off by default): Pi resumes an interrupted run by itself, at most twice per run, telling
   the Cursor agent what interrupted it. See [Interrupted runs](#interrupted-runs-and-cursor_resume). Settings also shows
   whether detached workers have been seen to outlive a Pi stop (`outlived`, `were killed`, `not observed yet`).
@@ -56,7 +57,7 @@ version 1; the stimuli plugin owns the saved delivery, retry and receipt.
 - A local run works in the session's directory, or a directory below it given as `path` (checked on real paths, so a link
   out is refused). It is refused when the session works on another environment (SSH, a sandbox): the SDK runs on the
   Pi server's machine. Ambient hooks, rules and MCP servers of the machine's Cursor settings are not loaded.
-- At most 4 runs go at once, 2 per session, each for at most 120 minutes (default 30). A run past its time is cancelled
+- The owner sets how many runs may go at once, in **Settings › Cursor**: all sessions (default 6) and per session (default 4), each 1 to 12, a session never above the total; the code never goes past 12. A refusal names the current caps and where to change them. Each run lasts at most 120 minutes (default 30). A run past its time is cancelled
   and, if Cursor does not answer, given up on. Prompts are at most 20 000 characters. Pi keeps at most 16 000 characters
   of a result and the wake carries the first 1 500. Pi keeps the last 50 finished runs.
 - Only the session that started a run can see, read or cancel it.
@@ -129,7 +130,7 @@ conversation). Pi keeps the Cursor agent id, directory, mode, model, sandbox set
 `cursor_resume` (`id`, optional `instruction`) starts a new worker that resumes the same agent and sends: *You were
 interrupted by `<event>` at `<time>`; your previous partial work is on disk in `<cwd>`; check the state of the files, then
 continue the task.* plus its last activity and the instruction. It needs a nudge and a check of what state the files were
-left in: it does not come back like a Pi subagent. Limits still hold: 4 runs at once and 2 per session, 120 minutes **in
+left in: it does not come back like a Pi subagent. Limits still hold: the caps on runs at once, 120 minutes **in
 all**, edits only while the owner allows them, the directory re-checked on real paths, sandbox setting and fallback as
 for a new run. A run that finished, failed or was cancelled cannot be resumed. If Cursor refuses the resume (an agent id it
 no longer knows) the run becomes `failed` and keeps its partial text.
@@ -194,7 +195,7 @@ worker and stimuli. Cloud mode is tested only against that fake.
 
 ## Developer notes
 
-- Changing a stored schema needs version+1 and migrate. That holds for `p2.cursor-config` (now 3) and `p2.cursor-runs` (3) (the
+- Changing a stored schema needs version+1 and migrate. That holds for `p2.cursor-config` (now 4) and `p2.cursor-runs` (3) (the
   persisted states; `p2.cursor-survival` is new, at 1) and for every contract and local store (`p2.cursor-store`, `p2.cursor-runs`, `p2.cursor-settings`): a changed
   shape under the same version fails to load where the old object is stored. `__tests__/p2/cursor-upgrade.test.ts` starts the
   plugin on a data directory written by the first release (`__tests__/fixtures/cursor-v1-store.ts`, frozen); when you

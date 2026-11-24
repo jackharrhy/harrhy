@@ -68,6 +68,13 @@ test("the owner sets the key (write-only), the defaults and the allowed reposito
 	await browser.wait(`document.body.textContent.includes('Sandbox: not checked')`);
 	await browser.wait(`document.body.textContent.includes('Detached workers: not observed yet')`);
 	await browser.wait(`[...document.querySelectorAll('[role=switch]')].length === 3`);
+	await browser.wait(`document.querySelector('select[aria-label="Runs at once per session"]').value === '4'`);
+	await browser.evaluate(`(() => {
+		const select = document.querySelector('select[aria-label="Runs at once, all sessions"]');
+		Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value').set.call(select, '3');
+		select.dispatchEvent(new Event('change', { bubbles: true }));
+	})()`);
+	await browser.wait(`document.querySelector('select[aria-label="Runs at once, all sessions"]').value === '3' && document.querySelector('select[aria-label="Runs at once per session"]').value === '3'`);
 	await browser.wait(`document.body.textContent.includes('Auto-resume interrupted runs')`);
 	await browser.evaluate(`(() => {
 		const select = document.querySelector('select[aria-label="Sandbox local agents"]');

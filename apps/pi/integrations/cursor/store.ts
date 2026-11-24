@@ -2,7 +2,7 @@
 import { arr, bool, int, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { defineState, literal, local, method } from "@p2/app/v1";
 import { RUN_VIEW, RuntimeSchema, SandboxModeSchema, SandboxStatusSchema, SurvivalSchema } from "./contract.ts";
-import { LIMITS } from "./limits.ts";
+import { LIMITS, RUN_CAPS } from "./limits.ts";
 
 export const MAX_REPOS = 256;
 
@@ -22,12 +22,24 @@ const ConfigSchema = obj({
 	sandbox: opt(SandboxModeSchema),
 	/** Added in version 3: resume interrupted runs by itself, at most twice each. Absent reads as off. */
 	autoResume: opt(bool()),
+	/** Added in version 4: runs at once, all sessions and per session (absent reads as 6 and 4). */
+	maxRuns: opt(int({ minimum: 1, maximum: RUN_CAPS.ceiling })),
+	maxPerSession: opt(int({ minimum: 1, maximum: RUN_CAPS.ceiling })),
 });
 export type Config = Static<typeof ConfigSchema>;
 export const ConfigState = defineState("p2.cursor-config", {
-	version: 3,
-	// Version 1 had no `sandbox` (it gains the default), version 2 no `autoResume` (off).
-	migrate: (old) => ({ ...(old as Config), sandbox: (old as Config).sandbox ?? "when-possible", autoResume: (old as Config).autoResume ?? false }),
+	version: 4,
+	// Version 1 had no `sandbox` (it gains the default), version 2 no `autoResume` (off), version 3 no run caps (6 and 4).
+	migrate: (old) => {
+		const config = old as Config;
+		return {
+			...config,
+			sandbox: config.sandbox ?? "when-possible",
+			autoResume: config.autoResume ?? false,
+			maxRuns: config.maxRuns ?? RUN_CAPS.total,
+			maxPerSession: config.maxPerSession ?? RUN_CAPS.perSession,
+		};
+	},
 	schema: ConfigSchema,
 	initial: (): Config => ({
 		keyStored: false,
@@ -77,7 +89,7 @@ export const RunsState = defineState("p2.cursor-runs", {
 	// Version 3: runs may be `lost` and carry a heartbeat, last activity and files (all optional).
 	version: 3,
 	migrate: (old) => old as { runs: RunRecord[] },
-	schema: obj({ runs: arr(RunRecordSchema, { maxItems: LIMITS.kept + LIMITS.active * 4 }) }),
+	schema: obj({ runs: arr(RunRecordSchema, { maxItems: LIMITS.kept + 16 }) }),
 	initial: () => ({ runs: [] as RunRecord[] }),
 	persist: true,
 	checkpointWhen: () => true,
@@ -91,13 +103,15 @@ const ConfigPatch = obj({
 	allowCloudEdits: opt(bool()),
 	sandbox: opt(SandboxModeSchema),
 	autoResume: opt(bool()),
+	maxRuns: opt(int({ minimum: 1, maximum: RUN_CAPS.ceiling })),
+	maxPerSession: opt(int({ minimum: 1, maximum: RUN_CAPS.ceiling })),
 	allowRepo: opt(str({ maxLength: 200 })),
 	removeRepo: opt(str({ maxLength: 200 })),
 });
 
 /** The server-local store behind both remotes. */
 export const CursorStore = local("p2.cursor-store", {
-	version: 3,
+	version: 4,
 	params: {},
 	members: {
 		config: ConfigSchema,

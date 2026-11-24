@@ -110,6 +110,8 @@ it("loads settings and runs stored by version 1, keeps their values and gives th
 				allowCloudEdits: false,
 				sandbox: "when-possible",
 				autoResume: false,
+				maxRuns: 6,
+				maxPerSession: 4,
 			});
 			assert.deepEqual(store.runs.value.slice(0, 2), [finished, failed]);
 			assert.equal(store.config.value.autoResume, false, "settings stored before auto-resume read as off");
@@ -124,6 +126,8 @@ it("loads settings and runs stored by version 1, keeps their values and gives th
 		assert.equal(settings.allowCloudEdits.value, false);
 		assert.equal(settings.sandbox.value, "when-possible");
 		assert.equal(settings.autoResume.value, false);
+		assert.equal(settings.maxRuns.value, 6, "settings stored before the run caps got the defaults");
+		assert.equal(settings.maxPerSession.value, 4);
 		assert.equal(settings.workerSurvival.value.status, "unknown");
 
 		// What the session's agent sees: its old runs, readable, without a sandbox label.

@@ -34,7 +34,7 @@ import {
 	type Status,
 	type Survival,
 } from "./contract.ts";
-import { LIMITS, STALE_BEATS } from "./limits.ts";
+import { LIMITS, RUN_CAPS, STALE_BEATS } from "./limits.ts";
 import { checkRequest } from "./local-policy.ts";
 import { paramsText } from "./models.ts";
 import { relativeFiles } from "./render.ts";
@@ -714,6 +714,24 @@ export function createManager(deps: Deps) {
 		}
 	}
 
+	/** The owner's caps on runs at once (Settings › Cursor), never past the ceiling, a session never past the total. */
+	async function capsOf(): Promise<{ total: number; perSession: number }> {
+		const { store } = await whenReady;
+		const clamp = (value: number | undefined, fallback: number) => Math.min(RUN_CAPS.ceiling, Math.max(1, value ?? fallback));
+		const total = clamp(store.config.value.maxRuns, RUN_CAPS.total);
+		return { total, perSession: Math.min(total, clamp(store.config.value.maxPerSession, RUN_CAPS.perSession)) };
+	}
+
+	/** Refuses a new or resumed run past the caps, saying what they are and where to change them. */
+	async function checkCaps(session: string): Promise<void> {
+		const { total, perSession } = await capsOf();
+		const own = [...active.values()].filter((entry) => entry.session === session).length;
+		if (own >= perSession)
+			throw new Error(`This session already has ${own} Cursor runs going (the cap per session is ${perSession}, ${total} at once in all; the owner sets both in Settings › Cursor): wait for one to end or cancel one`);
+		if (active.size >= total)
+			throw new Error(`${active.size} Cursor runs are already going across all sessions (the cap is ${total}; the owner sets it in Settings › Cursor): wait for one to end or cancel one`);
+	}
+
 	/** What an interrupted agent is told when it is resumed: what happened, and to check its files first. */
 	const resumeMessage = (record: RunRecord, auto: boolean, instruction: string | undefined) =>
 		[
@@ -738,9 +756,7 @@ export function createManager(deps: Deps) {
 		if (record.agentId === undefined) throw new Error("There is no Cursor agent to resume");
 		const key = await apiKey();
 		if (key === undefined) throw new Error("No Cursor API key: the owner can set one in Settings › Cursor");
-		if (active.size >= LIMITS.active) throw new Error(`${LIMITS.active} Cursor runs are already going: wait for one to end or cancel one`);
-		if ([...active.values()].filter((entry) => entry.session === session).length >= LIMITS.activePerSession)
-			throw new Error(`This session already has ${LIMITS.activePerSession} Cursor runs going: wait for one to end or cancel one`);
+		await checkCaps(session);
 		// The 120 minutes are for the whole run, however many workers it takes.
 		const now = Date.now();
 		const latest = record.createdAt + LIMITS.maxMinutes * deps.minuteMs;
@@ -838,9 +854,7 @@ export function createManager(deps: Deps) {
 				throw new Error(safe(error, key));
 			}
 			const chosen = await plan(args, store.config.value, await catalogOf(client, key));
-			if (active.size >= LIMITS.active) throw new Error(`${LIMITS.active} Cursor runs are already going: wait for one to end or cancel one`);
-			if ([...active.values()].filter((entry) => entry.session === session).length >= LIMITS.activePerSession)
-				throw new Error(`This session already has ${LIMITS.activePerSession} Cursor runs going: wait for one to end or cancel one`);
+			await checkCaps(session);
 			const entry: Active = { session, cancelRequested: false, timedOut: false, force: () => {} };
 			active.set(args.runId, entry);
 			const now = Date.now();

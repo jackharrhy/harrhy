@@ -2,7 +2,7 @@
 // settings. Descriptions only: the rules are in policy.ts and runs.ts. Shared by the server, the worker and the web facet.
 import { arr, bool, int, nul, obj, opt, type Static, str, union } from "@earendil-works/pi-schema";
 import { literal, method, record, remote, serverHost } from "@p2/app/v1";
-import { LIMITS, REPO_PATTERN } from "./limits.ts";
+import { LIMITS, REPO_PATTERN, RUN_CAPS } from "./limits.ts";
 
 export const SOURCE_ID = "cursor.run";
 export const SOURCE_VERSION = 1;
@@ -193,7 +193,7 @@ const ModelInfo = obj({ id: str({ maxLength: 200 }), name: str({ maxLength: 200 
 
 /** The owner's settings (Settings › Cursor). The API key goes in and never comes out. */
 export const CursorSettings = remote("p2.cursor-settings", {
-	version: 3,
+	version: 4,
 	params: {},
 	hostAddress: serverHost,
 	variants: {
@@ -209,6 +209,8 @@ export const CursorSettings = remote("p2.cursor-settings", {
 				allowCloudEdits: bool(),
 				sandbox: SandboxModeSchema,
 				autoResume: bool(),
+				maxRuns: int(),
+				maxPerSession: int(),
 				sandboxStatus: SandboxStatusSchema,
 				workerSurvival: SurvivalSchema,
 			},
@@ -226,6 +228,8 @@ export const CursorSettings = remote("p2.cursor-settings", {
 				setAllowCloudEdits: method(obj({ allow: bool() })),
 				setSandbox: method(obj({ mode: SandboxModeSchema })),
 				setAutoResume: method(obj({ allow: bool() })),
+				/** Runs at once, all sessions and per session: 1 to 12 each, and a session cannot have more than the total. */
+				setLimits: method(obj({ maxRuns: int({ minimum: 1, maximum: RUN_CAPS.ceiling }), maxPerSession: int({ minimum: 1, maximum: RUN_CAPS.ceiling }) })),
 				/** Asks the SDK, with one tiny request, whether it can sandbox a local agent here. */
 				checkSandbox: method(obj({}), SandboxStatusSchema),
 			},

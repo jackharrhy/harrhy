@@ -725,6 +725,7 @@ it("cancels a run and wakes the session once, saying so", { timeout: 60_000 }, a
 it("gives up on a run that outlives its time, and caps the runs going at once", { timeout: 90_000 }, async () => {
 	const h = await harness();
 	await h.withKey();
+	await h.settings.setLimits({ maxRuns: 4, maxPerSession: 2 }, TEST);
 	const session = await h.session("Limits");
 	const slow = await session.start({ timeoutMinutes: 1 });
 	await until(session.chat.view, () => session.wakes().length === 1);
@@ -735,12 +736,12 @@ it("gives up on a run that outlives its time, and caps the runs going at once", 
 	// Two at once per session, four in all.
 	const a = await session.start();
 	const b = await session.start();
-	await assert.rejects(session.start(), /already has 2 Cursor runs going/);
+	await assert.rejects(session.start(), /already has 2 Cursor runs going \(the cap per session is 2, 4 at once in all; the owner sets both in Settings › Cursor\)/);
 	const second = await h.session("Second");
 	const c = await second.start();
 	const d = await second.start();
 	const third = await h.session("Third");
-	await assert.rejects(third.start(), /4 Cursor runs are already going/);
+	await assert.rejects(third.start(), /4 Cursor runs are already going across all sessions \(the cap is 4; the owner sets it in Settings › Cursor\)/);
 	assert.equal(h.fake.created.length, 5);
 	// A run that ends frees its place.
 	h.fake.runs[1]!.finish(finishedRun("a"));
@@ -1213,4 +1214,39 @@ it("ends a run as failed when it cannot be resumed", { timeout: 90_000 }, async 
 	assert.equal(failed.text.trim(), "Some work.", "what it had produced is kept");
 	await assert.rejects(session.runs.resume({ id: runId }, TEST), /failed and cannot be resumed/);
 	session.chat.release();
+});
+
+it("lets the owner set the caps on runs at once, with defaults of 6 and 4 and a ceiling of 12", { timeout: 120_000 }, async () => {
+	const h = await harness();
+	await h.withKey();
+	assert.equal(h.settings.maxRuns.value, 6);
+	assert.equal(h.settings.maxPerSession.value, 4);
+	// What the owner cannot set: past the ceiling, below one, or a session above the total.
+	await assert.rejects(h.settings.setLimits({ maxRuns: 13, maxPerSession: 4 }, TEST));
+	await assert.rejects(h.settings.setLimits({ maxRuns: 6, maxPerSession: 0 }, TEST));
+	await assert.rejects(h.settings.setLimits({ maxRuns: 3, maxPerSession: 4 }, TEST), /more runs than all sessions together/);
+	assert.equal(h.settings.maxRuns.value, 6);
+
+	// By default a session may have four going (the third is no longer refused), the fifth is.
+	const first = await h.session("First");
+	for (let index = 0; index < 4; index++) await first.start();
+	await assert.rejects(first.start(), /already has 4 Cursor runs going \(the cap per session is 4, 6 at once in all; the owner sets both in Settings › Cursor\)/);
+	// Six in all: two more from another session, then no one else.
+	const second = await h.session("Second");
+	await second.start();
+	await second.start();
+	const third = await h.session("Third");
+	await assert.rejects(third.start(), /6 Cursor runs are already going across all sessions \(the cap is 6/);
+	assert.equal(h.fake.runs.length, 6);
+
+	// Raised to the ceiling, and a session is held to the total.
+	await h.settings.setLimits({ maxRuns: 12, maxPerSession: 12 }, TEST);
+	await third.start();
+	await poll(async () => h.settings.maxPerSession.value === 12, 5000, "the new caps");
+	await h.settings.setLimits({ maxRuns: 2, maxPerSession: 2 }, TEST);
+	await assert.rejects(second.start(), /already has 2 Cursor runs going \(the cap per session is 2, 2 at once in all/);
+	for (const run of h.fake.runs) run.finish(finishedRun("done"));
+	first.chat.release();
+	second.chat.release();
+	third.chat.release();
 });

@@ -30,6 +30,8 @@ function CursorSheet() {
 	const sandbox = useReadable(settings?.sandbox);
 	const sandboxStatus = useReadable(settings?.sandboxStatus);
 	const autoResume = useReadable(settings?.autoResume);
+	const maxRuns = useReadable(settings?.maxRuns);
+	const maxPerSession = useReadable(settings?.maxPerSession);
 	const survival = useReadable(settings?.workerSurvival);
 	const [sandboxNote, setSandboxNote] = useState<string>();
 	const [key, setKey] = useState("");
@@ -288,6 +290,35 @@ function CursorSheet() {
 					onChange={(allow) => run(() => settings?.setAllowCloudEdits({ allow }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
 				/>
 				<p className="muted small">Off: cloud agents only plan. On: agent mode, on a branch of the agent&apos;s own, no pull request opened.</p>
+			</div>
+			<div className="list">
+				<span className="label">Runs at once</span>
+				{[
+					["Runs at once, all sessions", maxRuns ?? 6, (value: number) => ({ maxRuns: value, maxPerSession: Math.min(maxPerSession ?? 4, value) })],
+					["Runs at once per session", maxPerSession ?? 4, (value: number) => ({ maxRuns: Math.max(maxRuns ?? 6, value), maxPerSession: value })],
+				].map(([label, value, change]) => (
+					<label className="field" key={String(label)}>
+						<span className="label">{String(label)}</span>
+						<select
+							className="input"
+							aria-label={String(label)}
+							value={Number(value)}
+							disabled={busy || !settings}
+							onChange={(event) =>
+								run(() => settings?.setLimits((change as (value: number) => { maxRuns: number; maxPerSession: number })(Number(event.target.value)), BACKGROUND_CONTEXT) ?? Promise.resolve())
+							}
+						>
+							{Array.from({ length: 12 }, (_, index) => index + 1).map((count) => (
+								<option key={count} value={count}>
+									{count}
+								</option>
+							))}
+						</select>
+					</label>
+				))}
+				<p className="muted small">
+					More than this many runs are refused with a message saying so. A session cannot have more than the total. At most 12.
+				</p>
 			</div>
 			<div className="list">
 				<span className="label">Interrupted runs</span>

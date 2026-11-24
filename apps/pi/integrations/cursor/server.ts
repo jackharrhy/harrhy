@@ -6,7 +6,7 @@ import { type Ctx, contribute, defineFacet, deriveTyped, forbidden, invalid, isO
 import { Server, StimulusSources, sourceKey } from "@p2/app/v1/server";
 import { CursorRun } from "./contract.server.ts";
 import { CursorRuns, CursorSettings } from "./contract.ts";
-import { HEARTBEAT_MS } from "./limits.ts";
+import { HEARTBEAT_MS, RUN_CAPS } from "./limits.ts";
 import { type Deps, createManager, type Manager } from "./runs.ts";
 import { openSecrets, type CursorSecrets } from "./secrets.ts";
 import { sdkClient } from "./sdk.ts";
@@ -74,6 +74,8 @@ export default defineFacet((host) => {
 					if (patch.allowCloudEdits !== undefined) draft.allowCloudEdits = patch.allowCloudEdits;
 					if (patch.sandbox !== undefined) draft.sandbox = patch.sandbox;
 					if (patch.autoResume !== undefined) draft.autoResume = patch.autoResume;
+					if (patch.maxRuns !== undefined) draft.maxRuns = patch.maxRuns;
+					if (patch.maxPerSession !== undefined) draft.maxPerSession = patch.maxPerSession;
 					const allow = patch.allowRepo;
 					if (allow !== undefined && !draft.repos.some((have) => have.toLowerCase() === allow.toLowerCase())) {
 						if (draft.repos.length >= MAX_REPOS) throw invalid("args", `At most ${MAX_REPOS} repositories`);
@@ -121,6 +123,8 @@ export default defineFacet((host) => {
 				allowCloudEdits: deriveTyped(self, [store.config], ([value]) => value.allowCloudEdits),
 				sandbox: deriveTyped(self, [store.config], ([value]) => value.sandbox ?? "when-possible"),
 				autoResume: deriveTyped(self, [store.config], ([value]) => value.autoResume ?? false),
+				maxRuns: deriveTyped(self, [store.config], ([value]) => value.maxRuns ?? RUN_CAPS.total),
+				maxPerSession: deriveTyped(self, [store.config], ([value]) => Math.min(value.maxPerSession ?? RUN_CAPS.perSession, value.maxRuns ?? RUN_CAPS.total)),
 				sandboxStatus: deriveTyped(self, [store.sandboxStatus], ([value]) => value),
 				workerSurvival: deriveTyped(self, [store.survival], ([value]) => value),
 				setKey: async ({ key }, ctx) => {
@@ -181,6 +185,11 @@ export default defineFacet((host) => {
 				},
 				setAllowCloudEdits: async ({ allow }, ctx) => {
 					await patch({ allowCloudEdits: allow }, ctx);
+					return null;
+				},
+				setLimits: async ({ maxRuns, maxPerSession }, ctx) => {
+					if (maxPerSession > maxRuns) throw invalid("args", "A session cannot be allowed more runs than all sessions together");
+					await patch({ maxRuns, maxPerSession }, ctx);
 					return null;
 				},
 				setAutoResume: async ({ allow }, ctx) => {
