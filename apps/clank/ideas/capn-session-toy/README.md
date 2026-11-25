@@ -38,3 +38,91 @@ history checker or cluster simulation. Test teardown verifies both listeners
 refuse new connections.
 
 Limits: logical hosts share a process and store (no federation or separate trust domains); push watches have no replay or durable cursor; public toy credentials, not production auth. No crash/power-loss injection, expiry, quotas/retention, multiwriter coordination, browser UI, or production hardening. The whole store is rewritten on each mutation. The sandbox is a test harness, not a VM or external ingress service.
+
+## Three-process lease fixture
+
+The sandbox also runs \`**tests**/lease.test.ts\`. IPC only starts and reaps the
+three Node children. One child owns the SQLite ACL; the other two have no
+shared store and independently serve synthetic owner and Marty callbacks.
+Clients and authority notifications use real Cap’n Web loopback WebSockets.
+
+- **Committed** means the authority persisted the new epoch. **Enforced** means
+  both workers acknowledged applying that epoch. A dropped notice leaves the
+  result pending even after the worker’s lease expires; reconnecting applies
+  the current epoch and confirms it explicitly.
+- Marty’s 750 ms lease starts at the worker’s monotonic request time, so transit
+  consumes rather than extends the term. A notice or expiry closes existing
+  watches, and every new watch and final enqueue checks the local deadline.
+  There is no automatic renewal in this fixture. Each reconnect fences old
+  handles; fresh access also needs a current read grant. The owner is not leased.
+- This is not immediate denial at commit under notification loss: a worker can
+  enqueue while its old lease is live. The test drops one notice, not all network
+  traffic, and exercises one repair schedule, not general partition recovery.
+  Each watch has at most one in-flight chunk and no unsent backlog. Already
+  queued socket bytes cannot be recalled. No authority restart or failover is
+  modeled.
+
+The test reports commit and enforcement round trips, attach-plus-lease time,
+observed lease closure, and the signed commit-to-last-enqueue interval for its
+scripted emissions. The cross-process measurements use the same Linux kernel’s
+monotonic clock. They are diagnostics, not latency thresholds or estimates of
+maximum partition leakage.
+
+## Room references and transport comparison
+
+A typed, opaque \`RoomRef\` locates a room at one booted authority; it is not a
+read or send grant. The local adapter calls the same resolver directly; the
+Cap’n Web adapter calls it through the authenticated socket. Resolution checks
+current access and returns an epoch-bound room handle. The locator survives a
+client reconnect, not an authority restart. Shared tests reject a pasted ID,
+a foreign host, an outsider, and a stale room handle after revoke/regrant.
+
+On Linux, choose two allowed logical CPUs on different cores using
+\`taskset -pc $$\` and \`lscpu -e=CPU,CORE,SOCKET,ONLINE\`. From this directory run
+\`NODE_BIN=/path/to/node ./room-ref-bench.sh 0 1\` (substitute your CPU IDs).
+It compares sequential resolve-plus-read in-process and across independently
+pinned Node client/server processes, then repeats across a loopback TCP relay
+with 20 ms of application-level delay per direction. The relay also cuts the
+link before an independent revoke; the same locator is denied on reconnect
+until regrant. It is a simulated delay and disconnect, not a public WAN,
+packet shaper, or authority-failover test. The three-process lease fixture
+separately covers stale ACL state after a missed notification.
+
+Toxiproxy was not installed; veth creation and netem on isolated loopback were
+denied without additional privileges. No host changes were made. QEMU/KVM is
+a later guest-isolation tier for testing separate kernels or guest failures,
+not required for WAN emulation. This host had no QEMU binary on PATH and the
+current user had no read/write access to /dev/kvm, so no guest was attempted.
+
+### Optional official Toxiproxy matrix
+
+Use Shopify’s v2.12.0 release tarball
+`toxiproxy_2.12.0_linux_amd64.tar.gz` from
+<https://github.com/Shopify/toxiproxy/releases/tag/v2.12.0>. Before extracting,
+check the official `checksums.txt` and pinned SHA-256
+`65e042d3fc2290c099527bc506446a6fd863a09f113b8944b636ece70221c2b3`.
+Extract only `toxiproxy-server` to scratch. Run from this toy directory:
+
+```sh
+TOXIPROXY_BIN=/absolute/scratch/toxiproxy-server NODE_BIN=/path/to/node ./sandbox-test.sh
+```
+
+The binary runs only in the test namespace. The optional cases reuse the
+RoomRef conformance suite for Marty at zero delay and fixed 20 ms each way
+(no jitter). Disabling the proxy actively cuts established sockets and rejects
+new TCP connections. In a separate case `timeout=0` discards downstream data
+without closing TCP; the client observed no reply during a 100 ms window and
+then closed its connection. These are injected TCP behaviors, not WAN traces
+or evidence of distributed ACL enforcement. Normal checks skip these cases
+unless the isolated runner mounts the binary.
+
+### Layered checks
+
+`suggestion.test.ts` is a local state fixture, not a workspace edit API. It
+checks that proposals are immutable, only the owner approves the current
+version, an approved version admits one input, and stale handles remain denied.
+The optional proxy matrix also drops the response to a committed send (a direct
+witness reads the commit before the link is cut) and disconnects one worker from
+the ACL authority before revoke. The existing lease scenario checks that the
+isolated worker fails closed after expiry and confirms enforcement only after
+repair. Neither check implies immediate enforcement at commit under partition.

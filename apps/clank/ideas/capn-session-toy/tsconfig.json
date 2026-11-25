@@ -4,5 +4,5 @@
     "types": ["node"],
     "erasableSyntaxOnly": true
   },
-  "include": ["toy.ts", "__tests__/*.test.ts"]
+  "include": ["toy.ts", "__tests__/*.ts"]
 }

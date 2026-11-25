@@ -59,9 +59,15 @@ interface RoomRpc extends RpcTarget {
     destination: Route,
   ): string;
 }
+declare const roomRefBrand: unique symbol;
+// A locator, not a bearer capability. Only the authority can resolve it.
+export type RoomRef = string & { readonly [roomRefBrand]: true };
+
 export interface ToyRpc extends RpcTarget {
   whoami(): Identity;
   open(target?: Target): RoomRpc;
+  reference(target?: Target): RoomRef;
+  resolve(ref: RoomRef): RoomRpc;
   setMarty(target: Target, read: boolean, send: boolean): void;
 }
 
@@ -362,6 +368,10 @@ export async function boot(dbPath: string, push: PushHooks = {}) {
       });
     }
   }
+  // Process-local locator registry: reconnect preserves refs; restart does not.
+  const references = new Map<Route, RoomRef>(
+    routes.map((route) => [route, randomUUID() as RoomRef]),
+  );
   class Main extends RpcTarget implements ToyRpc {
     #host: Host;
     #principal: Principal;
@@ -372,6 +382,17 @@ export async function boot(dbPath: string, push: PushHooks = {}) {
     }
     whoami() {
       return { host: this.#host, principal: this.#principal };
+    }
+    reference(target: unknown = "familiar") {
+      check(isTarget(target), "BAD_TARGET");
+      return references.get(`${this.#host}/${target}`)!;
+    }
+    resolve(ref: unknown) {
+      const target = (["familiar", "scoped"] as const).find(
+        (candidate) => references.get(`${this.#host}/${candidate}`) === ref,
+      );
+      check(target, "BAD_REF");
+      return this.open(target);
     }
     open(target: unknown = "familiar") {
       check(isTarget(target), "BAD_TARGET");
@@ -460,7 +481,12 @@ export async function boot(dbPath: string, push: PushHooks = {}) {
       check(address && typeof address !== "string", "MISSING_ADDRESS");
       urls[host] = `ws://127.0.0.1:${address.port}/rpc`;
     }
-    return { urls, close };
+    return {
+      urls,
+      close,
+      local: (host: Host, principal: Principal): ToyRpc =>
+        new Main(host, principal),
+    };
   } catch (err) {
     await close();
     throw err;
