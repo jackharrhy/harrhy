@@ -24,4 +24,4 @@ For a read-only installation, start this same app in [read-only mode](../../docs
 
 ## Ideas
 
-- [Cap’n Web session and multiplayer toy](ideas/capn-session-toy/README.md): standalone loopback experiment, not part of the Clank runtime.
+- [Cap’n Web session and multiplayer toy](../../experiments/shared-workspace/README.md): standalone loopback experiment, not part of the Clank runtime.

@@ -6,8 +6,13 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const root = fileURLToPath(new URL("../..", import.meta.url));
 
 export function loadWorkspaces(directory = root) {
-  return ["apps", "packages"].flatMap((group) =>
-    readdirSync(join(directory, group), { withFileTypes: true })
+  return ["apps", "packages", "experiments"].flatMap((group) =>
+    (
+      readdirSync(join(directory, group), {
+        withFileTypes: true,
+        throwIfNoEntry: false,
+      }) ?? []
+    )
       .filter((entry) => entry.isDirectory())
       .flatMap((entry) => {
         const path = `${group}/${entry.name}`;

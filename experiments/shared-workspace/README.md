@@ -1,6 +1,15 @@
 # Disposable Cap’n Web multiplayer toy
 
-Requires Node 26 (tested with 26.13.1). `npm ci --offline --ignore-scripts --no-audit` restores the pinned dependencies if they are in your npm cache. Run `npm ci --ignore-scripts` if the packages are not cached. Run `npm run typecheck` for strict no-emit checking of the server and tests, using Harrhy’s shared TypeScript configuration. Node runs the TypeScript directly; no build output is needed. Run `NODE_BIN=/absolute/path/to/real/node ./sandbox-test.sh` on Linux with bubblewrap (not a Node shim). The runner uses fresh PID and network namespaces, loopback only, a cleared environment, read-only code/toolchain, and scratch-local writable state. `npm test` is the unwrapped equivalent; `npm run check` runs both the typecheck and unwrapped wire tests. No daemon is installed or left running.
+Requires Node 26 and the repository’s pinned pnpm. From the repository root,
+run `pnpm --filter @harrhy/shared-workspace... install --frozen-lockfile`
+and `pnpm --filter @harrhy/shared-workspace check`. The fast check runs strict
+typechecking and synthetic state/wire tests without external tooling. From
+this directory, `NODE_BIN=/path/to/real/node ./sandbox-test.sh` runs the tests
+in a loopback-only Bubblewrap sandbox. No daemon is installed or left running.
+
+`access.ts` owns fixture identities and ACL checks; `room.ts` owns room
+capabilities, receipts, citations, and observers; `storage.ts` owns SQLite
+commit ordering; `toy.ts` binds the same room logic to local and Cap’n Web adapters.
 
 - `toy.ts`: two distinct ephemeral loopback WebSocket endpoints (`home`, `away`), both serving real Cap’n Web RPC. Each exposes a Familiar room by default and a separate explicit `scoped` room; the host is fixed by the endpoint. Host-scoped synthetic bearer fixtures set immutable server-side principals on upgrade. No browser origins accepted. The fixture owner represents the same logical owner on both endpoints.
 - `open()` returns a principal-bound room capability. Reads, sends, and subscription polls check live ACLs. Marty starts as a viewer on home/Familiar; owner can grant read and send independently. Removing either right advances the room’s Marty epoch, invalidating all his previous room/subscription handles on that room. Acquiring a newly authorized handle is explicit. Already-delivered data cannot be revoked.
@@ -126,3 +135,21 @@ witness reads the commit before the link is cut) and disconnects one worker from
 the ACL authority before revoke. The existing lease scenario checks that the
 isolated worker fails closed after expiry and confirms enforcement only after
 repair. Neither check implies immediate enforcement at commit under partition.
+
+### Opt-in KVM lab
+
+Run `pnpm --filter @harrhy/shared-workspace lab:kvm` with Node and pnpm installed,
+on Linux x86_64 with existing read/write KVM access, QEMU, Python 3, bsdtar,
+e2fsprogs, curl, tar and xz. The harness downloads pinned Alpine and Node
+artifacts; the exact browser/SSH APK inputs are in `__tests__/kvm/apks.sha256`.
+If a rolling mirror no longer has a pinned APK, supply a directory of the
+original APKs via `HARRHY_SHARED_WORKSPACE_APKS`; every file is still checked.
+Allow roughly 1.5 GiB guest RAM and 2 GiB scratch storage.
+
+Two isolated Playwright contexts see one synthetic dev page. Guest-loopback
+SSH uses ephemeral keys and a fixed fixture command, not a general shell.
+The assertions cover the shared edit, connected chat and preview streams,
+SSH revocation, owner continuity, and file readback after a cold guest boot.
+The streams in this lab are HTTP fixtures, not production Cap’n Web sessions.
+The VM has no NIC or host mounts; only the synthetic workspace disk survives
+between the two boots. Scratch images and serial logs are removed on exit.

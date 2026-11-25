@@ -1586,6 +1586,28 @@ importers:
         specifier: ^4.6.7
         version: 4.6.7
 
+  experiments/shared-workspace:
+    dependencies:
+      capnweb:
+        specifier: 0.13.0
+        version: 0.13.0
+      ws:
+        specifier: 8.21.0
+        version: 8.21.0
+    devDependencies:
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
+      '@types/ws':
+        specifier: 8.18.2
+        version: 8.18.2
+      playwright-core:
+        specifier: 1.65.0
+        version: 1.65.0
+      typescript:
+        specifier: 6.0.3
+        version: 6.0.3
+
   packages/artbin-core:
     dependencies:
       file-type:
@@ -9177,6 +9199,11 @@ packages:
 
   typescript@5.9.3:
     resolution: {integrity: sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
+
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -17240,6 +17267,8 @@ snapshots:
       typed-binary: 4.3.5
 
   typescript@5.9.3: {}
+
+  typescript@6.0.3: {}
 
   typescript@7.0.2:
     optionalDependencies:

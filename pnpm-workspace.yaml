@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - experiments/*
 linkWorkspacePackages: true
 preferWorkspacePackages: true
 packageImportMethod: hardlink
