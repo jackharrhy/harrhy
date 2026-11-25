@@ -40,6 +40,8 @@ sandbox([
   "__tests__/p2/ingress.test.ts",
   "__tests__/p2/atlas-feedback.test.ts",
   "__tests__/p2/github-checks.test.ts",
+  "__tests__/p2/acp-runner.test.ts",
+  "__tests__/p2/acp-task.test.ts",
   "__tests__/p2/cursor.test.ts",
   "__tests__/p2/cursor-upgrade.test.ts",
   "__tests__/p2/legacy-entries.test.ts",
