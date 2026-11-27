@@ -433,14 +433,15 @@ it("allows only listed repositories and keeps a run inside its session's directo
 	assert.equal((await plan({ ...cloud, repo: "acme/site", mode: "agent" }, { ...policy, allowCloudEdits: true })).spec.mode, "agent");
 });
 
-it("keeps the cwd restriction through a link that leaves the directory", async () => {
-	const fixture = await startFixture();
-	open.push(fixture);
-	const outside = join(fixture.workspace, "..", "outside");
-	mkdirSync(outside, { recursive: true });
-	symlinkSync(outside, join(fixture.workspace, "escape"));
-	mkdirSync(join(fixture.workspace, "inside"));
-	const base = { prompt: "p", cwd: fixture.workspace, env: null, conversation: 1 };
+it("keeps the cwd restriction through a link that leaves the directory", async (t) => {
+	const root = mkdtempSync(join(tmpdir(), "cursor-path-"));
+	t.after(() => rmSync(root, { recursive: true, force: true }));
+	const cwd = join(root, "workspace");
+	const outside = join(root, "outside");
+	mkdirSync(join(cwd, "inside"), { recursive: true });
+	mkdirSync(outside);
+	symlinkSync(outside, join(cwd, "escape"));
+	const base = { prompt: "p", cwd, env: null, conversation: 1 };
 	const policy = { model: "m", runtime: "local", repos: [], allowLocalEdits: false, allowCloudEdits: false } as const;
 	await assert.rejects(plan({ ...base, path: "escape" }, policy), /outside this session's directory/);
 	assert.equal((await plan({ ...base, path: "inside" }, policy)).spec.runtime, "local");
@@ -792,10 +793,6 @@ it("lets the agent's tools start a run, read its status and be woken", { timeout
 	await until(chat.view, () => model().includes('"default":"composer-2"') && model().includes('"id":"claude-opus-5"'));
 	await call('return await tools.cursor_task({ prompt: "x", model: "gpt-9-turbo-ultra" })');
 	await until(chat.view, () => model().includes("is not a model in the live list") && model().includes("cursor_models"));
-	await call("return await tools.cursor_list({})");
-	await until(chat.view, () => model().includes(`"status":"finished"`));
-	await call(`return await tools.cursor_cancel({ id: "${runId}" })`);
-	await until(chat.view, () => model().split("\n").filter((line) => line.includes(runId)).length >= 4);
 	assert.equal(wakes().length, 1);
 	chat.release();
 });

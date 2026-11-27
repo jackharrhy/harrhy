@@ -53,6 +53,8 @@ for await (const line of input) {
 		}
 		if (mode === "hang") {
 			assert.ok(argument);
+			process.on("SIGTERM", () => {});
+			setInterval(() => {}, 1000);
 			writeFileSync(`${argument}.ready`, String(process.pid));
 			continue;
 		}
@@ -90,8 +92,4 @@ for await (const line of input) {
 	} else {
 		assert.fail("Unexpected ACP input");
 	}
-}
-if (mode === "hang") {
-	process.on("SIGTERM", () => {});
-	setInterval(() => {}, 1000);
 }
