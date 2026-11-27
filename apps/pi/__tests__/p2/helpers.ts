@@ -113,7 +113,13 @@ export function clientHost(target: LocalOwner | ClientSocket, facets: readonly P
 }
 
 export type Fixture = {
+	/** The running server (a new one after `restart`). */
 	readonly server: P2Server;
+	/**
+	 * Stops the server and starts another on the same data directory, as a restart of the service does. `between` runs while
+	 * it is down. Held references and browser hosts end; hold them again.
+	 */
+	restart(between?: () => void | Promise<void>): Promise<void>;
 	readonly dataDir: string;
 	readonly workspace: string;
 	/** The local owner's session (needs the devices plugin, which signs it in). */
@@ -140,14 +146,16 @@ export async function startFixture(
 		/** settings.json written into the data directory before the server starts (keys read at the start: `telemetry`). */
 		readonly settings?: Readonly<Record<string, unknown>>;
 		/** Install the checked-in integration directories into this fixture's actual user plugin root. */
-		readonly integrations?: readonly ("atlas-feedback" | "github-checks" | "ingress" | "peers")[];
+		readonly integrations?: readonly ("atlas-feedback" | "cursor" | "github-checks" | "ingress" | "peers")[];
+		/** Runs after the integrations are installed and before the server starts (a plugin's node_modules, say). */
+		readonly prepare?: (dataDir: string) => void | Promise<void>;
 	} = {},
 ): Promise<Fixture> {
 	const root = mkdtempSync(join(tmpdir(), "p2-test-"));
 	const dataDir = join(root, "data");
 	const workspace = join(root, "workspace");
 	mkdirSync(workspace, { recursive: true });
-	const { settings, integrations, ...serverOptions } = options;
+	const { settings, integrations, prepare, ...serverOptions } = options;
 	if (settings !== undefined) {
 		mkdirSync(dataDir, { recursive: true, mode: 0o700 });
 		writeFileSync(join(dataDir, "settings.json"), JSON.stringify(settings), { mode: 0o600 });
@@ -162,6 +170,7 @@ export async function startFixture(
 				cpSync(join(APP, "integrations", name), join(userPluginsDirectory(dataDir), name), { recursive: true });
 			}
 		}
+		await prepare?.(dataDir);
 		server = await startServer({
 			dataDir,
 			port: 0,
@@ -174,13 +183,22 @@ export async function startFixture(
 		throw error;
 	}
 	const browsers: Host[] = [];
-	const owner = server.plugins.includes("devices") ? await localOwner(server) : undefined;
+	let owner = server.plugins.includes("devices") ? await localOwner(server) : undefined;
 	const ownerOf = (): LocalOwner => {
 		if (owner === undefined) throw new Error("A fixture without the devices plugin has no local owner");
 		return owner;
 	};
 	return {
-		server,
+		get server() {
+			return server;
+		},
+		restart: async (between) => {
+			for (const browser of browsers.splice(0)) await browser.close(TEST).catch(() => {});
+			await server.close();
+			await between?.();
+			server = await startServer({ dataDir, port: 0, fake: true, web: false, ...serverOptions });
+			owner = server.plugins.includes("devices") ? await localOwner(server) : undefined;
+		},
 		dataDir,
 		workspace,
 		get owner() {
