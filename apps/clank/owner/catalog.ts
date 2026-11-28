@@ -1,3 +1,4 @@
+import { SessionTree } from "../../pi/plugins/tree/contract.ts";
 import { ownerSessions } from "./session-wire.ts";
 import { validSlug } from "./routes.ts";
 import {
@@ -60,6 +61,10 @@ export type Catalog = {
   search(query: string, sessions: string[]): Promise<SearchResults>;
   childrenReady?: boolean;
   children: Readonly<Record<string, readonly Child[]>>;
+  editMessage(
+    session: string,
+    entry: number,
+  ): Promise<{ conversation: number; text: string | null }>;
   rename(id: string, title: string): Promise<void>;
 };
 
@@ -293,6 +298,14 @@ export async function followCatalog(
           rename,
           chat,
           create,
+          editMessage: (session, entry) =>
+            host.root(async (editScope) => {
+              if (!authorized()) throw Error("Owner Sessions ended");
+              const tree = await editScope.get(SessionTree, { session });
+              if (!authorized() || tree.variant !== "owner")
+                throw Error("Owner tree unavailable");
+              return tree.navigate({ entry }, editScope);
+            }, ctx),
           search,
           canCreateSlug: bindingVersion.version === 9,
         });

@@ -95,6 +95,72 @@ function TranscriptInput(
   };
 }
 
+function MessageActions(
+  handle: Handle<{
+    text: string;
+    at?: number;
+    alignEnd?: boolean;
+    edit?: () => void;
+    editDisabled?: boolean;
+  }>,
+) {
+  let announcement = "";
+  return () => {
+    const { text, at, alignEnd, edit, editDisabled } = handle.props;
+    const date = at === undefined ? undefined : new Date(at);
+    return (
+      <div
+        mix={css({
+          display: "flex",
+          alignItems: "center",
+          justifyContent: alignEnd ? "flex-end" : "flex-start",
+          minHeight: "28px",
+          gap: "6px",
+          color: "var(--hui-muted)",
+          fontSize: "12px",
+        })}
+      >
+        {date && (
+          <time datetime={date.toISOString()} title={date.toISOString()}>
+            {date.toISOString().slice(11, 16)} UTC
+          </time>
+        )}
+        {edit && (
+          <Button
+            type="button"
+            variant="quiet"
+            aria-label="Edit message"
+            title="Continue before this message with its text in the composer"
+            disabled={editDisabled}
+            mix={on("click", edit)}
+          >
+            Edit
+          </Button>
+        )}
+        {text && (
+          <Button
+            type="button"
+            variant="quiet"
+            aria-label="Copy message"
+            mix={on("click", async () => {
+              try {
+                await navigator.clipboard.writeText(text);
+                announcement = "Copied";
+              } catch {
+                announcement = "Could not copy";
+              }
+              void handle.update();
+            })}
+          >
+            Copy
+          </Button>
+        )}
+        <span role="status">{announcement}</span>
+      </div>
+    );
+  };
+}
+
 const textOf = (content: readonly { type: string; text?: string }[]) =>
   content
     .flatMap((part) =>
@@ -108,12 +174,35 @@ type Props = {
   session: string;
   conversation: number;
   showMetadata: boolean;
+  initialDraft?: string;
+  consumeDraft(): void;
+  editMessage?(entry: number): Promise<unknown>;
 };
 export function Conversation(handle: Handle<Props>) {
   let feed: ChatFeed | undefined;
   let animateActivity = false;
   let disconnected = false;
   let draft = "";
+  let editing = false;
+  let editFailed = false;
+  let composer: HTMLTextAreaElement | undefined;
+  const composerRef = ref<HTMLTextAreaElement>((node) => {
+    composer = node;
+  });
+  async function edit(entry: number) {
+    if (!handle.props.editMessage || editing || draft || sending) return;
+    editing = true;
+    editFailed = false;
+    void handle.update();
+    try {
+      await handle.props.editMessage(entry);
+    } catch {
+      editFailed = true;
+    } finally {
+      editing = false;
+      if (!handle.signal.aborted) void handle.update();
+    }
+  }
   let pending: { text: string; id: string } | undefined;
   let sending = false;
   let composing = false;
@@ -184,6 +273,7 @@ export function Conversation(handle: Handle<Props>) {
       !feed?.view ||
       disconnected ||
       sending ||
+      editing ||
       !draft.trim()
     )
       return;
@@ -206,6 +296,11 @@ export function Conversation(handle: Handle<Props>) {
     }
   }
   return () => {
+    if (handle.props.initialDraft !== undefined) {
+      draft = handle.props.initialDraft;
+      handle.props.consumeDraft();
+      handle.queueTask(() => composer?.focus());
+    }
     handle.queueTask(start);
     const data = feed ?? handle.props.seed;
     const view = data?.view;
@@ -278,7 +373,18 @@ export function Conversation(handle: Handle<Props>) {
                 {part.text}
               </p>
             ) : (
-              <Markdown text={part.text} />
+              <>
+                <Markdown text={part.text} />
+                {i ===
+                  message.content.findLastIndex(
+                    (item) => item.type === "text" && Boolean(item.text.trim()),
+                  ) && (
+                  <MessageActions
+                    text={textOf(message.content)}
+                    at={message.timestamp}
+                  />
+                )}
+              </>
             ),
             streaming ? undefined : message.timestamp,
           );
@@ -328,7 +434,26 @@ export function Conversation(handle: Handle<Props>) {
       if (input)
         body(
           "input:" + entry.id,
-          <TranscriptInput text={input.text} sender={input} />,
+          <>
+            <TranscriptInput text={input.text} sender={input} />
+            <MessageActions
+              text={input.text}
+              at={entry.model?.find((item) => item.role === "user")?.timestamp}
+              alignEnd={input.kind === "owner"}
+              edit={
+                input.kind === "owner" && handle.props.editMessage
+                  ? () => void edit(entry.id)
+                  : undefined
+              }
+              editDisabled={
+                editing ||
+                Boolean(draft) ||
+                sending ||
+                disconnected ||
+                !feed?.view
+              }
+            />
+          </>,
         );
       for (const [i, message] of (entry.model ?? []).entries()) {
         const key = "entry:" + entry.id + ":" + i;
@@ -429,7 +554,15 @@ export function Conversation(handle: Handle<Props>) {
                   working={Boolean(live?.run && i === parts.length - 1)}
                 />
               ) : (
-                <div key={part.key}>{part.content}</div>
+                <div
+                  key={part.key}
+                  mix={css({
+                    marginBlock: "20px",
+                    "@media (min-width: 48rem)": { marginBlock: "26px" },
+                  })}
+                >
+                  {part.content}
+                </div>
               ),
             )}
             {live?.runFailure && (
@@ -497,9 +630,10 @@ export function Conversation(handle: Handle<Props>) {
               value={draft}
               rows={2}
               maxLength={100_000}
-              readOnly={sending}
+              readOnly={sending || editing}
               disabled={!view || (!feed && !handle.props.chat)}
               mix={[
+                composerRef,
                 css({
                   display: "block",
                   width: "100%",
@@ -712,6 +846,9 @@ export function Conversation(handle: Handle<Props>) {
             )}
             {disconnected && handle.props.chat && (
               <Text role="status">Reconnecting to conversation…</Text>
+            )}
+            {editFailed && (
+              <Text role="alert">Pi could not continue from that message.</Text>
             )}
             {error && (
               <Text role="alert">

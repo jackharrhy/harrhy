@@ -1276,6 +1276,30 @@ try {
   assert.equal(await transcript.evaluate((node) => node.scrollTop), restartTop);
   assert.equal(await message.inputValue(), draft);
   assert.equal(await transcript.getByText(draft, { exact: true }).count(), 0);
+  await message.fill("");
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin,
+  });
+  await transcript
+    .getByRole("button", { name: "Copy message", exact: true })
+    .first()
+    .click();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    prompt,
+  );
+  await transcript
+    .getByRole("button", { name: "Edit message", exact: true })
+    .first()
+    .click();
+  await page.waitForFunction(
+    (expected) =>
+      document.querySelector<HTMLTextAreaElement>(
+        'textarea[aria-label="Message"]',
+      )?.value === expected,
+    prompt,
+  );
+  await transcript.getByText("No messages yet.").waitFor();
   assert.equal(
     await page.evaluate(
       async () => (await fetch("/owner/logout", { method: "POST" })).status,

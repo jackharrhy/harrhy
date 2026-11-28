@@ -346,6 +346,9 @@ export const OwnerSessions = clientEntry(
       });
     }
     let branch: number | undefined;
+    let editDraft:
+      | { session: string; conversation: number; text: string }
+      | undefined;
     let agentId: number | undefined;
     const expanded = new Set<string>();
     let sidebarList: HTMLUListElement | undefined;
@@ -1329,6 +1332,35 @@ export const OwnerSessions = clientEntry(
                 session={selected.id}
                 conversation={conversation}
                 chat={live?.chat}
+                initialDraft={
+                  editDraft?.session === selected.id &&
+                  editDraft.conversation === conversation
+                    ? editDraft.text
+                    : undefined
+                }
+                consumeDraft={() => {
+                  editDraft = undefined;
+                }}
+                editMessage={
+                  live && !selectedChild && conversation === selected.main
+                    ? async (entry) => {
+                        const result = await live.editMessage(
+                          selected.id,
+                          entry,
+                        );
+                        if (selectedId !== selected.id || agentId !== undefined)
+                          return;
+                        if (result.text !== null)
+                          editDraft = {
+                            session: selected.id,
+                            conversation: result.conversation,
+                            text: result.text,
+                          };
+                        branch = result.conversation;
+                        await handle.update();
+                      }
+                    : undefined
+                }
                 seed={
                   selected.id === seed?.selectedId &&
                   conversation ===

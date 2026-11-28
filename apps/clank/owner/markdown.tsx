@@ -4,7 +4,8 @@ import { css, type Handle, type RemixNode } from "remix/component";
 
 const prose = css({
   overflowWrap: "anywhere",
-  "& p": { margin: "6px 0" },
+  "& p": { margin: "0 0 1em" },
+  "& > :last-child": { marginBlockEnd: 0 },
   "& a": { color: "inherit", textUnderlineOffset: "3px" },
   "& blockquote": {
     marginInline: 0,
