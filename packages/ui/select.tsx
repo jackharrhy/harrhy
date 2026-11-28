@@ -170,7 +170,7 @@ const triggerStyles = css({
 const surfaceStyles = css({
   boxSizing: "border-box",
   maxWidth: "calc(100dvw - 2rem)",
-  "@media (max-width: 600px), (pointer: coarse)": { width: "10rem" },
+  "@media (max-width: 37.5rem), (pointer: coarse)": { width: "10rem" },
   padding: "0",
   margin: "0",
   color: "var(--hui-ink)",
@@ -212,7 +212,7 @@ const optionStyles = css({
   borderRadius: "var(--hui-option-radius)",
   cursor: "pointer",
   "& span": { minWidth: 0, overflowWrap: "anywhere" },
-  "@media (max-width: 600px), (pointer: coarse)": { minHeight: "40px" },
+  "@media (max-width: 37.5rem), (pointer: coarse)": { minHeight: "2.5rem" },
   "& svg": { visibility: "hidden", flexShrink: 0 },
   '&[aria-selected="true"]': {
     background: "var(--hui-selected-surface)",

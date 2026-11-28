@@ -372,7 +372,7 @@ const layout = css({
 const preview = css({
   padding: "2rem",
   "& > *": { maxWidth: "38rem", marginInline: "auto" },
-  "@media (max-width: 600px)": { padding: "1.25rem" },
+  "@media (max-width: 37.5rem)": { padding: "1.25rem" },
   minHeight: "12rem",
   minWidth: 0,
   border: "1px solid var(--hui-border)",

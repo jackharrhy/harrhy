@@ -93,9 +93,16 @@ it("uses the same official-anchor popup gap for Menu and Select, including flipp
   const page = await t.serve(await createTestServer(app.fetch));
   const errors: string[] = [];
   page.on("pageerror", (error) => errors.push(error.message));
-  for (const width of [390, 1440]) {
+  for (const [width, rootSize] of [
+    [390, 16],
+    [1440, 16],
+    [390, 20],
+  ]) {
     await page.setViewportSize({ width, height: 900 });
     await page.goto("/explorer/menu?theme=dial");
+    await page.evaluate((size) => {
+      document.documentElement.style.fontSize = `${size}px`;
+    }, rootSize);
     await page.waitForFunction(
       () => document.documentElement.dataset.uiReady === "true",
     );
@@ -135,9 +142,9 @@ it("uses the same official-anchor popup gap for Menu and Select, including flipp
           ? button.y - (popup.y + popup.height)
           : popup.y - (button.y + button.height);
         assert.equal(
-          Math.abs(gap - 6) < 1,
+          Math.abs(gap / rootSize - 0.375) < 0.05,
           true,
-          `${kind} ${width}px ${flipped ? "flipped" : "below"}: ${gap}`,
+          `${kind} ${width}px root=${rootSize} ${flipped ? "flipped" : "below"}: ${gap}`,
         );
         assert.equal(
           popup.x >= 0 && popup.x + popup.width <= width,

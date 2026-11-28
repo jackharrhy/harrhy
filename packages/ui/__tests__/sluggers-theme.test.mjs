@@ -19,8 +19,8 @@ function contrast(a, b) {
 
 test("Sluggers tokens preserve dark table geometry and readable controls and feedback", () => {
   assert.equal(sluggersTheme.colorScheme, "dark");
-  assert.equal(sluggersTheme.tableHeaderTextSize, "12px");
-  assert.equal(sluggersTheme.tableCellPadding, "10px 12px");
+  assert.equal(sluggersTheme.tableHeaderTextSize, "0.75rem");
+  assert.equal(sluggersTheme.tableCellPadding, "0.625rem 0.75rem");
   for (const [foreground, background] of [
     ["ink", "surface"],
     ["muted", "surface"],

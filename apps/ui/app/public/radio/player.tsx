@@ -563,7 +563,7 @@ function TrackList(
     let { state } = handle.props;
     if (state.tracks.length === 0) {
       return (
-        <p mix={css({ margin: 0, padding: "16px", color: desktopColor.muted })}>
+        <p mix={css({ margin: 0, padding: "1rem", color: desktopColor.muted })}>
           No tracks yet. Add a synthetic track to begin.
         </p>
       );

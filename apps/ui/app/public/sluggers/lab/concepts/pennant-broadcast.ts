@@ -16,31 +16,31 @@ export const pennantBroadcast: LabConcept = {
   tokens: composeTheme(archiveTokens, {
     selectedSurface: "#9a303c",
     hoverSurface: "#9a303c",
-    panelRadius: "8px",
-    controlRadius: "8px",
-    tableCellPadding: "8px 10px",
+    panelRadius: "0.5rem",
+    controlRadius: "0.5rem",
+    tableCellPadding: "0.5rem 0.625rem",
   }),
   parts: {
     headingInk: "#ffffff",
     matchColumns: "minmax(0,1fr)",
     headingImage: `linear-gradient(${originalBlue[400]}, ${originalBlue[700]})`,
     panelImage: `linear-gradient(${originalBlue[600]}, ${originalBlue[800]})`,
-    panelEdge: "2px solid #88b3df",
-    cardRadius: "6px",
-    contentColumns: "minmax(0,1.8fr) minmax(340px,1fr)",
+    panelEdge: "0.125rem solid #88b3df",
+    cardRadius: "0.375rem",
+    contentColumns: "minmax(0,1.8fr) minmax(21.25rem,1fr)",
   },
   recipe: css({
-    "& [data-panel-title]": { padding: "16px", fontSize: "20px" },
+    "& [data-panel-title]": { padding: "1rem", fontSize: "1.25rem" },
     "& [data-match]": {
-      padding: "18px 12px",
+      padding: "1.125rem 0.75rem",
       background: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
     },
     "& [data-roster-card]": {
       background: originalBlue[700],
-      borderRadius: "6px",
-      gap: "3px",
+      borderRadius: "0.375rem",
+      gap: "0.1875rem",
     },
-    "@media (min-width: 1001px)": {
+    "@media (min-width: 62.5625rem)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {
         gridTemplateColumns: "repeat(4,minmax(0,1fr))",
       },

@@ -15,12 +15,12 @@ export const archiveTokens = composeTheme(sluggersTheme, {
   colorScheme: "dark",
   fontUi: "SluggersCezanne, Arial, sans-serif",
   fontDisplay: "SluggersRodin, Arial, sans-serif",
-  tableHeaderTextSize: "12px",
+  tableHeaderTextSize: "0.75rem",
   tableContainerSurface: "transparent",
   onDanger: "#173866",
   focus: "#fff1a1",
   buttonImage: "linear-gradient(rgb(255 255 255 / .10),rgb(255 255 255 / 0))",
-  buttonShadow: "0 2px 3px rgb(0 0 0 / .12)",
+  buttonShadow: "0 0.125rem 0.1875rem rgb(0 0 0 / .12)",
   canvas: originalBlue[600],
   surface: originalBlue[600],
   elevated: originalBlue[700],
@@ -36,7 +36,7 @@ export const archiveTokens = composeTheme(sluggersTheme, {
 export const glassHeadingImage = `linear-gradient(180deg, rgb(255 255 255 / .07), transparent 48%), linear-gradient(100deg, ${originalBlue[500]}e6, ${originalBlue[700]}b3)`;
 export const glassEdges = {
   boxShadow:
-    "inset 0 1px 0 rgb(255 255 255 / .22), inset 0 -1px 0 rgb(17 45 112 / .20), 0 8px 20px rgb(17 45 112 / .18)",
+    "inset 0 0.0625rem 0 rgb(255 255 255 / .22), inset 0 -0.0625rem 0 rgb(17 45 112 / .20), 0 0.5rem 1.25rem rgb(17 45 112 / .18)",
   borderColor: "rgb(164 204 244 / .55)",
 };
 
@@ -45,5 +45,5 @@ export const archiveField: BaseballFieldPaint = {
   infield: "#aa8056",
   line: "#e1f4d0",
   marker: originalBlue[600],
-  portraitSize: "32px",
+  portraitSize: "2rem",
 };

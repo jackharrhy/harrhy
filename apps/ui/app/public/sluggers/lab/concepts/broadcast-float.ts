@@ -15,30 +15,36 @@ export const broadcastFloat: LabConcept = {
   changes:
     "Full-width glass shelves replace the sidebar. A clear upper reflection rolls into a cobalt lower glaze, with 24px blur and a soft inset edge. Two aligned fixture columns share the top shelf; standings and rounded portrait shelves follow below.",
   tokens: composeTheme(broadcastPrism.tokens, {
-    panelRadius: "24px",
-    controlRadius: "18px",
-    tableCellPadding: "9px 16px",
+    panelRadius: "1.5rem",
+    controlRadius: "1.125rem",
+    tableCellPadding: "0.5625rem 1rem",
   }),
   parts: {
     ...broadcastPrism.parts,
     panelSurface: `${originalSteel}3d`,
-    panelFilter: "blur(24px) saturate(1.2)",
+    panelFilter: "blur(1.5rem) saturate(1.2)",
     panelImage: `linear-gradient(165deg, rgb(255 255 255 / .07), transparent 20%, ${originalBlue[900]}40 100%), linear-gradient(180deg, ${originalBlue[700]}73, ${originalBlue[800]}a6)`,
     headingImage: glassHeadingImage,
-    cardRadius: "18px",
+    cardRadius: "1.125rem",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },
   recipe: css({
     "& [data-lab-panel]": glassEdges,
-    "& [data-panel-title]": { fontSize: "20px", padding: "14px 20px" },
-    "& [data-match]": { padding: "14px", background: `${originalBlue[700]}59` },
+    "& [data-panel-title]": {
+      fontSize: "1.25rem",
+      padding: "0.875rem 1.25rem",
+    },
+    "& [data-match]": {
+      padding: "0.875rem",
+      background: `${originalBlue[700]}59`,
+    },
     "& [data-roster-card]": {
       background: `${originalBlue[700]}66`,
-      borderRadius: "20px",
-      padding: "12px 10px",
+      borderRadius: "1.25rem",
+      padding: "0.75rem 0.625rem",
     },
-    "@media (min-width: 481px) and (max-width: 1000px)": {
+    "@media (min-width: 30.0625rem) and (max-width: 62.5rem)": {
       "& [data-match-list]": { gridTemplateColumns: "repeat(2,minmax(0,1fr))" },
     },
   }),

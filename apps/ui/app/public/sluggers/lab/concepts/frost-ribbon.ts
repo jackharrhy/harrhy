@@ -15,36 +15,39 @@ export const frostRibbon: LabConcept = {
   changes:
     "A narrower centered reading surface combines compact Frost records with Broadcast lettering. Tall top-to-bottom cobalt glazing gives stacked panes a softer depth, while 28px blur dissolves the circles behind them. Two fixture columns and four portrait columns keep the footprint small.",
   tokens: composeTheme(broadcastPrism.tokens, {
-    panelRadius: "20px",
-    controlRadius: "16px",
-    tableCellPadding: "8px 12px",
+    panelRadius: "1.25rem",
+    controlRadius: "1rem",
+    tableCellPadding: "0.5rem 0.75rem",
   }),
   parts: {
     ...broadcastPrism.parts,
     panelSurface: `${originalSteel}52`,
-    panelFilter: "blur(28px) saturate(1.25)",
+    panelFilter: "blur(1.75rem) saturate(1.25)",
     panelImage: `linear-gradient(180deg, rgb(255 255 255 / .045), transparent 18%, ${originalBlue[900]}33 100%), linear-gradient(180deg, ${originalBlue[700]}73, ${originalBlue[800]}99)`,
     headingImage: glassHeadingImage,
-    cardRadius: "14px",
+    cardRadius: "0.875rem",
     matchColumns: "repeat(2,minmax(0,1fr))",
     contentColumns: "minmax(0,1fr)",
   },
   recipe: css({
-    "& [data-lab-main]": { maxWidth: "1080px", gap: "16px" },
+    "& [data-lab-main]": { maxWidth: "67.5rem", gap: "1rem" },
     "& [data-lab-panel]": glassEdges,
-    "& [data-panel-title]": { fontSize: "20px", padding: "10px 14px" },
+    "& [data-panel-title]": {
+      fontSize: "1.25rem",
+      padding: "0.625rem 0.875rem",
+    },
     "& [data-match]": {
-      padding: "10px 12px",
+      padding: "0.625rem 0.75rem",
       background: `${originalBlue[700]}59`,
     },
-    "& [data-match-meta]": { marginBottom: "6px" },
+    "& [data-match-meta]": { marginBottom: "0.375rem" },
     "& [data-roster-card]": {
       background: `${originalBlue[700]}66`,
-      borderRadius: "14px",
-      padding: "10px 8px",
-      gap: "3px",
+      borderRadius: "0.875rem",
+      padding: "0.625rem 0.5rem",
+      gap: "0.1875rem",
     },
-    "@media (min-width: 1001px)": {
+    "@media (min-width: 62.5625rem)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {
         gridTemplateColumns: "repeat(4,minmax(0,1fr))",
       },
