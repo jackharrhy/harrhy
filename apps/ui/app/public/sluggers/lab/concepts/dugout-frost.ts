@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
 import { archiveTokens, archiveField } from "./foundation.ts";
@@ -19,7 +20,7 @@ export const dugoutFrost: LabConcept = {
     controlRadius: "0.3125rem",
     tableSurface: "transparent",
     panelRadius: "0.5rem",
-    tableCellPadding: "0.4375rem 0.5625rem",
+    tableCellPadding: `${space(0.875)} ${space(1.125)}`,
   }),
   parts: {
     headingInk: "#ffffff",
@@ -33,17 +34,20 @@ export const dugoutFrost: LabConcept = {
     contentColumns: "minmax(18.75rem,0.8fr) minmax(0,1.5fr)",
   },
   recipe: css({
-    "& [data-panel-title]": { padding: "0.5625rem 0.75rem", fontSize: "1rem" },
+    "& [data-panel-title]": {
+      padding: `${space(1.125)} ${space(1.5)}`,
+      fontSize: "1rem",
+    },
     "& [data-match]": {
-      padding: "0.625rem 0.75rem",
+      padding: `${space(1.25)} ${space(1.5)}`,
       background: `${originalBlue[700]}59`,
     },
-    "& [data-match-meta]": { marginBottom: "0.375rem" },
+    "& [data-match-meta]": { marginBottom: space(0.75) },
     "& [data-roster-card]": {
       background: `${originalBlue[700]}66`,
       borderRadius: "0.3125rem",
-      padding: "0.5625rem 0.5rem",
-      gap: "0.1875rem",
+      padding: `${space(1.125)} ${space(1)}`,
+      gap: space(0.375),
     },
     "@media (min-width: 62.5625rem)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {

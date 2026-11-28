@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type RemixNode } from "remix/component";
 import type { Archive } from "./database.ts";
 
@@ -6,13 +7,13 @@ const styles = css({
   "& [data-stat-identity]": {
     display: "flex",
     alignItems: "center",
-    gap: "8px",
+    gap: space(1),
     textAlign: "left",
   },
   "& [data-stat-column]": {
     display: "grid",
     justifyItems: "center",
-    gap: "4px",
+    gap: space(0.5),
   },
   "& [data-stat-identity] [data-portrait], & [data-stat-column] [data-portrait]":
     { width: "24px", height: "24px" },
@@ -278,13 +279,13 @@ export function forceGraph(data: Archive, assets: ReadonlySet<string>) {
         mix={css({
           display: "flex",
           flexWrap: "wrap",
-          gap: "4px 20px",
-          padding: "4px 16px",
+          gap: `${space(0.5)} ${space(2.5)}`,
+          padding: `${space(0.5)} ${space(2)}`,
           justifyContent: "center",
           "& label": {
             display: "inline-flex",
             alignItems: "center",
-            gap: "6px",
+            gap: space(0.75),
             minHeight: "32px",
           },
           "& input": { width: "auto", accentColor: "var(--hui-accent)" },

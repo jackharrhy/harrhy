@@ -1,4 +1,6 @@
+import { space } from "./spacing.ts";
 import { css } from "remix/component";
+export { space };
 
 export interface UiTheme {
   ink: string;
@@ -36,7 +38,7 @@ export const uiControlStyles = css({
     borderRadius: "var(--ui-control-radius, 5px)",
     background: "var(--ui-control-surface)",
     color: "var(--ui-ink)",
-    padding: "9px 14px",
+    padding: `${space(1.125)} ${space(1.75)}`,
   },
   "& button:hover:not(:disabled)": {
     background: "var(--ui-control-hover)",
@@ -51,7 +53,7 @@ export const uiControlStyles = css({
     background: "var(--ui-control-surface)",
     color: "var(--ui-ink)",
     minWidth: "0",
-    padding: "10px 12px",
+    padding: `${space(1.25)} ${space(1.5)}`,
   },
   "& input::placeholder, & textarea::placeholder": {
     color: "var(--ui-muted)",
@@ -68,7 +70,7 @@ export const uiActionStyles = css({
   alignItems: "center",
   justifyContent: "center",
   minHeight: "var(--ui-action-min-height, 40px)",
-  padding: "var(--ui-action-padding, 9px 14px)",
+  padding: `var(--ui-action-padding, ${space(1.125)} ${space(1.75)})`,
   border: "1px solid var(--ui-line)",
   borderRadius: "var(--ui-control-radius, 5px)",
   font: "inherit",

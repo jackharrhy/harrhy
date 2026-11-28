@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { Button as UiButton } from "@harrhy/ui/native";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -45,7 +46,7 @@ const statusHeadingStyle = css({
   fontSize: "1.5rem",
 });
 const errorBlockStyle = css({ textAlign: "center" });
-const errorHeadingStyle = css({ fontSize: "1.5rem", marginBottom: "0.5rem" });
+const errorHeadingStyle = css({ fontSize: "1.5rem", marginBottom: space(1) });
 const errorDetailStyle = css({ fontSize: "0.875rem" });
 const animationBarStyle = css({
   alignItems: "center",
@@ -53,9 +54,9 @@ const animationBarStyle = css({
   bottom: "0.625rem",
   display: "flex",
   fontSize: "0.8125rem",
-  gap: "0.5rem",
+  gap: space(1),
   left: "0.625rem",
-  padding: "0.5rem",
+  padding: space(1),
   position: "absolute",
   right: "0.625rem",
 });
@@ -63,7 +64,7 @@ const animationButtonStyle = css({ borderColor: theme.color.borderLight });
 const selectStyle = css({
   flex: "1",
   fontSize: "0.8125rem",
-  padding: "0.25rem",
+  padding: space(0.5),
 });
 const animationCountStyle = css({
   color: theme.color.muted,
@@ -73,7 +74,7 @@ const instructionsStyle = css({
   background: "rgba(255, 255, 255, 0.8)",
   color: theme.color.faint,
   fontSize: "0.6875rem",
-  padding: "0.25rem 0.5rem",
+  padding: `${space(0.5)} ${space(1)}`,
   position: "absolute",
   right: "0.625rem",
   top: "0.625rem",
@@ -84,8 +85,8 @@ const textureBarStyle = css({
   borderTop: `1px solid ${theme.color.subtle}`,
   display: "flex",
   fontSize: "0.8125rem",
-  gap: "0.5rem",
-  padding: "0.5rem",
+  gap: space(1),
+  padding: space(1),
 });
 const textureLabelStyle = css({ color: theme.color.muted });
 

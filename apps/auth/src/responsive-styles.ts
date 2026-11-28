@@ -1,34 +1,35 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const responsiveStyles = css({
   "@media (min-width: 1440px)": {
     "& .workspace": {
-      marginTop: "48px",
+      marginTop: space(6),
     },
   },
   "@media (max-width: 1000px)": {
     "& .site-header": {
-      padding: "0 24px",
-      gap: "15px",
+      padding: `0 ${space(3)}`,
+      gap: space(1.875),
     },
     "& .desktop-nav > a, & .nav-button": {
-      padding: "9px 8px",
+      padding: `${space(1.125)} ${space(1)}`,
     },
     "& .workspace": {
-      padding: "0 24px",
+      padding: `0 ${space(3)}`,
     },
     "& .row-action": {
       display: "none",
     },
     "& .settings-row": {
-      gap: "30px",
+      gap: space(3.75),
       gridTemplateColumns: "minmax(150px, 0.7fr) minmax(0, 1.3fr)",
     },
   },
   "@media (max-width: 760px)": {
     "& .site-header": {
       minHeight: "68px",
-      padding: "0 20px",
+      padding: `0 ${space(2.5)}`,
     },
     "& .brand": {
       fontSize: "26px",
@@ -44,14 +45,14 @@ export const responsiveStyles = css({
       minHeight: "44px",
       display: "flex",
       alignItems: "center",
-      padding: "6px 10px",
+      padding: `${space(0.75)} ${space(1.25)}`,
     },
     "& .mobile-nav nav": {
       position: "absolute",
       top: "60px",
       right: "15px",
       left: "15px",
-      padding: "12px",
+      padding: space(1.5),
       background: "var(--surface)",
       border: "1px solid var(--line)",
       borderRadius: "8px",
@@ -63,7 +64,7 @@ export const responsiveStyles = css({
       display: "none",
     },
     "& .mobile-nav nav a": {
-      padding: "12px 15px",
+      padding: `${space(1.5)} ${space(1.875)}`,
       textDecoration: "none",
       color: "var(--ink)",
       borderRadius: "5px",
@@ -74,26 +75,26 @@ export const responsiveStyles = css({
     "& .mobile-nav .nav-button": {
       width: "100%",
       justifyContent: "flex-start",
-      padding: "12px 15px",
+      padding: `${space(1.5)} ${space(1.875)}`,
     },
     "& .workspace": {
-      margin: "28px auto 50px",
-      padding: "0 20px",
+      margin: `${space(3.5)} auto ${space(6.25)}`,
+      padding: `0 ${space(2.5)}`,
     },
     "& .page-heading": {
-      gap: "15px",
+      gap: space(1.875),
       alignItems: "flex-start",
     },
     "& h1": {
       fontSize: "25px",
     },
     "& .page-heading > .button": {
-      padding: "8px 10px",
+      padding: `${space(1)} ${space(1.25)}`,
       fontSize: "12px",
     },
     "& .filters": {
       flexWrap: "wrap",
-      gap: "10px",
+      gap: space(1.25),
     },
     "& .filters label:first-child": {
       flexBasis: "100%",
@@ -113,23 +114,23 @@ export const responsiveStyles = css({
     },
     "& .settings-row, & .membership-row": {
       gridTemplateColumns: "1fr",
-      gap: "20px",
+      gap: space(2.5),
     },
     "& .form-stack": {
       maxWidth: "none",
     },
     "& .profile > div": {
       gridTemplateColumns: "100px minmax(0, 1fr)",
-      gap: "15px",
+      gap: space(1.875),
     },
     "& .auth-page": {
-      margin: "25px auto 35px",
+      margin: `${space(3.125)} auto ${space(4.375)}`,
       maxWidth: "390px",
-      padding: "26px",
+      padding: space(3.25),
     },
     "& .auth-page:has(.login-title)": { margin: "0 auto" },
     "&.authentication .site-header": {
-      padding: "0 23px",
+      padding: `0 ${space(2.875)}`,
       minHeight: "74px",
     },
     "&.authentication .auth-page": {
@@ -144,7 +145,7 @@ export const responsiveStyles = css({
       gridTemplateColumns: "1fr",
     },
     "& .notice": {
-      padding: "14px 16px",
+      padding: `${space(1.75)} ${space(2)}`,
     },
   },
   "@media (prefers-color-scheme: dark)": {
@@ -203,12 +204,12 @@ export const responsiveStyles = css({
     },
   },
   "& .app-section + .app-section": {
-    marginTop: "38px",
+    marginTop: space(4.75),
   },
   "& .app-section-title": {
     fontSize: "17px",
     fontWeight: "600",
-    margin: "0 0 16px",
+    margin: `0 0 ${space(2)}`,
   },
   "& .preview-banner": {
     position: "relative",
@@ -216,9 +217,9 @@ export const responsiveStyles = css({
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    gap: "16px",
+    gap: space(2),
     flexWrap: "wrap",
-    padding: "10px 20px",
+    padding: `${space(1.25)} ${space(2.5)}`,
     background: "var(--ink)",
     color: "var(--surface)",
     fontSize: "13px",

@@ -1,3 +1,4 @@
+import { space } from "./spacing.ts";
 import {
   css,
   on,
@@ -163,7 +164,7 @@ const triggerStyles = css({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "0.5rem",
+  gap: space(1),
   textAlign: "start",
   cursor: "pointer",
 });
@@ -206,7 +207,7 @@ const optionStyles = css({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "1rem",
+  gap: space(2),
   minHeight: "var(--hui-control-height)",
   padding: "var(--hui-control-padding)",
   borderRadius: "var(--hui-option-radius)",

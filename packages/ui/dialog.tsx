@@ -1,3 +1,4 @@
+import { space } from "./spacing.ts";
 import {
   css,
   on,
@@ -91,12 +92,12 @@ export function Dialog(handle: Handle<DialogProps>) {
         {description && (
           <p
             id={descriptionId}
-            mix={css({ margin: "0.5rem 0 0", color: "var(--hui-muted)" })}
+            mix={css({ margin: `${space(1)} 0 0`, color: "var(--hui-muted)" })}
           >
             {description}
           </p>
         )}
-        <div mix={css({ marginTop: "1rem", "& > form": { margin: 0 } })}>
+        <div mix={css({ marginTop: space(2), "& > form": { margin: 0 } })}>
           {children}
         </div>
       </dialog>
@@ -109,7 +110,7 @@ const dialogStyles = css({
   width: "min(32rem, calc(100vw - 2rem))",
   maxHeight: "calc(100dvh - 2rem)",
   overflow: "auto",
-  padding: "1.25rem",
+  padding: space(2.5),
   border: "var(--hui-border-width) solid var(--hui-border)",
   borderRadius: "var(--hui-panel-radius)",
   backgroundColor: "var(--hui-elevated)",

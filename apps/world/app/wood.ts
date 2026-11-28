@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { cleanTheme, composeTheme, themeStyles } from "@harrhy/ui/theme";
 
 export const woodTheme = themeStyles(
@@ -16,13 +17,13 @@ export const woodTheme = themeStyles(
     fontDisplay: "Georgia, serif",
     textSize: "0.875rem",
     controlHeight: "44px",
-    controlPadding: "0.5rem 0.75rem",
+    controlPadding: `${space(1)} ${space(1.5)}`,
     controlRadius: "3px",
     panelRadius: "3px",
-    panelPadding: "0.625rem 0.75rem",
+    panelPadding: `${space(1.25)} ${space(1.5)}`,
     panelImage:
       'linear-gradient(#281a1240, #281a1266), url("/textures/hall-trim-wood.webp")',
     buttonShadow: "inset 0 1px 0 #e4c58b40",
-    space: "0.5rem",
+    space: space(1),
   }),
 );

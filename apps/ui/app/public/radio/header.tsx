@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle, type RemixNode } from "remix/component";
 
 import {
@@ -96,7 +97,7 @@ export function RadioStatus(
 const radioHeaderStyle = {
   header: css({
     justifyContent: "space-between",
-    gap: "0.75rem",
+    gap: space(1.5),
   }),
   breadcrumbs: css({
     "--hui-muted": "var(--radio-title-ink, var(--hui-ink))",
@@ -104,7 +105,7 @@ const radioHeaderStyle = {
     display: "flex",
     flexWrap: "nowrap",
     alignItems: "center",
-    gap: "0.25rem",
+    gap: space(0.5),
     fontSize: "0.8125rem",
     fontWeight: 400,
     lineHeight: "1.25rem",
@@ -124,7 +125,7 @@ const radioHeaderStyle = {
     height: "1.375rem",
     display: "inline-flex",
     alignItems: "center",
-    gap: "0.1875rem",
+    gap: space(0.375),
     color: "inherit",
     borderRadius: "0.125rem",
     textDecoration: "none",
@@ -197,7 +198,7 @@ const radioHeaderStyle = {
       alignItems: "center",
     },
     "& > span > i": {
-      padding: "0 0.25rem",
+      padding: `0 ${space(0.5)}`,
       opacity: 0.42,
       fontStyle: "normal",
     },

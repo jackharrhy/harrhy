@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
 import { archiveTokens, archiveField } from "./foundation.ts";
@@ -18,7 +19,7 @@ export const pennantBroadcast: LabConcept = {
     hoverSurface: "#9a303c",
     panelRadius: "0.5rem",
     controlRadius: "0.5rem",
-    tableCellPadding: "0.5rem 0.625rem",
+    tableCellPadding: `${space(1)} ${space(1.25)}`,
   }),
   parts: {
     headingInk: "#ffffff",
@@ -30,15 +31,15 @@ export const pennantBroadcast: LabConcept = {
     contentColumns: "minmax(0,1.8fr) minmax(21.25rem,1fr)",
   },
   recipe: css({
-    "& [data-panel-title]": { padding: "1rem", fontSize: "1.25rem" },
+    "& [data-panel-title]": { padding: space(2), fontSize: "1.25rem" },
     "& [data-match]": {
-      padding: "1.125rem 0.75rem",
+      padding: `${space(2.25)} ${space(1.5)}`,
       background: `linear-gradient(${originalBlue[500]}, ${originalBlue[700]})`,
     },
     "& [data-roster-card]": {
       background: originalBlue[700],
       borderRadius: "0.375rem",
-      gap: "0.1875rem",
+      gap: space(0.375),
     },
     "@media (min-width: 62.5625rem)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {

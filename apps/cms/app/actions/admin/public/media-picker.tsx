@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { restoreDialogFocus } from "./dialog-focus.ts";
 import { Button, Input } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
@@ -26,8 +27,8 @@ export function MediaPicker(
         css({
           width: "min(900px, 92vw)",
           maxHeight: "85dvh",
-          padding: "26px",
-          "@media (max-width: 600px)": { padding: "18px" },
+          padding: space(3.25),
+          "@media (max-width: 600px)": { padding: space(2.25) },
         }),
       ]}
       onClose={() => handle.props.close()}
@@ -46,7 +47,7 @@ export function MediaPicker(
         aria-label="Search images"
         placeholder="Filename or alt text"
         mix={[
-          css({ marginBottom: "0.75rem" }),
+          css({ marginBottom: space(1.5) }),
           on("input", (event) => {
             query = event.currentTarget.value;
             handle.update();

@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css as styles, unsafeHTML, type RemixNode } from "remix/component";
 import { Button, ButtonLink } from "@harrhy/ui/native";
 import { jelloTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
@@ -190,9 +191,9 @@ function clicker() {
           display: "flex",
           flexWrap: "wrap",
           alignItems: "center",
-          gap: ".5rem",
-          marginBlockStart: ".75rem",
-          paddingBlockStart: ".75rem",
+          gap: space(1),
+          marginBlockStart: space(1.5),
+          paddingBlockStart: space(1.5),
           borderBlockStart: "1px solid var(--hui-border)",
           "& time": {
             fontSize: "1.5rem",

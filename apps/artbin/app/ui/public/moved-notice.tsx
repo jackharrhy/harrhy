@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { clientEntry, css, on, ref, type Handle } from "remix/component";
 
 import { Button } from "@harrhy/ui/native";
@@ -15,7 +16,7 @@ const noticeStyle = css({
 const rowStyle = css({
   display: "flex",
   alignItems: "center",
-  gap: "0.75rem",
+  gap: space(1.5),
   textAlign: "center",
 });
 const closeStyle = css({

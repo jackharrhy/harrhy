@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { Button as UiButton } from "@harrhy/ui/native";
 import {
   clientEntry,
@@ -14,7 +15,7 @@ import { dangerTextStyle, theme } from "../styles.ts";
 const rootStyle = css({
   alignItems: "center",
   display: "inline-flex",
-  gap: "0.5rem",
+  gap: space(1),
 });
 const contextStyle = css({ color: theme.color.muted });
 const contextLinkStyle = css({

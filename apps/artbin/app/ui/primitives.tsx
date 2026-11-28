@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle, type RemixNode } from "remix/component";
 import {
   Button as UiButton,
@@ -48,13 +49,13 @@ const warningAlertStyle = css({
   background: "#fff9e6",
   borderColor: "#b38b00",
 });
-const alertTitleStyle = css({ fontWeight: 500, margin: "0 0 0.25rem" });
+const alertTitleStyle = css({ fontWeight: 500, margin: `0 0 ${space(0.5)}` });
 const alertBodyStyle = css({ margin: 0 });
 const badgeStyle = css({
   display: "inline-block",
   fontSize: "0.7rem",
   letterSpacing: "0.025em",
-  padding: "0.125rem 0.5rem",
+  padding: `${space(0.25)} ${space(1)}`,
   textTransform: "uppercase",
 });
 const neutralBadgeStyle = css({ background: "var(--hui-hover-surface)" });
@@ -72,10 +73,10 @@ const headerStyle = css({
   alignItems: "flex-start",
   borderBottom: `1px solid ${theme.color.borderLight}`,
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
-  marginBottom: "1.5rem",
-  paddingBottom: "0.75rem",
+  marginBottom: space(3),
+  paddingBottom: space(1.5),
   "@media (max-width: 640px)": { flexDirection: "column" },
 });
 const headerCopyStyle = css({ minWidth: 0 });
@@ -83,7 +84,7 @@ const eyebrowStyle = css({
   color: theme.color.muted,
   fontSize: "0.7rem",
   letterSpacing: "0.08em",
-  margin: "0 0 0.25rem",
+  margin: `0 0 ${space(0.5)}`,
   textTransform: "uppercase",
 });
 const titleStyle = css({
@@ -93,21 +94,21 @@ const titleStyle = css({
 });
 const descriptionStyle = css({
   color: theme.color.muted,
-  margin: "0.375rem 0 0",
+  margin: `${space(0.75)} 0 0`,
   maxWidth: "48rem",
 });
 const actionsStyle = css({
   alignItems: "center",
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.5rem",
+  gap: space(1),
 });
 const sectionHeaderStyle = css({
   alignItems: "baseline",
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
-  marginBottom: "0.75rem",
+  marginBottom: space(1.5),
 });
 const sectionTitleStyle = css({
   color: theme.color.muted,
@@ -120,29 +121,32 @@ const sectionTitleStyle = css({
 const sectionDescriptionStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0.25rem 0 0",
+  margin: `${space(0.5)} 0 0`,
 });
 const emptyStyle = css({
   color: theme.color.muted,
-  padding: "3rem 1rem",
+  padding: `${space(6)} ${space(2)}`,
   textAlign: "center",
 });
 const emptyTitleStyle = css({
   color: theme.color.text,
   fontWeight: 500,
-  margin: "0 0 0.25rem",
+  margin: `0 0 ${space(0.5)}`,
 });
 const emptyBodyStyle = css({ margin: 0 });
-const emptyActionStyle = css({ marginTop: "1rem" });
+const emptyActionStyle = css({ marginTop: space(2) });
 const fullWidthControlStyle = css({ width: "100%" });
 const monoControlStyle = css({ fontFamily: theme.font.mono });
-const requiredStyle = css({ color: theme.color.danger, marginLeft: "0.25rem" });
+const requiredStyle = css({
+  color: theme.color.danger,
+  marginLeft: space(0.5),
+});
 const progressMetaStyle = css({
   color: theme.color.muted,
   display: "flex",
   fontSize: "0.75rem",
   justifyContent: "space-between",
-  marginTop: "0.25rem",
+  marginTop: space(0.5),
 });
 const tableHeaderCellStyle = css({
   color: theme.color.muted,
@@ -151,12 +155,12 @@ const tableHeaderCellStyle = css({
 });
 const statGridStyle = css({
   display: "grid",
-  gap: "0.75rem",
+  gap: space(1.5),
   gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
 });
 const statStyle = css({
   borderLeft: `2px solid ${theme.color.border}`,
-  paddingLeft: "0.75rem",
+  paddingLeft: space(1.5),
 });
 const statLabelStyle = css({
   color: theme.color.muted,
@@ -164,26 +168,26 @@ const statLabelStyle = css({
   letterSpacing: "0.04em",
   textTransform: "uppercase",
 });
-const statValueStyle = css({ fontSize: "1.25rem", marginTop: "0.125rem" });
+const statValueStyle = css({ fontSize: "1.25rem", marginTop: space(0.25) });
 const detailGridStyle = css({
-  columnGap: "1.5rem",
+  columnGap: space(3),
   display: "grid",
   gridTemplateColumns: "max-content 1fr",
   margin: 0,
-  rowGap: "0.5rem",
+  rowGap: space(1),
 });
 const detailLabelStyle = css({ color: theme.color.muted });
 const detailValueStyle = css({ margin: 0, overflowWrap: "anywhere" });
 const stackStyle = css({
   display: "flex",
   flexDirection: "column",
-  gap: "1rem",
+  gap: space(2),
 });
 const inlineStyle = css({
   alignItems: "center",
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.5rem",
+  gap: space(1),
 });
 
 export function Button(

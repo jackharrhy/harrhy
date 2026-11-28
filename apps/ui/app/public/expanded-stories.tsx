@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, on, type Handle } from "remix/component";
 import {
   Breadcrumbs,
@@ -239,7 +240,7 @@ export function ExpandedStory(
                 mix={css({
                   display: "flex",
                   alignItems: "end",
-                  gap: "1rem",
+                  gap: space(2),
                   flexWrap: "wrap",
                 })}
               >
@@ -364,19 +365,19 @@ export function ExpandedStory(
 const layout = css({
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr)",
-  gap: "1.5rem",
+  gap: space(3),
   minWidth: 0,
   "& > *": { minWidth: 0 },
   "& h2": { fontSize: "1rem" },
 });
 const preview = css({
-  padding: "2rem",
+  padding: space(4),
   "& > *": { maxWidth: "38rem", marginInline: "auto" },
-  "@media (max-width: 37.5rem)": { padding: "1.25rem" },
+  "@media (max-width: 37.5rem)": { padding: space(2.5) },
   minHeight: "12rem",
   minWidth: 0,
   border: "1px solid var(--hui-border)",
   "& h2": { fontSize: "1.5rem" },
   "& h3": { fontSize: "1rem" },
 });
-const controls = css({ display: "grid", gap: "1rem", maxWidth: "36rem" });
+const controls = css({ display: "grid", gap: space(2), maxWidth: "36rem" });

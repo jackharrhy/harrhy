@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { createUiTheme } from "@harrhy/ui";
 
@@ -38,13 +39,13 @@ export const refStyles = css({
   "& .error": {
     color: "#a33333",
     "font-size": "13px",
-    margin: "12px 0",
+    margin: `${space(1.5)} 0`,
   },
   "& .auth-page": {
     "min-height": "100dvh",
     display: "grid",
     "place-items": "center",
-    padding: "24px",
+    padding: space(3),
   },
   "& .auth-form": {
     width: "min(100%, 420px)",
@@ -53,14 +54,14 @@ export const refStyles = css({
   "& .auth-form .wordmark": {
     display: "block",
     "font-size": "clamp(52px, 12vw, 72px)",
-    margin: "0 0 32px",
+    margin: `0 0 ${space(4)}`,
   },
   "& .auth-link": {
     "--ui-action-min-height": "46px",
-    "--ui-action-padding": "10px 18px",
+    "--ui-action-padding": `${space(1.25)} ${space(2.25)}`,
     "--ui-action-font-size": "14px",
     "min-height": "46px",
-    padding: "10px 18px",
+    padding: `${space(1.25)} ${space(2.25)}`,
     "font-size": "14px",
   },
   "& .home-page": {
@@ -87,12 +88,12 @@ export const refStyles = css({
   "& .home-content h1": {
     "font-size": "32px",
     "letter-spacing": "-0.045em",
-    margin: "0 0 32px",
+    margin: `0 0 ${space(4)}`,
     "font-weight": "650",
   },
   "& .new-board-form": {
     display: "flex",
-    gap: "8px",
+    gap: space(1),
     "margin-bottom": "30px",
   },
   "& .new-board-form input": {
@@ -103,18 +104,18 @@ export const refStyles = css({
   },
   "& .board-list-empty": {
     margin: "0",
-    padding: "24px 3px",
+    padding: `${space(3)} ${space(0.375)}`,
     color: "#565b55",
     "font-size": "14px",
     "line-height": "1.5",
   },
   "& .board-row": {
     "min-height": "64px",
-    padding: "18px 3px",
+    padding: `${space(2.25)} ${space(0.375)}`,
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    gap: "20px",
+    gap: space(2.5),
     "border-bottom": "1px solid #dfe0da",
     "font-size": "15px",
   },
@@ -135,10 +136,10 @@ export const refStyles = css({
   "& .board-header": {
     height: "58px",
     flex: "none",
-    padding: "0 18px",
+    padding: `0 ${space(2.25)}`,
     display: "flex",
     "align-items": "center",
-    gap: "16px",
+    gap: space(2),
     "border-bottom": "1px solid #dedfdb",
     background: "#fbfbf9",
     "z-index": "4",
@@ -153,7 +154,7 @@ export const refStyles = css({
     width: "100%",
     maxWidth: "32ch",
     minHeight: "40px",
-    padding: "6px 8px",
+    padding: `${space(0.75)} ${space(1)}`,
     fontSize: "16px",
     fontWeight: "600",
     textOverflow: "ellipsis",
@@ -167,7 +168,7 @@ export const refStyles = css({
   "& .connection": {
     display: "flex",
     "align-items": "center",
-    gap: "7px",
+    gap: space(0.875),
     color: "#777b74",
     "font-size": "11px",
     "white-space": "nowrap",
@@ -186,7 +187,7 @@ export const refStyles = css({
   },
   "& .header-add": {
     "--ui-action-font-size": "12px",
-    padding: "8px 12px",
+    padding: `${space(1)} ${space(1.5)}`,
     "font-size": "12px",
     "white-space": "nowrap",
   },
@@ -261,7 +262,7 @@ export const refStyles = css({
     display: "none",
   },
   "& .empty-state p": {
-    margin: "0 0 8px",
+    margin: `0 0 ${space(1)}`,
     "font-size": "14px",
   },
   "& .empty-state button": {
@@ -278,11 +279,11 @@ export const refStyles = css({
     bottom: "16px",
     display: "flex",
     "align-items": "center",
-    gap: "4px",
+    gap: space(0.5),
     background: "#fff",
     border: "1px solid #dcddd8",
     "border-radius": "6px",
-    padding: "3px",
+    padding: space(0.375),
     "z-index": "2",
   },
   "& .zoom-controls button": {
@@ -294,7 +295,7 @@ export const refStyles = css({
   },
   "& .zoom-controls #scroll-mode": {
     width: "auto",
-    padding: "0 8px",
+    padding: `0 ${space(1)}`,
     "font-size": "11px",
   },
   "& .zoom-controls span": {
@@ -385,7 +386,7 @@ export const refStyles = css({
   "& .inspector": {
     width: "min(400px, 38vw)",
     flex: "none",
-    padding: "16px",
+    padding: space(2),
     background: "#fbfbf9",
     "border-left": "1px solid #dedfdb",
     overflow: "auto",
@@ -404,7 +405,7 @@ export const refStyles = css({
   "& .inspector-top button": {
     border: "0",
     background: "none",
-    padding: "0 3px",
+    padding: `0 ${space(0.375)}`,
     "font-size": "20px",
     color: "#777b74",
   },
@@ -421,13 +422,13 @@ export const refStyles = css({
     "line-height": "1.4",
     "overflow-wrap": "anywhere",
     "font-weight": "600",
-    margin: "14px 0 18px",
+    margin: `${space(1.75)} 0 ${space(2.25)}`,
   },
   "& .property-row": {
     display: "flex",
     "justify-content": "space-between",
-    gap: "6px",
-    padding: "8px 0",
+    gap: space(0.75),
+    padding: `${space(1)} 0`,
     "border-top": "1px solid #e4e5df",
     "font-size": "11px",
     color: "#7c8079",
@@ -452,7 +453,7 @@ export const refStyles = css({
     "z-index": "10",
     background: "#30352f",
     color: "#fff",
-    padding: "9px 13px",
+    padding: `${space(1.125)} ${space(1.625)}`,
     "border-radius": "5px",
     "font-size": "12px",
     opacity: "0",
@@ -470,7 +471,7 @@ export const refStyles = css({
     transform: "translateX(-50%)",
     "z-index": "10",
     background: "#fff",
-    padding: "8px 12px",
+    padding: `${space(1)} ${space(1.5)}`,
     border: "1px solid #ead5d3",
   },
   "& .add-link-menu": {
@@ -489,9 +490,9 @@ export const refStyles = css({
     top: "40px",
     right: "0",
     display: "flex",
-    gap: "6px",
+    gap: space(0.75),
     width: "min(360px, 85vw)",
-    padding: "10px",
+    padding: space(1.25),
     background: "#fff",
     border: "1px solid #dcddd8",
     "border-radius": "6px",
@@ -543,7 +544,7 @@ export const refStyles = css({
     outline: "2px solid #4b7862",
   },
   "& .link-card-body": {
-    padding: "16px",
+    padding: space(2),
     height: "100%",
     overflow: "hidden",
   },
@@ -588,7 +589,7 @@ export const refStyles = css({
     height: "400px",
     border: "1px solid #e2e3de",
     "border-radius": "4px",
-    margin: "12px 0",
+    margin: `${space(1.5)} 0`,
     background: "#fff",
   },
   "& .link-embed[hidden]": {
@@ -605,7 +606,7 @@ export const refStyles = css({
     "max-width": "100%",
     "max-height": "55vh",
     "object-fit": "contain",
-    margin: "0 0 14px",
+    margin: `0 0 ${space(1.75)}`,
   },
   "& .link-inspector-video": {
     display: "block",
@@ -637,22 +638,22 @@ export const refStyles = css({
   },
   "@media (max-width: 650px)": {
     "& .site-header": {
-      padding: "0 22px",
+      padding: `0 ${space(2.75)}`,
     },
     "& .home-content": {
       width: "calc(100% - 44px)",
     },
     "& .board-header": {
-      padding: "0 10px",
-      gap: "8px",
+      padding: `0 ${space(1.25)}`,
+      gap: space(1),
     },
     "& .connection.online .connection-text": {
       position: "absolute",
       "clip-path": "inset(50%)",
     },
     "& .header-add, & .add-link-menu summary": {
-      "--ui-action-padding": "8px",
-      padding: "8px",
+      "--ui-action-padding": space(1),
+      padding: space(1),
     },
   },
   "@media (max-width: 760px)": {
@@ -676,8 +677,8 @@ export const refStyles = css({
       top: "0",
       "z-index": "1",
       "min-height": "48px",
-      margin: "0 -16px 14px",
-      padding: "6px 16px",
+      margin: `0 ${space(-2)} ${space(1.75)}`,
+      padding: `${space(0.75)} ${space(2)}`,
       background: "#fbfbf9",
       "border-bottom": "1px solid #e4e5df",
     },

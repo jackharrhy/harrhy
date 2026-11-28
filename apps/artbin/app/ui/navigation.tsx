@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 
 import {
@@ -13,11 +14,11 @@ import {
 
 import { theme } from "./styles.ts";
 
-const tabsStyle = css({ marginBottom: "1rem" });
+const tabsStyle = css({ marginBottom: space(2) });
 const countStyle = css({
   color: theme.color.muted,
   fontSize: "0.75rem",
-  marginLeft: "0.375rem",
+  marginLeft: space(0.75),
 });
 
 export interface TabItem {
@@ -59,7 +60,7 @@ export function Breadcrumbs(
   return () => (
     <UiBreadcrumbs
       aria-label={handle.props.label ?? "Breadcrumb"}
-      mix={css({ marginBottom: "1rem" })}
+      mix={css({ marginBottom: space(2) })}
     >
       <BreadcrumbList>
         {handle.props.items.map((item, index) => (

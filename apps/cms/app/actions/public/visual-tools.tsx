@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { clientEntry, css, on, type Handle } from "remix/component";
 import {
   Button,
@@ -231,10 +232,10 @@ const toolsStyles = css({
     bottom: "18px",
     left: "18px",
     maxWidth: "calc(100vw - 36px)",
-    padding: "0.625rem",
+    padding: space(1.25),
     border: "1px solid var(--hui-border)",
     borderRadius: "var(--hui-panel-radius)",
     background: "var(--hui-surface)",
   },
-  "& .tea-actions": { marginBlock: "1rem" },
+  "& .tea-actions": { marginBlock: space(2) },
 });

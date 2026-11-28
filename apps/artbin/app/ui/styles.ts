@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { brutalistTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
 import {
@@ -62,7 +63,7 @@ export const pageStyle = css({
   marginInline: "auto",
   maxWidth: "1400px",
   minHeight: "calc(100vh - 48px)",
-  padding: "1rem",
+  padding: space(2),
 });
 
 export const narrowPageStyle = css({
@@ -70,7 +71,7 @@ export const narrowPageStyle = css({
   marginInline: "auto",
   maxWidth: "600px",
   minHeight: "calc(100vh - 48px)",
-  padding: "1rem",
+  padding: space(2),
 });
 
 export const mutedTextStyle = css({ color: theme.color.muted });
@@ -79,7 +80,7 @@ export const monoTextStyle = css({ fontFamily: theme.font.mono });
 
 export const smallButtonStyle = css({
   fontSize: "0.75rem",
-  padding: "0.25rem 0.5rem",
+  padding: `${space(0.5)} ${space(1)}`,
 });
 
 export const inputStyle = [controlStyles, focusStyles];
@@ -89,8 +90,8 @@ export const cardStyle = panelStyles;
 export const alertStyle = css({
   border: `1px solid ${theme.color.borderLight}`,
   fontSize: "0.875rem",
-  marginBottom: "1rem",
-  padding: "0.75rem",
+  marginBottom: space(2),
+  padding: space(1.5),
 });
 
 export const errorAlertStyle = css({
@@ -108,7 +109,7 @@ export const adminBadgeStyle = css({
   color: theme.color.background,
   fontSize: "0.625rem",
   letterSpacing: "0.05em",
-  padding: "0.125rem 0.25rem",
+  padding: `${space(0.25)} ${space(0.5)}`,
   textTransform: "uppercase",
 });
 
@@ -123,13 +124,13 @@ export const modalCloseStyle = css({
   lineHeight: 1,
   minWidth: "2.75rem",
   minHeight: "2.75rem",
-  margin: "-0.5rem",
+  margin: space(-1),
   padding: 0,
   "&:hover": { color: theme.color.text },
 });
 
 export const modalActionsStyle = css({
   display: "flex",
-  gap: "0.5rem",
-  marginTop: "1rem",
+  gap: space(1),
+  marginTop: space(2),
 });

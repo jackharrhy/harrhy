@@ -1,3 +1,4 @@
+import { space } from "./spacing.ts";
 import { css } from "remix/component";
 import { tokens } from "./theme.ts";
 
@@ -26,7 +27,7 @@ export const buttonStyles = css({
   display: "inline-flex",
   alignItems: "center",
   justifyContent: "center",
-  gap: "0.5rem",
+  gap: space(1),
   minHeight: tokens.button.height,
   padding: tokens.button.padding,
   border: `${tokens.borderWidth} solid ${tokens.button.border}`,
@@ -150,7 +151,7 @@ export const inlineStyles = css({
   gap: "var(--hui-space)",
 });
 export const noticeStyles = css({
-  padding: "0.75rem 1rem",
+  padding: `${space(1.5)} ${space(2)}`,
   border: "var(--hui-border-width) solid var(--hui-border)",
   borderRadius: "var(--hui-control-radius)",
   background: "var(--hui-surface)",
@@ -170,7 +171,7 @@ export const badgeStyles = css({
   display: "inline-block",
   flex: "none",
   whiteSpace: "nowrap",
-  padding: "0.125rem 0.5rem",
+  padding: `${space(0.25)} ${space(1)}`,
   fontSize: "0.8125rem",
   color: "var(--hui-muted)",
   border: "var(--hui-border-width) solid var(--hui-border)",
@@ -191,11 +192,11 @@ export const rangeStyles = css({
 export const checkboxLabelStyles = css({
   display: "flex",
   alignItems: "flex-start",
-  gap: "0.625rem",
+  gap: space(1.25),
   minHeight: "1.5rem",
   lineHeight: "1.5rem",
   cursor: "pointer",
-  "& input[type=checkbox]": { marginBlockStart: "0.25rem" },
+  "& input[type=checkbox]": { marginBlockStart: space(0.5) },
 });
 
 /** Shared route/tab presentation; callers retain their own link or widget semantics. */
@@ -208,7 +209,7 @@ export const navigationStripStyles = css({
 export const navigationItemStyles = css({
   flexShrink: 0,
   minHeight: "var(--hui-control-height)",
-  padding: "0.5rem 1rem",
+  padding: `${space(1)} ${space(2)}`,
   fontFamily: "var(--hui-font-ui)",
   fontSize: "0.875rem",
   lineHeight: 1.25,

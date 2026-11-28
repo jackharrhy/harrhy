@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { CodeBlock } from "@harrhy/ui/code";
 import { css, type Handle } from "remix/component";
 
@@ -30,7 +31,7 @@ const pageStyle = css({
   marginInline: "auto",
   maxWidth: "1400px",
   minHeight: "calc(100vh - 48px)",
-  padding: "1rem",
+  padding: space(2),
 });
 const luckyBarStyle = css({
   alignItems: "center",
@@ -38,10 +39,10 @@ const luckyBarStyle = css({
   border: `1px solid ${theme.color.borderLight}`,
   display: "flex",
   fontSize: "0.875rem",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
-  marginBottom: "1rem",
-  padding: "0.5rem 0.75rem",
+  marginBottom: space(2),
+  padding: `${space(1)} ${space(1.5)}`,
   "&:not(:has(button))": { display: "none" },
   "@media (max-width: 640px)": {
     alignItems: "flex-start",
@@ -50,7 +51,7 @@ const luckyBarStyle = css({
 });
 const contentGridStyle = css({
   display: "grid",
-  gap: "1.5rem",
+  gap: space(3),
   gridTemplateColumns: "1fr 300px",
   "@media (max-width: 768px)": { gridTemplateColumns: "1fr" },
 });
@@ -69,15 +70,15 @@ const imageStyle = css({
   objectFit: "contain",
 });
 const audioPreviewStyle = css({
-  padding: "2rem",
+  padding: space(4),
   textAlign: "center",
   width: "100%",
 });
-const largeIconStyle = css({ fontSize: "3rem", marginBottom: "1rem" });
+const largeIconStyle = css({ fontSize: "3rem", marginBottom: space(2) });
 const audioStyle = css({ minWidth: 0, width: "100%" });
 const textPreviewStyle = css({
   background: theme.color.background,
-  margin: "1rem",
+  margin: space(2),
   maxHeight: "600px",
   overflow: "auto",
   width: "100%",
@@ -85,32 +86,32 @@ const textPreviewStyle = css({
 const detailsStyle = css({ alignSelf: "start" });
 const fileNameStyle = css({
   fontWeight: 500,
-  margin: "0 0 1rem",
+  margin: `0 0 ${space(2)}`,
   overflowWrap: "anywhere",
 });
 const capitalizeStyle = css({ textTransform: "capitalize" });
 const breakWordsStyle = css({ overflowWrap: "anywhere" });
 const codeStyle = css({ fontSize: "0.75rem" });
-const tagsStyle = css({ marginTop: "1rem" });
-const subheadingStyle = css({ fontWeight: 500, margin: "0 0 0.5rem" });
+const tagsStyle = css({ marginTop: space(2) });
+const subheadingStyle = css({ fontWeight: 500, margin: `0 0 ${space(1)}` });
 const tagsListStyle = css({
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.25rem",
+  gap: space(0.5),
 });
-const detailsSectionStyle = css({ marginTop: "1rem" });
+const detailsSectionStyle = css({ marginTop: space(2) });
 const relatedListStyle = css({
   fontSize: "0.75rem",
-  marginTop: "0.5rem",
+  marginTop: space(1),
   overflowWrap: "anywhere",
 });
-const downloadStyle = css({ marginTop: "1.5rem" });
+const downloadStyle = css({ marginTop: space(3) });
 const textureHeaderStyle = css({
   alignItems: "flex-start",
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
-  marginBottom: "1rem",
+  marginBottom: space(2),
 });
 const textureTitleStyle = css({
   fontSize: "1.25rem",
@@ -124,7 +125,7 @@ const texturePreviewStyle = css({
   display: "flex",
   justifyContent: "center",
   minHeight: "420px",
-  padding: "1.5rem",
+  padding: space(3),
 });
 const textureImageStyle = css({
   display: "block",
@@ -135,22 +136,22 @@ const textureImageStyle = css({
 const downloadStackStyle = css({
   display: "flex",
   flexDirection: "column",
-  gap: "0.5rem",
-  marginTop: "1.5rem",
+  gap: space(1),
+  marginTop: space(3),
 });
 const fallbackStyle = css({
   background: theme.color.hover,
-  padding: "3rem",
+  padding: space(6),
   textAlign: "center",
 });
 const fallbackTitleStyle = css({
-  marginBottom: "0.5rem",
+  marginBottom: space(1),
   textTransform: "capitalize",
 });
 const fallbackMessageStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  marginBottom: "1rem",
+  marginBottom: space(2),
 });
 
 export function FileRoutePage(

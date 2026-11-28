@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { Button as UiButton, Input, Textarea } from "@harrhy/ui/native";
 import {
   clientEntry,
@@ -30,8 +31,8 @@ const destinationStyle = css({
   background: theme.color.hover,
   border: `1px solid ${theme.color.borderLight}`,
   fontSize: "0.875rem",
-  marginBottom: "1rem",
-  padding: "0.75rem",
+  marginBottom: space(2),
+  padding: space(1.5),
 });
 const destinationNameStyle = css({ fontWeight: 500 });
 const destinationPathStyle = css({
@@ -40,8 +41,8 @@ const destinationPathStyle = css({
 });
 const uploadZoneStyle = css({
   border: `2px dashed ${theme.color.borderLight}`,
-  marginBottom: "1rem",
-  padding: "1.5rem",
+  marginBottom: space(2),
+  padding: space(3),
 });
 const fileListHeaderStyle = css({
   alignItems: "center",
@@ -49,7 +50,7 @@ const fileListHeaderStyle = css({
   fontSize: "0.875rem",
   fontWeight: 500,
   justifyContent: "space-between",
-  marginBottom: "0.5rem",
+  marginBottom: space(1),
 });
 const fileListItemsStyle = css({
   fontFamily: theme.font.mono,
@@ -61,43 +62,43 @@ const fileItemStyle = css({
   borderBottom: `1px solid ${theme.color.subtle}`,
   display: "flex",
   justifyContent: "space-between",
-  paddingBlock: "0.25rem",
+  paddingBlock: space(0.5),
 });
 const fileNameStyle = css({
   overflow: "hidden",
   textOverflow: "ellipsis",
   whiteSpace: "nowrap",
 });
-const fileStatusStyle = css({ flexShrink: 0, marginLeft: "0.5rem" });
+const fileStatusStyle = css({ flexShrink: 0, marginLeft: space(1) });
 const emptyZoneStyle = css({ textAlign: "center" });
 const archiveNoteStyle = css({
   color: theme.color.faint,
   fontSize: "0.75rem",
-  margin: "0.25rem 0 0",
+  margin: `${space(0.5)} 0 0`,
 });
-const topSpacedButtonStyle = css({ marginTop: "0.75rem" });
+const topSpacedButtonStyle = css({ marginTop: space(1.5) });
 const uploadButtonsStyle = css({
   display: "flex",
-  gap: "0.5rem",
+  gap: space(1),
   justifyContent: "center",
-  marginTop: "1rem",
+  marginTop: space(2),
 });
 const importFormStyle = css({
   borderTop: `1px solid ${theme.color.borderLight}`,
-  marginTop: "1.25rem",
-  paddingTop: "1.25rem",
+  marginTop: space(2.5),
+  paddingTop: space(2.5),
 });
-const subheadingStyle = css({ fontWeight: 500, margin: "0 0 0.25rem" });
+const subheadingStyle = css({ fontWeight: 500, margin: `0 0 ${space(0.5)}` });
 const descriptionStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0 0 0.75rem",
+  margin: `0 0 ${space(1.5)}`,
 });
 const sourceInputStyle = css({ fontFamily: theme.font.mono, width: "100%" });
 const helpStyle = css({
   color: theme.color.faint,
   fontSize: "0.75rem",
-  margin: "0.25rem 0 0",
+  margin: `${space(0.5)} 0 0`,
 });
 const endActionsStyle = css({ justifyContent: "flex-end" });
 const formLabelStyle = css({
@@ -106,38 +107,38 @@ const formLabelStyle = css({
   fontSize: "0.75rem",
   fontWeight: 500,
   letterSpacing: "0.025em",
-  marginBottom: "0.25rem",
+  marginBottom: space(0.5),
   textTransform: "uppercase",
 });
-const formInputStyle = css({ marginBottom: "1rem", width: "100%" });
+const formInputStyle = css({ marginBottom: space(2), width: "100%" });
 const locationNoteStyle = css({
   color: theme.color.faint,
   fontSize: "0.75rem",
-  margin: "0 0 1rem",
+  margin: `0 0 ${space(2)}`,
 });
 const archiveFactsStyle = css({
-  columnGap: "1rem",
+  columnGap: space(2),
   display: "grid",
   fontSize: "0.875rem",
   gridTemplateColumns: "auto 1fr",
-  margin: "0 0 1rem",
-  rowGap: "0.25rem",
+  margin: `0 0 ${space(2)}`,
+  rowGap: space(0.5),
 });
 const factLabelStyle = css({ color: theme.color.muted, fontWeight: 500 });
 const uppercaseStyle = css({ textTransform: "uppercase" });
-const disclosureSpacingStyle = css({ marginBottom: "1rem" });
+const disclosureSpacingStyle = css({ marginBottom: space(2) });
 const archiveFilesStyle = css({
   fontFamily: theme.font.mono,
   fontSize: "0.75rem",
-  marginTop: "0.5rem",
+  marginTop: space(1),
   maxHeight: "150px",
   overflow: "auto",
 });
 const archiveFileStyle = css({
   borderBottom: `1px solid ${theme.color.subtle}`,
-  padding: "0.25rem",
+  padding: space(0.5),
 });
-const progressStyle = css({ marginTop: "1rem" });
+const progressStyle = css({ marginTop: space(2) });
 
 interface UploadFolder extends SerializableProps {
   id: string;

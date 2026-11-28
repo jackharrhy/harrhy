@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle, type RemixNode } from "remix/component";
 import {
   uiActionStyles,
@@ -39,12 +40,12 @@ const moveNoticeStyle = css({
   marginInline: "auto",
   width: "fit-content",
   maxWidth: "calc(100% - 1.5rem)",
-  padding: "0.25rem 0.375rem 0.25rem 0.875rem",
+  padding: `${space(0.5)} ${space(0.75)} ${space(0.5)} ${space(1.75)}`,
   backgroundColor: "var(--ui-control-surface)",
   border: "1px solid var(--ui-line)",
   borderRadius: "0.625rem",
   boxShadow: "0 4px 18px rgb(34 35 33 / 16%)",
-  "&:not([hidden])": { display: "flex", alignItems: "center", gap: "0.5rem" },
+  "&:not([hidden])": { display: "flex", alignItems: "center", gap: space(1) },
   "& p": { margin: 0, textAlign: "center", fontSize: "0.875rem" },
   "& button": {
     flexShrink: 0,
@@ -183,7 +184,11 @@ export function ExportPage(handle: Handle<{ projectId: string }>) {
           Back to boards
         </a>
         <section
-          mix={css({ marginTop: "2rem", maxWidth: "38rem", lineHeight: "1.5" })}
+          mix={css({
+            marginTop: space(4),
+            maxWidth: "38rem",
+            lineHeight: "1.5",
+          })}
         >
           <h1>Export archive</h1>
           <p>
@@ -213,7 +218,7 @@ export function ExportPage(handle: Handle<{ projectId: string }>) {
             </code>
           </details>
           <div
-            mix={css({ display: "grid", gap: "0.5rem", marginBlock: "1.5rem" })}
+            mix={css({ display: "grid", gap: space(1), marginBlock: space(3) })}
           >
             <label htmlFor="archive-token">Archive access token</label>
             <input
@@ -226,7 +231,7 @@ export function ExportPage(handle: Handle<{ projectId: string }>) {
               required
             />
           </div>
-          <div mix={css({ display: "flex", flexWrap: "wrap", gap: "0.5rem" })}>
+          <div mix={css({ display: "flex", flexWrap: "wrap", gap: space(1) })}>
             <button
               id="start-export"
               type="button"

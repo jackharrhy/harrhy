@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { Button, Inline, Panel, Text } from "@harrhy/ui/native";
 import { themeRoot } from "@harrhy/ui/theme";
 import { css, type Handle } from "remix/component";
@@ -32,7 +33,7 @@ const inputStyles = css({
   marginInlineStart: "auto",
   "& button, & input": { pointerEvents: "auto" },
 });
-const hintStyles = css({ marginTop: "0.375rem", fontSize: "0.8125rem" });
+const hintStyles = css({ marginTop: space(0.75), fontSize: "0.8125rem" });
 export function HomePage(handle: Handle<{ nonce?: string }>) {
   return () => (
     <html lang="en">

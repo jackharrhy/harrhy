@@ -120,7 +120,7 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   assert.match(html, /--hui-font-ui:/);
 });
 
-test("spacing unit defaults independently of the semantic gap and accepts a scoped override", async () => {
+test("spacing unit drives the default semantic gap and accepts a scoped override", async () => {
   const render = (theme) =>
     renderToString(h("section", { mix: themeStyles(theme) }));
   const defaultHtml = await render(cleanTheme);
@@ -129,8 +129,11 @@ test("spacing unit defaults independently of the semantic gap and accepts a scop
   );
   assert.match(defaultHtml, /--hui-space-unit: 0.5rem/);
   assert.match(overrideHtml, /--hui-space-unit: 0.4375rem/);
-  assert.match(overrideHtml, /--hui-space: 0.75rem/);
-  assert.equal(space(0.5), "calc(var(--hui-space-unit) * 0.5)");
+  assert.match(
+    overrideHtml,
+    /--hui-space: calc\(var\(--hui-space-unit, 0\.5rem\) \* 1\.5\)/,
+  );
+  assert.equal(space(0.5), "calc(var(--hui-space-unit, 0.5rem) * 0.5)");
 });
 
 test("nested extensions preserve live aliases and reject wrong-category references", async () => {

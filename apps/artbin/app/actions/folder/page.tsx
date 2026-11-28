@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { Input } from "@harrhy/ui/native";
 import { css, type Handle, type RemixNode } from "remix/component";
 
@@ -39,41 +40,44 @@ const pageStyle = css({
   marginInline: "auto",
   maxWidth: "1400px",
   minHeight: "calc(100vh - 48px)",
-  padding: "1rem",
+  padding: space(2),
 });
-const actionsStyle = css({ display: "flex", flexWrap: "wrap", gap: "0.5rem" });
+const actionsStyle = css({ display: "flex", flexWrap: "wrap", gap: space(1) });
 const sourceStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0 0 1rem",
+  margin: `0 0 ${space(2)}`,
 });
 const sourceLinkStyle = css({ color: theme.color.text, fontWeight: 500 });
-const descriptionStyle = css({ color: theme.color.muted, margin: "0 0 1rem" });
+const descriptionStyle = css({
+  color: theme.color.muted,
+  margin: `0 0 ${space(2)}`,
+});
 const tabsRowStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
 });
-const manageStyle = css({ marginBottom: "1.25rem" });
+const manageStyle = css({ marginBottom: space(2.5) });
 const manageGridStyle = css({
   display: "grid",
-  gap: "1.5rem",
+  gap: space(3),
   gridTemplateColumns: "repeat(2, 1fr)",
-  marginTop: "1rem",
+  marginTop: space(2),
   "@media (max-width: 768px)": { gridTemplateColumns: "1fr" },
 });
 const fullRowStyle = css({
   gridColumn: "span 2",
   "@media (max-width: 768px)": { gridColumn: "span 1" },
 });
-const inputRowStyle = css({ display: "flex", gap: "0.5rem" });
+const inputRowStyle = css({ display: "flex", gap: space(1) });
 const growStyle = css({ flex: "1" });
-const spacedButtonStyle = css({ marginTop: "0.5rem" });
-const sectionStyle = css({ marginBottom: "2rem" });
+const spacedButtonStyle = css({ marginTop: space(1) });
+const sectionStyle = css({ marginBottom: space(4) });
 const foldersGridStyle = css({
   display: "grid",
-  gap: "0.5rem",
+  gap: space(1),
   gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
 });
 const wadPreviewStyle = css({
@@ -95,28 +99,28 @@ const coverImageStyle = css({
 const wadActionsStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "0.5rem",
+  gap: space(1),
 });
 const searchStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "0.5rem",
-  marginBottom: "1rem",
+  gap: space(1),
+  marginBottom: space(2),
 });
 const searchInputStyle = css({ maxWidth: "20rem", width: "100%" });
 const textureGridStyle = css({
   display: "grid",
-  gap: "0.5rem",
+  gap: space(1),
   gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))",
 });
-const wadFactsStyle = css({ marginTop: "2rem" });
+const wadFactsStyle = css({ marginTop: space(4) });
 const smallCodeStyle = css({ fontSize: "0.75rem" });
 const warningListStyle = css({
   background: theme.color.hover,
   border: `1px solid ${theme.color.borderLight}`,
   fontSize: "0.8125rem",
-  margin: "0 0 1rem",
-  padding: "0.75rem 0.75rem 0.75rem 2rem",
+  margin: `0 0 ${space(2)}`,
+  padding: `${space(1.5)} ${space(1.5)} ${space(1.5)} ${space(4)}`,
 });
 
 export function FolderRoutePage(

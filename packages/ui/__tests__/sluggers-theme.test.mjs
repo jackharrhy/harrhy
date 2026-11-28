@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import "remix/node-tsx";
-const { sluggersTheme } = await import("../theme.ts");
+const { sluggersTheme, space } = await import("../theme.ts");
 
 function luminance(hex) {
   const values = hex.match(/[0-9a-f]{2}/gi).map((part) => {
@@ -20,7 +20,7 @@ function contrast(a, b) {
 test("Sluggers tokens preserve dark table geometry and readable controls and feedback", () => {
   assert.equal(sluggersTheme.colorScheme, "dark");
   assert.equal(sluggersTheme.tableHeaderTextSize, "0.75rem");
-  assert.equal(sluggersTheme.tableCellPadding, "0.625rem 0.75rem");
+  assert.equal(sluggersTheme.tableCellPadding, `${space(1.25)} ${space(1.5)}`);
   for (const [foreground, background] of [
     ["ink", "surface"],
     ["muted", "surface"],

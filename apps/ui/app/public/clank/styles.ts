@@ -1,8 +1,9 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 const line = "0.0625rem solid var(--hui-border)",
   muted = "var(--hui-muted)",
   mono = "var(--hui-font-mono)";
-const row = { display: "flex", alignItems: "center", gap: "0.5rem" } as const;
+const row = { display: "flex", alignItems: "center", gap: space(1) } as const;
 export const shell = css({
   height: "100%",
   display: "flex",
@@ -43,7 +44,7 @@ export const shell = css({
   "& .overview": { borderLeft: line },
   "& .railhead,& .heading": {
     ...row,
-    padding: "0 1rem",
+    padding: `0 ${space(2)}`,
     minHeight: "3.25rem",
     borderBottom: line,
   },
@@ -54,14 +55,14 @@ export const shell = css({
     borderRadius: "var(--hui-control-radius)",
   },
   "& .session": {
-    margin: "0.125rem 0.375rem",
-    padding: "0.25rem 0.625rem",
+    margin: `${space(0.25)} ${space(0.75)}`,
+    padding: `${space(0.5)} ${space(1.25)}`,
     minHeight: "calc(0.75rem + 2 * var(--hui-space))",
     textAlign: "left",
     fontSize: "0.875rem",
     lineHeight: 1.4,
   },
-  "& .railhead+.session": { marginTop: "0.5rem" },
+  "& .railhead+.session": { marginTop: space(1) },
   "& button:hover,& summary:hover": {
     backgroundColor: "var(--hui-hover-surface)",
   },
@@ -73,7 +74,7 @@ export const shell = css({
   "& .engines button,& .step": {
     fontSize: "0.8125rem",
     minHeight: "2rem",
-    padding: "0.25rem 0.5rem",
+    padding: `${space(0.5)} ${space(1)}`,
   },
   "& .transcript": {
     display: "grid",
@@ -92,7 +93,7 @@ export const shell = css({
     width: "100%",
     maxWidth: "72ch",
     marginInline: "auto",
-    padding: "1.5rem 1rem",
+    padding: `${space(3)} ${space(2)}`,
     lineHeight: 1.5,
   },
   "& .user": {
@@ -101,36 +102,36 @@ export const shell = css({
     flexDirection: "column",
     gap: 4,
     paddingLeft: "12%",
-    marginBottom: "1rem",
+    marginBottom: space(2),
   },
   "& .user p": {
     background: "var(--hui-selected-surface)",
     color: "var(--hui-selected-ink)",
     borderRadius: "var(--hui-control-radius)",
-    padding: "0.5rem 0.75rem",
+    padding: `${space(1)} ${space(1.5)}`,
     margin: 0,
   },
   "& time,& summary small,& [data-markdown=code-header]": {
     fontSize: "0.75rem",
     color: muted,
   },
-  "& .measure [data-engine] p": { margin: "0.75rem 0" },
-  "& details": { marginBlock: "0.5rem", fontSize: "0.8125rem" },
+  "& .measure [data-engine] p": { margin: `${space(1.5)} 0` },
+  "& details": { marginBlock: space(1), fontSize: "0.8125rem" },
   "& summary": {
     ...row,
     minHeight: "2rem",
     cursor: "pointer",
     color: muted,
     width: "fit-content",
-    padding: "0.125rem 0.25rem",
+    padding: `${space(0.25)} ${space(0.5)}`,
     borderRadius: "var(--hui-control-radius)",
   },
   "& summary::before": { content: '"▸"' },
   "& details[open]>summary::before": { content: '"▾"' },
-  "& details p": { margin: "0.25rem 0 0.75rem 1rem" },
+  "& details p": { margin: `${space(0.5)} 0 ${space(1.5)} ${space(2)}` },
   "& pre,& .tail": {
     font: "0.75rem/1.6 var(--hui-font-mono)",
-    padding: "0.5rem 0.75rem",
+    padding: `${space(1)} ${space(1.5)}`,
     background: "var(--hui-canvas)",
     borderRadius: "var(--hui-control-radius)",
     overflowX: "auto",
@@ -152,16 +153,16 @@ export const shell = css({
     ...row,
     borderTop: line,
     minHeight: "3.25rem",
-    padding: "0.25rem 1rem",
+    padding: `${space(0.5)} ${space(2)}`,
   },
   "& .transport button": { ...row, justifyContent: "center" },
-  "& .engines": { ...row, gap: "0.125rem", marginLeft: "auto" },
+  "& .engines": { ...row, gap: space(0.25), marginLeft: "auto" },
   "& dl": {
     display: "grid",
     gridTemplateColumns: "auto minmax(0,1fr)",
-    gap: "0.5rem 0.75rem",
-    padding: "0 1rem",
-    margin: "1rem 0",
+    gap: `${space(1)} ${space(1.5)}`,
+    padding: `0 ${space(2)}`,
+    margin: `${space(2)} 0`,
     fontSize: "0.8125rem",
   },
   "& dt": { color: muted },
@@ -170,7 +171,12 @@ export const shell = css({
   "@media(max-width:56.1875rem)": {
     "& .columns": { display: "flex" },
     "& .columns>*": { width: "100%" },
-    "& .mobile": { ...row, gap: 0, padding: "0 0.375rem", borderBottom: line },
+    "& .mobile": {
+      ...row,
+      gap: 0,
+      padding: `0 ${space(0.75)}`,
+      borderBottom: line,
+    },
     "& .mobile button": { flex: 1, marginBlock: 2 },
     "&:not([data-pane=Sessions]) .sessions,&:not([data-pane=Transcript]) .transcript,&:not([data-pane=Overview]) .overview":
       { display: "none" },
@@ -179,7 +185,7 @@ export const shell = css({
     "& .sessions,& .overview": { border: 0 },
     "& .columns button,& .session,& summary,& .engines button,& .transport button,& .mobile button":
       { minWidth: "2.75rem", minHeight: "2.75rem" },
-    "& .measure": { paddingBlock: "1rem" },
+    "& .measure": { paddingBlock: space(2) },
     "& .transport": {
       paddingBottom: "max(0.25rem,env(safe-area-inset-bottom))",
     },

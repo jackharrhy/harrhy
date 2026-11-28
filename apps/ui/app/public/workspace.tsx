@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle, type RemixNode } from "remix/component";
 import { Button, ButtonLink, Input } from "@harrhy/ui/native";
 import { stories, type StoryId } from "./stories.ts";
@@ -35,7 +36,7 @@ const rail = css({
   borderRight: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
   scrollPaddingTop: "4rem",
-  "& nav": { padding: "0.5rem 0.625rem" },
+  "& nav": { padding: `${space(1)} ${space(1.25)}` },
   "& nav + nav": { borderTop: "1px solid var(--hui-border)" },
   "& h2": {
     fontSize: "0.6875rem",
@@ -43,15 +44,15 @@ const rail = css({
     letterSpacing: "0.055em",
     textTransform: "uppercase",
     color: "var(--hui-muted)",
-    margin: "0.5rem 0.5rem 0.25rem",
+    margin: `${space(1)} ${space(1)} ${space(0.5)}`,
   },
-  "& nav div + div": { marginTop: "0.75rem" },
+  "& nav div + div": { marginTop: space(1.5) },
   "& a[data-example-link]": {
     display: "flex",
     justifyContent: "flex-start",
     width: "100%",
     minHeight: "2rem",
-    padding: "0.25rem 0.5rem",
+    padding: `${space(0.5)} ${space(1)}`,
     borderColor: "transparent",
     fontSize: "inherit",
     fontWeight: 500,
@@ -76,7 +77,7 @@ const rail = css({
     borderRight: 0,
     borderBottom: "1px solid var(--hui-border)",
     "& a[data-example-link]": { minHeight: "2.5rem" },
-    "& details[open]": { paddingBottom: "0.75rem" },
+    "& details[open]": { paddingBottom: space(1.5) },
   },
 });
 const search = css({
@@ -86,28 +87,28 @@ const search = css({
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
-  padding: "0.625rem",
+  padding: space(1.25),
   background: "var(--hui-surface)",
   borderBottom: "1px solid var(--hui-border)",
   "& input": {
     gridArea: "1 / 1 / 2 / 3",
     width: "100%",
     minWidth: 0,
-    paddingInlineEnd: "2.5rem",
+    paddingInlineEnd: space(5),
     fontSize: "inherit",
   },
   "& button": {
     gridArea: "1 / 2",
     zIndex: 1,
-    marginInlineEnd: "0.125rem",
+    marginInlineEnd: space(0.25),
     minHeight: "1.75rem",
     minWidth: "2rem",
-    padding: "0.25rem",
+    padding: space(0.5),
     color: "var(--hui-muted)",
   },
 });
 const empty = css({
-  padding: "0 1.125rem 1rem",
+  padding: `0 ${space(2.25)} ${space(2)}`,
   color: "var(--hui-muted)",
   "& a": { color: "inherit" },
 });
@@ -116,7 +117,7 @@ const mobile = css({
   display: "none",
   "@media (max-width: 47.5rem)": {
     display: "block",
-    "& summary": { cursor: "pointer", padding: "0.5rem 1rem" },
+    "& summary": { cursor: "pointer", padding: `${space(1)} ${space(2)}` },
   },
 });
 
