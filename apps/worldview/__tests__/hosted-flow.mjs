@@ -25,12 +25,6 @@ let browser;
 let identity;
 let compiler;
 
-async function showEditorMenu(page, name) {
-  await page.locator(".editor-menu").evaluateAll((menus, selected) => {
-    for (const menu of menus) menu.open = menu.dataset.menu === selected;
-  }, name);
-}
-
 async function freePort() {
   return new Promise((resolve, reject) => {
     const server = createNetServer();
@@ -343,7 +337,6 @@ try {
   await owner.locator("#project-map-name").fill("smoke.map");
   await owner.locator("#project-map-create-form button").click();
   await owner.waitForURL(/\/editor\?hostedMap=[a-z0-9]{12}$/);
-  await owner.goto(owner.url() + "&buildTools=1");
   await owner.getByText("Smoke Project / smoke.map opened").waitFor();
   const editorUrl = owner.url();
   const mapId = new URL(editorUrl).searchParams.get("hostedMap");
@@ -401,23 +394,42 @@ try {
   );
   result.checks.push("hosted edit survives reload");
 
-  await showEditorMenu(owner, "build");
-  await owner.locator("#hosted-builds summary").click();
   const buildMapVersion = (
     await (await owner.request.get(`${mapsOrigin}/api/maps/${mapId}`)).json()
   ).map.mapVersion;
-  await owner.locator("#build-map").click();
-  const download = owner.getByRole("link", { name: "Download BSP" });
-  await download.waitFor({ timeout: 15_000 });
-  const artifact = await owner.request.get(
-    `${mapsOrigin}${await download.getAttribute("href")}`,
-  );
+  // Create the fixture artifact through the backend, not the editor.
+  const buildsUrl = `${mapsOrigin}/api/maps/${mapId}/builds`;
+  const queued = await owner.request.post(buildsUrl, {
+    headers: { Origin: mapsOrigin },
+    data: { quality: "preview", expectedMapVersion: buildMapVersion },
+  });
+  assert.ok(queued.ok(), await queued.text());
+  const { build: created } = await queued.json();
+  let artifactPath;
+  for (let attempt = 0; attempt < 75; attempt++) {
+    const response = await owner.request.get(buildsUrl);
+    assert.ok(response.ok());
+    const { builds } = await response.json();
+    const build = builds.find(({ id }) => id === created.id);
+    assert.notEqual(build?.status, "failed", JSON.stringify(build));
+    const bspArtifact = build?.result?.artifacts?.find(({ kind }) => kind === "bsp");
+    if (build?.status === "succeeded" && bspArtifact) {
+      artifactPath = `${buildsUrl}/${build.id}/artifacts/${bspArtifact.sha256}`;
+      break;
+    }
+    await delay(200);
+  }
+  assert.ok(artifactPath, "Hosted fixture did not produce a BSP");
+  const projectId = new URL(projectUrl).pathname.split("/").at(-1);
+  await owner.goto(`${mapsOrigin}/viewer?hostedProject=${projectId}&hostedMap=${mapId}`);
+  await owner.getByText("Choose a compiled build to view").waitFor();
+  const artifact = await owner.request.get(artifactPath);
   assert.equal(artifact.status(), 200);
   assert.deepEqual(await artifact.body(), bsp);
   assert.equal(compileRequests.length, 1);
   assert.equal(compileRequests[0].expectedDocumentRevision, buildMapVersion);
   result.checks.push(
-    "hosted build reaches compiler and serves its BSP artifact",
+    "hosted fixture build is listed in the viewer and serves its BSP artifact",
   );
   assert.deepEqual(ownerErrors, []);
   assert.deepEqual(policyErrors, []);

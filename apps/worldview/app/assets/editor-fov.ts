@@ -10,7 +10,6 @@ function validFov(value: number): boolean {
 export interface EditorFovContext {
   readonly currentFov: number;
   readonly defaultFov: number;
-  readonly compiled: boolean;
   readonly set: (value: number) => void;
   readonly reset: () => void;
   readonly save: () => void;
@@ -29,7 +28,6 @@ export function initEditorFov(options: {
   } catch {}
   let currentFov = defaultFov;
   let rendererReady = false;
-  let compiled = false;
   let componentReady = false;
 
   function publish() {
@@ -39,7 +37,6 @@ export function initEditorFov(options: {
         detail: {
           currentFov,
           defaultFov,
-          compiled,
           set,
           reset: () => set(defaultFov),
           save: () => saveDefault(currentFov),
@@ -90,10 +87,6 @@ export function initEditorFov(options: {
     cameraChanged(value: number) {
       if (!rendererReady || !validFov(value) || value === currentFov) return;
       currentFov = value;
-      publish();
-    },
-    setCompiled(value: boolean) {
-      compiled = value;
       publish();
     },
   };

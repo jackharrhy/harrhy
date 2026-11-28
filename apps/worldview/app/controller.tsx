@@ -33,12 +33,7 @@ export default createController(routes, {
       return context.render(<MapsPage nonce={getCspNonce(context)} />);
     },
     editor(context) {
-      return context.render(
-        <EditorPage
-          nonce={getCspNonce(context)}
-          buildTools={new URL(context.request.url).searchParams.get("buildTools") === "1"}
-        />,
-      );
+      return context.render(<EditorPage nonce={getCspNonce(context)} />);
     },
     newMap(context) {
       return context.render(<NewMapPage nonce={getCspNonce(context)} />);

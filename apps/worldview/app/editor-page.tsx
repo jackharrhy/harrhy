@@ -1,6 +1,3 @@
-import { EditorBuildControls } from "./assets/editor-build-controls-panel.tsx";
-import { EditorExportSettings } from "./assets/editor-export-settings-panel.tsx";
-import { EditorHostedBuilds } from "./assets/editor-hosted-builds-panel.tsx";
 import { browserAssets } from "./assets/build-manifest.ts";
 import type { Handle } from "remix/component";
 import {
@@ -46,7 +43,7 @@ import {
 import { editorStyles } from "./editor-styles.ts";
 import { mapsEditorStyles } from "./editor-maps-styles.ts";
 
-export function EditorPage(handle: Handle<{ nonce?: string; buildTools?: boolean }>) {
+export function EditorPage(handle: Handle<{ nonce?: string }>) {
   return () => (
     <html lang="en" mix={[editorStyles, mapsEditorStyles]}>
       <head>
@@ -96,19 +93,6 @@ export function EditorPage(handle: Handle<{ nonce?: string; buildTools?: boolean
                 <EditorEditActions />
               </div>
             </details>
-            {handle.props.buildTools ? (
-              <details class="editor-menu" data-menu="build" name="editor-topbar">
-                <summary>
-                  <i class="ph ph-hammer" aria-hidden="true" /> Build
-                </summary>
-                <div class="editor-menu-content">
-                  <div class="editor-menu-heading">Build and export</div>
-                  <EditorBuildControls />
-                  <EditorExportSettings />
-                  <EditorHostedBuilds />
-                </div>
-              </details>
-            ) : null}
             <details
               id="hosted-editor-picker"
               class="hosted-editor-picker"

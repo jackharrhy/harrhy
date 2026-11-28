@@ -254,18 +254,6 @@ export const mapsEditorStyles = css({
       border: "1px solid var(--editor-border)",
       borderRadius: "2px",
     },
-  "& .editor-menu-content #game-profile, & .editor-menu-content #build-profile":
-    {
-      width: "100%",
-      height: "28px",
-      padding: "3px 6px",
-      borderRadius: "2px",
-      fontSize: "11px",
-    },
-  "& .editor-menu-content #build-status, & .editor-menu-content #export-status":
-    {
-      fontSize: "10px",
-    },
   "& #hosted-editor-picker": {
     position: "relative",
     flex: "none",
