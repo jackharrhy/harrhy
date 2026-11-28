@@ -56,6 +56,8 @@ export type Catalog = {
     title: string,
     slug?: string,
   ): Promise<Session & { slug?: string }>;
+  /** False until this connection obtains branding or knows it is unavailable. */
+  brandingReady: boolean;
   branding?: Branding;
   canCreateSlug: boolean;
   rows: Row[];
@@ -71,6 +73,8 @@ export type Catalog = {
 };
 
 export type Snapshot = Pick<Catalog, "rows" | "children" | "activeIds"> & {
+  /** Initial owner document only; never copy branding into reconnect snapshots. */
+  branding?: Branding;
   selectedId?: string;
   chat?: Omit<ChatFeed, "send">;
 };
@@ -288,6 +292,7 @@ export async function followCatalog(
           );
         }, ctx);
       let branding: Branding | undefined;
+      let brandingReady = false;
       let rows = activeRows(watch.value);
       let children: Catalog["children"] = {};
       let childrenReady = false;
@@ -295,6 +300,7 @@ export async function followCatalog(
       const update = () =>
         publish({
           branding,
+          brandingReady,
           rows,
           children,
           childrenReady,
@@ -347,16 +353,18 @@ export async function followCatalog(
         });
         await update();
         // Branding is optional: an older Pi must still get a working catalog.
+        const publishBranding = async (value: Branding | undefined) => {
+          if (!authorized()) return;
+          brandingReady = true;
+          branding = value;
+          await update();
+        };
         void host
           .root(
-            (brandScope) =>
-              followBranding(brandScope, async (value) => {
-                if (!authorized()) return;
-                branding = value;
-                await update();
-              }),
+            (brandScope) => followBranding(brandScope, publishBranding),
             ctx,
           )
+          .finally(() => publishBranding(undefined))
           .catch(() => {});
         void followChildren().catch(() => {});
         void host

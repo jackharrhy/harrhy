@@ -51,24 +51,35 @@ async function document(
       status: 302,
       headers: { ...headers, Location: location },
     });
+  const brand = snapshot?.branding;
   const html = await renderToString(
     <html
       lang="en"
+      data-pi-tint={brand?.tint != null ? "custom" : undefined}
+      style={
+        brand?.tint != null
+          ? { "--pi-base-hue": String(brand.tint) }
+          : undefined
+      }
       data-theme={mode === "system" ? undefined : mode}
-      mix={[themeStyles(ownerTheme), themeRoot, ownerScheme]}
+      mix={[themeStyles(ownerTheme), ownerScheme]}
     >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Clank</title>
+        <title>{brand?.name ?? "Clank"}</title>
+        {brand?.logo && <link rel="icon" type="image/png" href={brand.logo} />}
         <script type="module" src="/owner-sessions.js" />
       </head>
       <body
-        mix={css({
-          margin: 0,
-          minHeight: "100dvh",
-          backgroundColor: "var(--hui-surface)",
-        })}
+        mix={[
+          themeRoot,
+          css({
+            margin: 0,
+            minHeight: "100dvh",
+            backgroundColor: "var(--hui-surface)",
+          }),
+        ]}
       >
         <OwnerSessions
           initialMode={mode}

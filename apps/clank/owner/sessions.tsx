@@ -362,6 +362,9 @@ export const OwnerSessions = clientEntry(
     let seed = handle.props.snapshot
       ? (JSON.parse(handle.props.snapshot) as Snapshot)
       : undefined;
+    // Seed this presentation once; reconnects must never replay old branding.
+    let branding = seed?.branding;
+    if (seed) delete seed.branding;
     let now = handle.props.renderedAt;
     let listPage = Boolean(handle.props.listPage);
     let target = handle.props.target;
@@ -558,13 +561,13 @@ export const OwnerSessions = clientEntry(
       const current = new AbortController();
       attempt = current;
       const signal = current.signal;
-      const applyBranding = documentBranding(document);
+      const applyBranding = documentBranding(document, branding);
       signal.addEventListener(
         "abort",
         () => {
           applyBranding();
-          if (view.kind === "ready" && view.catalog.branding) {
-            view.catalog.branding = undefined;
+          if (branding) {
+            branding = undefined;
             if (!handle.signal.aborted) void handle.update();
           }
         },
@@ -572,9 +575,11 @@ export const OwnerSessions = clientEntry(
       );
       async function show(next: View) {
         if (signal.aborted) return;
-        applyBranding(
-          next.kind === "ready" ? next.catalog.branding : undefined,
-        );
+        if (next.kind === "ready" && next.catalog.brandingReady)
+          branding = next.catalog.branding;
+        else if (next.kind === "offline" || next.kind === "sign-in")
+          branding = undefined;
+        applyBranding(branding);
         if (next.kind === "sign-in") {
           cached = seed = undefined;
           switching = settings = newOpen = false;
@@ -929,7 +934,7 @@ export const OwnerSessions = clientEntry(
             ]}
           >
             <div mix={bar}>
-              <BrandMark logo={live?.branding?.logo} />
+              <BrandMark logo={branding?.logo} />
               <div mix={css({ display: "flex", gap: "2px" })}>
                 {catalog && (
                   <Button
@@ -1033,7 +1038,7 @@ export const OwnerSessions = clientEntry(
                                 })}
                               >
                                 {row === familiar ? (
-                                  <BrandMark logo={live?.branding?.logo} />
+                                  <BrandMark logo={branding?.logo} />
                                 ) : row.pinned ? (
                                   <Icon name="pin" />
                                 ) : null}

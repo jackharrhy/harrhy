@@ -265,6 +265,21 @@ try {
         cookie.httpOnly && cookie.secure && cookie.domain === OWNER_HOST,
     ),
   );
+  function assertNoCredentials(html: string) {
+    const secrets = [
+      invite.hash.slice(1),
+      ...cookies
+        .filter((cookie) => cookie.httpOnly)
+        .map((cookie) => cookie.value),
+      ...fixture.owner.cookie
+        .split("; ")
+        .map((pair) => pair.slice(pair.indexOf("=") + 1)),
+    ];
+    assert(
+      !secrets.some((value) => html.includes(value)),
+      "credential in document",
+    );
+  }
   const observer = await context.newPage();
   observer.setDefaultTimeout(8000);
   await observer.setViewportSize({ width: 1440, height: 900 });
@@ -323,20 +338,126 @@ try {
         ].some((icon) => icon.href === src),
       { name, src },
     );
-    const paint = await context.newPage();
-    await paint.route("**/owner-sessions.js", (route) => route.abort());
-    const response = await paint.goto(observer.url());
-    assert.equal(response?.status(), 200);
-    const html = await response!.text();
-    await paint.close();
-    assert(html.includes("Disposable Clank session"));
-    for (const marker of [
+    // Check the elements themselves, not just branding serialized in hydration props.
+    function inspectBrand({
       name,
       src,
-      'data-pi-tint="custom"',
-      "--pi-base-hue:217",
-    ])
-      assert(!html.includes(marker));
+      html,
+      liveName,
+    }: {
+      name: string;
+      src: string;
+      html?: string;
+      liveName?: string;
+    }) {
+      const doc =
+        html === undefined
+          ? document
+          : new DOMParser().parseFromString(html, "text/html");
+      function missing() {
+        if (doc.title !== name && doc.title !== liveName) return "title";
+        if (!doc.head.querySelector(`link[rel~=icon][href="${src}"]`))
+          return "favicon";
+        if (!doc.querySelector(`#clank-sidebar img[src="${src}"]`))
+          return "rail mark";
+        const root = doc.documentElement;
+        if (
+          root.dataset.piTint !== "custom" ||
+          root.style.getPropertyValue("--pi-base-hue").trim() !== "217"
+        )
+          return "tint";
+        return null;
+      }
+      const state = { missing: missing() };
+      if (liveName) {
+        // Remember a transient reset even if the branding subscription repairs it.
+        new MutationObserver(() => {
+          state.missing ??= missing();
+        }).observe(doc, {
+          attributes: true,
+          childList: true,
+          characterData: true,
+          subtree: true,
+        });
+      }
+      return state;
+    }
+    const noScript = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      javaScriptEnabled: false,
+    });
+    const staticBrand = await noScript.newPage();
+    const publicResponse = await staticBrand.goto(origin);
+    assert.equal(publicResponse?.status(), 200);
+    const publicHtml = await publicResponse!.text();
+    assertNoCredentials(publicHtml);
+    assert(!publicHtml.includes(name) && !publicHtml.includes(src));
+    assert(!/--pi-base-hue\s*:\s*217\b/.test(publicHtml));
+    await noScript.addCookies(cookies);
+    const response = await staticBrand.goto(origin);
+    assert.equal(response?.status(), 200);
+    const html = await response!.text();
+    assertNoCredentials(html);
+    assert(html.includes("Disposable Clank session"));
+    assert.equal(
+      (await staticBrand.evaluate(inspectBrand, { name, src, html })).missing,
+      null,
+      "raw owner HTML",
+    );
+    assert.equal(
+      (await staticBrand.evaluate(inspectBrand, { name, src })).missing,
+      null,
+      "no-script document",
+    );
+    assert(
+      await staticBrand
+        .locator(`#clank-sidebar img[src="${src}"]:visible`)
+        .first()
+        .evaluate((img: HTMLImageElement) => img.naturalWidth > 0),
+    );
+    assert.match(
+      await staticBrand
+        .locator("body")
+        .evaluate((body) => getComputedStyle(body).backgroundColor),
+      /^oklch\(/,
+    );
+    await noScript.close();
+
+    const paint = await context.newPage();
+    await paint.setViewportSize({ width: 1280, height: 800 });
+    const bundle = Promise.withResolvers<void>();
+    const check = Promise.withResolvers<void>();
+    await paint.route("**/owner-sessions.js", async (route) => {
+      await bundle.promise;
+      await route.continue();
+    });
+    await paint.route("**/owner/check", async (route) => {
+      await check.promise;
+      await route.continue();
+    });
+    await paint.goto(origin, { waitUntil: "commit" });
+    await paint
+      .getByRole("button", { name: "Familiar", exact: true })
+      .waitFor();
+    const liveName = "Updated disposable brand";
+    const continuity = await paint.evaluateHandle(inspectBrand, {
+      name,
+      src,
+      liveName,
+    });
+    const missingBrand = () => continuity.evaluate((state) => state.missing);
+    assert.equal(await missingBrand(), null, "waiting for bundle");
+    const checking = paint.waitForRequest("**/owner/check", { timeout: 8000 });
+    bundle.resolve();
+    await checking;
+    assert.equal(await missingBrand(), null, "waiting for owner check");
+    check.resolve();
+    await paint.locator('button[aria-label="Session tools"]:enabled').waitFor();
+    assert.equal(await missingBrand(), null, "initial live catalog");
+    await brand.setName({ name: liveName }, ctx);
+    await paint.waitForFunction((next) => document.title === next, liveName);
+    assert.equal(await missingBrand(), null, "handoff to live branding");
+    await paint.close();
     await brand.setName({ name: null }, ctx);
     await brand.setTint({ tint: null }, ctx);
     await brand.clearLogo(ctx);
@@ -777,8 +898,8 @@ try {
   assert.equal(rules.top, rules.bottom);
   assert.equal(rules.width, "1px");
   assert.equal(rules.padding[0], rules.padding[1]);
-  const themeBackground = () =>
-    observer
+  const themeBackground = (target = observer) =>
+    target
       .locator("body")
       .evaluate((node) => getComputedStyle(node).backgroundColor);
   await observer.emulateMedia({ colorScheme: "light" });
@@ -792,17 +913,89 @@ try {
   assert(await settings.getByRole("radio", { name: "Light" }).isChecked());
   await settings.getByRole("radio", { name: "Dark" }).check();
   assert.equal(await themeBackground(), "rgb(21, 20, 19)");
-  const firstPaint = await context.newPage();
-  await firstPaint.emulateMedia({ colorScheme: "light" });
-  await firstPaint.route("**/owner-sessions.js", (route) => route.abort());
+  const themeCookie = "__Host-clank-theme";
+  const darkCookie = (await context.cookies(origin)).find(
+    (cookie) => cookie.name === themeCookie,
+  );
+  assert.equal(darkCookie?.value, "dark", "Settings persists the theme cookie");
+  const noScriptTheme = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    javaScriptEnabled: false,
+  });
+  await noScriptTheme.addCookies(await context.cookies(origin));
+  const firstPaint = await noScriptTheme.newPage();
+  const backgrounds = { light: "rgb(251, 250, 248)", dark: "rgb(21, 20, 19)" };
+  for (const mode of ["dark", "light"] as const) {
+    await noScriptTheme.addCookies([
+      { name: themeCookie, value: mode, url: origin, secure: true },
+    ]);
+    await firstPaint.emulateMedia({
+      colorScheme: mode === "dark" ? "light" : "dark",
+    });
+    const response = await firstPaint.goto(origin);
+    const html = await response!.text();
+    assert(new RegExp(`<html\\b[^>]* data-theme="${mode}"`).test(html));
+    assertNoCredentials(html);
+    assert.equal(
+      await themeBackground(firstPaint),
+      backgrounds[mode],
+      `no-script ${mode} preference`,
+    );
+  }
+  await noScriptTheme.clearCookies({ name: themeCookie });
   await firstPaint.goto(origin);
   assert.equal(
-    await firstPaint
-      .locator("body")
-      .evaluate((node) => getComputedStyle(node).backgroundColor),
-    "rgb(21, 20, 19)",
+    await firstPaint.locator("html").getAttribute("data-theme"),
+    null,
   );
-  await firstPaint.close();
+  for (const colorScheme of ["light", "dark"] as const) {
+    await firstPaint.emulateMedia({ colorScheme });
+    assert.equal(
+      await themeBackground(firstPaint),
+      backgrounds[colorScheme],
+      `no-script system ${colorScheme}`,
+    );
+  }
+  await noScriptTheme.close();
+
+  // Simulate an existing installation. Hydration migrates the legacy value only
+  // if there isn't already an authoritative cookie.
+  for (const hasCookie of [false, true]) {
+    const legacy = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      colorScheme: hasCookie ? "dark" : "light",
+      storageState: {
+        cookies: cookies.filter((cookie) => cookie.name !== themeCookie),
+        origins: [
+          { origin, localStorage: [{ name: "clank:theme", value: "dark" }] },
+        ],
+      },
+    });
+    if (hasCookie)
+      await legacy.addCookies([
+        { name: themeCookie, value: "light", url: origin, secure: true },
+      ]);
+    const migrated = await legacy.newPage();
+    await migrated.goto(origin);
+    await migrated
+      .locator('button[aria-label="Session tools"]:enabled')
+      .waitFor();
+    await migrated.getByRole("button", { name: "Settings" }).click();
+    const expected = hasCookie ? "light" : "dark";
+    assert(
+      await migrated
+        .getByRole("radio", { name: hasCookie ? "Light" : "Dark", exact: true })
+        .isChecked(),
+    );
+    assert.equal(await themeBackground(migrated), backgrounds[expected]);
+    assert.equal(
+      (await legacy.cookies(origin)).find(
+        (cookie) => cookie.name === themeCookie,
+      )?.value,
+      expected,
+    );
+    await legacy.close();
+  }
   await observer.setViewportSize({ width: 320, height: 640 });
   const settingsBounds = await settings.boundingBox();
   assert(
@@ -1316,8 +1509,7 @@ try {
     await staticPage.getByText("Strong receipt", { exact: true }).count(),
     0,
   );
-  for (const cookie of await context.cookies(origin))
-    assert(!html.includes(cookie.value));
+  assertNoCredentials(html);
   await noJs.close();
   const hydrated = await context.newPage();
   await hydrated.setViewportSize({ width: 1280, height: 800 });

@@ -60,6 +60,7 @@ const tintPair = (light: string, dark: string) =>
   `light-dark(oklch(${light} var(--pi-base-hue)), oklch(${dark} var(--pi-base-hue)))`;
 
 export const ownerScheme = css({
+  colorScheme: "var(--hui-color-scheme)",
   "&[data-pi-tint=custom]": {
     "--hui-surface": tintPair("0.985 0.012", "0.19 0.022"),
     "--hui-canvas": tintPair("0.96 0.017", "0.21 0.022"),
@@ -76,13 +77,13 @@ export const ownerScheme = css({
 });
 
 // One owner connection owns these document effects; never persist them as preferences.
-export function documentBranding(doc: Document) {
+export function documentBranding(doc: Document, initial?: Branding) {
   const root = doc.documentElement;
-  const defaultTitle = doc.title;
-  let icon: HTMLLinkElement | undefined;
-  let previous: Branding | undefined;
+  let icon =
+    doc.head.querySelector<HTMLLinkElement>('link[rel="icon"]') ?? undefined;
+  let previous = initial;
   return (next?: Branding) => {
-    if (previous?.name !== next?.name) doc.title = next?.name ?? defaultTitle;
+    if (previous?.name !== next?.name) doc.title = next?.name ?? "Clank";
     if (previous?.tint !== next?.tint) {
       if (next?.tint != null) {
         root.style.setProperty("--pi-base-hue", String(next.tint));
