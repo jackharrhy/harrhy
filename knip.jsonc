@@ -23,6 +23,10 @@
         "scripts/ci/selected-image-smoke.mjs",
       ],
     },
+    "experiments/shared-workspace": {
+      // Shell runners launch these optional checks as separate processes.
+      "entry": ["__tests__/kvm/browser-ssh.mjs", "__tests__/room-ref-bench.ts"],
+    },
     "apps/clank": {
       "entry": [
         "app/start.ts",
