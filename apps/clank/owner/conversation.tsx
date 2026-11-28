@@ -118,6 +118,13 @@ export function Conversation(handle: Handle<Props>) {
   let composing = false;
   let error = false;
   let viewport: HTMLDivElement | undefined;
+  let following = true;
+  let previousTop = 0;
+  function followLatest() {
+    if (!following || !viewport) return;
+    viewport.scrollTop = viewport.scrollHeight;
+    previousTop = viewport.scrollTop;
+  }
   let mounted: AbortSignal | undefined;
   let binding: Catalog["chat"] | undefined;
   let chatAttempt: AbortController | undefined;
@@ -135,13 +142,9 @@ export function Conversation(handle: Handle<Props>) {
       try {
         await chat(session, conversation, signal, async (next) => {
           if (signal.aborted) return;
-          const follow =
-            !feed ||
-            node.scrollHeight - node.scrollTop - node.clientHeight < 64;
           feed = next;
           disconnected = false;
           await handle.update();
-          if (follow && !signal.aborted) node.scrollTop = node.scrollHeight;
         });
       } catch {
         // A failed binding never enables the composer.
@@ -155,7 +158,13 @@ export function Conversation(handle: Handle<Props>) {
   const mount = ref<HTMLDivElement>((node, signal) => {
     viewport = node;
     mounted = signal;
-    if (handle.props.seed) node.scrollTop = node.scrollHeight;
+    followLatest();
+    const observer = new ResizeObserver(followLatest);
+    observer.observe(node);
+    if (node.firstElementChild) observer.observe(node.firstElementChild);
+    signal.addEventListener("abort", () => observer.disconnect(), {
+      once: true,
+    });
     start();
   });
   async function send() {
@@ -182,7 +191,6 @@ export function Conversation(handle: Handle<Props>) {
       sending = false;
       if (!handle.signal.aborted) {
         await handle.update();
-        if (!error && viewport) viewport.scrollTop = viewport.scrollHeight;
       }
     }
   }
@@ -353,7 +361,22 @@ export function Conversation(handle: Handle<Props>) {
           tabindex={0}
           mix={[
             mount,
-            css({ overflow: "auto", overscrollBehavior: "contain" }),
+            on("scroll", (event) => {
+              const node = event.currentTarget;
+              const nearBottom =
+                node.scrollHeight - node.scrollTop - node.clientHeight <= 64;
+              // Content growth can leave a queued scroll event behind our last write.
+              const movedUp = node.scrollTop < previousTop;
+              previousTop = node.scrollTop;
+              if (following === nearBottom || (following && !movedUp)) return;
+              following = nearBottom;
+              void handle.update();
+            }),
+            css({
+              gridArea: "1 / 1",
+              overflow: "auto",
+              overscrollBehavior: "contain",
+            }),
           ]}
         >
           <div
@@ -396,6 +419,32 @@ export function Conversation(handle: Handle<Props>) {
             )}
           </div>
         </div>
+        {!following && (
+          <Button
+            type="button"
+            variant="quiet"
+            mix={[
+              css({
+                gridArea: "1 / 1",
+                alignSelf: "end",
+                justifySelf: "center",
+                zIndex: 1,
+                marginBottom: "12px",
+                minHeight: "44px",
+                backgroundColor: "var(--hui-surface)",
+                border: "1px solid var(--hui-border)",
+              }),
+              on("click", () => {
+                following = true;
+                followLatest();
+                viewport?.focus({ preventScroll: true });
+                void handle.update();
+              }),
+            ]}
+          >
+            Jump to latest
+          </Button>
+        )}
         <form
           mix={[
             css({
