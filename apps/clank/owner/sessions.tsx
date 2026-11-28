@@ -26,14 +26,7 @@ import { Switcher, type PaletteItem } from "./switcher.tsx";
 import { byRecentActivity } from "../../pi/plugins/subagents/contract.ts";
 import { Conversation } from "./conversation.tsx";
 import { Button, Heading, Input, Text } from "@harrhy/ui/native";
-import {
-  clientEntry,
-  css,
-  on,
-  ref,
-  type Handle,
-  type RemixNode,
-} from "remix/component";
+import { clientEntry, css, on, ref, type Handle } from "remix/component";
 import {
   followCatalog,
   MAX_TITLE,
@@ -102,7 +95,6 @@ const titleStyle = css({
 const ageStyle = css({
   flexShrink: 0,
   marginInlineStart: "auto",
-  paddingInlineEnd: "8px",
   color: "var(--hui-muted)",
   fontSize: "12px",
   fontWeight: 400,
@@ -110,19 +102,22 @@ const ageStyle = css({
   fontVariantNumeric: "tabular-nums",
 });
 const sessionButton = css({
-  width: "var(--clank-session-row-width, 100%)",
+  width: "100%",
+  fontWeight: 400,
+  "&[data-variant=quiet]:hover": { background: "var(--hui-hover-surface)" },
   minHeight: "28px",
   justifyContent: "flex-start",
   fontSize: "14px",
   textAlign: "left",
   padding: "4px 10px",
+  "& > svg": { flex: "none", color: "var(--hui-muted)" },
   "& span": {
     minWidth: 0,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  "&[aria-pressed=true]": {
+  "&[data-variant=quiet][aria-pressed=true]": {
     backgroundColor: "var(--hui-selected-surface)",
     color: "var(--hui-selected-ink)",
     fontWeight: 600,
@@ -139,7 +134,12 @@ const iconAction = css({
 const sessionTitle = (row: Row) => row.title || "Untitled session";
 
 function SessionTitle(
-  handle: Handle<{ row: Row; rename?: Catalog["rename"]; controls: RemixNode }>,
+  handle: Handle<{
+    row: Row;
+    rename?: Catalog["rename"];
+    subtitle: string;
+    switchConversation?: (from?: HTMLElement) => void;
+  }>,
 ) {
   let edit: { draft: string; saving: boolean; error?: string } | undefined;
   let editButton: HTMLButtonElement | undefined;
@@ -242,9 +242,30 @@ function SessionTitle(
           </form>
         ) : (
           <>
-            <Heading level={2} mix={titleStyle}>
-              {title}
-            </Heading>
+            <div
+              mix={[
+                css({ minWidth: 0, flex: 1 }),
+                on("dblclick", () =>
+                  handle.props.switchConversation?.(editButton),
+                ),
+              ]}
+            >
+              <Heading level={1} mix={titleStyle}>
+                {title}
+              </Heading>
+              <div
+                title={handle.props.subtitle}
+                mix={css({
+                  fontSize: "12px",
+                  color: "var(--hui-muted)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                })}
+              >
+                {handle.props.subtitle}
+              </div>
+            </div>
             <div
               mix={css({
                 display: "flex",
@@ -254,21 +275,42 @@ function SessionTitle(
                 flex: "none",
               })}
             >
-              {handle.props.controls}
               <Menu label="Session tools">
                 <MenuTrigger
                   aria-label="Session tools"
                   disabled={!handle.props.rename}
-                  mix={[iconAction, focusButton]}
+                  mix={[
+                    iconAction,
+                    focusButton,
+                    css({
+                      "&[aria-haspopup]": {
+                        background: "transparent",
+                        borderColor: "transparent",
+                        color: "var(--hui-muted)",
+                      },
+                      "&[aria-haspopup]:hover": {
+                        background: "var(--hui-hover-surface)",
+                      },
+                    }),
+                  ]}
                 >
                   <Icon name="more" />
                 </MenuTrigger>
                 <MenuContent
-                  onSelect={() => {
+                  onSelect={(item) => {
+                    if (item.name === "conversations") {
+                      handle.props.switchConversation?.(editButton);
+                      return;
+                    }
                     edit = { draft: row.title, saving: false };
                     void handle.update();
                   }}
                 >
+                  {handle.props.switchConversation && (
+                    <MenuItem name="conversations">
+                      Switch conversation…
+                    </MenuItem>
+                  )}
                   <MenuItem name="rename">Rename</MenuItem>
                 </MenuContent>
               </Menu>
@@ -325,6 +367,7 @@ export const OwnerSessions = clientEntry(
     }
     let sidebar = true;
     let switching = false;
+    let scopedSwitch = false;
     let switchFrom: HTMLElement | undefined;
     let settings = false;
     let mode: Mode = "system";
@@ -347,7 +390,14 @@ export const OwnerSessions = clientEntry(
       await handle.update();
       sidebarButton?.focus();
     }
+    function startConversationSwitch(from?: HTMLElement) {
+      if (from) switchFrom = from;
+      scopedSwitch = true;
+      switching = true;
+      void handle.update();
+    }
     function startSwitch() {
+      scopedSwitch = false;
       switchFrom =
         document.activeElement instanceof HTMLElement
           ? document.activeElement
@@ -381,32 +431,59 @@ export const OwnerSessions = clientEntry(
       }
       void handle.update();
     }
-    async function open(id: string, child?: number, from?: HTMLButtonElement) {
-      const row = (
-        view.kind === "ready" ? view.catalog.rows : cached?.rows
-      )?.find((item) => item.id === id);
+    async function open(
+      id: string,
+      destination?: number,
+      from?: HTMLButtonElement,
+    ) {
+      const catalog = view.kind === "ready" ? view.catalog : cached;
+      const row = catalog?.rows.find((item) => item.id === id);
+      const child = catalog?.children[id]?.some(
+        (agent) =>
+          agent.conversationId === destination &&
+          !agent.archived &&
+          agent.kind !== "agent",
+      )
+        ? destination
+        : undefined;
+      const nextBranch =
+        !child && destination !== row?.main ? destination : undefined;
       if (!row) return;
       const path = sessionPath(row);
-      if (location.pathname !== path || history.state?.agentId !== child) {
+      if (
+        location.pathname !== path ||
+        agentId !== child ||
+        branch !== nextBranch
+      ) {
         history.replaceState(
           { clankSession: selectedId, branch, agentId, detailOpen },
           "",
         );
         history.pushState(
-          { clankSession: id, agentId: child, detailOpen: true },
+          {
+            clankSession: id,
+            agentId: child,
+            branch: nextBranch,
+            detailOpen: true,
+          },
           "",
           path,
         );
       }
       listPage = false;
       target = sessionKey(path);
-      if (id !== seed?.selectedId || child !== undefined) seed = undefined;
+      if (
+        id !== seed?.selectedId ||
+        child !== undefined ||
+        nextBranch !== undefined
+      )
+        seed = undefined;
       trigger = from;
       switchFrom = undefined;
       if (child !== undefined) expanded.add(id);
       switching = false;
       selectedId = id;
-      branch = undefined;
+      branch = nextBranch;
       agentId = child;
       newOpen = false;
       detailOpen = true;
@@ -414,54 +491,6 @@ export const OwnerSessions = clientEntry(
       if (!from || matchMedia("(max-width: 40rem)").matches)
         detailHeader?.focus();
     }
-    const conversationSelect = [
-      css({
-        minWidth: 0,
-        "& select": {
-          maxWidth: "min(36vw, 13rem)",
-          minHeight: "2rem",
-          font: "inherit",
-          color: "inherit",
-          background: "var(--hui-surface)",
-          border: line,
-          borderRadius: "4px",
-          paddingInline: "6px",
-        },
-      }),
-      ref<HTMLLabelElement>((node, signal) => {
-        node.addEventListener(
-          "change",
-          (event) => {
-            if (
-              !(event.target instanceof HTMLSelectElement) ||
-              view.kind !== "ready"
-            )
-              return;
-            const id = Number(event.target.value);
-            const row = view.catalog.rows.find(
-              (item) => item.id === selectedId,
-            );
-            if (!row) return;
-            const child = view.catalog.children[row.id]?.find(
-              (candidate) =>
-                candidate.conversationId === id &&
-                !candidate.archived &&
-                candidate.kind !== "agent",
-            );
-            agentId = child?.conversationId;
-            branch =
-              !child &&
-              row.branches.some((item) => item.conversation === id) &&
-              id !== row.main
-                ? id
-                : undefined;
-            if (child) expanded.add(row.id);
-            void handle.update();
-          },
-          { signal },
-        );
-      }),
-    ];
     let creating = false;
     let newOpen = false;
     let createError = "";
@@ -728,29 +757,6 @@ export const OwnerSessions = clientEntry(
         (catalog?.children[id] ?? [])
           .filter((child) => child.kind !== "agent" && !child.archived)
           .toSorted(byRecentActivity);
-      const choices: (PaletteItem & {
-        target?: { session: string; conversation?: number };
-      })[] = [
-        { id: "new", label: "New session", detail: "Command" },
-        ...rows.flatMap((row) => {
-          if (!row) return [];
-          const label = row === familiar ? "Familiar" : sessionTitle(row);
-          return [
-            {
-              id: `session:${row.id}`,
-              label,
-              detail: "Session",
-              target: { session: row.id },
-            },
-            ...children(row.id).map((child) => ({
-              id: `subagent:${row.id}:${child.conversationId}`,
-              label: child.name,
-              detail: `${label} · Subagent`,
-              target: { session: row.id, conversation: child.conversationId },
-            })),
-          ];
-        }),
-      ];
       const selectedChild =
         selected &&
         children(selected.id).find((child) => child.conversationId === agentId);
@@ -759,6 +765,78 @@ export const OwnerSessions = clientEntry(
         (agentId === undefined
           ? (branch ?? selected.main)
           : selectedChild?.conversationId);
+      const destinations = (row: Row) => {
+        const agents = children(row.id);
+        return [
+          { id: row.main, label: "Main conversation", kind: "Main" },
+          ...row.branches
+            .filter(
+              (item) =>
+                item.conversation !== row.main &&
+                !agents.some(
+                  (child) => child.conversationId === item.conversation,
+                ),
+            )
+            .map((item) => ({
+              id: item.conversation,
+              label: item.label || `Conversation ${item.conversation}`,
+              kind: "Branch",
+            })),
+          ...agents.map((child) => ({
+            id: child.conversationId,
+            label: child.name,
+            kind: "Subagent",
+          })),
+        ];
+      };
+      const currentDestinations = selected ? destinations(selected) : [];
+      const canSwitch = Boolean(
+        live && !newOpen && !listPage && currentDestinations.length > 1,
+      );
+      const current = currentDestinations.find((d) => d.id === conversation);
+      type Choice = PaletteItem & {
+        target?: { session: string; conversation?: number };
+      };
+      const choices: Choice[] =
+        scopedSwitch && switching && selected
+          ? currentDestinations.map((d) => ({
+              id: `conversation:${selected.id}:${d.id}`,
+              label: d.label,
+              detail: d.id === conversation ? "Current" : d.kind,
+              target: { session: selected.id, conversation: d.id },
+            }))
+          : [
+              { id: "new", label: "New session", detail: "Command" },
+              ...(canSwitch
+                ? [
+                    {
+                      id: "conversations",
+                      label: "Switch conversation…",
+                      detail: "This session",
+                    },
+                  ]
+                : []),
+              ...rows.flatMap((row) => {
+                if (!row) return [];
+                const label = row === familiar ? "Familiar" : sessionTitle(row);
+                return [
+                  {
+                    id: `session:${row.id}`,
+                    label,
+                    detail: "Session",
+                    target: { session: row.id },
+                  },
+                  ...destinations(row)
+                    .slice(1)
+                    .map((d) => ({
+                      id: `conversation:${row.id}:${d.id}`,
+                      label: d.label,
+                      detail: `${label} · ${d.kind}`,
+                      target: { session: row.id, conversation: d.id },
+                    })),
+                ];
+              }),
+            ];
       return (
         <main
           aria-label="Clank"
@@ -774,6 +852,8 @@ export const OwnerSessions = clientEntry(
         >
           {catalog && (
             <Switcher
+              key={scopedSwitch ? "conversations" : "commands"}
+              scoped={scopedSwitch}
               open={switching}
               items={choices}
               close={closeSwitch}
@@ -782,6 +862,8 @@ export const OwnerSessions = clientEntry(
                 if (!choice || !live) return;
                 if (choice.target)
                   void open(choice.target.session, choice.target.conversation);
+                else if (choice.id === "conversations")
+                  startConversationSwitch();
                 else void startNew();
               }}
             />
@@ -860,9 +942,9 @@ export const OwnerSessions = clientEntry(
                     css({
                       listStyle: "none",
                       margin: 0,
-                      padding: "6px 6px",
+                      padding: "8px",
                       display: "grid",
-                      gap: "2px",
+                      gap: "4px",
                     }),
                   ]}
                 >
@@ -884,7 +966,7 @@ export const OwnerSessions = clientEntry(
                                 background: "var(--hui-selected-surface)",
                               },
                               "& > button[aria-pressed]": {
-                                "--clank-session-row-width": "auto",
+                                flex: 1,
                                 minWidth: 0,
                                 paddingInlineEnd: "4px",
                               },
@@ -893,7 +975,10 @@ export const OwnerSessions = clientEntry(
                             <Button
                               variant="quiet"
                               aria-pressed={
-                                row.id === selectedId && agentId === undefined
+                                !newOpen &&
+                                !listPage &&
+                                row.id === selectedId &&
+                                agentId === undefined
                               }
                               title={sessionTitle(row)}
                               mix={[
@@ -903,7 +988,32 @@ export const OwnerSessions = clientEntry(
                                 ),
                               ]}
                             >
+                              <span
+                                aria-hidden="true"
+                                mix={css({
+                                  width: "16px",
+                                  height: "16px",
+                                  flex: "none",
+                                  display: "grid",
+                                  placeItems: "center",
+                                  "& svg, & img": {
+                                    width: "16px",
+                                    height: "16px",
+                                  },
+                                })}
+                              >
+                                {row === familiar ? (
+                                  <BrandMark logo={live?.branding?.logo} />
+                                ) : row.pinned ? (
+                                  <Icon name="pin" />
+                                ) : null}
+                              </span>
                               <span>{label}</span>
+                              {row !== familiar && (
+                                <span aria-hidden="true" mix={ageStyle}>
+                                  {age(row.updatedAt, now)}
+                                </span>
+                              )}
                             </Button>
                             {agents.length > 0 && (
                               <Button
@@ -925,9 +1035,6 @@ export const OwnerSessions = clientEntry(
                                 <Icon name={isOpen ? "down" : "right"} />
                               </Button>
                             )}
-                            <span aria-hidden="true" mix={ageStyle}>
-                              {age(row.updatedAt, now)}
-                            </span>
                           </div>
                           {agents.length > 0 && (
                             <ul
@@ -999,13 +1106,12 @@ export const OwnerSessions = clientEntry(
                       <li
                         key="new"
                         mix={css({
-                          marginBlockEnd: "6px",
-                          paddingBlockEnd: "4px",
-                          borderBottom: line,
+                          marginBlockEnd: "10px",
                         })}
                       >
                         <Button
                           variant="quiet"
+                          aria-pressed={newOpen}
                           mix={[
                             sessionButton,
                             on("click", (event) =>
@@ -1026,7 +1132,7 @@ export const OwnerSessions = clientEntry(
                         mix={[
                           css({
                             display: "block",
-                            padding: "6px 10px",
+                            padding: "6px 34px",
                             color: "var(--hui-muted)",
                             textDecoration: "none",
                             borderRadius: "4px",
@@ -1120,7 +1226,7 @@ export const OwnerSessions = clientEntry(
                 css({
                   justifyContent: "flex-start",
                   gap: "4px",
-                  "& h2": {
+                  "& h1, & h2": {
                     minWidth: 0,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
@@ -1187,42 +1293,13 @@ export const OwnerSessions = clientEntry(
                   key={selected.id}
                   row={selected}
                   rename={live?.rename}
-                  controls={
-                    conversation && (
-                      <label mix={conversationSelect}>
-                        <select aria-label="Conversation">
-                          <option
-                            value={String(selected.main)}
-                            selected={conversation === selected.main}
-                          >
-                            Main
-                          </option>
-                          {selected.branches
-                            .filter(
-                              (item) => item.conversation !== selected.main,
-                            )
-                            .map((item) => (
-                              <option
-                                key={item.conversation}
-                                value={String(item.conversation)}
-                                selected={conversation === item.conversation}
-                              >
-                                {item.label ??
-                                  `Conversation ${item.conversation}`}
-                              </option>
-                            ))}
-                          {children(selected.id).map((child) => (
-                            <option
-                              key={child.conversationId}
-                              value={String(child.conversationId)}
-                              selected={conversation === child.conversationId}
-                            >
-                              {child.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )
+                  subtitle={
+                    conversation && conversation !== selected.main
+                      ? `${current?.kind ?? "Branch"} · ${current?.label ?? `Conversation ${conversation}`}`
+                      : selected.cwd
+                  }
+                  switchConversation={
+                    canSwitch ? startConversationSwitch : undefined
                   }
                 />
               ) : (
@@ -1352,22 +1429,7 @@ export const OwnerSessions = clientEntry(
                     sessionStorage.setItem("clank:session-list-query", query);
                   } catch {}
                 }}
-                open={(id, child) => {
-                  const row = catalog.rows.find((item) => item.id === id);
-                  if (child === undefined || child === row?.main) {
-                    void open(id);
-                    return;
-                  }
-                  if (
-                    children(id).some((agent) => agent.conversationId === child)
-                  ) {
-                    void open(id, child);
-                    return;
-                  }
-                  void open(id);
-                  branch = child;
-                  void handle.update();
-                }}
+                open={open}
               />
             ) : selected && catalog && conversation ? (
               <Conversation

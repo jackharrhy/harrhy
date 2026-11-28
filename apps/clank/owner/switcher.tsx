@@ -6,6 +6,7 @@ export type PaletteItem = { id: string; label: string; detail: string };
 export function Switcher(
   handle: Handle<{
     open: boolean;
+    scoped: boolean;
     items: PaletteItem[];
     close(): void;
     select(id: string): void;
@@ -21,7 +22,7 @@ export function Switcher(
     list = node;
   });
   return () => {
-    const { open, items, close, select } = handle.props;
+    const { open, scoped, items, close, select } = handle.props;
     if (!open) {
       query = "";
       activeId = undefined;
@@ -47,7 +48,7 @@ export function Switcher(
     return (
       <Dialog
         open={open}
-        title="Command palette"
+        title={scoped ? "Switch conversation" : "Command palette"}
         initialFocus="input"
         onClose={close}
         mix={[
@@ -79,7 +80,14 @@ export function Switcher(
         ]}
       >
         <Input
-          aria-label="Find a command or conversation"
+          aria-label={
+            scoped ? "Find a conversation" : "Find a command or conversation"
+          }
+          placeholder={
+            scoped
+              ? "Search conversations…"
+              : "Search commands and conversations…"
+          }
           role="combobox"
           aria-autocomplete="list"
           aria-expanded={open}

@@ -10,7 +10,10 @@ export function isRecent(
   days: Recency,
 ) {
   return (
-    days === "forever" || row.pinned || row.id === selected || now - row.updatedAt < days * day
+    days === "forever" ||
+    row.pinned ||
+    row.id === selected ||
+    now - row.updatedAt < days * day
   );
 }
 

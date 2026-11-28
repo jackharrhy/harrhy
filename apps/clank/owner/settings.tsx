@@ -23,7 +23,9 @@ export function readPreferences(): Preferences {
   try {
     const stored = localStorage.getItem(recencyKey);
     return {
-      recency: recencyWindows.find((days) => String(days) === stored) ?? defaultPreferences.recency,
+      recency:
+        recencyWindows.find((days) => String(days) === stored) ??
+        defaultPreferences.recency,
       enterToSend: localStorage.getItem(sendKey) !== "off",
       showMetadata: localStorage.getItem(metadataKey) !== "hidden",
     };
@@ -34,11 +36,15 @@ export function readPreferences(): Preferences {
 
 export function savePreference(change: Partial<Preferences>) {
   try {
-    if (change.recency !== undefined) localStorage.setItem(recencyKey, String(change.recency));
+    if (change.recency !== undefined)
+      localStorage.setItem(recencyKey, String(change.recency));
     if (change.enterToSend !== undefined)
       localStorage.setItem(sendKey, change.enterToSend ? "on" : "off");
     if (change.showMetadata !== undefined)
-      localStorage.setItem(metadataKey, change.showMetadata ? "shown" : "hidden");
+      localStorage.setItem(
+        metadataKey,
+        change.showMetadata ? "shown" : "hidden",
+      );
   } catch {
     // Storage is optional; the controls still work for this visit.
   }
@@ -108,7 +114,11 @@ export function Settings(
                     checked={preferences.recency === days}
                     mix={on("change", () => change({ recency: days }))}
                   />
-                  {days === "forever" ? "Forever" : days === 1 ? "1 day" : `${days} days`}
+                  {days === "forever"
+                    ? "Forever"
+                    : days === 1
+                      ? "1 day"
+                      : `${days} days`}
                 </label>
               ))}
             </div>
@@ -118,19 +128,26 @@ export function Settings(
             <label>
               <Checkbox
                 checked={preferences.enterToSend}
-                mix={on("change", (event) => change({ enterToSend: event.currentTarget.checked }))}
+                mix={on("change", (event) =>
+                  change({ enterToSend: event.currentTarget.checked }),
+                )}
               />
               Enter to send on desktop
             </label>
             <label>
               <Checkbox
                 checked={preferences.showMetadata}
-                mix={on("change", (event) => change({ showMetadata: event.currentTarget.checked }))}
+                mix={on("change", (event) =>
+                  change({ showMetadata: event.currentTarget.checked }),
+                )}
               />
               Show composer metadata
             </label>
           </fieldset>
-          <Button variant="quiet" mix={[css({ justifySelf: "end" }), on("click", close)]}>
+          <Button
+            variant="quiet"
+            mix={[css({ justifySelf: "end" }), on("click", close)]}
+          >
             Done
           </Button>
         </div>
