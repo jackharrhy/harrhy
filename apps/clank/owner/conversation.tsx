@@ -611,6 +611,8 @@ export function Conversation(handle: Handle<Props>) {
             }),
             css({
               gridArea: "1 / 1",
+              // Keep absolute message announcements inside the scroller, not the document.
+              position: "relative",
               overflow: "auto",
               overscrollBehavior: "contain",
               overflowAnchor: "none",
