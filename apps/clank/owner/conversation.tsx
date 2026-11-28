@@ -15,8 +15,8 @@ const plain = css({
   margin: "6px 0",
 });
 const measure = css({
-  maxWidth: "72ch",
-  "@media (min-width: 75rem)": { maxWidth: "min(90ch, 100%)" },
+  width: "100%",
+  maxWidth: "52rem",
   marginInline: "auto",
   padding: "16px",
   boxSizing: "border-box",
@@ -39,24 +39,34 @@ function TranscriptInput(
 ) {
   return () => {
     const { text, sender } = handle.props;
-    if (!sender || sender.kind === "owner")
+    if (!sender) return <p mix={plain}>{text}</p>;
+    if (sender.kind === "owner")
       return (
-        <p
-          mix={[
-            plain,
-            sender &&
-              css({
-                marginInlineStart: "auto",
-                width: "fit-content",
-                maxWidth: "88%",
-                background: "var(--hui-selected-surface)",
-                padding: "8px 12px",
-                borderRadius: "4px",
-              }),
-          ]}
+        <div
+          mix={css({
+            marginInlineStart: "auto",
+            width: "fit-content",
+            maxWidth: "88%",
+            background: "var(--hui-selected-surface)",
+            padding: "8px 12px",
+            borderRadius: "4px",
+            boxSizing: "border-box",
+          })}
         >
-          {text}
-        </p>
+          <div
+            mix={css({
+              fontSize: "11px",
+              fontWeight: 600,
+              color: "var(--hui-muted)",
+              marginBottom: "4px",
+            })}
+          >
+            {sender.name || "Owner"}
+          </div>
+          <div mix={css({ whiteSpace: "pre-wrap", overflowWrap: "anywhere" })}>
+            {text}
+          </div>
+        </div>
       );
     return (
       <article
@@ -322,6 +332,10 @@ export function Conversation(handle: Handle<Props>) {
       return;
     const text = draft.trim();
     if (pending?.text !== text) pending = { text, id: crypto.randomUUID() };
+    // Sending is an explicit return to the live end. Passive stream updates
+    // must still leave a reader who scrolled back where they are.
+    following = true;
+    followLatest();
     sending = true;
     error = false;
     void handle.update();
@@ -564,6 +578,7 @@ export function Conversation(handle: Handle<Props>) {
               gridArea: "1 / 1",
               overflow: "auto",
               overscrollBehavior: "contain",
+              overflowAnchor: "none",
             }),
           ]}
         >
@@ -572,8 +587,10 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                padding: "20px",
-                "@media (min-width: 48rem)": { padding: "28px 24px" },
+                padding: "24px 16px",
+                fontSize: "16px",
+                lineHeight: 1.5,
+                "& > :first-child": { marginBlockStart: 0 },
               }),
             ]}
           >
@@ -665,7 +682,10 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                paddingBlock: 0,
+                paddingBlock: "8px 0",
+                "&:has(textarea:focus-visible)": {
+                  borderTopColor: "var(--hui-focus)",
+                },
                 borderBlock: "1px solid var(--hui-border)",
               }),
             ]}
@@ -674,7 +694,7 @@ export function Conversation(handle: Handle<Props>) {
               aria-label="Message"
               placeholder="Message Pi…"
               value={draft}
-              rows={2}
+              rows={1}
               maxLength={100_000}
               readOnly={sending || editing}
               disabled={!view || (!feed && !handle.props.chat)}
@@ -686,7 +706,10 @@ export function Conversation(handle: Handle<Props>) {
                   boxSizing: "border-box",
                   resize: "none",
                   borderRadius: 0,
-                  padding: "8px 0",
+                  padding: 0,
+                  fontSize: "16px",
+                  lineHeight: "24px",
+                  minHeight: "24px",
                   background: "transparent",
                   fieldSizing: "content",
                   maxHeight: "min(28dvh, 12rem)",
@@ -703,7 +726,6 @@ export function Conversation(handle: Handle<Props>) {
                     event.defaultPrevented ||
                     event.shiftKey ||
                     !handle.props.enterToSend ||
-                    navigator.maxTouchPoints > 0 ||
                     !window.matchMedia("(pointer: fine)").matches ||
                     event.isComposing ||
                     event.keyCode === 229 ||
@@ -763,8 +785,8 @@ export function Conversation(handle: Handle<Props>) {
                   gap: "0 12px",
                   paddingBlock: "4px 0",
                   color: "var(--hui-muted)",
-                  fontSize: "12px",
-                  lineHeight: "18px",
+                  fontSize: "11px",
+                  lineHeight: "16.5px",
                   minHeight: "40px",
                   boxSizing: "content-box",
                   fontVariantNumeric: "tabular-nums",

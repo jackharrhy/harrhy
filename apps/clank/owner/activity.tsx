@@ -181,6 +181,9 @@ export function Activity(
             wheel,
             css({
               width: "100%",
+              fontWeight: 400,
+              fontSize: "13px",
+              color: "var(--hui-muted)",
               justifyContent: "space-between",
               textAlign: "start",
               overflow: "hidden",

@@ -244,19 +244,34 @@ function SessionTitle(
           <>
             <div
               mix={[
-                css({ minWidth: 0, flex: 1 }),
+                css({
+                  minWidth: 0,
+                  flex: 1,
+                }),
                 on("dblclick", () =>
                   handle.props.switchConversation?.(editButton),
                 ),
               ]}
             >
               <Heading level={1} mix={titleStyle}>
-                {title}
+                <span
+                  title={title}
+                  mix={css({
+                    display: "block",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    lineHeight: 1.3,
+                  })}
+                >
+                  {title}
+                </span>
               </Heading>
               <div
                 title={handle.props.subtitle}
                 mix={css({
-                  fontSize: "12px",
+                  fontSize: "11px",
+                  lineHeight: 1.4,
                   color: "var(--hui-muted)",
                   whiteSpace: "nowrap",
                   overflow: "hidden",
@@ -807,6 +822,11 @@ export const OwnerSessions = clientEntry(
             }))
           : [
               { id: "new", label: "New session", detail: "Command" },
+              {
+                id: "list",
+                label: "Search sessions and messages",
+                detail: "Command",
+              },
               ...(canSwitch
                 ? [
                     {
@@ -864,7 +884,12 @@ export const OwnerSessions = clientEntry(
                   void open(choice.target.session, choice.target.conversation);
                 else if (choice.id === "conversations")
                   startConversationSwitch();
-                else void startNew();
+                else if (choice.id === "list") {
+                  switching = false;
+                  switchFrom = undefined;
+                  showList();
+                  void handle.update().then(() => detailHeader?.focus());
+                } else void startNew();
               }}
             />
           )}
@@ -1233,6 +1258,7 @@ export const OwnerSessions = clientEntry(
                     whiteSpace: "nowrap",
                   },
                   paddingBlock: "4px",
+                  [phone]: { paddingInline: "6px" },
                   "&:focus-visible": { outlineOffset: "-2px" },
                 }),
               ]}
