@@ -541,7 +541,16 @@ export function Conversation(handle: Handle<Props>) {
                   disconnected ||
                   !draft.trim()
                 }
-                mix={css({ width: "44px", minHeight: "44px", padding: 0 })}
+                mix={css({
+                  width: "44px",
+                  minHeight: "44px",
+                  padding: 0,
+                  '&[data-variant="quiet"]:disabled': {
+                    background: "transparent",
+                    borderColor: "transparent",
+                    cursor: "default",
+                  },
+                })}
               >
                 <Icon name="send" />
               </Button>
