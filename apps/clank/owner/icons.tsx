@@ -10,6 +10,8 @@ const paths = {
   right: "m9 6 6 6-6 6",
   down: "m6 9 6 6 6-6",
   plus: "M12 5v14M5 12h14",
+  edit: "M4 20h4L19 9l-4-4L4 16z",
+  copy: "M5 15V6a2 2 0 0 1 2-2h8",
   more: "M5 12h.01M12 12h.01M19 12h.01",
 };
 export function Icon(handle: Handle<{ name: keyof typeof paths }>) {
@@ -18,8 +20,8 @@ export function Icon(handle: Handle<{ name: keyof typeof paths }>) {
     return (
       <svg
         aria-hidden="true"
-        width="16"
-        height="16"
+        width={name === "copy" || name === "edit" ? 15 : 16}
+        height={name === "copy" || name === "edit" ? 15 : 16}
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -31,6 +33,7 @@ export function Icon(handle: Handle<{ name: keyof typeof paths }>) {
           <rect x="3" y="4" width="18" height="16" rx="2" />
         )}
         {name === "search" && <circle cx="11" cy="11" r="7" />}
+        {name === "copy" && <rect x="9" y="9" width="11" height="11" rx="2" />}
         <path d={paths[name]} />
       </svg>
     );

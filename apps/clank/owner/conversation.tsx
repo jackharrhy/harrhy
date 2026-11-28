@@ -1,5 +1,6 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { Activity, type Step } from "./activity.tsx";
+import { localizeMessageTime } from "./message-time.ts";
 import { Icon } from "./icons.tsx";
 import { Markdown } from "./markdown.tsx";
 import { structuredAttribution, type Attribution } from "./attribution.ts";
@@ -107,7 +108,14 @@ function MessageActions(
   let announcement = "";
   return () => {
     const { text, at, alignEnd, edit, editDisabled } = handle.props;
-    const date = at === undefined ? undefined : new Date(at);
+    const time =
+      at === undefined ? undefined : (
+        <time
+          data-message-time
+          datetime={new Date(at).toISOString()}
+          mix={ref<HTMLTimeElement>(localizeMessageTime)}
+        />
+      );
     return (
       <div
         mix={css({
@@ -120,11 +128,7 @@ function MessageActions(
           fontSize: "12px",
         })}
       >
-        {date && (
-          <time datetime={date.toISOString()} title={date.toISOString()}>
-            {date.toISOString().slice(11, 16)} UTC
-          </time>
-        )}
+        {alignEnd && time}
         {edit && (
           <Button
             type="button"
@@ -134,7 +138,7 @@ function MessageActions(
             disabled={editDisabled}
             mix={on("click", edit)}
           >
-            Edit
+            <Icon name="edit" />
           </Button>
         )}
         {text && (
@@ -152,10 +156,22 @@ function MessageActions(
               void handle.update();
             })}
           >
-            Copy
+            <Icon name="copy" />
           </Button>
         )}
-        <span role="status">{announcement}</span>
+        {!alignEnd && time}
+        <span
+          role="status"
+          mix={css({
+            position: "absolute",
+            width: "1px",
+            height: "1px",
+            overflow: "hidden",
+            clipPath: "inset(50%)",
+          })}
+        >
+          {announcement}
+        </span>
       </div>
     );
   };
@@ -176,6 +192,7 @@ type Props = {
   showMetadata: boolean;
   initialDraft?: string;
   consumeDraft(): void;
+  canEdit: boolean;
   editMessage?(entry: number): Promise<unknown>;
 };
 export function Conversation(handle: Handle<Props>) {
@@ -441,12 +458,13 @@ export function Conversation(handle: Handle<Props>) {
               at={entry.model?.find((item) => item.role === "user")?.timestamp}
               alignEnd={input.kind === "owner"}
               edit={
-                input.kind === "owner" && handle.props.editMessage
+                input.kind === "owner" && handle.props.canEdit
                   ? () => void edit(entry.id)
                   : undefined
               }
               editDisabled={
                 editing ||
+                !handle.props.editMessage ||
                 Boolean(draft) ||
                 sending ||
                 disconnected ||

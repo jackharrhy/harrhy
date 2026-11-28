@@ -169,6 +169,7 @@ try {
     ],
   });
   const context = await browser.newContext({
+    timezoneId: "America/Los_Angeles",
     ignoreHTTPSErrors: true,
     viewport: { width: 320, height: 640 },
   });
@@ -954,6 +955,23 @@ try {
         .evaluate((node) => getComputedStyle(node).animationName);
     const ssrAnimation = await summaryAnimation();
     const painted = await sample();
+    const timestamp = cold.locator("time[data-message-time]").first();
+    const localTime = await timestamp.evaluate((node: HTMLTimeElement) => {
+      const date = new Date(node.dateTime);
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    });
+    assert((await timestamp.innerText()).endsWith(localTime));
+    assert.equal(
+      await cold
+        .getByRole("button", { name: "Copy message", exact: true })
+        .first()
+        .locator("svg rect")
+        .count(),
+      1,
+    );
     console.log("Named SSR before browser bundle", painted);
     await cold.getByLabel("Transcript").evaluate((node) => {
       node.scrollTop = 100;
@@ -963,6 +981,7 @@ try {
     await socketStarted.promise;
     const waiting = await sample();
     const hydrationAnimation = await summaryAnimation();
+    assert((await timestamp.innerText()).endsWith(localTime));
     chord.resolve();
     await cold.getByRole("button", { name: "Session tools" }).waitFor();
     await cold.waitForFunction(

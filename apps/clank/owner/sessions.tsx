@@ -1341,6 +1341,7 @@ export const OwnerSessions = clientEntry(
                 consumeDraft={() => {
                   editDraft = undefined;
                 }}
+                canEdit={!selectedChild && conversation === selected.main}
                 editMessage={
                   live && !selectedChild && conversation === selected.main
                     ? async (entry) => {

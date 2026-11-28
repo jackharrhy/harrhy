@@ -11,9 +11,10 @@ import {
   sessionKey,
   canonicalSessionRedirect,
 } from "./routes.ts";
+import { localizeMessageTime } from "./message-time.ts";
 declare const OWNER_BROWSER_MODULE: string;
 // Run after the transcript markup, independently of the deferred browser bundle.
-const positionTranscript = `(()=>{const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
+const positionTranscript = `(()=>{document.querySelectorAll('time[data-message-time]').forEach(${localizeMessageTime.toString()});const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
 const positionHash = createHash("sha256")
   .update(positionTranscript)
   .digest("base64");
