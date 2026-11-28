@@ -1786,6 +1786,11 @@ try {
     await observer.getByText(/^Echo: steps/).waitFor();
     await observer.locator("[data-streaming]").waitFor({ state: "hidden" });
     await namedMessage.fill(
+      "json ~~~mermaid\nflowchart LR\n  Receive --> Publish\n~~~",
+    );
+    await namedMessage.press("Enter");
+    await observer.locator(".harrhy-diagram svg").waitFor();
+    await namedMessage.fill(
       `${"Historical fixture line\n".repeat(65)}Latest named receipt`,
     );
     await namedMessage.press("Enter");
@@ -1835,8 +1840,21 @@ try {
       settled
         .first()
         .evaluate((node) => node.getAnimations({ subtree: true }).length);
-    const ssrAnimation = await summaryAnimation();
     const painted = await sample();
+    const diagram = cold.locator(".harrhy-diagram").first();
+    const ssrSvg = await diagram.locator("svg").elementHandle();
+    assert(ssrSvg);
+    await diagram.getByLabel("Diagram source").press("Enter");
+    assert.match(
+      await diagram.locator("pre").innerText(),
+      /Receive --> Publish/,
+    );
+    await diagram.getByLabel("Diagram source").press("Enter");
+    let diagramPosts = 0;
+    cold.on("request", (request) => {
+      if (request.url() === origin + "/owner/diagram") diagramPosts++;
+    });
+    const ssrAnimation = await summaryAnimation();
     const timestamp = cold.locator("time[data-message-time]").first();
     const localTime = await timestamp.evaluate((node: HTMLTimeElement) => {
       const date = new Date(node.dateTime);
@@ -1873,6 +1891,13 @@ try {
           'button[aria-label="Session tools"]',
         )?.disabled,
     );
+    assert(
+      await diagram
+        .locator("svg")
+        .evaluate((node, before) => node === before, ssrSvg),
+    );
+    assert.equal(diagramPosts, 0);
+    await ssrSvg.dispose();
     const connected = await sample();
     console.log("Named history position across hydration/Chord", [
       reading.top,

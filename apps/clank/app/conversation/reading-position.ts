@@ -1,4 +1,4 @@
-const slot = "clank:reading-positions";
+export const positionSlot = "clank:reading-positions";
 
 // Also embedded in the CSP-hashed first-paint script. No module dependencies.
 export function readPositions(storageKey: string): [string, number][] {
@@ -22,12 +22,11 @@ export function readPositions(storageKey: string): [string, number][] {
   }
   return [];
 }
-export { slot as positionSlot };
 
 let positions: Map<string, number> | undefined;
 let dirty = false;
 function current() {
-  return (positions ??= new Map(readPositions(slot)));
+  return (positions ??= new Map(readPositions(positionSlot)));
 }
 export const readingPosition = (key: string) => current().get(key);
 
@@ -37,8 +36,8 @@ export function flushPositions() {
   dirty = false;
   try {
     if (current().size)
-      sessionStorage.setItem(slot, JSON.stringify([...current()]));
-    else sessionStorage.removeItem(slot);
+      sessionStorage.setItem(positionSlot, JSON.stringify([...current()]));
+    else sessionStorage.removeItem(positionSlot);
   } catch {
     /* In-memory positions still work for this visit. */
   }
@@ -55,7 +54,7 @@ export function forgetPositions() {
   dirty = false;
   positions = new Map();
   try {
-    sessionStorage.removeItem(slot);
+    sessionStorage.removeItem(positionSlot);
   } catch {
     /* unavailable */
   }

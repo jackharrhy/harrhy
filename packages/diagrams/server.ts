@@ -181,8 +181,11 @@ export async function renderDiagram(
   }
 }
 
-export async function renderDiagramSvg(source: string): Promise<string | null> {
-  const svg = await renderDiagram(source);
+export async function renderDiagramSvg(
+  source: string,
+  budgetMs?: number,
+): Promise<string | null> {
+  const svg = await renderDiagram(source, budgetMs);
   if (!svg) return null;
   const html = toHtml(svg, { space: "svg" });
   return html.length <= 250000 ? html : null;

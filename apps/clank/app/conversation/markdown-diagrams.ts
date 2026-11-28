@@ -1,6 +1,11 @@
 import { diagramClass, sourceLabel } from "@harrhy/diagrams/presentation";
 import { openMermaidFence } from "./markdown-renderer.ts";
 
+// Inputs are the sanitized worker result and, on the server, a Words-generated code block.
+export function diagramHtml(svg: string, block = "") {
+  return `<div class="${diagramClass}">${svg}<details><summary aria-label="${sourceLabel}" title="${sourceLabel}">&lt;/&gt;</summary>${block}</details></div>`;
+}
+
 async function fetchDiagram(source: string, signal: AbortSignal) {
   const response = await fetch("/owner/diagram", {
     method: "POST",
@@ -22,15 +27,7 @@ async function fetchDiagram(source: string, signal: AbortSignal) {
     result.svg.length > 250_000
   )
     return null;
-  // Only the fixed owner endpoint can supply markup; its renderer sanitizes
-  // the SVG. Never interpolate the Markdown or parse it as author HTML.
-  const template = document.createElement("template");
-  template.innerHTML = result.svg;
-  const svg = template.content.firstElementChild;
-  return template.content.childElementCount === 1 &&
-    svg instanceof SVGSVGElement
-    ? svg
-    : null;
+  return result.svg;
 }
 
 export async function enhanceDiagrams(
@@ -42,17 +39,15 @@ export async function enhanceDiagrams(
     '[data-markdown="code-block"][data-language="mermaid" i]',
   );
   if (!blocks.length) return;
-  // Settled Words output also has usable copy controls for an EOF-closed
-  // fence. Leave that final, unfinished diagram alone.
   const count = Math.min(8, blocks.length - Number(openMermaidFence(text)));
   for (let i = 0; i < count; i++) {
     const block = blocks[i]!;
     if (signal.aborted || !host.isConnected) return;
+    if (block.closest(`.${diagramClass}`)) continue;
     const source = block.querySelector("pre > code")?.textContent;
     if (!source || source.length > 10_000) continue;
     try {
-      // Give sibling Markdown hosts (and other tabs) turns at the bounded
-      // renderer. The lock name never contains message data.
+      // The render worker has one slot and no queue.
       const draw = () => fetchDiagram(source, signal);
       const svg = navigator.locks
         ? await navigator.locks.request("clank-owner-diagram", { signal }, draw)
@@ -61,20 +56,12 @@ export async function enhanceDiagrams(
         continue;
       // Don't collapse the source out from under a keyboard user.
       if (block.contains(document.activeElement)) continue;
-      const wrapper = document.createElement("div");
-      wrapper.className = diagramClass;
-      const details = document.createElement("details");
-      const summary = document.createElement("summary");
-      summary.setAttribute("aria-label", sourceLabel);
-      summary.title = sourceLabel;
-      summary.textContent = "</>";
-      details.appendChild(summary);
-      wrapper.appendChild(svg);
-      wrapper.appendChild(details);
+      const template = document.createElement("template");
+      template.innerHTML = diagramHtml(svg);
+      const wrapper = template.content.firstElementChild!;
       block.replaceWith(wrapper);
-      details.appendChild(block);
-      // Words keeps references to its actual nodes across updates. Restore
-      // the precise tree synchronously before it sees the next revision.
+      wrapper.querySelector("details")!.appendChild(block);
+      // Restore the nodes Words owns before it patches its committed prefix.
       signal.addEventListener("abort", () => wrapper.replaceWith(block), {
         once: true,
       });

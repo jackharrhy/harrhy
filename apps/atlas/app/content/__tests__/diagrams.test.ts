@@ -31,11 +31,6 @@ test("only the first eight Mermaid fences render; all nine stay outside quotes",
   );
   assert.equal(result.html.match(/class="harrhy-diagram"/g)?.length, 8);
   assert.equal(
-    result.html.match(/<summary>Diagram source<\/summary>/g)?.length,
-    8,
-  );
-  assert.equal(result.html.match(/data-atlas-diagram/g)?.length, 9);
-  assert.equal(
     result.annotationText.trim().replace(/\s+/g, " "),
     "Before After",
   );

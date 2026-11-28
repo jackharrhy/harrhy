@@ -143,7 +143,9 @@ export function createPreview(
               : undefined;
           if (abort.signal.aborted) return;
           return serve(
-            new Request(`https://${ownerHost}${req.url}`),
+            new Request(`https://${ownerHost}${req.url}`, {
+              signal: abort.signal,
+            }),
             data,
             readThemeCookie(req.headers.cookie),
             readTintCookie(req.headers.cookie),

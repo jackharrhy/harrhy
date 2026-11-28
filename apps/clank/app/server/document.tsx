@@ -1,3 +1,4 @@
+import { renderTranscriptDiagrams } from "./transcript-diagrams.ts";
 import type { Snapshot } from "../pi/catalog.ts";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
@@ -40,6 +41,7 @@ const localFamiliarId = (() => {
 export const familiarId =
   process.env.HARRHY_CLANK_FAMILIAR_SESSION_ID || localFamiliarId;
 async function document(
+  signal: AbortSignal,
   headers: Record<string, string>,
   snapshot?: Snapshot,
   listPage = false,
@@ -102,7 +104,11 @@ async function document(
       </body>
     </html>,
   );
-  return new Response(`<!doctype html>${html}`, {
+  const body =
+    !listPage && snapshot?.chat?.view
+      ? await renderTranscriptDiagrams(html, signal)
+      : html;
+  return new Response(`<!doctype html>${body}`, {
     status: target && snapshot && !snapshot.selectedId ? 404 : 200,
     headers: { ...headers, "Content-Type": "text/html; charset=utf-8" },
   });
@@ -124,6 +130,7 @@ export function createDocumentServer(ownerHost: string) {
     const path = new URL(request.url).pathname;
     return path === "/" || path === SESSION_LIST_PATH || sessionKey(path)
       ? document(
+          request.signal,
           headers,
           snapshot,
           path === SESSION_LIST_PATH,

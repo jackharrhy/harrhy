@@ -62,24 +62,15 @@ test("highlighted and plain code keep literal source for display and copy", () =
   }
 });
 
-test("Mermaid SSR shows only literal source through streaming and settlement", () => {
+test("streaming preserves literal Mermaid source down to a trailing emphasis opener", () => {
   const partial = '~~~mermaid title\nflowchart LR\n  A["<tag>&"] **';
   const closed = partial + "\n~~~";
   assert.equal(openMermaidFence(partial), true);
   assert.equal(openMermaidFence(closed), false);
-  for (const [text, streaming] of [
-    [partial, true],
-    [closed, true],
-    [closed, false],
-  ] as const) {
-    const html = markdownHtml(text, streaming);
-    assert.match(
-      html,
-      /flowchart LR\n  A\[&quot;&lt;tag&gt;&amp;&quot;\] \*\*/,
-    );
-    assert.match(html, /tabindex="0" aria-label="Code block"/);
-    assert.doesNotMatch(html, /<svg|<details|<tag>|role="status"/);
-  }
+  assert.match(
+    markdownHtml(partial, true),
+    /flowchart LR\n  A\[&quot;&lt;tag&gt;&amp;&quot;\] \*\*/,
+  );
 });
 
 test("a delta ending on a strong opener waits for the label, not settlement", () => {

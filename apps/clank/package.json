@@ -13,12 +13,13 @@
     "check:fixture": "node __tests__/live-fixture.mjs"
   },
   "dependencies": {
-    "@harrhy/diagrams": "workspace:*",
     "@harrhy/board": "workspace:*",
+    "@harrhy/diagrams": "workspace:*",
     "@harrhy/ui": "workspace:*",
     "@pierre/highlights": "0.5.1",
     "@pierre/words": "0.3.0",
     "capnweb": "0.13.0",
+    "parse5": "8.1.1",
     "remix": "3.2.0",
     "ws": "8.21.0"
   },

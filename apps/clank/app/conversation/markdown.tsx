@@ -6,12 +6,12 @@ import { enhanceDiagrams } from "./markdown-diagrams.ts";
 import {
   markdownHtml,
   markdownOptions,
+  openMermaidFence,
   wordsSource,
 } from "./markdown-renderer.ts";
 
 const prose = css({
   overflowWrap: "anywhere",
-  // Reserve a side slot for the native disclosure. Its source opens below the drawing.
   "& .harrhy-diagram": {
     position: "relative",
     display: "grid",
@@ -21,7 +21,6 @@ const prose = css({
   "& .harrhy-diagram > svg[role=img]": {
     alignSelf: "center",
     justifySelf: "center",
-    // Pele paints node shapes and arrowheads separately. Leave labels and lines in theme ink.
     "& > *": {
       "--_s": "var(--hui-selected-surface)",
       "--_b": "var(--hui-muted)",
@@ -154,11 +153,16 @@ export function Markdown(
   const host = ref((node: HTMLDivElement, signal) => {
     const renderer = createDomRenderer(node, markdownOptions);
     let enhancement: AbortController | undefined;
+    let adopt = node.querySelector(".harrhy-diagram") !== null;
     renderer.connect();
     update = () => {
       enhancement?.abort();
       const { text, streaming = false } = handle.props;
-      renderer.update(wordsSource(text, streaming), streaming, streaming);
+      // Words delegates Copy at the host. Adopt the SSR subtree, including a
+      // disclosure the reader may already have opened, until the text changes.
+      if (!adopt || streaming)
+        renderer.update(wordsSource(text, streaming), streaming, streaming);
+      adopt = false;
       if (!streaming) {
         enhancement = new AbortController();
         void enhanceDiagrams(node, text, enhancement.signal);
@@ -183,18 +187,24 @@ export function Markdown(
       handle.queueTask(() => update?.());
     previousText = text;
     previousStreaming = streaming;
-    // Remix assigns innerHTML even while hydrating. Only supply it on the
-    // server; Words adopts those children and owns them until unmount.
+    // Remix assigns innerHTML during hydration; leave the adopted subtree alone.
+    const html =
+      typeof document === "undefined"
+        ? markdownHtml(text, streaming)
+        : undefined;
     return (
       <div
         data-markdown="root"
-        data-streaming={streaming ? "" : undefined}
-        mix={[prose, diagramStyles, host]}
-        innerHTML={
-          typeof document === "undefined"
-            ? unsafeHTML(markdownHtml(text, streaming))
+        data-mermaid-fences={
+          html && !streaming && /data-language="mermaid"/i.test(html)
+            ? openMermaidFence(text)
+              ? "open-tail"
+              : "closed"
             : undefined
         }
+        data-streaming={streaming ? "" : undefined}
+        mix={[prose, diagramStyles, host]}
+        innerHTML={html !== undefined ? unsafeHTML(html) : undefined}
       />
     );
   };

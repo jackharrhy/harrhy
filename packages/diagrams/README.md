@@ -4,7 +4,7 @@ Static Mermaid diagrams for Node Markdown hosts. No browser renderer, remote res
 
 ## Server
 
-`@harrhy/diagrams/server` accepts Mermaid **source**, not HTML. `renderDiagram(source, budgetMs?)` returns a promise of a sanitized HAST SVG element (a caller-owned copy). `renderDiagramSvg(source)` serializes that same tree with `hast-util-to-html` for string-based consumers. Both return `null` on fallback; keep the original code block.
+`@harrhy/diagrams/server` accepts Mermaid **source**, not HTML. `renderDiagram(source, budgetMs?)` returns a promise of a sanitized HAST SVG element (a caller-owned copy). `renderDiagramSvg(source, budgetMs?)` serializes that same tree with `hast-util-to-html` for string-based consumers. Both return `null` on fallback; keep the original code block.
 
 One render at a time, no waiting queue. The worker has a maximum 1,500 ms budget, 64 MiB old generation, 10,000 input characters, 200 edges and 250,000 output characters. A smaller budget limits the worker further. Up to 64 successful trees are cached in memory. Links and images are disabled; only allowlisted SVG geometry, text and paint survive. Application policies (such as [Atlas’s eight fences per page, two-second budget and comment exclusions](../../apps/atlas/README.md#mermaid-diagrams)) stay with the host.
 
