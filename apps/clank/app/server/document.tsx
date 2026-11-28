@@ -11,12 +11,16 @@ import {
   sessionKey,
   canonicalSessionRedirect,
 } from "../routes.ts";
+import {
+  positionSlot,
+  readPositions,
+} from "../conversation/reading-position.ts";
 import { localizeMessageTime } from "../conversation/message-time.ts";
 import { ownerScheme, ownerTheme } from "../settings/appearance.ts";
 import type { Mode, Tint } from "../settings/theme-cookie.ts";
 declare const OWNER_BROWSER_MODULE: string;
 // Run after the transcript markup, independently of the deferred browser bundle.
-const positionTranscript = `(()=>{document.querySelectorAll('time[data-message-time]').forEach(${localizeMessageTime.toString()});const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
+const positionTranscript = `(()=>{document.querySelectorAll('time[data-message-time]').forEach(${localizeMessageTime.toString()});const node=document.querySelector('[aria-label="Transcript"]');if(node?.dataset.readingKey&&node.clientHeight){const rows=(${readPositions.toString()})(${JSON.stringify(positionSlot)});node.scrollTop=new Map(rows).get(node.dataset.readingKey)??node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
 const positionHash = createHash("sha256")
   .update(positionTranscript)
   .digest("base64");

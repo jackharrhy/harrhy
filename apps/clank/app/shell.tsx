@@ -1,3 +1,7 @@
+import {
+  flushPositions,
+  forgetPositions,
+} from "./conversation/reading-position.ts";
 import { space } from "@harrhy/ui/theme";
 import { isChordError } from "@earendil-works/chord";
 import { validSlug, canonicalSessionRedirect } from "./routes.ts";
@@ -423,6 +427,7 @@ export const OwnerSessions = clientEntry(
     let cached: Snapshot | undefined = seed;
     let retry: ReturnType<typeof setTimeout> | undefined;
     let retryDelay = 500;
+    let restoreDestination = true;
     let view: View = { kind: "loading" };
     let signingIn = false;
     let signInError = "";
@@ -449,6 +454,8 @@ export const OwnerSessions = clientEntry(
         if (next.kind === "sign-in" || next.kind === "offline")
           pendingFocus?.abort();
         if (next.kind === "sign-in") {
+          restoreDestination = false;
+          forgetPositions();
           recent = [];
           saveVisits(recent);
         }
@@ -502,6 +509,18 @@ export const OwnerSessions = clientEntry(
           detailOpen = listPage;
           trigger = undefined;
         }
+        // Child and branch URLs name their parent session. On reload recover the
+        // history entry only against the newly authorized catalog, never by slug alone.
+        if (restoreDestination && next.kind === "ready") {
+          const state = history.state;
+          const row = next.catalog.rows.find((item) => item.id === selectedId);
+          if (row && row.id === state?.clankSession && !listPage && !newOpen) {
+            if (row.branches.some((item) => item.conversation === state.branch))
+              branch = state.branch;
+            if (Number.isSafeInteger(state.agentId)) agentId = state.agentId;
+          }
+          restoreDestination = false;
+        }
         if (
           next.kind === "ready" &&
           next.catalog.childrenReady &&
@@ -549,7 +568,9 @@ export const OwnerSessions = clientEntry(
     }
     const mount = ref<HTMLElement>((node, signal) => {
       applyBranding = documentBranding(node.ownerDocument, branding);
+      window.addEventListener("pagehide", flushPositions, { signal });
       const updateVisibility = () => {
+        if (document.visibilityState === "hidden") flushPositions();
         void handle.update();
       };
       document.addEventListener("visibilitychange", updateVisibility, {

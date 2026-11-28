@@ -1080,6 +1080,8 @@ try {
     exact: true,
   });
   await branchHeading.waitFor();
+  await page.reload();
+  await branchHeading.waitFor();
   // Visiting the four-day-old session explicitly makes it eligible in this tab.
   // Branches still need a query.
   for (const [shortcut, destination] of [
@@ -1893,6 +1895,36 @@ try {
     assert(
       reading.readingFocus && waiting.readingFocus && connected.readingFocus,
     );
+    // Stop the browser entry on refresh: the first paint must restore history on its own.
+    const resume = Promise.withResolvers<void>();
+    await cold.route("**/owner-sessions.js", async (route) => {
+      await resume.promise;
+      await route.continue();
+    });
+    await cold.reload({ waitUntil: "commit" });
+    await cold.locator('[data-ssr-positioned="true"]').waitFor();
+    assert.equal((await sample()).top, reading.top);
+    resume.resolve();
+    const latest = cold.getByRole("button", { name: "Jump to latest" });
+    await latest.waitFor();
+    await cold
+      .getByRole("button", { name: "Session tools" })
+      .and(cold.locator(":enabled"))
+      .waitFor();
+    assert.equal((await sample()).top, reading.top);
+    await cold.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await latest.evaluate(
+        (node) => getComputedStyle(node).transitionDuration,
+      ),
+      "0s",
+    );
+    await latest.press("Enter");
+    await latest.waitFor({ state: "hidden" });
+    assert((await sample()).readingFocus);
+    assert((await sample()).gap <= 2);
+    await cold.reload();
+    assert((await sample()).gap <= 2);
     await cold.close();
     await observer.reload();
     await observer.waitForFunction(
@@ -2119,11 +2151,8 @@ try {
   await hydratedJump.waitFor({ state: "hidden" });
   await hydrated.getByRole("button", { name: "Familiar", exact: true }).click();
   await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
-  assert(
-    await hydratedTranscript.evaluate(
-      (node) => node.scrollHeight - node.scrollTop - node.clientHeight <= 2,
-    ),
-  );
+  await hydratedJump.waitFor();
+  assert.deepEqual(await position(), readingPosition);
   const movingRow = hydrated.getByRole("button", {
     name: "Age hours",
     exact: true,
