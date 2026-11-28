@@ -13,6 +13,98 @@ import { proveRailArchive } from "./rail-browser.ts";
 const OWNER_HOST = "clank.example.test";
 import { structuredAttribution } from "../owner/attribution.ts";
 
+// Check the elements themselves, not just branding serialized in hydration props.
+function inspectBrand({
+  name,
+  src,
+  html,
+  liveName,
+}: {
+  name: string;
+  src: string;
+  html?: string;
+  liveName?: string;
+}) {
+  const doc =
+    html === undefined
+      ? document
+      : new DOMParser().parseFromString(html, "text/html");
+  function missing() {
+    if (doc.title !== name && doc.title !== liveName) return "title";
+    if (!doc.head.querySelector(`link[rel~=icon][href="${src}"]`))
+      return "favicon";
+    if (!doc.querySelector(`#clank-sidebar img[src="${src}"]`))
+      return "rail mark";
+    const root = doc.documentElement;
+    if (
+      root.dataset.piTint !== "custom" ||
+      root.style.getPropertyValue("--pi-base-hue").trim() !== "217"
+    )
+      return "tint";
+    return null;
+  }
+  const state = { missing: missing() };
+  if (liveName) {
+    // Remember a transient reset even if the branding subscription repairs it.
+    new MutationObserver(() => {
+      state.missing ??= missing();
+    }).observe(doc, {
+      attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+  return state;
+}
+
+const conversationDialog = (target: Page) =>
+  target.getByRole("dialog", { name: "Switch conversation", exact: true });
+async function conversationMenu(target: Page) {
+  await target.getByRole("button", { name: "Session tools" }).press("Enter");
+  await target
+    .getByRole("menuitem", { name: "Switch conversation…", exact: true })
+    .press("Enter");
+  return conversationDialog(target);
+}
+
+// In the response-body case inspect parsed elements, not matching strings in
+// the serialized session seed. Return only diagnostic labels, never the HTML.
+function receiptProblem(scope: Element, html?: string) {
+  const root =
+    html === undefined
+      ? scope
+      : new DOMParser()
+          .parseFromString(html, "text/html")
+          .querySelector('[aria-label="Transcript"]');
+  if (!root) return "missing transcript";
+  const has = (selector: string, label: string) =>
+    [...root.querySelectorAll(selector)].some(
+      (node) => node.textContent.trim() === label,
+    );
+  if (!has("strong", "Strong receipt")) return "missing strong";
+  if (!has('a[href="https://example.com/pi"]', "Pi docs"))
+    return "missing safe link";
+  if (
+    !has("pre code", "const answer = 42;") ||
+    !has("pre code span[style]", "42")
+  )
+    return "missing highlighted code block";
+  if (
+    root.querySelector('a[href^="javascript:" i]') ||
+    has("a[href]", "Unsafe destination")
+  )
+    return "active unsafe link";
+  if (root.querySelector("img") || has("button", "Raw fixture control"))
+    return "active media or raw HTML";
+  return null;
+}
+
+const rowIndex = (node: Element) => {
+  const row = node.closest("li")!;
+  return Array.from(row.parentElement!.children).indexOf(row);
+};
+
 const quoted = `> <sender kind="external" id="synthetic" name="Quoted example"/>`;
 assert.equal(structuredAttribution("legacy", quoted), undefined);
 for (const kind of ["owner", "guest"] as const) {
@@ -191,7 +283,10 @@ try {
   );
   await page.getByLabel("One-time token").fill(invite.hash.slice(1));
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  const row = page.getByRole("button", { name: "Familiar", exact: true });
+  const familiarButton = page.getByRole("button", {
+    name: "Familiar",
+    exact: true,
+  });
   const olderButton = page.getByRole("link", {
     name: "2 older",
     exact: true,
@@ -245,12 +340,12 @@ try {
   await searchOlder.waitFor();
   assert.equal(await searchOlder.inputValue(), "Older A");
   await page.goBack();
-  await row.waitFor();
+  await familiarButton.waitFor();
   assert.equal(
     await page.getByRole("region", { name: "Session detail" }).isVisible(),
     false,
   );
-  await row.press("Enter");
+  await familiarButton.press("Enter");
   await page
     .getByRole("heading", { name: session.title, exact: true })
     .waitFor();
@@ -259,8 +354,10 @@ try {
     false,
   );
   await page.getByRole("button", { name: "Show sessions" }).click();
-  assert(await row.evaluate((node) => node === document.activeElement));
-  await row.click();
+  assert(
+    await familiarButton.evaluate((node) => node === document.activeElement),
+  );
+  await familiarButton.click();
   const cookies = await context.cookies(origin);
   assert(
     cookies.some(
@@ -341,8 +438,8 @@ try {
     const src = await logo.getAttribute("src");
     assert(src);
     await observer.waitForFunction(
-      ({ name, src }) =>
-        document.title === name &&
+      ({ name: expectedName, src: expectedSrc }) =>
+        document.title === expectedName &&
         getComputedStyle(document.body).backgroundColor.startsWith("oklch(") &&
         (document.querySelector<HTMLImageElement>("#clank-sidebar img")
           ?.naturalWidth ?? 0) > 0 &&
@@ -351,53 +448,9 @@ try {
           "217" &&
         [
           ...document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'),
-        ].some((icon) => icon.href === src),
+        ].some((icon) => icon.href === expectedSrc),
       { name, src },
     );
-    // Check the elements themselves, not just branding serialized in hydration props.
-    function inspectBrand({
-      name,
-      src,
-      html,
-      liveName,
-    }: {
-      name: string;
-      src: string;
-      html?: string;
-      liveName?: string;
-    }) {
-      const doc =
-        html === undefined
-          ? document
-          : new DOMParser().parseFromString(html, "text/html");
-      function missing() {
-        if (doc.title !== name && doc.title !== liveName) return "title";
-        if (!doc.head.querySelector(`link[rel~=icon][href="${src}"]`))
-          return "favicon";
-        if (!doc.querySelector(`#clank-sidebar img[src="${src}"]`))
-          return "rail mark";
-        const root = doc.documentElement;
-        if (
-          root.dataset.piTint !== "custom" ||
-          root.style.getPropertyValue("--pi-base-hue").trim() !== "217"
-        )
-          return "tint";
-        return null;
-      }
-      const state = { missing: missing() };
-      if (liveName) {
-        // Remember a transient reset even if the branding subscription repairs it.
-        new MutationObserver(() => {
-          state.missing ??= missing();
-        }).observe(doc, {
-          attributes: true,
-          childList: true,
-          characterData: true,
-          subtree: true,
-        });
-      }
-      return state;
-    }
     const noScript = await browser.newContext({
       ignoreHTTPSErrors: true,
       javaScriptEnabled: false,
@@ -479,27 +532,18 @@ try {
     await brand.clearLogo(ctx);
     await familiarRow.locator("svg").waitFor();
     await observer.waitForFunction(
-      ({ defaultTitle, src }) =>
-        document.title === defaultTitle &&
+      ({ defaultTitle: expectedTitle, src: expectedSrc }) =>
+        document.title === expectedTitle &&
         !document.documentElement.dataset.piTint &&
         !document.documentElement.style.getPropertyValue("--pi-base-hue") &&
         ![
           ...document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'),
-        ].some((icon) => icon.href === src),
+        ].some((icon) => icon.href === expectedSrc),
       { defaultTitle, src },
     );
   }, TEST);
   await brandOwner.host.close(TEST);
   const tools = page.getByRole("button", { name: "Session tools" });
-  const scoped = (target: Page) =>
-    target.getByRole("dialog", { name: "Switch conversation", exact: true });
-  async function conversationMenu(target: Page) {
-    await target.getByRole("button", { name: "Session tools" }).press("Enter");
-    await target
-      .getByRole("menuitem", { name: "Switch conversation…", exact: true })
-      .press("Enter");
-    return scoped(target);
-  }
   async function rename() {
     await tools.press("Enter");
     await page.getByRole("menuitem", { name: "Rename" }).press("Enter");
@@ -635,40 +679,9 @@ try {
     "```js\nconst answer = 42;\n```",
     "Still writing. ".repeat(250) + "End of fixture answer.",
   ].join("\n\n");
-  // In the response-body case inspect parsed elements, not matching strings in
-  // the serialized session seed. Return only diagnostic labels, never the HTML.
-  function receiptProblem(scope: Element, html?: string) {
-    const root =
-      html === undefined
-        ? scope
-        : new DOMParser()
-            .parseFromString(html, "text/html")
-            .querySelector('[aria-label="Transcript"]');
-    if (!root) return "missing transcript";
-    const has = (selector: string, label: string) =>
-      [...root.querySelectorAll(selector)].some(
-        (node) => node.textContent.trim() === label,
-      );
-    if (!has("strong", "Strong receipt")) return "missing strong";
-    if (!has('a[href="https://example.com/pi"]', "Pi docs"))
-      return "missing safe link";
-    if (
-      !has("pre code", "const answer = 42;") ||
-      !has("pre code span[style]", "42")
-    )
-      return "missing highlighted code block";
-    if (
-      root.querySelector('a[href^="javascript:" i]') ||
-      has("a[href]", "Unsafe destination")
-    )
-      return "active unsafe link";
-    if (root.querySelector("img") || has("button", "Raw fixture control"))
-      return "active media or raw HTML";
-    return null;
-  }
   const transcript = page.getByLabel("Transcript");
   const liveText = transcript.locator("[data-streaming]");
-  const strong = transcript
+  const settledStrong = transcript
     .locator("strong")
     .filter({ hasText: /^Strong receipt$/ });
   const markerWatch = await transcript.evaluateHandle((node) => {
@@ -729,7 +742,7 @@ try {
   );
   await markerWatch.dispose();
   assert(
-    await strong.evaluate(
+    await settledStrong.evaluate(
       (node, { host, strong }) =>
         node === strong &&
         host.contains(node) &&
@@ -755,7 +768,7 @@ try {
     "const answer = 42;\n",
   );
   if (shots) {
-    await strong.scrollIntoViewIfNeeded();
+    await settledStrong.scrollIntoViewIfNeeded();
     await page.screenshot({ path: join(shots, "words-settled.png") });
   }
   const jump = page.getByRole("button", { name: "Jump to latest" });
@@ -967,7 +980,7 @@ try {
   await search.press("Enter");
   await transcript.getByText("hello helper", { exact: true }).waitFor();
   await page.getByRole("heading", { level: 1 }).dblclick();
-  await scoped(page)
+  await conversationDialog(page)
     .getByRole("combobox", { name: "Find a conversation" })
     .press("Escape");
   await tools.and(page.locator(":focus")).waitFor();
@@ -975,11 +988,11 @@ try {
   await page.keyboard.press("Control+k");
   await phonePalette.getByRole("combobox").fill("Switch conversation");
   await phonePalette.getByRole("combobox").press("Enter");
-  await scoped(page)
+  await conversationDialog(page)
     .getByRole("option", { name: /^helper Current$/ })
     .waitFor();
   assert.equal(
-    await scoped(page)
+    await conversationDialog(page)
       .getByRole("option", { name: /Second session|New session/ })
       .count(),
     0,
@@ -1206,7 +1219,7 @@ try {
   async function tapConversation(name: RegExp) {
     await phone.getByRole("button", { name: "Session tools" }).tap();
     await phone.getByRole("menuitem", { name: "Switch conversation…" }).tap();
-    await scoped(phone).getByRole("option", { name }).tap();
+    await conversationDialog(phone).getByRole("option", { name }).tap();
   }
   await tapConversation(/^helper/);
   await phone
@@ -1791,10 +1804,6 @@ try {
     name: "Age hours",
     exact: true,
   });
-  const rowIndex = (node: Element) => {
-    const row = node.closest("li")!;
-    return Array.from(row.parentElement!.children).indexOf(row);
-  };
   const originalIndex = await movingRow.evaluate(rowIndex);
   await movingRow.focus();
   await fixture.server.host.root(async (ctx) => {
@@ -1818,10 +1827,10 @@ try {
     fixture.server.host.root(
       async (ctx) =>
         (await ctx.get(Catalog, {})).sessions.value.map(
-          ({ id, main, title, archivedAt }) => ({
+          ({ id, main, title: sessionTitle, archivedAt }) => ({
             id,
             main,
-            title,
+            title: sessionTitle,
             archivedAt,
           }),
         ),
@@ -1854,7 +1863,7 @@ try {
     rows
       .filter((s) => s.archivedAt === null)
       .map((s) => s.id)
-      .sort();
+      .toSorted();
   assert.deepEqual(
     active(after),
     active(before).filter((id) => id !== victim.id),

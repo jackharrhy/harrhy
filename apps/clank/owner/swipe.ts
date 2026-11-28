@@ -37,6 +37,8 @@ type Drag = {
   samples: { x: number; time: number }[];
 };
 
+const transform = (offset: number) => `translateX(${offset}px)`;
+
 /** Only previews the rail. Remix owns the pane, routing and focus. Native
  * pan-y / pinch-zoom arbitrate scrolling; pointercancel never commits. */
 export function mountRailSwipe(
@@ -71,7 +73,6 @@ export function mountRailSwipe(
       !document.querySelector("dialog[open], :popover-open")
     );
   }
-  const transform = (offset: number) => `translateX(${offset}px)`;
   function down(e: PointerEvent) {
     const interrupted = Boolean(drag);
     reset();

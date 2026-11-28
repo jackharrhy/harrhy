@@ -36,6 +36,9 @@ const metadata = [
 ] as const;
 let pending = 0;
 
+const fieldBytes = (value: Branding) =>
+  Buffer.byteLength(',"branding":' + JSON.stringify(value));
+
 export function boundedSnapshot(
   snapshot: Snapshot,
   branding?: Branding,
@@ -52,8 +55,6 @@ export function boundedSnapshot(
   if (remaining < 0) return;
   if (!branding) return snapshot;
 
-  const fieldBytes = (value: Branding) =>
-    Buffer.byteLength(',"branding":' + JSON.stringify(value));
   // JSON counts the seed's copy. Reserve three more URLs for a favicon,
   // sidebar mark and familiar row in the server-rendered markup.
   if (fieldBytes(branding) + 3 * (branding.logo?.length ?? 0) <= remaining)

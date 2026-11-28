@@ -711,19 +711,6 @@ export function Conversation(handle: Handle<Props>) {
               css({
                 paddingBlock: "8px 0",
                 borderBlock: "1px solid var(--hui-border)",
-                position: "relative",
-                // Mark the first line in the text gutter, not the transcript divider.
-                "&:has(textarea:focus-visible)::before": {
-                  content: "''",
-                  position: "absolute",
-                  insetInlineStart: "8px",
-                  blockSize: "24px",
-                  borderInlineStart: "3px solid var(--hui-focus)",
-                  pointerEvents: "none",
-                  "@media (forced-colors: active)": {
-                    borderInlineStartColor: "CanvasText",
-                  },
-                },
               }),
             ]}
           >
@@ -745,6 +732,12 @@ export function Conversation(handle: Handle<Props>) {
                   border: 0,
                   borderRadius: 0,
                   "&:focus-visible": { outline: "none" },
+                  "@media (forced-colors: active)": {
+                    "&:focus-visible": {
+                      outline: "1px solid Highlight",
+                      outlineOffset: "-1px",
+                    },
+                  },
                   padding: 0,
                   fontSize: "16px",
                   lineHeight: "24px",

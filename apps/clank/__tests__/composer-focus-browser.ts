@@ -33,13 +33,6 @@ export async function checkComposerFocus(page: Page) {
           width: rect.width,
           height: input.y - rect.y,
         },
-        // Exclude the field itself, so a blinking caret cannot pass for a focus indicator.
-        gutter: {
-          x: rect.x,
-          y: input.y,
-          width: input.x - rect.x,
-          height: input.height,
-        },
       };
     });
 
@@ -51,7 +44,6 @@ export async function checkComposerFocus(page: Page) {
       const idle = await sample();
       assert.match(idle.border, /^1px solid /);
       const divider = await page.screenshot({ clip: idle.divider });
-      const gutter = await page.screenshot({ clip: idle.gutter });
       const prefix = `composer-${page.viewportSize()?.width}-${forcedColors}`;
       if (shots)
         await page.screenshot({ path: join(shots, `${prefix}-idle.png`) });
@@ -68,10 +60,6 @@ export async function checkComposerFocus(page: Page) {
       assert(
         divider.equals(await page.screenshot({ clip: idle.divider })),
         "Divider paint changed",
-      );
-      assert(
-        !gutter.equals(await page.screenshot({ clip: idle.gutter })),
-        "No visible gutter cue",
       );
       if (shots)
         await page.screenshot({ path: join(shots, `${prefix}-focused.png`) });

@@ -136,7 +136,7 @@ export async function checkCanonicalSwipe(phone: Page, eligibleTitle: string) {
       phone.getByRole("textbox", { name: "Message" }),
     ]) {
       await drag(target, travel, async () =>
-        assert(await rail.isHidden(), `rail stole drag from ${target}`),
+        assert(await rail.isHidden(), `rail stole drag from ${String(target)}`),
       );
       await detail();
     }

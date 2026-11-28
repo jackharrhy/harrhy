@@ -18,7 +18,7 @@ test("only a single exact plain preference counts", () => {
   for (const header of [
     undefined,
     `other=${name}=dark; ${name}-extra=light`,
-    `${name}`,
+    name,
     `${name}=`,
     `${name}=Dark`,
     `${name}="dark"`,

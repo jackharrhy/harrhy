@@ -205,7 +205,7 @@ export async function proveRailStatus(
   assert.equal(clank.overflow, p2.overflow);
   // Sample adjacent frames deterministically; Chromium may throttle background tabs.
   for (const mark of marks) {
-    const distance = await mark.evaluate(async (node) => {
+    const frameDistance = await mark.evaluate(async (node) => {
       const strip = node.firstElementChild!;
       const [animation] = strip.getAnimations();
       animation.pause();
@@ -220,7 +220,7 @@ export async function proveRailStatus(
       animation.play();
       return distance;
     });
-    assert.equal(distance, 16);
+    assert.equal(frameDistance, 16);
   }
   assert.deepEqual(await labelOffsets(), idleOffsets);
   await Promise.all(

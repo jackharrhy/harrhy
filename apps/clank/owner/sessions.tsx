@@ -764,7 +764,7 @@ export const OwnerSessions = clientEntry(
       matchMedia(phoneWidth).addEventListener("change", updateVisibility, {
         signal,
       });
-      mountRailSwipe(node, signal, (open) => (open ? back() : showDetail()));
+      mountRailSwipe(node, signal, (list) => (list ? back() : showDetail()));
       const restored = hydratedTheme(handle.props.initialMode);
       if (restored !== mode) applyMode(restored);
       try {

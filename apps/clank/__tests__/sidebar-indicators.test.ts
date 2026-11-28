@@ -38,9 +38,10 @@ const marks = {
   reads: { source: 4, target: 4, other: 9 },
 };
 
+const source = (status: Status, ops?: Operation[]) =>
+  projectSidebar(rows, { source: status }, ops, marks).indicators.source;
+
 test("failureOf priorities; a child can stay busy alongside a main failure and unread answer", () => {
-  const source = (status: Status, ops?: Operation[]) =>
-    projectSidebar(rows, { source: status }, ops, marks).indicators.source;
   assert.deepEqual(source({ ...worker, error: "" }, [failed]), {
     failure: "Worker failed: ",
     unread: true,

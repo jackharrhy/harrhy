@@ -449,14 +449,14 @@ export async function followCatalog(
         get: (scope: Ctx) => Promise<Feed<T> | undefined>,
         receive: (read: () => T | undefined) => void,
       ) => {
+        const changed = async (read: () => T | undefined) => {
+          if (!authorized()) return;
+          receive(read);
+          await update();
+        };
         void host
           .root(async (feedScope) => {
             const feed = await get(feedScope).catch(() => undefined);
-            const changed = async (read: () => T | undefined) => {
-              if (!authorized()) return;
-              receive(read);
-              await update();
-            };
             if (feed) await followLive(feedScope, feed, changed);
             else await changed(() => undefined);
           }, ctx)
