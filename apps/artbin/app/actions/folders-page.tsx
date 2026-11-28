@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 
 import type { User } from "#db";
@@ -17,12 +18,12 @@ import { pageStyle } from "../ui/styles.ts";
 const tabsRowStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
 });
 const foldersGridStyle = css({
   display: "grid",
-  gap: "0.5rem",
+  gap: space(1),
   gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
 });
 

@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { Document, type DocumentProps } from "./document.tsx";
@@ -54,26 +55,26 @@ const accountFilterStyles = css({
   gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) auto auto",
   alignItems: "end",
   maxWidth: "none",
-  gap: "16px",
-  "& a": { paddingBottom: "12px" },
+  gap: space(2),
+  "& a": { paddingBottom: space(1.5) },
   "@media (max-width: 640px)": {
     gridTemplateColumns: "1fr 1fr",
     "& label": { gridColumn: "1 / -1" },
   },
 });
 const accountListRowStyles = css({
-  paddingBlock: "16px",
+  paddingBlock: space(2),
   "& > div": {
     gridColumn: "1 / -1",
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr)",
     alignItems: "center",
     width: "100%",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& h2, & p": { margin: 0 },
   "@media (max-width: 640px)": {
-    "& > div": { gridTemplateColumns: "1fr", gap: "4px" },
+    "& > div": { gridTemplateColumns: "1fr", gap: space(0.5) },
   },
 });
 const base = (item: Instance | Mapping) =>

@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { nanoid } from "nanoid";
 import { createController } from "remix/router";
 import { css } from "remix/component";
@@ -36,9 +37,9 @@ import { Button, ButtonLink } from "../../ui/primitives.tsx";
 const SESSION_MAX_AGE = 60 * 60;
 const CLI_HANDOFF_MAX_AGE_MS = 2 * 60 * 1_000;
 const recoveryStyle = css({
-  margin: "4rem auto",
+  margin: `${space(8)} auto`,
   maxWidth: "32rem",
-  padding: "1rem",
+  padding: space(2),
 });
 
 export default createController(routes.auth, {

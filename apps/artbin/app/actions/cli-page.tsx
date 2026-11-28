@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 
 import type { User } from "#db";
@@ -8,20 +9,20 @@ import { pageStyle, theme } from "../ui/styles.ts";
 const shellStyle = css({
   marginInline: "auto",
   maxWidth: "1120px",
-  paddingBottom: "6rem",
+  paddingBottom: space(12),
 });
 const heroStyle = css({
   alignItems: "end",
   borderBottom: `1px solid ${theme.color.border}`,
   display: "grid",
-  gap: "3rem",
+  gap: space(6),
   gridTemplateColumns: "minmax(0, 1fr) minmax(20rem, 0.9fr)",
-  padding: "3.5rem 0 3rem",
+  padding: `${space(7)} 0 ${space(6)}`,
   scrollMarginTop: "4rem",
   "@media (max-width: 760px)": {
-    gap: "2rem",
+    gap: space(4),
     gridTemplateColumns: "1fr",
-    padding: "2rem 0",
+    padding: `${space(4)} 0`,
   },
 });
 const titleStyle = css({
@@ -29,12 +30,12 @@ const titleStyle = css({
   fontWeight: 400,
   letterSpacing: "-0.045em",
   lineHeight: 1.05,
-  margin: "0 0 1.2rem",
+  margin: `0 0 ${space(2.4)}`,
 });
 const introStyle = css({
   fontSize: "1.25rem",
   lineHeight: 1.45,
-  margin: "0 0 1.4rem",
+  margin: `0 0 ${space(2.8)}`,
   maxWidth: "29rem",
 });
 const requirementStyle = css({
@@ -46,15 +47,15 @@ const requirementStyle = css({
 const quickStartStyle = css({
   backgroundColor: "#202020",
   color: "#f7f7f7",
-  padding: "1.25rem 1.5rem 1.5rem",
+  padding: `${space(2.5)} ${space(3)} ${space(3)}`,
 });
 const quickStartTitleStyle = css({
   borderBottom: "1px solid #5e5e5e",
   fontFamily: theme.font.mono,
   fontSize: "0.75rem",
   fontWeight: 400,
-  margin: "0 0 1.25rem",
-  paddingBottom: "0.75rem",
+  margin: `0 0 ${space(2.5)}`,
+  paddingBottom: space(1.5),
 });
 const quickStartCodeStyle = css({
   fontFamily: theme.font.mono,
@@ -67,18 +68,18 @@ const quickStartNoteStyle = css({
   color: "#d7d7d7",
   fontSize: "0.875rem",
   lineHeight: 1.5,
-  margin: "1.3rem 0 0",
+  margin: `${space(2.6)} 0 0`,
   "& code": { color: "#fff", fontFamily: theme.font.mono, fontSize: "0.9em" },
 });
 const layoutStyle = css({
   display: "grid",
-  gap: "4rem",
+  gap: space(8),
   gridTemplateColumns: "10rem minmax(0, 1fr)",
-  paddingTop: "2.5rem",
+  paddingTop: space(5),
   "@media (max-width: 760px)": {
-    gap: "2.25rem",
+    gap: space(4.5),
     gridTemplateColumns: "1fr",
-    paddingTop: "1.5rem",
+    paddingTop: space(3),
   },
 });
 const navStyle = css({
@@ -91,12 +92,12 @@ const navTitleStyle = css({
   color: theme.color.muted,
   fontFamily: theme.font.mono,
   fontSize: "0.75rem",
-  margin: "0 0 0.8rem",
+  margin: `0 0 ${space(1.6)}`,
 });
 const navListStyle = css({
   display: "flex",
   flexDirection: "column",
-  gap: "0.7rem",
+  gap: space(1.4),
   listStyle: "none",
   margin: 0,
   padding: 0,
@@ -109,35 +110,35 @@ const navListStyle = css({
   "@media (max-width: 760px)": {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: "0.7rem 1.25rem",
+    gap: `${space(1.4)} ${space(2.5)}`,
   },
 });
 const articleStyle = css({ minWidth: 0 });
 const methodGridStyle = css({
   display: "grid",
-  gap: "2rem",
+  gap: space(4),
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   "@media (max-width: 1080px)": { gridTemplateColumns: "1fr" },
 });
 const methodStyle = css({
   borderTop: `2px solid ${theme.color.border}`,
-  paddingTop: "1.25rem",
+  paddingTop: space(2.5),
   scrollMarginTop: "5rem",
 });
 const sectionStyle = css({
   borderTop: `1px solid ${theme.color.borderLight}`,
-  marginTop: "3rem",
-  paddingTop: "2rem",
+  marginTop: space(6),
+  paddingTop: space(4),
   scrollMarginTop: "5rem",
 });
 const headingStyle = css({
   fontSize: "1.65rem",
   fontWeight: 400,
-  margin: "0 0 0.6rem",
+  margin: `0 0 ${space(1.2)}`,
 });
 const paragraphStyle = css({
   lineHeight: 1.6,
-  margin: "0.65rem 0 0",
+  margin: `${space(1.3)} 0 0`,
   maxWidth: "42rem",
 });
 const codeStyle = css({
@@ -145,9 +146,9 @@ const codeStyle = css({
   fontFamily: theme.font.mono,
   fontSize: "0.82rem",
   lineHeight: 1.75,
-  margin: "1.25rem 0",
+  margin: `${space(2.5)} 0`,
   overflowX: "auto",
-  padding: "1rem 1.2rem",
+  padding: `${space(2)} ${space(2.4)}`,
   whiteSpace: "pre",
   "@media (max-width: 760px)": {
     overflowWrap: "anywhere",
@@ -163,8 +164,8 @@ const inlineCodeStyle = css({
 const noteStyle = css({
   backgroundColor: theme.color.page,
   borderLeft: `3px solid ${theme.color.border}`,
-  marginTop: "3rem",
-  padding: "1.25rem 1.5rem",
+  marginTop: space(6),
+  padding: `${space(2.5)} ${space(3)}`,
   scrollMarginTop: "5rem",
 });
 const noteHeadingStyle = css({

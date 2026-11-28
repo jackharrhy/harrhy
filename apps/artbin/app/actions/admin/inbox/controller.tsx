@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
@@ -30,57 +31,57 @@ import { theme } from "../../../ui/styles.ts";
 const countStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0 0 1rem",
+  margin: `0 0 ${space(2)}`,
 });
 const sessionsStyle = css({
   display: "flex",
   flexDirection: "column",
-  gap: "1.5rem",
+  gap: space(3),
 });
 const mutedStyle = css({ color: theme.color.muted });
 const bulkStyle = css({
-  marginBottom: "1.5rem",
+  marginBottom: space(3),
 });
 const bulkFormStyle = css({
   alignItems: "end",
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.75rem",
+  gap: space(1.5),
 });
 const sessionHeaderStyle = css({
   borderBottom: `1px solid ${theme.color.borderLight}`,
-  marginBottom: "0.75rem",
-  paddingBottom: "0.75rem",
+  marginBottom: space(1.5),
+  paddingBottom: space(1.5),
 });
 const metadataStyle = css({ fontSize: "0.875rem", margin: 0 });
 const suggestionStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0.25rem 0 0",
+  margin: `${space(0.5)} 0 0`,
 });
 const countDetailStyle = css({
   color: theme.color.faint,
   fontSize: "0.75rem",
-  margin: "0.25rem 0 0",
+  margin: `${space(0.5)} 0 0`,
 });
 const filesGridStyle = css({
   display: "grid",
-  gap: "0.5rem",
+  gap: space(1),
   gridTemplateColumns: "repeat(auto-fill, minmax(120px, 1fr))",
-  marginBottom: "1rem",
+  marginBottom: space(2),
 });
 const actionRowStyle = css({
   alignItems: "end",
   borderTop: `1px solid ${theme.color.borderLight}`,
   display: "flex",
-  gap: "1rem",
-  paddingTop: "0.75rem",
+  gap: space(2),
+  paddingTop: space(1.5),
 });
 const approveFormStyle = css({
   alignItems: "end",
   display: "flex",
   flex: "1",
-  gap: "0.5rem",
+  gap: space(1),
 });
 const growStyle = css({ flex: "1" });
 

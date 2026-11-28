@@ -1,11 +1,12 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const managementStyles = css({
   "& .filters": {
     display: "flex",
-    gap: "14px",
+    gap: space(1.75),
     alignItems: "end",
-    marginBottom: "22px",
+    marginBottom: space(2.75),
   },
   "& .filters label:first-child": { flex: 1, maxWidth: "430px" },
   "& .filters label": { fontSize: "13px" },
@@ -13,7 +14,7 @@ export const managementStyles = css({
   "& .result-count": {
     fontSize: "12px",
     color: "var(--muted)",
-    marginBottom: "12px",
+    marginBottom: space(1.5),
   },
   "& .people-list": { borderTop: "1px solid var(--line)" },
   "& .row-action": {
@@ -26,7 +27,7 @@ export const managementStyles = css({
     display: "inline-block",
     fontSize: "12px",
     lineHeight: 1.5,
-    padding: "3px 8px",
+    padding: `${space(0.375)} ${space(1)}`,
     background: "#e9edf0",
     color: "#3c4d5b",
     borderRadius: "4px",
@@ -43,11 +44,11 @@ export const managementStyles = css({
     fontWeight: 450,
     fontSize: "12px",
     color: "var(--muted)",
-    padding: "0 18px 12px 0",
+    padding: `0 ${space(2.25)} ${space(1.5)} 0`,
   },
   "& td": {
     borderTop: "1px solid var(--line)",
-    padding: "18px 18px 18px 0",
+    padding: `${space(2.25)} ${space(2.25)} ${space(2.25)} 0`,
     verticalAlign: "top",
     fontSize: "13px",
     maxWidth: "420px",
@@ -55,25 +56,25 @@ export const managementStyles = css({
   "& td:first-child": { minWidth: "140px" },
   "& .table-subline": {
     display: "block",
-    marginTop: "6px",
+    marginTop: space(0.75),
     color: "var(--muted)",
     fontSize: "12px",
   },
   "& .membership-row": {
-    padding: "18px 0",
+    padding: `${space(2.25)} 0`,
     borderBottom: "1px solid var(--line)",
     display: "grid",
     gridTemplateColumns: "220px minmax(0, 1fr)",
-    gap: "24px",
+    gap: space(3),
   },
   "& .membership-row > .form-stack": { maxWidth: "530px" },
   "& .membership-row > a": { fontWeight: 600 },
   "& .settings-row": {
     display: "grid",
     gridTemplateColumns: "minmax(180px, 0.8fr) minmax(0, 1.2fr)",
-    gap: "50px",
+    gap: space(6.25),
     borderTop: "1px solid var(--line)",
-    padding: "30px 0",
+    padding: `${space(3.75)} 0`,
   },
   "& .settings-row > div > p": {
     color: "var(--muted)",
@@ -82,27 +83,27 @@ export const managementStyles = css({
   "& .check": {
     display: "flex",
     alignItems: "center",
-    gap: "9px",
+    gap: space(1.125),
     fontWeight: 400,
-    margin: "10px 0",
+    margin: `${space(1.25)} 0`,
     overflowWrap: "anywhere",
   },
   "& .role-options": {
     display: "grid",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-    gap: "20px 30px",
+    gap: `${space(2.5)} ${space(3.75)}`,
   },
   "& .role-options > div": {
-    padding: "15px 0",
+    padding: `${space(1.875)} 0`,
     borderTop: "1px solid var(--line)",
   },
   "& .compact-row": {
-    padding: "12px 0",
+    padding: `${space(1.5)} 0`,
     borderBottom: "1px solid var(--line)",
   },
   "& .cleanup-item": {
-    padding: "18px 0",
+    padding: `${space(2.25)} 0`,
     borderTop: "1px solid var(--line)",
   },
-  "& .cleanup-item > .form-stack": { marginTop: "20px" },
+  "& .cleanup-item > .form-stack": { marginTop: space(2.5) },
 });

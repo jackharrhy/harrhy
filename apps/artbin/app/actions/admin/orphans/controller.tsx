@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { existsSync } from "node:fs";
 import { readdir, unlink } from "node:fs/promises";
 import { join, relative } from "node:path";
@@ -34,48 +35,48 @@ import {
 } from "../../../ui/primitives.tsx";
 import { theme } from "../../../ui/styles.ts";
 
-const scanActionStyle = css({ marginBottom: "1.5rem" });
+const scanActionStyle = css({ marginBottom: space(3) });
 const scanIntroStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0 0 2rem",
+  margin: `0 0 ${space(4)}`,
 });
 const cleanupListStyle = css({
   display: "flex",
   flexDirection: "column",
-  gap: "0.75rem",
-  marginBottom: "2rem",
+  gap: space(1.5),
+  marginBottom: space(4),
 });
 const cleanupRowStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "0.75rem",
+  gap: space(1.5),
   justifyContent: "space-between",
 });
 const smallTextStyle = css({ fontSize: "0.875rem" });
 const hashSectionStyle = css({
   borderTop: `1px solid ${theme.color.borderLight}`,
-  marginTop: "2rem",
-  paddingTop: "1.5rem",
+  marginTop: space(4),
+  paddingTop: space(3),
 });
 const statsRowStyle = css({
   alignItems: "center",
   display: "flex",
   justifyContent: "space-between",
-  marginBottom: "0.75rem",
+  marginBottom: space(1.5),
 });
-const missingStyle = css({ color: theme.color.faint, marginLeft: "0.5rem" });
-const duplicateTitleStyle = css({ marginTop: "1rem" });
+const missingStyle = css({ color: theme.color.faint, marginLeft: space(1) });
+const duplicateTitleStyle = css({ marginTop: space(2) });
 const duplicateListStyle = css({
   display: "flex",
   flexDirection: "column",
-  gap: "0.5rem",
+  gap: space(1),
 });
 const hashStyle = css({
   color: theme.color.faint,
   fontFamily: theme.font.mono,
   fontSize: "0.75rem",
-  margin: "0 0 0.5rem",
+  margin: `0 0 ${space(1)}`,
 });
 const fileListStyle = css({
   fontSize: "0.875rem",
@@ -86,9 +87,9 @@ const fileListStyle = css({
 const fileRowStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "0.5rem",
+  gap: space(1),
   justifyContent: "space-between",
-  paddingBlock: "0.125rem",
+  paddingBlock: space(0.25),
 });
 const filePathStyle = css({
   color: theme.color.muted,

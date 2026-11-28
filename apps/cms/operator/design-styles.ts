@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const designStyles = css({
@@ -6,7 +7,7 @@ export const designStyles = css({
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    gap: "20px",
+    gap: space(2.5),
     "min-height": "76px",
     padding: "0 clamp(20px, 4vw, 64px)",
     "border-bottom": "1px solid var(--line)",
@@ -47,23 +48,23 @@ export const designStyles = css({
   },
   "& .design-index nav": {
     display: "grid",
-    gap: "5px",
+    gap: space(0.625),
   },
   "& .design-index a": {
-    padding: "6px 0",
+    padding: `${space(0.75)} 0`,
   },
   "& .design-main": {
     "min-width": "0",
   },
   "& .design-intro": {
-    padding: "62px 0 72px",
+    padding: `${space(7.75)} 0 ${space(9)}`,
     "max-width": "650px",
   },
   "& .design-intro h1": {
     "font-size": "clamp(42px, 6vw, 72px)",
     "letter-spacing": "-0.03em",
     "line-height": "1",
-    margin: "0 0 20px",
+    margin: `0 0 ${space(2.5)}`,
   },
   "& .design-intro > p:last-child": {
     "max-width": "570px",
@@ -75,18 +76,18 @@ export const designStyles = css({
   "& .design-section": {
     "scroll-margin-top": "30px",
     "border-top": "1px solid var(--line)",
-    padding: "38px 0 76px",
+    padding: `${space(4.75)} 0 ${space(9.5)}`,
   },
   "& .design-section-head": {
     display: "grid",
     "grid-template-columns": "minmax(0, 1fr)",
-    gap: "14px",
+    gap: space(1.75),
     "margin-bottom": "30px",
   },
   "& .design-section-head h2": {
     "font-size": "28px",
     "letter-spacing": "-0.03em",
-    margin: "0 0 6px",
+    margin: `0 0 ${space(0.75)}`,
   },
   "& .design-section-head p": {
     color: "var(--muted)",
@@ -96,7 +97,7 @@ export const designStyles = css({
   "& .design-colors": {
     display: "grid",
     "grid-template-columns": "repeat(4, minmax(0, 1fr))",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& .design-color": {
     border: "1px solid var(--line)",
@@ -112,8 +113,8 @@ export const designStyles = css({
   },
   "& .design-color-meta": {
     display: "grid",
-    gap: "2px",
-    padding: "12px",
+    gap: space(0.25),
+    padding: space(1.5),
     "min-width": "0",
   },
   "& .design-color-meta strong": {
@@ -134,10 +135,10 @@ export const designStyles = css({
   "& .design-type-row": {
     display: "grid",
     "grid-template-columns": "200px minmax(0, 1fr)",
-    gap: "24px",
+    gap: space(3),
     "align-items": "baseline",
     "border-bottom": "1px solid var(--line)",
-    padding: "22px 0",
+    padding: `${space(2.75)} 0`,
   },
   "& .design-type-row > small:first-child": {
     color: "var(--muted)",
@@ -151,16 +152,16 @@ export const designStyles = css({
   "& .design-shapes": {
     display: "grid",
     "grid-template-columns": "repeat(3, minmax(0, 1fr))",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& .design-shape-card": {
     display: "flex",
     "flex-direction": "column",
-    gap: "5px",
+    gap: space(0.625),
     border: "1px solid var(--line)",
     "border-radius": "var(--radius)",
     background: "var(--paper)",
-    padding: "20px",
+    padding: space(2.5),
     "min-height": "185px",
   },
   "& .design-shape-card strong": {
@@ -170,7 +171,7 @@ export const designStyles = css({
   "& .design-note": {
     color: "var(--muted)",
     "font-size": "12px",
-    margin: "18px 0 0",
+    margin: `${space(2.25)} 0 0`,
   },
   "& .design-radius-panel, & .design-radius-control": {
     width: "76px",
@@ -190,24 +191,24 @@ export const designStyles = css({
     width: "max-content",
     "min-width": "100px",
     height: "58px",
-    padding: "0 12px",
+    padding: `0 ${space(1.5)}`,
     border: "1px solid var(--line)",
     "border-radius": "var(--radius-control)",
     "font-size": "12px",
   },
   "& .design-sample": {
-    padding: "26px",
+    padding: space(3.25),
   },
   "& .design-button-row, & .design-badges": {
     display: "flex",
     "flex-wrap": "wrap",
     "align-items": "center",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& .design-caption": {
     color: "var(--muted)",
     "font-size": "12px",
-    margin: "20px 0 0",
+    margin: `${space(2.5)} 0 0`,
   },
   "& .design-form-sample": {
     "max-width": "700px",
@@ -225,7 +226,7 @@ export const designStyles = css({
     "margin-bottom": "24px",
   },
   "& .design-sample [data-tone]": {
-    margin: "12px 0",
+    margin: `${space(1.5)} 0`,
   },
   "& .design-empty": {
     "margin-top": "24px",
@@ -233,7 +234,7 @@ export const designStyles = css({
     "border-radius": "var(--radius)",
   },
   "& .design-empty p": {
-    margin: "4px 0 18px",
+    margin: `${space(0.5)} 0 ${space(2.25)}`,
   },
   "& .design-pattern": {
     "margin-bottom": "38px",
@@ -250,7 +251,7 @@ export const designStyles = css({
     "max-width": "420px",
   },
   "& .design-pattern .seo-preview": {
-    padding: "22px",
+    padding: space(2.75),
   },
   "& .design-media-fixture": {
     width: "min(100%, 240px)",
@@ -259,19 +260,19 @@ export const designStyles = css({
     display: "block",
   },
   "& .design-editor-fixture": {
-    padding: "20px",
+    padding: space(2.5),
   },
   "& .design-editor-fixture .editor-heading h1": {
     "font-size": "22px",
-    margin: "4px 0",
+    margin: `${space(0.5)} 0`,
   },
   "& .design-editor-fixture .editor-toolbar": {
     "border-top": "1px solid var(--line)",
-    margin: "20px 0 0",
-    padding: "14px 0 0",
+    margin: `${space(2.5)} 0 0`,
+    padding: `${space(1.75)} 0 0`,
   },
   "& .design-pattern .operator-sites": {
-    padding: "0 22px",
+    padding: `0 ${space(2.75)}`,
   },
   "& .design-pattern .operator-site": {
     "border-bottom": "0",
@@ -283,9 +284,9 @@ export const designStyles = css({
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    gap: "20px",
+    gap: space(2.5),
     "border-top": "1px solid var(--line)",
-    padding: "28px 0 55px",
+    padding: `${space(3.5)} 0 ${space(6.875)}`,
     "font-size": "12px",
   },
   "& .design-footer .brand": {
@@ -299,7 +300,7 @@ export const designStyles = css({
   "@media (max-width: 1050px)": {
     "& .design-layout": {
       "grid-template-columns": "135px minmax(0, 1fr)",
-      gap: "30px",
+      gap: space(3.75),
     },
     "& .design-colors": {
       "grid-template-columns": "repeat(3, minmax(0, 1fr))",
@@ -313,10 +314,10 @@ export const designStyles = css({
       display: "block",
     },
     "& .design-intro": {
-      padding: "52px 0 58px",
+      padding: `${space(6.5)} 0 ${space(7.25)}`,
     },
     "& .design-section": {
-      padding: "32px 0 58px",
+      padding: `${space(4)} 0 ${space(7.25)}`,
     },
     "& .design-colors": {
       "grid-template-columns": "repeat(2, minmax(0, 1fr))",
@@ -335,21 +336,21 @@ export const designStyles = css({
       "min-height": "150px",
     },
     "& .design-sample": {
-      padding: "18px",
+      padding: space(2.25),
     },
     "& .design-pattern .operator-sites": {
-      padding: "0 16px",
+      padding: `0 ${space(2)}`,
     },
   },
   "@media (max-width: 420px)": {
     "& .design-colors": {
-      gap: "8px",
+      gap: space(1),
     },
     "& .design-color-swatch": {
       height: "70px",
     },
     "& .design-color-meta": {
-      padding: "10px",
+      padding: space(1.25),
     },
     "& .design-color-meta small": {
       "min-height": "47px",

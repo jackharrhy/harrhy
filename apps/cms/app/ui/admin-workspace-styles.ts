@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const adminWorkspaceStyles = css({
@@ -34,7 +35,7 @@ export const adminWorkspaceStyles = css({
   "& .editor-scroll": {
     overflow: "auto",
     "overscroll-behavior": "contain",
-    padding: "14px 18px 40px",
+    padding: `${space(1.75)} ${space(2.25)} ${space(5)}`,
     "scrollbar-gutter": "stable",
   },
   "& .editor-scroll[hidden]": {
@@ -42,19 +43,19 @@ export const adminWorkspaceStyles = css({
   },
   "& .editor-collapse": {
     "align-self": "flex-end",
-    margin: "10px 18px 0",
+    margin: `${space(1.25)} ${space(2.25)} 0`,
     "font-size": "12px",
   },
   "& .editor-collapsed .editor-collapse": {
     "align-self": "center",
-    margin: "14px 0",
+    margin: `${space(1.75)} 0`,
   },
   "& .editor-chrome > .navigation-toggle": {
     "margin-bottom": "12px",
   },
   "& .editor-heading": {
     "flex-wrap": "wrap",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& .editor-heading h1": {
     "font-size": "22px",
@@ -66,12 +67,12 @@ export const adminWorkspaceStyles = css({
   "& .editor-actions": {
     "flex-direction": "row",
     "align-items": "center",
-    gap: "8px",
+    gap: space(1),
     "flex-wrap": "wrap",
   },
   "& .editor-toolbar > div": {
     "flex-wrap": "wrap",
-    gap: "6px",
+    gap: space(0.75),
   },
   "& .preview-pane": {
     "min-width": "0",
@@ -99,10 +100,10 @@ export const adminWorkspaceStyles = css({
     position: "absolute",
     "z-index": "2",
     display: "flex",
-    gap: "6px",
+    gap: space(0.75),
     "align-items": "center",
     background: "var(--paper)",
-    padding: "4px 8px",
+    padding: `${space(0.5)} ${space(1)}`,
     "border-radius": "4px",
     "box-shadow": "0 2px 10px var(--shadow)",
   },
@@ -163,9 +164,9 @@ export const adminWorkspaceStyles = css({
   },
   "& .adornment-instance": {
     display: "flex",
-    gap: "8px",
+    gap: space(1),
     "align-items": "center",
-    padding: "5px 0",
+    padding: `${space(0.625)} 0`,
     "font-size": "12px",
     "flex-wrap": "wrap",
   },
@@ -178,8 +179,8 @@ export const adminWorkspaceStyles = css({
     background: "var(--accent-soft)",
   },
   "& .image-adornments > .section-heading": {
-    margin: "8px 0",
-    gap: "8px",
+    margin: `${space(1)} 0`,
+    gap: space(1),
     "flex-wrap": "wrap",
     "font-size": "12px",
   },
@@ -187,7 +188,7 @@ export const adminWorkspaceStyles = css({
     "& .split-panels": {
       "grid-template-columns": "minmax(0, 1fr)",
       height: "auto",
-      gap: "18px",
+      gap: space(2.25),
     },
     "& .workspace-resizer, & .editor-collapse": {
       display: "none",
@@ -222,21 +223,21 @@ export const adminWorkspaceStyles = css({
       "align-items": "stretch",
     },
     "& .block-card": {
-      padding: "8px",
+      padding: space(1),
     },
     "& .adornment-workbench .composition-surround": {
-      padding: "24px",
+      padding: space(3),
     },
     "& .placement-controls": {
       "grid-template-columns": "minmax(0, 1fr)",
     },
     "& .image-appearance": {
-      gap: "8px",
+      gap: space(1),
     },
   },
   "@container editor-pane (max-width: 340px)": {
     "& .editor-scroll": {
-      padding: "12px 8px 32px",
+      padding: `${space(1.5)} ${space(1)} ${space(4)}`,
     },
     "& .image-appearance": {
       "grid-template-columns": "minmax(0, 1fr)",
@@ -254,7 +255,7 @@ export const adminWorkspaceStyles = css({
     },
     "& .rich-toolbar button": {
       "min-width": "28px",
-      padding: "3px 6px",
+      padding: `${space(0.375)} ${space(0.75)}`,
     },
     "& .page-title-field > input": {
       "font-size": "16px",
