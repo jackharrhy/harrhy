@@ -26,13 +26,15 @@
     "apps/clank": {
       "entry": [
         "app/start.ts",
+        "owner/start.ts",
+        "owner/server.ts",
         "standalone.tsx",
         "bridge.ts",
         "read-only/source.ts",
         "__tests__/read-only.mjs",
         "__tests__/browser-probe.mjs",
       ],
-      "ignoreBinaries": ["ss"],
+      "ignoreBinaries": ["ss", "openssl"],
     },
     "apps/atlas": {
       // The example widget is loaded from a registration.

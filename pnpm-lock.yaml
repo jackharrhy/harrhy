@@ -623,6 +623,9 @@ importers:
       capnweb:
         specifier: 0.13.0
         version: 0.13.0
+      marked:
+        specifier: 18.2.0
+        version: 18.2.0
       remix:
         specifier: 3.2.0
         version: 3.2.0(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(pg@8.16.3)(playwright@1.65.0)

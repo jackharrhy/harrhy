@@ -4,13 +4,18 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "check": "npm run build && node --test __tests__/*.test.ts",
+    "build:owner": "node scripts/build-owner.mjs",
+    "dev:owner": "node --watch-path=owner --watch-path=scripts/build-owner.mjs --watch-path=../../packages/ui scripts/build-owner.mjs --serve",
+    "start:owner": "node .celld/owner/server.mjs",
+    "check": "npm run build && npm run build:owner && node --test __tests__/*.test.ts",
+    "check:owner-browser": "node --import ../pi/src/source.ts __tests__/owner-browser.ts",
     "check:fixture": "node __tests__/live-fixture.mjs"
   },
   "dependencies": {
     "@harrhy/board": "workspace:*",
     "@harrhy/ui": "workspace:*",
     "capnweb": "0.13.0",
+    "marked": "18.2.0",
     "remix": "3.2.0",
     "ws": "8.21.0"
   },
