@@ -1,10 +1,14 @@
 # Clank
 
+Clank v0 is the [Pi owner preview](../../docs/clank/owner-preview.md): a Graphite session list with inline rename over native Pi Chord. Build with `npm run build:owner`; its single loopback Node listener serves the UI and the fixed native Pi routes without a fixture or separate identity.
+
+## Earlier fixture and read-only modes
+
 Standalone Clank is a Remix 3 session list and read-only Overview for a disposable Pi. Create a fixture session, rename it, or archive it in one tab and other tabs update over a persistent WebSocket. See [realtime sessions](../../docs/clank/realtime-sessions.md) for the authorization boundary, Chord watch lifecycle, wire model, limits and measured browser behavior.
 
 **Show overview** maps active sessions and their reported conversations. A session connects to branches without a reported parent; fork lines require both conversations in the same row. Selecting, fitting, panning and zooming are local; Overview reads the existing provider and does not issue commands. Use the list for text details and edits.
 
-For Newport Pi, start this same app in [read-only mode](../../docs/clank/read-only-overview.md) with the separate authenticated owner Chord source. Never use the fixture bridge with a live Pi.
+For a read-only installation, start this same app in [read-only mode](../../docs/clank/read-only-overview.md) with the separate authenticated owner Chord source. Never use the fixture bridge with a live Pi.
 
 ## Standalone fixture
 
