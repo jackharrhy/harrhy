@@ -4,8 +4,7 @@
 // A local run is a detached agent process (agent-process.ts) that Pi only observes through its run directory, so a Pi restart
 // does not stop it. That is a convenience, not durability: a Cursor run is not a Pi session. If its process dies (Pi stopped
 // under it, a crash, a kill, a reboot) the observer calls the run `interrupted` and says what interrupted it and what it had
-// produced. The Cursor agent keeps its conversation and its edits are on disk, so `cursor_resume` (or the owner's auto-resume)
-// starts a new worker that resumes the same agent with a message saying what happened.
+// produced. Only SDK-backed runs can resume; ACP is never replayed.
 import { spawn } from "node:child_process";
 import { closeSync, openSync } from "node:fs";
 import { mkdir, rm, writeFile } from "node:fs/promises";
@@ -35,7 +34,7 @@ import {
 	type Survival,
 } from "./contract.ts";
 import { LIMITS, RUN_CAPS, STALE_BEATS } from "./limits.ts";
-import { checkRequest } from "./local-policy.ts";
+import { checkAcpCommand, checkRequest } from "./local-policy.ts";
 import { paramsText } from "./models.ts";
 import { relativeFiles } from "./render.ts";
 import { plan } from "./policy.ts";
@@ -53,13 +52,15 @@ import {
 	writeJsonAtomic,
 } from "./rundir.ts";
 import type { CursorSecrets } from "./secrets.ts";
-import type { CursorStore, RunRecord } from "./store.ts";
+import type { Config, CursorStore, RunRecord } from "./store.ts";
 
 export type Deps = {
 	secrets: CursorSecrets;
 	factory: ClientFactory;
 	/** `CURSOR_API_KEY` is the key when none is stored. */
 	env: NodeJS.ProcessEnv;
+	acpCommand?: () => Promise<string | undefined>;
+
 	/** How long a minute of a run's allowed time is: 60 000, shorter only in tests. */
 	minuteMs: number;
 	/** How long a run that ignores its cancellation is waited for. */
@@ -121,6 +122,7 @@ export function createManager(deps: Deps) {
 		ready = resolve;
 	});
 	const active = new Map<string, Active>();
+	const starting = new Map<string, { session: string; result: Promise<RunView> }>();
 	const clients = new Map<string, CursorClient>();
 	/** The live model list, kept ten minutes (per key). */
 	let catalog: { key: string; at: number; list: ModelInfo[] } | undefined;
@@ -449,7 +451,7 @@ export function createManager(deps: Deps) {
 			...(status?.cursorRunId === undefined ? {} : { cursorRunId: status.cursorRunId }),
 		};
 		const durationMs = Math.max(0, (status?.heartbeatAt ?? record.createdAt) - record.createdAt);
-		if (agentId === undefined) {
+		if (agentId === undefined && record.backend !== "acp") {
 			// Nothing to resume: the worker died before Cursor made its agent.
 			await finish(id, "failed", { status: "error", text, durationMs }, `The worker died (${event}) before the Cursor agent was created, so there is nothing to resume. Start the task again.`, key, extra).catch(() => {});
 			return;
@@ -469,7 +471,7 @@ export function createManager(deps: Deps) {
 	/** Whether Pi should resume this interrupted run by itself: the owner allowed it, and it has not been twice. */
 	async function autoResumable(record: RunRecord): Promise<boolean> {
 		const { store } = await whenReady;
-		return store.config.value.autoResume === true && (record.autoResumes ?? 0) < AUTO_RESUMES;
+		return record.backend !== "acp" && store.config.value.autoResume === true && (record.autoResumes ?? 0) < AUTO_RESUMES;
 	}
 
 	/** Publishes the run's one stimulus, once. Throws while it cannot (no subscription yet, the stimuli plugin busy). */
@@ -488,6 +490,7 @@ export function createManager(deps: Deps) {
 			runId: record.id,
 			runtime: record.runtime,
 			mode: record.mode,
+			...(record.backend === undefined ? {} : { backend: record.backend }),
 			status,
 			summary: record.text.slice(0, LIMITS.summary),
 			truncated: record.text.length > LIMITS.summary,
@@ -587,6 +590,8 @@ export function createManager(deps: Deps) {
 				if ((await readJson(join(directory, FILES.request))) !== undefined) {
 					entry.directory = directory;
 					background(observe(record.id, key ?? "", true));
+				} else if (record.backend === "acp") {
+					await interrupt(record.id, "", directory, true);
 				} else {
 					// Version 2 of this plugin ran the agent inside the server process, which a stop or reload ends. The Cursor agent
 					// and its edits are still there, so the run is interrupted (resumable), not failed, when its id is known.
@@ -668,14 +673,14 @@ export function createManager(deps: Deps) {
 	}
 
 	/** Starts a detached agent process for a local run and waits briefly to see whether it got going. */
-	async function startLocal(record: RunRecord, request: WorkerRequest, key: string, entry: Active): Promise<void> {
+	async function startLocal(record: RunRecord, request: WorkerRequest, key: string | undefined, entry: Active): Promise<void> {
 		const directory = request.attempt > 1 ? directoryOf(record.id) : await makeRunDirectory(deps.runsDir, record.id);
 		entry.directory = directory;
 		await writeJsonAtomic(join(directory, FILES.request), request);
 		const env: NodeJS.ProcessEnv = {};
 		for (const [name, value] of Object.entries(deps.env)) if (value !== undefined && WORKER_ENV.test(name)) env[name] = value;
 		// The key goes by the environment only: not argv (visible in `ps`), not a file.
-		env.CURSOR_API_KEY = key;
+		if (request.version === 1 && key !== undefined) env.CURSOR_API_KEY = key;
 		const log = openSync(join(directory, FILES.log), "a", 0o600);
 		try {
 			const child = spawn(deps.node, [deps.agentScript, directory], { detached: true, stdio: ["ignore", log, log], env, cwd: directory });
@@ -694,6 +699,8 @@ export function createManager(deps: Deps) {
 		} finally {
 			closeSync(log);
 		}
+		// Keep admitted ACP runs even when negotiation or the first turn fails immediately.
+		if (request.version === 2) return;
 		// A run that cannot start (a bad request, no SDK, the SDK refusing) fails here, as it did when the SDK ran in this process.
 		const until = Date.now() + 30_000;
 		while (Date.now() < until) {
@@ -714,17 +721,11 @@ export function createManager(deps: Deps) {
 		}
 	}
 
-	/** The owner's caps on runs at once (Settings › Cursor), never past the ceiling, a session never past the total. */
-	async function capsOf(): Promise<{ total: number; perSession: number }> {
-		const { store } = await whenReady;
-		const clamp = (value: number | undefined, fallback: number) => Math.min(RUN_CAPS.ceiling, Math.max(1, value ?? fallback));
-		const total = clamp(store.config.value.maxRuns, RUN_CAPS.total);
-		return { total, perSession: Math.min(total, clamp(store.config.value.maxPerSession, RUN_CAPS.perSession)) };
-	}
-
 	/** Refuses a new or resumed run past the caps, saying what they are and where to change them. */
-	async function checkCaps(session: string): Promise<void> {
-		const { total, perSession } = await capsOf();
+	function checkCaps(session: string, config: Config): void {
+		const clamp = (value: number | undefined, fallback: number) => Math.min(RUN_CAPS.ceiling, Math.max(1, value ?? fallback));
+		const total = clamp(config.maxRuns, RUN_CAPS.total);
+		const perSession = Math.min(total, clamp(config.maxPerSession, RUN_CAPS.perSession));
 		const own = [...active.values()].filter((entry) => entry.session === session).length;
 		if (own >= perSession)
 			throw new Error(`This session already has ${own} Cursor runs going (the cap per session is ${perSession}, ${total} at once in all; the owner sets both in Settings › Cursor): wait for one to end or cancel one`);
@@ -753,10 +754,11 @@ export function createManager(deps: Deps) {
 					? "That run is still going"
 					: `That run ${record.status === "failed" ? "failed and cannot be resumed" : `is ${record.status}: only an interrupted run can be resumed`}. Start a new task instead`,
 			);
+		if (record.backend === "acp") throw new Error("Cursor ACP cannot resume this run. Check the partial result and working directory before starting a new task");
 		if (record.agentId === undefined) throw new Error("There is no Cursor agent to resume");
 		const key = await apiKey();
 		if (key === undefined) throw new Error("No Cursor API key: the owner can set one in Settings › Cursor");
-		await checkCaps(session);
+		checkCaps(session, store.config.value);
 		// The 120 minutes are for the whole run, however many workers it takes.
 		const now = Date.now();
 		const latest = record.createdAt + LIMITS.maxMinutes * deps.minuteMs;
@@ -800,6 +802,7 @@ export function createManager(deps: Deps) {
 					};
 				}
 				if (old === undefined) throw new Error("The run's record of what it was asked is gone");
+				if (old.version !== 1) throw new Error("Only a legacy SDK request can be resumed");
 				const edits = store.config.value.allowLocalEdits;
 				const sandboxMode = store.config.value.sandbox ?? "when-possible";
 				const sandbox = old.mode === "agent" ? await wantSandbox(client, old.model, sandboxMode) : false;
@@ -835,6 +838,89 @@ export function createManager(deps: Deps) {
 		return viewOf(find(id) ?? running);
 	}
 
+	async function startRun(session: string, args: StartArgs): Promise<RunView> {
+		const { ctx, store } = await whenReady;
+		const existing = find(args.runId);
+		if (existing !== undefined) return viewOf(mine(session, args.runId));
+		const config = store.config.value;
+		let sdk: { key: string; client: CursorClient } | undefined;
+		if ((args.runtime ?? config.runtime) === "cloud") {
+			const key = await apiKey();
+			if (key === undefined) throw new Error("No Cursor API key: the owner can set one in Settings › Cursor");
+			try {
+				sdk = { key, client: await clientFor(key) };
+			} catch (error) {
+				throw new Error(safe(error, key));
+			}
+		}
+		const chosen = await plan(args, config, sdk ? await catalogOf(sdk.client, sdk.key) : undefined);
+		const spec = chosen.spec;
+		const command = spec.runtime === "local" ? await checkAcpCommand(await deps.acpCommand?.() ?? deps.env.P2_CURSOR_ACP_COMMAND) : undefined;
+		checkCaps(session, store.config.value);
+		const entry: Active = { session, cancelRequested: false, timedOut: false, force: () => {} };
+		active.set(args.runId, entry);
+		const now = Date.now();
+		const record: RunRecord = {
+			id: args.runId,
+			runtime: chosen.runtime,
+			mode: chosen.mode,
+			status: "running",
+			prompt: oneLine(args.prompt, 200),
+			createdAt: now,
+			deadline: now + (args.timeoutMinutes ?? LIMITS.defaultMinutes) * deps.minuteMs,
+			session,
+			conversation: args.conversation,
+			text: "",
+			notified: "no",
+			...(spec.runtime === "local" ? { backend: "acp", sandbox: "off" } : {}),
+			...(chosen.model === undefined ? {} : { model: chosen.model }),
+			...(chosen.repo === undefined ? {} : { repo: chosen.repo }),
+			...(chosen.branch === undefined ? {} : { branch: chosen.branch }),
+			...(chosen.cwd === undefined ? {} : { cwd: chosen.cwd }),
+		};
+		try {
+			await store.put(record, ctx);
+			if (spec.runtime === "local") {
+				if (chosen.base === undefined || chosen.cwd === undefined || command === undefined) throw new Error("No ACP working directory or command");
+				await startLocal(record, {
+					version: 2,
+					backend: "acp",
+					command,
+					runId: record.id,
+					prompt: spec.prompt,
+					...(spec.model === undefined ? {} : { model: spec.model }),
+					mode: spec.mode,
+					base: chosen.base,
+					cwd: chosen.cwd,
+					allowEdits: config.allowLocalEdits,
+					sandboxMode: config.sandbox ?? "when-possible",
+					deadline: record.deadline,
+					heartbeatMs: deps.heartbeatMs,
+					pollMs: deps.pollMs,
+					attempt: 1,
+				}, undefined, entry);
+				background(observe(args.runId, ""));
+				return viewOf(record);
+			}
+			if (sdk === undefined) throw new Error("No Cursor SDK client");
+			const handle = await sdk.client.start(spec);
+			const started = { ...record, agentId: handle.agentId, cursorRunId: handle.runId };
+			await store.put(started, ctx);
+			background(supervise(args.runId, handle, sdk.client, sdk.key));
+			return viewOf(started);
+		} catch (error) {
+			const message = safe(error, sdk?.key);
+			if (record.backend === "acp" && find(record.id) !== undefined) {
+				await finish(record.id, "failed", undefined, message, "");
+				return viewOf(find(record.id) ?? record);
+			}
+			active.delete(args.runId);
+			await rm(directoryOf(args.runId), { recursive: true, force: true }).catch(() => {});
+			await store.remove({ id: args.runId }, ctx).catch(() => {});
+			throw new Error(message);
+		}
+	}
+
 	return {
 		run,
 		apiKey,
@@ -842,95 +928,18 @@ export function createManager(deps: Deps) {
 		safe,
 
 		async start(session: string, args: StartArgs): Promise<RunView> {
-			const { ctx, store } = await whenReady;
-			const existing = find(args.runId);
-			if (existing !== undefined) return viewOf(mine(session, args.runId));
-			const key = await apiKey();
-			if (key === undefined) throw new Error("No Cursor API key: the owner can set one in Settings › Cursor");
-			let client: CursorClient;
-			try {
-				client = await clientFor(key);
-			} catch (error) {
-				throw new Error(safe(error, key));
+			const pending = starting.get(args.runId);
+			if (pending !== undefined) {
+				if (pending.session !== session) throw new Error("No such run");
+				return pending.result;
 			}
-			const chosen = await plan(args, store.config.value, await catalogOf(client, key));
-			await checkCaps(session);
-			const entry: Active = { session, cancelRequested: false, timedOut: false, force: () => {} };
-			active.set(args.runId, entry);
-			const now = Date.now();
-			const record: RunRecord = {
-				id: args.runId,
-				runtime: chosen.runtime,
-				mode: chosen.mode,
-				status: "running",
-				prompt: oneLine(args.prompt, 200),
-				createdAt: now,
-				deadline: now + (args.timeoutMinutes ?? LIMITS.defaultMinutes) * deps.minuteMs,
-				session,
-				conversation: args.conversation,
-				text: "",
-				notified: "no",
-				...(chosen.model === undefined ? {} : { model: chosen.model }),
-				...(chosen.repo === undefined ? {} : { repo: chosen.repo }),
-				...(chosen.branch === undefined ? {} : { branch: chosen.branch }),
-				...(chosen.cwd === undefined ? {} : { cwd: chosen.cwd }),
-			};
-			let handle: RunHandle | undefined;
-			let started = record;
+			const result = startRun(session, args);
+			starting.set(args.runId, { session, result });
 			try {
-				await store.put(record, ctx);
-				let spec = chosen.spec;
-				if (spec.runtime === "local" && chosen.mode === "agent" && !(await wantSandbox(client, spec.model, chosen.sandbox)))
-					spec = { ...spec, sandbox: false };
-				if (spec.runtime === "local") {
-					if (chosen.base === undefined) throw new Error("No directory");
-					await startLocal(
-						record,
-						{
-							version: 1,
-							runId: record.id,
-							prompt: spec.prompt,
-							model: spec.model,
-							...(spec.modelParams === undefined ? {} : { modelParams: spec.modelParams }),
-							mode: spec.mode,
-							base: chosen.base,
-							cwd: spec.cwd,
-							allowEdits: store.config.value.allowLocalEdits,
-							sandboxMode: chosen.sandbox,
-							sandbox: spec.sandbox,
-							deadline: record.deadline,
-							heartbeatMs: deps.heartbeatMs,
-							pollMs: deps.pollMs,
-							attempt: 1,
-						},
-						key,
-						entry,
-					);
-					const status = entry.status;
-					started = {
-						...record,
-						...(status?.agentId === undefined ? {} : { agentId: status.agentId }),
-						...(status?.cursorRunId === undefined ? {} : { cursorRunId: status.cursorRunId }),
-						...(status?.sandbox === undefined ? {} : { sandbox: status.sandbox }),
-						...(status === undefined ? {} : { heartbeatAt: status.heartbeatAt }),
-					};
-					if (spec.sandbox && status?.sandbox === "unavailable") await setSandbox({ status: "unsupported", detail: UNSUPPORTED });
-					else if (status?.sandbox === "on" && sandboxSeen.status !== "supported") await setSandbox({ status: "supported", detail: "A sandboxed run started" });
-				} else {
-					handle = await client.start(spec);
-					started = { ...record, agentId: handle.agentId, cursorRunId: handle.runId };
-				}
-			} catch (error) {
-				active.delete(args.runId);
-				if (entry.status !== undefined) killGroup(entry.status.pid);
-				await rm(directoryOf(args.runId), { recursive: true, force: true }).catch(() => {});
-				await store.remove({ id: args.runId }, ctx).catch(() => {});
-				throw new Error(safe(error, key));
+				return await result;
+			} finally {
+				starting.delete(args.runId);
 			}
-			await store.put(started, ctx);
-			if (handle !== undefined) background(supervise(args.runId, handle, client, key));
-			else background(observe(args.runId, key));
-			return viewOf(started);
 		},
 
 		async status(session: string, id: string): Promise<RunView> {
@@ -972,19 +981,8 @@ export function createManager(deps: Deps) {
 			return viewOf(find(id) ?? record);
 		},
 
-		/** Asks the SDK again whether it can sandbox here (the owner's button). */
 		async checkSandbox(): Promise<SandboxStatus> {
-			const { store } = await whenReady;
-			const key = await apiKey();
-			if (key === undefined) return { status: sandboxSeen.status, detail: "No API key: the check needs one" };
-			try {
-				const client = await clientFor(key);
-				const model = store.config.value.model || (await catalogOf(client, key))?.[0]?.id;
-				if (!model) return { status: sandboxSeen.status, detail: "Choose a default model first: the check makes one small request" };
-				return await probe(client, model);
-			} catch (error) {
-				return { status: sandboxSeen.status, detail: safe(error, key, 300) };
-			}
+			return { status: "unsupported", detail: "New local runs use Cursor ACP, which has no Pi sandbox" };
 		},
 
 		/** The model ids the key may use (the live list), the default marked, and how to pass parameters. */

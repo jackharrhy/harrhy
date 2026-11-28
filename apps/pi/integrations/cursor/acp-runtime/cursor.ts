@@ -12,21 +12,22 @@ function selectOption(config: unknown, category: "mode" | "model") {
 	return { id: option.id, currentValue: option.currentValue, values };
 }
 
-// No agent/edit mode, automatic authentication or permission approval.
-export function cursorAcpSession(mode: "ask" | "plan", model?: string): AcpSessionAdapter {
-	if (mode !== "ask" && mode !== "plan") throw new Error("Cursor ACP compatibility supports only ask and plan mode.");
+export function cursorAcpSession(mode: "ask" | "plan" | "agent", model?: string): AcpSessionAdapter {
+	if (mode !== "ask" && mode !== "plan" && mode !== "agent") throw new Error("Unknown Cursor ACP mode.");
+	const modeLabel = mode === "agent" ? "agent mode" : "read-only mode";
 	return {
+		permission: mode === "agent" ? "allow_once" : "reject_once",
 		// Documented Cursor blocking requests; never invent answers or accept a plan.
 		cancelRequests: ["cursor/ask_question", "cursor/create_plan"],
 		async prepareSession(sessionId, session, request) {
 			const option = selectOption(session.configOptions, "mode");
-			if (!option?.values.includes(mode)) throw new Error("Cursor ACP did not advertise the requested read-only mode.");
+			if (!option?.values.includes(mode)) throw new Error(`Cursor ACP did not advertise the requested ${modeLabel}.`);
 			let config = session.configOptions;
 			if (option.currentValue !== mode) {
 				config = (await request("session/set_config_option", { sessionId, configId: option.id, value: mode })).configOptions;
 				const confirmed = selectOption(config, "mode");
 				if (confirmed?.id !== option.id || confirmed.currentValue !== mode)
-					throw new Error("Cursor ACP did not confirm the requested read-only mode.");
+					throw new Error(`Cursor ACP did not confirm the requested ${modeLabel}.`);
 			}
 			if (model === undefined) return;
 			const models = selectOption(config, "model");
@@ -36,12 +37,12 @@ export function cursorAcpSession(mode: "ask" | "plan", model?: string): AcpSessi
 			if (models.currentValue === chosen) return;
 			const updated = await request("session/set_config_option", { sessionId, configId: models.id, value: chosen });
 			if (selectOption(updated.configOptions, "model")?.currentValue !== chosen || selectOption(updated.configOptions, "mode")?.currentValue !== mode)
-				throw new Error("Cursor ACP did not confirm the requested model and read-only mode.");
+				throw new Error(`Cursor ACP did not confirm the requested model and ${modeLabel}.`);
 		},
 		checkUpdate(update) {
 			if ((update.sessionUpdate === "config_option_update" && selectOption(update.configOptions, "mode")?.currentValue !== mode) ||
 				(update.sessionUpdate === "current_mode_update" && update.currentModeId !== mode)) {
-				throw new Error("Cursor ACP left the requested read-only mode; cancelled the run.");
+				throw new Error(`Cursor ACP left the requested ${modeLabel}; cancelled the run.`);
 			}
 		},
 	};

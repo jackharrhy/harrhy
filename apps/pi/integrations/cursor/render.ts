@@ -32,12 +32,15 @@ export function renderEvent(event: CursorEvent): string {
 		if (event.files?.length) lines.push(`Files its editing tools named: ${relativeFiles(event.files, event.cwd).slice(0, 20).map((file) => oneLine(file, 120)).join(", ")}`);
 		if (event.cwd) lines.push(`Its work so far is on disk in ${oneLine(event.cwd, 300)}.`);
 		lines.push(
-			event.autoResumed
+			event.backend === "acp"
+				? "Cursor ACP cannot resume this run. Check its partial output and working directory before starting a new task."
+				: event.autoResumed
 				? `Pi resumed it automatically (resume ${event.autoResumed} of 2, the owner's setting), telling it what happened.`
 				: "It can be continued: call `cursor_resume` with this run id (and an extra instruction if you want). The Cursor agent keeps its conversation and its files are on disk, but a resumed run needs a nudge and a check of what state it left things in; it does not come back with the guarantees of a Pi subagent.",
 		);
 	}
-	if (event.sandbox) lines.push("It ran without Cursor's shell sandbox.");
+	if (event.backend === "acp") lines.push("This local Cursor ACP run was unsandboxed.");
+	else if (event.sandbox) lines.push("It ran without Cursor's shell sandbox.");
 	if (event.error) lines.push(`Error: ${oneLine(event.error, 300)}`);
 	if (event.git?.branch) lines.push(`Branch: ${oneLine(event.git.branch, 200)}`);
 	if (event.git?.prUrl) lines.push(`Pull request: ${oneLine(event.git.prUrl, 300)}`);

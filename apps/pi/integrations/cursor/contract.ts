@@ -21,8 +21,8 @@ export const StatusSchema = union([
 	literal("cancelled"),
 	literal("timed-out"),
 	/**
-	 * The worker died (Pi stopped, a crash, a kill, a reboot) before the run ended. The Cursor agent keeps its conversation
-	 * and its edits are on disk: `cursor_resume` continues it. Not finished, and not as clean as a Pi session resuming.
+	 * The worker died (Pi stopped, a crash, a kill, a reboot) before the run ended. Only SDK runs can use `cursor_resume`. ACP retains
+	 * partial text but cannot be resumed.
 	 */
 	literal("interrupted"),
 ]);
@@ -30,7 +30,7 @@ export type Status = Static<typeof StatusSchema>;
 
 /**
  * How a run looks right now. Cursor runs have no Pi-durable guarantees: a local run is a worker process Pi watches by its
- * heartbeat. One that dies is `interrupted`: it can be resumed with a nudge, but it does not come back by itself.
+ * heartbeat. One that dies is `interrupted`; only SDK-backed runs can resume.
  */
 export const HealthSchema = union([
 	literal("running"),
@@ -59,7 +59,9 @@ export const SandboxStatusSchema = obj({
 	detail: str({ maxLength: 300 }),
 });
 export type SandboxStatus = Static<typeof SandboxStatusSchema>;
-/** How a local agent-mode run went: `on` (sandboxed), `off` (the owner turned it off), `unavailable` (asked for, not supported here). */
+const AcpBackendSchema = literal("acp");
+
+/** `on` (SDK sandbox), `off` (not applied), `unavailable` (SDK sandbox requested but unsupported). */
 export const RunSandboxSchema = union([literal("on"), literal("off"), literal("unavailable")]);
 
 const Repo = str({ pattern: REPO_PATTERN, maxLength: 200 });
@@ -77,6 +79,7 @@ const GitSchema = obj({ branch: opt(str({ maxLength: 300 })), prUrl: opt(str({ m
 export const RUN_VIEW = {
 	id: str(),
 	runtime: RuntimeSchema,
+	backend: opt(AcpBackendSchema),
 	mode: ModeSchema,
 	status: StatusSchema,
 	model: opt(str({ maxLength: 200 })),
@@ -94,7 +97,7 @@ export const RUN_VIEW = {
 	git: opt(GitSchema),
 	/** How much final text is kept for `cursor_result`. */
 	resultChars: opt(int({ minimum: 0 })),
-	/** Local agent-mode runs only. */
+	/** New local ACP runs are unsandboxed. Legacy local SDK reports this only in agent mode. */
 	sandbox: opt(RunSandboxSchema),
 	/** Local runs: when the worker last reported, what it last did and the files an editing tool named. */
 	heartbeatAt: opt(int()),
@@ -116,6 +119,7 @@ export type Watch = Static<typeof WatchSchema>;
 export const EventSchema = obj({
 	runId: str({ pattern: "^cursor-[0-9a-f]{24}$" }),
 	runtime: RuntimeSchema,
+	backend: opt(AcpBackendSchema),
 	mode: ModeSchema,
 	status: union([literal("finished"), literal("failed"), literal("cancelled"), literal("timed-out"), literal("interrupted")]),
 	/** The start of the run's final text (at most `LIMITS.summary` characters), and whether there was more. */
@@ -159,7 +163,7 @@ export type StartArgs = Static<typeof StartArgs>;
 
 /** The server's side of the agent's tools. Every method is about the calling session's own runs. */
 export const CursorRuns = remote("p2.cursor-runs", {
-	version: 3,
+	version: 4,
 	params: {},
 	hostAddress: serverHost,
 	variants: {
@@ -230,7 +234,7 @@ export const CursorSettings = remote("p2.cursor-settings", {
 				setAutoResume: method(obj({ allow: bool() })),
 				/** Runs at once, all sessions and per session: 1 to 12 each, and a session cannot have more than the total. */
 				setLimits: method(obj({ maxRuns: int({ minimum: 1, maximum: RUN_CAPS.ceiling }), maxPerSession: int({ minimum: 1, maximum: RUN_CAPS.ceiling }) })),
-				/** Asks the SDK, with one tiny request, whether it can sandbox a local agent here. */
+				/** Compatibility method: reports the current local runtime's sandbox support without launching an agent. */
 				checkSandbox: method(obj({}), SandboxStatusSchema),
 			},
 		},

@@ -3,7 +3,7 @@
 import type { ModelInfo, StartSpec } from "./client.ts";
 import type { Mode, Runtime, SandboxMode, StartArgs } from "./contract.ts";
 import { MODEL_PATTERN, REPO_PATTERN } from "./limits.ts";
-import { resolveBelow } from "./local-policy.ts";
+import { ACP_SANDBOX_REQUIRED, isAcpModelId, resolveBelow } from "./local-policy.ts";
 import { modelLabel, type Resolved, resolveModel } from "./models.ts";
 
 /** The owner's choices (Settings › Cursor) that decide a run. */
@@ -17,18 +17,17 @@ export type Policy = {
 	sandbox?: SandboxMode;
 };
 
+type LocalSpec = { runtime: "local"; mode: Mode; prompt: string; model?: string };
+
 export type Plan = {
 	runtime: Runtime;
 	mode: Mode;
-	spec: StartSpec;
-	/** Local runs: the session's real directory and the real directory the agent works in. */
+	spec: LocalSpec | Extract<StartSpec, { runtime: "cloud" }>;
 	base?: string;
 	cwd?: string;
 	repo?: string;
 	branch?: string;
-	/** The model as a run's view shows it, parameters included. */
 	model?: string;
-	sandbox: SandboxMode;
 };
 
 const REPO = new RegExp(REPO_PATTERN);
@@ -50,19 +49,18 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy, model
 	const runtime = args.runtime ?? policy.runtime;
 	const mode = args.mode ?? "ask";
 	const name = args.model ?? (policy.model || undefined);
-	if (name !== undefined && !MODEL.test(name)) throw new Error("That is not a model id");
-	let chosen: Resolved | undefined;
-	if (name !== undefined) {
-		// The live list decides; when it cannot be had, the name goes to Cursor as it is and Cursor decides.
-		if (models !== undefined && models.length > 0) chosen = resolveModel(name, args.modelParams, models);
-		else if (args.modelParams !== undefined && Object.keys(args.modelParams).length > 0)
-			throw new Error("The model list is not available, so model parameters cannot be checked: try again, or leave them out");
-		else chosen = { id: name, params: [] };
-	}
-	const model = chosen === undefined ? undefined : modelLabel(chosen);
-	const modelSpec = chosen === undefined ? {} : { model: chosen.id, ...(chosen.params.length ? { modelParams: chosen.params } : {}) };
-	const sandbox = policy.sandbox ?? "when-possible";
+	if (name !== undefined && !(runtime === "local" ? isAcpModelId(name) : MODEL.test(name))) throw new Error("That is not a model id");
 	if (runtime === "cloud") {
+		let chosen: Resolved | undefined;
+		if (name !== undefined) {
+			// The live list decides; when it cannot be had, the name goes to Cursor as it is and Cursor decides.
+			if (models !== undefined && models.length > 0) chosen = resolveModel(name, args.modelParams, models);
+			else if (args.modelParams !== undefined && Object.keys(args.modelParams).length > 0)
+				throw new Error("The model list is not available, so model parameters cannot be checked: try again, or leave them out");
+			else chosen = { id: name, params: [] };
+		}
+		const model = chosen === undefined ? undefined : modelLabel(chosen);
+		const modelSpec = chosen === undefined ? {} : { model: chosen.id, ...(chosen.params.length ? { modelParams: chosen.params } : {}) };
 		if (args.path !== undefined) throw new Error("`path` is for local runs: a cloud run works on a repository, not a directory");
 		if (args.repo === undefined) throw new Error("A cloud run needs `repo` (owner/name)");
 		if (!REPO.test(args.repo)) throw new Error("`repo` is owner/name");
@@ -76,7 +74,6 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy, model
 		return {
 			runtime,
 			mode,
-			sandbox,
 			repo: args.repo,
 			...(args.branch === undefined ? {} : { branch: args.branch }),
 			...(model === undefined ? {} : { model }),
@@ -94,15 +91,10 @@ export async function plan(args: Omit<StartArgs, "runId">, policy: Policy, model
 	if (args.env !== null) throw new Error(`This session works on ${args.env}, not on the Pi server: local Cursor runs work only on the server's machine. Use a cloud run`);
 	if (mode === "agent" && !policy.allowLocalEdits)
 		throw new Error("Local agents may not edit files (agent mode): the owner can allow it in Settings › Cursor. Use mode `ask` or `plan`");
-	if (chosen === undefined || model === undefined) throw new Error("No model: the owner can choose a default in Settings › Cursor, or pass `model`");
+	if (policy.sandbox === "required") throw new Error(ACP_SANDBOX_REQUIRED);
+	if (args.modelParams !== undefined && Object.keys(args.modelParams).length > 0)
+		throw new Error("`modelParams` is for SDK cloud runs. Cursor ACP negotiates models with the signed-in CLI");
 	const { base, cwd } = await resolveBelow(args.cwd, args.path);
-	return {
-		runtime,
-		mode,
-		base,
-		cwd,
-		model,
-		sandbox,
-		spec: { runtime: "local", prompt: args.prompt, model: chosen.id, ...(chosen.params.length ? { modelParams: chosen.params } : {}), cwd, mode, sandbox: mode === "agent" && sandbox !== "off" },
-	};
+	const model = name === undefined ? {} : { model: name };
+	return { runtime, mode, base, cwd, ...model, spec: { runtime, mode, prompt: args.prompt, ...model } };
 }

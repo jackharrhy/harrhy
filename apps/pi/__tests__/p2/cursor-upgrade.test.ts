@@ -6,15 +6,29 @@ import assert from "node:assert/strict";
 import { cpSync } from "node:fs";
 import { join } from "node:path";
 import { it } from "node:test";
-import { BACKGROUND_CONTEXT as TEST } from "@p2/app/v1";
-import { CursorRuns, CursorSettings } from "../../integrations/cursor/contract.ts";
-import { CursorStore } from "../../integrations/cursor/store.ts";
+import { arr, obj, type Schema } from "@earendil-works/pi-schema";
+import { BACKGROUND_CONTEXT as TEST, defineFacet, defineState, local, method } from "@p2/app/v1";
+import { CursorRuns, CursorSettings, LIMITS } from "../../integrations/cursor/contract.ts";
+import { ConfigState, CursorStore, type RunRecord, RunRecordSchema } from "../../integrations/cursor/store.ts";
 import { createHost, Server } from "../../src/runtime/chord.ts";
 import { openHostStore, userPluginsDirectory } from "../../src/runtime/host-dirs.ts";
 import { type RunRecordV1, StoreV1, writerV1 } from "../fixtures/cursor-v1-store.ts";
 import { APP, holdIn, startFixture } from "./helpers.ts";
 
 const SESSION = "legacy-session";
+
+type LegacyRun = Omit<RunRecord, "backend">;
+// Compared with ae1424e5: v3 has the same fields except the optional backend discriminator.
+const { backend: _backend, ...recordFieldsV3 } = RunRecordSchema.properties as Record<string, unknown>;
+const recordV3: Schema<LegacyRun> = { ...RunRecordSchema, properties: recordFieldsV3 };
+const RunsV3 = defineState("p2.cursor-runs", {
+	version: 3,
+	schema: obj({ runs: arr(recordV3, { maxItems: LIMITS.kept + 16 }) }),
+	initial: () => ({ runs: [] as LegacyRun[] }),
+	persist: true,
+	checkpointWhen: () => true,
+});
+const StoreV4 = local("p2.cursor-store", { version: 4, params: {}, members: { seed: method(recordV3) } });
 const finished: RunRecordV1 = {
 	id: `cursor-${"a".repeat(24)}`,
 	runtime: "local",
@@ -150,6 +164,50 @@ it("loads settings and runs stored by version 1, keeps their values and gives th
 		assert.equal((await runs.status({ id: failed.id }, TEST)).error, "quota exceeded");
 		runs.release();
 		settings.release();
+	} finally {
+		await fixture.close();
+	}
+});
+
+it("upgrades installed v3 runs without relabelling SDK runs as ACP", { timeout: 30_000 }, async () => {
+	const prior: LegacyRun = { ...finished, sandbox: "on", attempt: 2, autoResumes: 1, files: ["src/a.ts"] };
+	const fixture = await startFixture({
+		integrations: ["cursor"],
+		prepare: async (dataDir) => {
+			const disk = await openHostStore(join(dataDir, "server"), { outbox: false }, TEST);
+			const old = createHost({ store: disk, address: Server(), onError: () => {} });
+			try {
+				const writer = defineFacet((host) => {
+					host.serve(StoreV4, (_params, self) => {
+						const config = self.state(ConfigState);
+						const runs = self.state(RunsV3);
+						return {
+							seed: async (run, ctx) => {
+								await config.change((draft) => {
+									draft.maxRuns = 9;
+									draft.maxPerSession = 5;
+								}, ctx);
+								await runs.change((draft) => { draft.runs = [run]; }, ctx);
+								return null;
+							},
+						};
+					});
+				});
+				assert.deepEqual((await old.load([{ name: "cursor-v4", facet: writer }], TEST)).failed, []);
+				await old.root(async (ctx) => (await ctx.get(StoreV4, {})).seed(prior, ctx), TEST);
+			} finally {
+				await old.close(TEST);
+				await disk.close(TEST);
+			}
+		},
+	});
+	try {
+		await fixture.server.host.root(async (ctx) => {
+			const store = await ctx.get(CursorStore, {});
+			assert.deepEqual(store.runs.value, [prior]);
+			assert.equal(store.config.value.maxRuns, 9);
+			assert.equal(store.config.value.maxPerSession, 5);
+		}, TEST);
 	} finally {
 		await fixture.close();
 	}

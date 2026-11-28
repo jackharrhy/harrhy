@@ -86,8 +86,8 @@ export const RunRecordSchema = obj({
 });
 export type RunRecord = Static<typeof RunRecordSchema>;
 export const RunsState = defineState("p2.cursor-runs", {
-	// Version 3: runs may be `lost` and carry a heartbeat, last activity and files (all optional).
-	version: 3,
+	// Version 4 tags ACP runs. Untagged records keep their SDK semantics.
+	version: 4,
 	migrate: (old) => old as { runs: RunRecord[] },
 	schema: obj({ runs: arr(RunRecordSchema, { maxItems: LIMITS.kept + 16 }) }),
 	initial: () => ({ runs: [] as RunRecord[] }),
@@ -111,7 +111,7 @@ const ConfigPatch = obj({
 
 /** The server-local store behind both remotes. */
 export const CursorStore = local("p2.cursor-store", {
-	version: 4,
+	version: 5,
 	params: {},
 	members: {
 		config: ConfigSchema,

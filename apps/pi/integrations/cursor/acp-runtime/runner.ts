@@ -14,6 +14,7 @@ export type AcpSessionAdapter = {
 	prepareSession: (sessionId: string, session: JsonObject, request: (method: string, params: JsonObject) => Promise<JsonObject>) => Promise<void>;
 	checkUpdate: (update: JsonObject) => void;
 	cancelRequests: readonly string[];
+	permission?: "reject_once" | "allow_once";
 };
 
 export function object(value: unknown): JsonObject | undefined {
@@ -80,12 +81,14 @@ export async function runAcp(options: {
 	signal: AbortSignal;
 	adapter?: AcpSessionAdapter;
 	onText?: (chunk: string) => void;
+	timeoutMs?: number;
 	// A trusted launcher can watch fd 3 for EOF when the worker dies. It must own cleanup of its group.
 	parentLease?: true;
 }): Promise<string> {
-	const { command, args, cwd, prompt, signal, adapter, onText, parentLease } = options;
+	const { command, args, cwd, prompt, signal, adapter, onText, parentLease, timeoutMs = TURN_TIMEOUT_MS } = options;
 	const aborted = () => new DOMException("ACP run was cancelled.", "AbortError");
 	if (signal.aborted) throw aborted();
+	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("ACP run timed out.");
 	if (!isAbsolute(cwd)) throw new Error("ACP working directory must be absolute.");
 	if (parentLease && process.platform === "win32") throw new Error("Leased ACP launch requires POSIX process groups.");
 	const env: NodeJS.ProcessEnv = {};
@@ -118,7 +121,7 @@ export async function runAcp(options: {
 	};
 	const onAbort = () => interrupt(aborted());
 	signal.addEventListener("abort", onAbort, { once: true });
-	const deadline = setTimeout(() => interrupt(new Error("ACP run timed out.")), TURN_TIMEOUT_MS);
+	const deadline = setTimeout(() => interrupt(new Error("ACP run timed out.")), timeoutMs);
 	child.on("error", () => interrupt(new Error("Could not start or stop ACP agent.")));
 	stdin.on("error", () => interrupt(new Error("Could not write to ACP agent.")));
 	const reader = frames(stdout);
@@ -155,11 +158,13 @@ export async function runAcp(options: {
 				if (typeof message.id === "number" || typeof message.id === "string") {
 					if (message.method === "session/request_permission") {
 						const options = Array.isArray(params?.options) ? params.options.map(object) : [];
-						const rejectId = options.find((option) => option?.kind === "reject_once" && typeof option.optionId === "string")?.optionId;
-						const deny = typeof rejectId === "string" && rejectId !== "" && options.filter((option) => option?.optionId === rejectId).length === 1;
-						const outcome = deny ? { outcome: "selected", optionId: rejectId } : { outcome: "cancelled" };
+						const allow = promptPending && !!sessionId && params?.sessionId === sessionId && adapter?.permission === "allow_once";
+						const matches = options.filter((option) => option?.kind === (allow ? "allow_once" : "reject_once"));
+						const optionId = matches.length === 1 ? matches[0]?.optionId : undefined;
+						const selected = typeof optionId === "string" && optionId !== "" && options.filter((option) => option?.optionId === optionId).length === 1;
+						const outcome = selected ? { outcome: "selected", optionId } : { outcome: "cancelled" };
 						await send({ id: message.id, result: { outcome } });
-						if (!deny) throw new Error("ACP agent did not offer an unambiguous one-time permission rejection; cancelled the run.");
+						if (!selected) throw new Error(`ACP agent did not offer an unambiguous one-time permission ${allow ? "approval" : "rejection"}; cancelled the run.`);
 					} else if (adapter?.cancelRequests.includes(message.method)) {
 						await send({ id: message.id, result: { outcome: { outcome: "cancelled" } } });
 					} else {

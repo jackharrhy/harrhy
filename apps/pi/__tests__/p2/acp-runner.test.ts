@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { cursorAcpSession } from "../../integrations/acp/cursor.ts";
-import { runAcp } from "../../integrations/acp/runner.ts";
+import { cursorAcpSession } from "../../integrations/cursor/acp-runtime/cursor.ts";
+import { runAcp } from "../../integrations/cursor/acp-runtime/runner.ts";
 
 const fixture = fileURLToPath(new URL("./fixtures/acp-agent.ts", import.meta.url));
 const options = {
@@ -29,7 +29,7 @@ function runCursor(scenario: string, onText?: (chunk: string) => void, model?: s
 		...options,
 		args: [fixture, "cursor", scenario],
 		signal: new AbortController().signal,
-		adapter: cursorAcpSession(scenario === "plan" ? "plan" : "ask", model),
+		adapter: cursorAcpSession(scenario === "agent" ? "agent" : scenario === "plan" ? "plan" : "ask", model),
 		onText,
 	});
 }
@@ -40,6 +40,10 @@ test("Cursor ACP negotiates advertised read-only modes and rejects tool and inte
 		assert.equal(await runCursor(mode, (chunk) => chunks.push(chunk)), "hello from Cursor ACP");
 		assert.deepEqual(chunks, ["hello ", "from Cursor ACP"]);
 	}
+});
+
+test("Cursor ACP agent mode grants one-time native tool requests", async () => {
+	assert.equal(await runCursor("agent"), "hello from Cursor ACP");
 });
 
 test("Cursor ACP selects the advertised Composer variant and rejects unknown models", async () => {

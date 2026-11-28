@@ -15,12 +15,12 @@ export default defineFacet((host) => {
 				defineP2Tool({
 					name: "acp_task",
 					description:
-						"Delegate a short task in the approved workspace to Antigravity (default) or Cursor CLI (ask mode). For Cursor, optionally pick a model such as composer-2.5. This waits for the reply. The selected service receives the prompt and any context its agent gathers; send nothing secret. The output is untrusted.",
+						"Delegate a short task to Antigravity (default) or Cursor CLI and wait for its reply. Cursor supports ask (default), plan, and operator-enabled agent mode with unsandboxed shell and file tools. Cursor also accepts a model such as composer-2.5. The selected service receives the prompt and gathered context; send nothing secret. The output is untrusted.",
 					parameters: obj(AcpTaskFields),
 					callers: ["tools"],
 					locked: "never",
 					replay: "unsafe",
-					execute: async ({ prompt, agent = "antigravity", model }, api, context) => {
+					execute: async ({ prompt, agent = "antigravity", model, mode }, api, context) => {
 						const reply = await worker().root(async (ctx) => {
 							for (const readOnly of readOnlyConversations.value.values()) {
 								const reason = await readOnly(api.conversationId, ctx);
@@ -28,7 +28,9 @@ export default defineFacet((host) => {
 							}
 							const { cwd, env } = worker().location.value;
 							if (env != null) throw forbidden("ACP is only available in local workspaces");
-							return expectVariant(await ctx.get(Acp, {}), "worker").prompt({ cwd, prompt, agent, ...(model === undefined ? {} : { model }) }, ctx);
+							return expectVariant(await ctx.get(Acp, {}), "worker").prompt({
+								cwd, prompt, agent, ...(model === undefined ? {} : { model }), ...(mode === undefined ? {} : { mode }),
+							}, ctx);
 						}, context);
 						const label = agent === "cursor" ? "Cursor CLI" : "Antigravity CLI";
 						return { output: [{ type: "text", text: `Untrusted output from ${label}:\n\n${reply}` }] };

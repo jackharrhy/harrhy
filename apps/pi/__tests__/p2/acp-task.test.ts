@@ -29,10 +29,10 @@ it("delegates from the approved workspace and can restrict trials to one session
 	try {
 		const browser = fixture.browser();
 		const sessions = await holdIn(browser, Sessions, {}, "owner");
-		const check = async (session: string, expected: RegExp, cursor = false) => {
+		const check = async (session: string, expected: RegExp, cursorMode?: "ask" | "agent") => {
 			const chat = await holdIn(browser, Chat, { session, conversation: 1 }, "participant");
-			const args = cursor ? { agent: "cursor", model: "composer-2.5", prompt: "Say hello" } : { prompt: "Say hello" };
-			await chat.send({ text: `codemode text(await tools.acp_task(${JSON.stringify(args)}));`, requestId: cursor ? "cursor" : "acp-test" }, TEST);
+			const args = cursorMode ? { agent: "cursor", mode: cursorMode, model: "composer-2.5", prompt: "Say hello" } : { prompt: "Say hello" };
+			await chat.send({ text: `codemode text(await tools.acp_task(${JSON.stringify(args)}));`, requestId: cursorMode ?? "acp-test" }, TEST);
 			await until(chat.view, (view) => expected.test(JSON.stringify(view?.entries.flatMap((entry) => entry.model ?? []))), 30_000);
 		};
 		const other = await sessions.create({ cwd: await realpath(fixture.workspace), title: "Other workspace" }, TEST);
@@ -44,7 +44,8 @@ it("delegates from the approved workspace and can restrict trials to one session
 		const unapproved = await sessions.create({ cwd: workspace, title: "Other session at the same path" }, TEST);
 		await check(unapproved.id, /ACP is only enabled in the operator-approved session/);
 		await check(approved.id, /Untrusted output from Antigravity CLI.*hello from ACP/);
-		await check(approved.id, /Untrusted output from Cursor CLI.*hello from Cursor ACP/, true);
+		await check(approved.id, /Untrusted output from Cursor CLI.*hello from Cursor ACP/, "ask");
+		await check(approved.id, /operator has not enabled unsandboxed Cursor ACP agent mode/, "agent");
 	} finally {
 		await fixture.close();
 	}

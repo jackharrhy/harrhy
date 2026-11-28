@@ -12,11 +12,6 @@ test("Settings › Cursor clears the write-only key and saves owner choices", { 
 	(globalThis as { __cursorFake?: unknown }).__cursorFake = {
 		me: async () => ({ apiKeyName: "ui-key" }),
 		models: async () => [{ id: "composer-2", displayName: "Composer 2" }],
-		create: async () => ({
-			agentId: "probe",
-			close() {},
-			send: async () => ({ wait: async () => ({ status: "finished" }), cancel: async () => {} }),
-		}),
 	};
 	t.after(() => delete (globalThis as { __cursorFake?: unknown }).__cursorFake);
 	const fixture = await startFixture({
@@ -80,8 +75,9 @@ test("Settings › Cursor clears the write-only key and saves owner choices", { 
 	const sandbox = select("Sandbox local agents");
 	await browser.wait(`${capsSaved} && !${sandbox}.disabled`);
 	await choose("Sandbox local agents", "required");
-	await clickText("Check sandbox");
-	await browser.wait(`document.body.textContent.includes('Sandbox: supported')`);
+	await browser.wait(`${sandbox}?.value === 'required' && !${sandbox}.disabled`);
+	await browser.wait(`document.body.textContent.includes('New local runs use unsandboxed Cursor ACP. Required blocks them.')`);
+	assert.equal(await browser.evaluate(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent.trim() === 'Check sandbox')`), false);
 	await type("Repository", "not a repo");
 	await clickText("Allow");
 	await browser.wait(`document.querySelector('[role=alert]')?.textContent.includes('owner/name')`);

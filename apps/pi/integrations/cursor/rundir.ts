@@ -18,29 +18,36 @@ export const FILES = {
 } as const;
 
 /** What the server asks of the agent process (no key: that comes in the environment). */
-export type WorkerRequest = {
-	version: 1;
+type RequestBase = {
 	runId: string;
 	prompt: string;
-	model: string;
-	modelParams?: { id: string; value: string }[];
 	mode: "ask" | "plan" | "agent";
-	/** The session's directory and the directory the agent works in (below it). */
 	base: string;
 	cwd: string;
-	/** The owner's settings when the run started: edits allowed, and the sandbox choice. */
 	allowEdits: boolean;
 	sandboxMode: "when-possible" | "required" | "off";
-	/** Ask the SDK for its sandbox (the server already knows if this machine cannot). */
-	sandbox: boolean;
 	deadline: number;
 	heartbeatMs: number;
 	pollMs: number;
-	/** 1 for a run's first worker; a resumed run's later workers count up. */
 	attempt: number;
-	/** The Cursor agent to go on with, and what to tell it, when this worker resumes an interrupted run. */
+};
+
+export type SdkWorkerRequest = RequestBase & {
+	version: 1;
+	model: string;
+	modelParams?: { id: string; value: string }[];
+	sandbox: boolean;
 	resume?: { agentId: string; message: string };
 };
+
+export type AcpWorkerRequest = RequestBase & {
+	version: 2;
+	backend: "acp";
+	command: string;
+	model?: string;
+};
+
+export type WorkerRequest = SdkWorkerRequest | AcpWorkerRequest;
 
 /** The agent process's pulse: rewritten every heartbeat. */
 export type WorkerStatus = {

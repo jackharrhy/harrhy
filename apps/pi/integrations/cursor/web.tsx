@@ -28,12 +28,10 @@ function CursorSheet() {
 	const allowLocalEdits = useReadable(settings?.allowLocalEdits);
 	const allowCloudEdits = useReadable(settings?.allowCloudEdits);
 	const sandbox = useReadable(settings?.sandbox);
-	const sandboxStatus = useReadable(settings?.sandboxStatus);
 	const autoResume = useReadable(settings?.autoResume);
 	const maxRuns = useReadable(settings?.maxRuns);
 	const maxPerSession = useReadable(settings?.maxPerSession);
 	const survival = useReadable(settings?.workerSurvival);
-	const [sandboxNote, setSandboxNote] = useState<string>();
 	const [key, setKey] = useState("");
 	const [repo, setRepo] = useState("");
 	const [models, setModels] = useState<Models>([]);
@@ -54,7 +52,7 @@ function CursorSheet() {
 		? "A key is stored. It is never shown again."
 		: keyFromEnv
 			? "No key stored: using CURSOR_API_KEY from the Pi server's environment."
-			: "No key yet: agents cannot use Cursor.";
+			: "No key yet: cloud Cursor and legacy SDK recovery need a key. Local ACP uses Cursor CLI sign-in.";
 	return (
 		<Sheet title="Cursor" onClose={closeLayers}>
 			<p className="muted small">
@@ -132,7 +130,7 @@ function CursorSheet() {
 							run(() => settings?.setDefaults({ model: event.target.value, runtime: runtime ?? "local" }, BACKGROUND_CONTEXT) ?? Promise.resolve())
 						}
 					>
-						<option value="">None chosen</option>
+						<option value="">Use Cursor default</option>
 						{options.map((entry) => (
 							<option key={entry.id} value={entry.id}>
 								{entry.name === entry.id ? entry.id : `${entry.name} (${entry.id})`}
@@ -234,7 +232,7 @@ function CursorSheet() {
 					onChange={(allow) => run(() => settings?.setAllowLocalEdits({ allow }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
 				/>
 				<p className="muted small">
-					Off: local agents only read (ask and plan). On: agent mode, in the session&apos;s directory.
+					Off: Pi requests ask or plan mode from the Cursor CLI. On: agent mode can also use unsandboxed shell and file tools.
 				</p>
 				<label className="field">
 					<span className="label">Sandbox local agents</span>
@@ -253,36 +251,7 @@ function CursorSheet() {
 						<option value="off">Off</option>
 					</select>
 				</label>
-				<div className="inline-form">
-					<output className="muted small" aria-label="Sandbox status">
-						Sandbox:{" "}
-						{sandboxStatus?.status === "supported"
-							? "supported"
-							: sandboxStatus?.status === "unsupported"
-								? "not supported on this machine"
-								: "not checked"}
-					</output>
-					<button
-						type="button"
-						className="button"
-						disabled={busy || !settings}
-						onClick={() =>
-							run(async () => {
-								setSandboxNote(undefined);
-								const checked = await settings?.checkSandbox({}, BACKGROUND_CONTEXT);
-								setSandboxNote(checked?.detail);
-							})
-						}
-					>
-						Check sandbox
-					</button>
-				</div>
-				{sandboxNote && <p className="muted small">{sandboxNote}</p>}
-				<p className="muted small">
-					Cursor&apos;s shell sandbox keeps an agent-mode shell inside the working directory. When possible: ask for it, and run
-					without it if this machine cannot (the result says so). Required: fail instead. Off: never ask. The check makes one
-					small request to Cursor.
-				</p>
+				<p className="muted small">New local runs use unsandboxed Cursor ACP. Required blocks them. The SDK sandbox applies only when resuming older SDK runs.</p>
 				<Switch
 					label="Allow cloud agents to change repositories"
 					checked={allowCloudEdits ?? false}

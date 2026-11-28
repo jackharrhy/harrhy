@@ -167,7 +167,7 @@ export async function startFixture(
 			mkdirSync(userPluginsDirectory(dataDir), { recursive: true, mode: 0o700 });
 			for (const name of integrations) {
 				assert(!builtin.has(name), `${name} must load from the fixture user root, not the built-ins`);
-				cpSync(join(APP, "integrations", name), join(userPluginsDirectory(dataDir), name), { recursive: true });
+				cpSync(join(APP, "integrations", name), join(userPluginsDirectory(dataDir), name), { recursive: true, dereference: name === "acp" });
 			}
 		}
 		await prepare?.(dataDir);

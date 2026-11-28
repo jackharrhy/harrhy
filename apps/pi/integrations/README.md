@@ -9,10 +9,10 @@ Base Pi does not discover this directory. Each integration is a separately insta
 | `atlas-feedback` | Server | [Atlas feedback](atlas-feedback/README.md) |
 | `cursor` | Server, worker, web | [Cursor](cursor/README.md) |
 | `github-checks` | Server, worker, web | [GitHub checks](github-checks/README.md) |
-| `acp` | Server, worker | [Experimental Gemini delegation](acp/README.md) |
+| `acp` | Server, worker | [Foreground ACP delegation](acp/README.md) |
 | `host-health` | Server, worker | [Host health](host-health/README.md) |
 | `peers` | Server, worker, web | [Peers](peers/README.md) |
 
-Install only the wanted package as a real directory under `<P2_DATA_DIR>/plugins/`, not the enclosing directory or a symlink. An old built-in wins a name clash. Follow the individual guide and obtain separate authorization before modifying a running instance.
+Install only the wanted package as a real directory under `<P2_DATA_DIR>/plugins/`, not the enclosing directory or a symlink. An old built-in wins a name clash. Follow the individual guide and obtain separate authorization before modifying a running instance. For `acp`, use `cp -RL` from the checkout so the installed directory contains its own copy of the shared ACP runtime.
 
 The legacy `ingress` package and scripts remain for compatibility with existing deployments and [historical receipt readback](../docs/ingress.md). Keep existing credentials, endpoints, event IDs and ledgers on their original path. Do not replay or move outstanding events into the Pi Inbox namespace. There is no automatic installation, forwarding, or data migration.

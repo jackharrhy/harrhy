@@ -5,10 +5,11 @@
 import { existsSync } from "node:fs";
 import { uptime } from "node:os";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { isSandboxUnsupported, oneLine, type Outcome, type RunEvent, type RunHandle, redact, SandboxUnsupportedError } from "./client.ts";
 import { LIMITS } from "./limits.ts";
 import { checkRequest } from "./local-policy.ts";
-import { appendText, FILES, processStart, readJson, type WorkerExit, type WorkerRequest, type WorkerStatus, writeJsonAtomic } from "./rundir.ts";
+import { type AcpWorkerRequest, appendText, FILES, processStart, readJson, type SdkWorkerRequest, type WorkerExit, type WorkerRequest, type WorkerStatus, writeJsonAtomic } from "./rundir.ts";
 import { sdkClient } from "./sdk.ts";
 
 const directory = process.argv[2] ?? "";
@@ -30,7 +31,6 @@ const WRITING = /edit|write|delete|replace|patch/i;
 
 const startedAt = Date.now();
 type WorkerHandle = Omit<RunHandle, "agentId" | "runId"> & Partial<Pick<RunHandle, "agentId" | "runId">>;
-type StartAgent = (request: WorkerRequest) => Promise<WorkerHandle>;
 let handle: WorkerHandle | undefined;
 let start = "";
 let state: WorkerStatus["state"] = "starting";
@@ -113,7 +113,7 @@ async function end(result: Pick<WorkerExit, "status"> & Partial<WorkerExit>, tex
 
 const failed = (error: unknown) => end({ status: "failed", error: error instanceof Error ? error.message : String(error) }, partial);
 
-async function main(startAgent: StartAgent): Promise<void> {
+async function main(): Promise<void> {
 	const request = await readJson<WorkerRequest>(join(directory, FILES.request));
 	if (request === undefined) throw new Error("No request");
 	start = (await processStart(process.pid)) ?? "";
@@ -122,7 +122,7 @@ async function main(startAgent: StartAgent): Promise<void> {
 	heartbeat.unref?.();
 	try {
 		await checkRequest(request);
-		if (key === "") throw new Error("No API key reached the worker");
+		if (request.version === 1 && key === "") throw new Error("No API key reached the worker");
 	} catch (error) {
 		return void (await failed(error));
 	}
@@ -143,7 +143,7 @@ async function main(startAgent: StartAgent): Promise<void> {
 		}
 	}, pollMs);
 
-	handle = await startAgent(request);
+	handle = request.version === 2 ? startAcp(request) : await startSdk(request);
 	handle.watch?.((event) => record(event));
 	state = "running";
 	await writeStatus();
@@ -157,6 +157,7 @@ async function main(startAgent: StartAgent): Promise<void> {
 	}
 	handle.dispose();
 	const text = outcome.text ?? partial;
+	if (request.version === 2 && outcome.status === "error" && Date.now() >= deadline) timedOut = true;
 	const common = {
 		...(outcome.usage === undefined ? {} : { usage: outcome.usage }),
 		...(outcome.git === undefined ? {} : { git: outcome.git }),
@@ -167,7 +168,37 @@ async function main(startAgent: StartAgent): Promise<void> {
 	else await end({ status: "finished", ...common }, text);
 }
 
-async function startSdk(request: WorkerRequest): Promise<RunHandle> {
+function startAcp(request: AcpWorkerRequest): WorkerHandle {
+	const controller = new AbortController();
+	let onEvent: ((event: RunEvent) => void) | undefined;
+	return {
+		async wait(): Promise<Outcome> {
+			try {
+				const [{ cursorAcpSession }, { runAcp }] = await Promise.all([import("./acp-runtime/cursor.ts"), import("./acp-runtime/runner.ts")]);
+				const guard = fileURLToPath(new URL("./acp-runtime/guard.ts", import.meta.url));
+				const text = await runAcp({
+					command: process.execPath,
+					args: [guard, request.command, "acp"],
+					cwd: request.cwd,
+					prompt: request.prompt,
+					signal: controller.signal,
+					timeoutMs: request.deadline - Date.now(),
+					adapter: cursorAcpSession(request.mode, request.model),
+					parentLease: true,
+					onText: (text) => onEvent?.({ type: "text", text }),
+				});
+				return { status: "finished", text };
+			} catch (error) {
+				return controller.signal.aborted ? { status: "cancelled" } : { status: "error", error: error instanceof Error ? error.message : "Cursor ACP failed" };
+			}
+		},
+		async cancel() { controller.abort(); },
+		watch(callback) { onEvent = callback; },
+		dispose() {},
+	};
+}
+
+async function startSdk(request: SdkWorkerRequest): Promise<RunHandle> {
 	const client = await sdkClient(key);
 	const base = {
 		runtime: "local" as const,
@@ -193,11 +224,11 @@ async function startSdk(request: WorkerRequest): Promise<RunHandle> {
 	}
 }
 
-export function runAgentProcess(startAgent: StartAgent = startSdk): void {
+function runAgentProcess(): void {
 	process.on("uncaughtException", (error) => void failed(error));
 	process.on("unhandledRejection", (error) => void failed(error));
 	process.on("SIGTERM", () => void end({ status: cancelRequested ? "cancelled" : "failed", error: "The worker was told to stop" }, partial));
-	void main(startAgent).catch(failed);
+	void main().catch(failed);
 }
 
 if (import.meta.main) runAgentProcess();

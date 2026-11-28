@@ -1,5 +1,6 @@
 // Cursor as a tool (README.md): the owner's settings, the agent's side of the runs and the watcher that publishes a stimulus
 // to the session when a run ends. The API key lives in cursor-secrets.json and never leaves this file's side of the wire.
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { pluginFile } from "@earendil-works/chord/plugins";
 import { type Ctx, contribute, defineFacet, deriveTyped, forbidden, invalid, isOwner, isWorker } from "@p2/app/v1";
@@ -16,7 +17,25 @@ const ALLOW = /^(?!\.{1,2}\/)[A-Za-z0-9._-]+\/(?:\*|(?!\.{1,2}$)[A-Za-z0-9._-]+)
 const KEY = /^\S{8,512}$/;
 const MODEL = /^[\w.:/@+-]{0,200}$/;
 
+async function readLocalAcpCommand(path: string): Promise<string | undefined> {
+	let raw: string;
+	try {
+		raw = await readFile(path, "utf8");
+	} catch (error) {
+		if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
+		throw new Error("Cannot read local-acp.json in the Cursor plugin directory");
+	}
+	try {
+		const config: unknown = JSON.parse(raw);
+		if (config && typeof config === "object" && "command" in config && typeof config.command === "string") return config.command;
+	} catch {
+		// Keep parse diagnostics out of tool output.
+	}
+	throw new Error("local-acp.json must contain a command with the absolute path to the signed-in Cursor CLI");
+}
+
 export default defineFacet((host) => {
+	const localAcpConfig = pluginFile("local-acp.json");
 	let shared: Promise<{ manager: Manager; secrets: CursorSecrets }> | undefined;
 	/** The manager and the key file, made on first use: this plugin version's own, living until it is replaced. */
 	const open = (ctx: Ctx) => {
@@ -27,6 +46,7 @@ export default defineFacet((host) => {
 				secrets,
 				factory: sdkClient,
 				env: process.env,
+				acpCommand: () => readLocalAcpCommand(localAcpConfig),
 				minuteMs: Number(process.env.P2_CURSOR_MINUTE_MS) || 60_000,
 				graceMs: Number(process.env.P2_CURSOR_GRACE_MS) || 15_000,
 				runsDir: join(server.info.value.dataDir, "cursor-runs"),

@@ -7,7 +7,7 @@ const input = createInterface({ input: process.stdin });
 const sessionId = "fake-acp-session";
 const cursor = mode === "cursor";
 const noSafeChoice = argument === "ambiguous-permission";
-const requestedMode = argument === "plan" ? "plan" : "ask";
+const requestedMode = argument === "agent" ? "agent" : argument === "plan" ? "plan" : "ask";
 let configuredMode = "agent";
 let configuredModel = "auto";
 const composer = "composer-2.5[fast=true]";
@@ -121,7 +121,9 @@ for await (const line of input) {
 			assert.deepEqual(message.result, { outcome: { outcome: "cancelled" } });
 			continue;
 		}
-		assert.deepEqual(message.result, { outcome: { outcome: "selected", optionId: cursor ? "reject-once" : "deny" } });
+		assert.deepEqual(message.result, { outcome: {
+			outcome: "selected", optionId: requestedMode === "agent" ? "allow" : cursor ? "reject-once" : "deny",
+		} });
 		send({ id: "fs", method: "fs/read_text_file", params: { sessionId, path: "/must-not-be-read" } });
 	} else if (message.id === "fs") {
 		assert.equal(message.error.code, -32601);
