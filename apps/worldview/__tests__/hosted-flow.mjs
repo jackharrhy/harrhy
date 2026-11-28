@@ -343,6 +343,7 @@ try {
   await owner.locator("#project-map-name").fill("smoke.map");
   await owner.locator("#project-map-create-form button").click();
   await owner.waitForURL(/\/editor\?hostedMap=[a-z0-9]{12}$/);
+  await owner.goto(owner.url() + "&buildTools=1");
   await owner.getByText("Smoke Project / smoke.map opened").waitFor();
   const editorUrl = owner.url();
   const mapId = new URL(editorUrl).searchParams.get("hostedMap");

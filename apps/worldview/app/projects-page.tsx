@@ -1,11 +1,7 @@
+import { RecoveredMaps } from "./assets/recovered-maps.tsx";
 import type { Handle } from "remix/component";
 import { browserAssets } from "./assets/build-manifest.ts";
 import { projectsStyles } from "./projects-styles.ts";
-import {
-  OpenLocalProject,
-  RecentProjects,
-  RecoveredMaps,
-} from "./assets/recovered-maps.tsx";
 import { HostedProjects } from "./assets/hosted-projects.tsx";
 import { ProjectMaps } from "./assets/project-maps.tsx";
 import { ProjectNewMap } from "./assets/project-new-map.tsx";
@@ -57,28 +53,14 @@ export function ProjectsPage(
               <>
                 <section class="projects-intro">
                   <h1>Projects</h1>
-                  <p>
-                    Open hosted maps or return to a local project on this
-                    device.
-                  </p>
                 </section>
                 <div class="projects-columns">
                   <HostedProjects
                     createRequested={handle.props.createRequested ?? false}
                   />
-                  <section aria-labelledby="local-projects-title">
-                    <h2 id="local-projects-title">Recent local projects</h2>
-                    <OpenLocalProject />
-                    <RecentProjects />
-                    <h3>Recovered maps</h3>
+                  <section aria-labelledby="recovered-maps-title">
+                    <h2 id="recovered-maps-title">Recovered maps</h2>
                     <RecoveredMaps />
-                    <p class="projects-note">
-                      Project folders stay on this device. You can also{" "}
-                      <a href="/new-map" data-rmx-document>
-                        create a local map
-                      </a>
-                      .
-                    </p>
                   </section>
                 </div>
               </>

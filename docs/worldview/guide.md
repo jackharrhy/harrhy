@@ -57,6 +57,7 @@ Map details, entity support, and warnings render through a Remix diagnostics pan
 The viewer toolbar and BSP drop overlay render through Remix. The toolbar follows renderer progress and source changes; dropped files enter the same source-opening path as the viewer controls.
 
 ## Editor
+Projects now defaults to hosted maps. The editor and Projects pages no longer offer local folder opening, recents, or project sync. Existing recovery copies and standalone file editing are unchanged. The existing Build menu is available for development and testing with `buildTools=1` on an editor URL; it is not part of the default workspace.
 
 The Projects page opens local folders containing `tea.maps.project.json` directly into the editor. The folder handle is remembered on this device; the editor shows its maps for selection. Canceling the folder picker leaves the page in place. Recovered Tea maps on this device also appear on Projects.
 

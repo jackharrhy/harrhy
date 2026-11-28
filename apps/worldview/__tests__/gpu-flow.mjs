@@ -147,7 +147,7 @@ try {
       return new Response(null, { status: 404 });
     };
   }, Buffer.from(syntheticQuakeBsp()).toString("base64"));
-  await page.goto(`${origin}/editor`);
+  await page.goto(`${origin}/editor?buildTools=1`);
   const gpu = await page.evaluate(async () => {
     const adapter = await navigator.gpu?.requestAdapter();
     if (!adapter) return false;
