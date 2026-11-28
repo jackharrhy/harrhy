@@ -1,5 +1,6 @@
 import { space } from "@harrhy/ui/theme";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
+import { readingPosition, rememberPosition } from "./reading-position.ts";
 import { Activity, type Step } from "./activity.tsx";
 import { localizeMessageTime } from "./message-time.ts";
 import { Icon } from "../icons.tsx";
@@ -294,7 +295,22 @@ export function Conversation(handle: Handle<Props>) {
   let error = false;
   let viewport: HTMLDivElement | undefined;
   let following = true;
+  const readingKey = `${handle.props.session}:${handle.props.conversation}`;
+  let positioned = false;
   let previousTop = 0;
+  function position() {
+    const node = viewport;
+    if (!node?.clientHeight || !node.dataset.readingKey) return;
+    if (positioned) return followLatest();
+    positioned = true;
+    // Respect scrolling between the first-paint script and hydration.
+    if (!node.dataset.ssrPositioned)
+      node.scrollTop = readingPosition(readingKey) ?? node.scrollHeight;
+    previousTop = node.scrollTop;
+    following = node.scrollHeight - node.clientHeight - previousTop <= 64;
+    rememberPosition(readingKey, following ? undefined : previousTop);
+    if (!following) void handle.update();
+  }
   function followLatest() {
     if (!following || !viewport) return;
     viewport.scrollTop = viewport.scrollHeight;
@@ -337,14 +353,8 @@ export function Conversation(handle: Handle<Props>) {
   const mount = ref<HTMLDivElement>((node, signal) => {
     viewport = node;
     mounted = signal;
-    if (node.dataset.ssrPositioned) {
-      previousTop = node.scrollTop;
-      following = node.scrollHeight - node.clientHeight - previousTop <= 64;
-      if (!following) void handle.update();
-    } else {
-      followLatest();
-    }
-    const observer = new ResizeObserver(followLatest);
+    position();
+    const observer = new ResizeObserver(position);
     observer.observe(node);
     if (node.firstElementChild) observer.observe(node.firstElementChild);
     signal.addEventListener("abort", () => observer.disconnect(), {
@@ -367,6 +377,7 @@ export function Conversation(handle: Handle<Props>) {
     // Sending is an explicit return to the live end. Passive stream updates
     // must still leave a reader who scrolled back where they are.
     following = true;
+    rememberPosition(readingKey, undefined);
     followLatest();
     sending = true;
     error = false;
@@ -393,6 +404,7 @@ export function Conversation(handle: Handle<Props>) {
     handle.queueTask(start);
     const data = feed ?? handle.props.seed;
     const view = data?.view;
+    if (view && !positioned) handle.queueTask(position);
     const live = view?.docs["pi.live"] as unknown as LiveState | undefined;
     const agent = view?.docs["pi.agent"];
     const effort =
@@ -644,6 +656,7 @@ export function Conversation(handle: Handle<Props>) {
       <div
         mix={css({
           display: "grid",
+          position: "relative",
           gridTemplateRows: "minmax(0, 1fr) auto",
           gridTemplateColumns: "minmax(0, 1fr)",
           minHeight: 0,
@@ -651,17 +664,29 @@ export function Conversation(handle: Handle<Props>) {
       >
         <div
           aria-label="Transcript"
+          data-reading-key={view ? readingKey : undefined}
           tabindex={0}
           mix={[
             mount,
             on("scroll", (event) => {
               const node = event.currentTarget;
+              if (!positioned || !node.clientHeight) return;
               const nearBottom =
                 node.scrollHeight - node.scrollTop - node.clientHeight <= 64;
               // Content growth can leave a queued scroll event behind our last write.
               const movedUp = node.scrollTop < previousTop;
               previousTop = node.scrollTop;
-              if (following === nearBottom || (following && !movedUp)) return;
+              if (following && !movedUp && !nearBottom) return;
+              rememberPosition(
+                readingKey,
+                nearBottom ? undefined : previousTop,
+              );
+              if (following === nearBottom) return;
+              if (
+                nearBottom &&
+                node.nextElementSibling === document.activeElement
+              )
+                node.focus({ preventScroll: true });
               following = nearBottom;
               void handle.update();
             }),
@@ -726,32 +751,52 @@ export function Conversation(handle: Handle<Props>) {
             )}
           </div>
         </div>
-        {!following && (
-          <Button
-            type="button"
-            variant="quiet"
-            mix={[
-              css({
-                gridArea: "1 / 1",
-                alignSelf: "end",
-                justifySelf: "center",
-                zIndex: 1,
-                marginBottom: space(1.5),
-                minHeight: "2.75rem",
-                backgroundColor: "var(--hui-surface)",
-                border: "1px solid var(--hui-border)",
-              }),
-              on("click", () => {
-                following = true;
-                followLatest();
-                viewport?.focus({ preventScroll: true });
-                void handle.update();
-              }),
-            ]}
-          >
-            Jump to latest
-          </Button>
-        )}
+        <Button
+          aria-label="Jump to latest"
+          title="Jump to latest"
+          aria-hidden={following || undefined}
+          inert={following}
+          data-following={following ? "true" : undefined}
+          type="button"
+          variant="quiet"
+          mix={[
+            css({
+              gridArea: "1 / 1",
+              position: "absolute",
+              display: "grid",
+              placeItems: "center",
+              width: "2.75rem",
+              height: "2.75rem",
+              padding: 0,
+              transition: "opacity 160ms ease-out, transform 160ms ease-out",
+              "&[data-following]": {
+                opacity: 0,
+                transform: "translateY(0.75rem)",
+                pointerEvents: "none",
+              },
+              "@media (prefers-reduced-motion: reduce)": {
+                transition: "none",
+                "&[data-following]": { transform: "none" },
+              },
+              alignSelf: "end",
+              justifySelf: "center",
+              zIndex: 1,
+              marginBottom: space(1.5),
+              minHeight: "2.75rem",
+              backgroundColor: "var(--hui-surface)",
+              border: "1px solid var(--hui-border)",
+            }),
+            on("click", () => {
+              following = true;
+              rememberPosition(readingKey, undefined);
+              followLatest();
+              viewport?.focus({ preventScroll: true });
+              void handle.update();
+            }),
+          ]}
+        >
+          <Icon name="latest" />
+        </Button>
         <form
           mix={[
             css({

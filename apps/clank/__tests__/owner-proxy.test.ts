@@ -53,10 +53,11 @@ function http(
   method: string,
   path: string,
   headers = {},
-  payload?: string,
+  payload?: string | Buffer,
 ) {
   return new Promise<{
     status: number | undefined;
+    headers: IncomingMessage["headers"];
     cookies: string[] | undefined;
     text: string;
   }>((resolve, reject) => {
@@ -73,6 +74,7 @@ function http(
         (text) =>
           resolve({
             status: res.statusCode,
+            headers: res.headers,
             cookies: res.headers["set-cookie"],
             text,
           }),
@@ -312,5 +314,193 @@ test(
       },
     ]);
     assert.equal(workerCalls, 0);
+  },
+);
+
+const diagramPath = "/owner/diagram";
+function diagramHeaders(port: number) {
+  return {
+    Origin: origin,
+    "Content-Type": "text/plain; charset=UTF-8",
+    Cookie: `p2_owner_${port}=${"a".repeat(32)}.123.${"b".repeat(64)}`,
+  };
+}
+
+test("diagram source reaches only the renderer, after a fresh affirmative Pi check", async (t) => {
+  credentialLogs(t);
+  const checks: (ReturnType<typeof received> & { body: string })[] = [];
+  let status = 200;
+  let reply = '{"owner":true}';
+  const pi = await listen(
+    t,
+    createServer(async (req, res) => {
+      checks.push({ ...received(req), body: await body(req) });
+      if (status === 0) return req.socket.destroy();
+      res
+        .writeHead(status, {
+          Location: "/not-an-owner-check",
+          "Set-Cookie": setCookies,
+        })
+        .end(reply);
+    }),
+  );
+  const render = t.mock.fn((source: string) =>
+    source === "α → β" ? "<svg/>" : null,
+  );
+  const port = await listen(
+    t,
+    createPreview(
+      pi,
+      host,
+      () => assert.fail("unexpected document request"),
+      undefined,
+      render,
+    ),
+  );
+  const headers = diagramHeaders(pi);
+  const post = (source: string | Buffer, overrides = {}) =>
+    http(
+      port,
+      "POST",
+      diagramPath,
+      {
+        ...headers,
+        Cookie: `unrelated=fixture-other-canary; ${headers.Cookie}`,
+        Authorization: authorization,
+        [proxyHeader]: "fixture-fake-canary",
+        ...overrides,
+      },
+      source,
+    );
+  for (const [source, svg] of [
+    ["α → β", "<svg/>"],
+    ["unsupported", null],
+  ] as const) {
+    const res = await post(source);
+    assert.equal(res.status, 200);
+    assert.deepEqual(JSON.parse(res.text), { svg });
+    assert.equal(res.headers["cache-control"], "no-store");
+    assert.equal(res.headers["x-content-type-options"], "nosniff");
+    assert.match(res.headers["content-type"] ?? "", /^application\/json/);
+    assert.equal(res.cookies, undefined);
+    assert.deepEqual(render.mock.calls.at(-1)?.arguments, [source]);
+  }
+  const denied = [
+    [0, ""],
+    [401, '{"owner":true}'],
+    [302, '{"owner":true}'],
+    [201, '{"owner":true}'],
+    [200, '{"owner":"true"}'],
+    [200, '{"owner":false}'],
+    [200, "{}"],
+    [200, "invalid"],
+    [200, " ".repeat(1024) + '{"owner":true}'],
+  ] as const;
+  for (const [code, payload] of denied) {
+    status = code;
+    reply = payload;
+    const res = await post("fixture-source-canary");
+    assert.equal(res.status, 403);
+    assert.equal(res.text, "");
+  }
+  assert.equal(checks.length, 2 + denied.length);
+  for (const check of checks)
+    assert.deepEqual(check, {
+      method: "GET",
+      path: "/owner/check",
+      host,
+      origin,
+      cookie: headers.Cookie,
+      marker: "clank-preview",
+      authorization: undefined,
+      fetchSite: undefined,
+      body: "",
+    });
+
+  for (const overrides of [
+    { Origin: "" },
+    { Origin: origin + "/" },
+    { Origin: "https://elsewhere.test" },
+    { "Sec-Fetch-Site": "cross-site" },
+    { Cookie: cookie },
+    { Cookie: headers.Cookie + "; " + headers.Cookie },
+  ])
+    assert.equal((await post("source", overrides)).status, 403);
+  assert.equal((await post("source", { Host: "localhost" })).status, 404);
+  assert.equal((await http(port, "GET", diagramPath, headers)).status, 404);
+  assert.equal(
+    (await http(port, "POST", diagramPath + "?query", headers)).status,
+    404,
+  );
+  assert.equal(
+    (await post("x", { "Content-Type": "text/plain; charset=ascii" })).status,
+    415,
+  );
+  assert.equal((await post(Buffer.from([0xff]))).status, 400);
+  const oversized = "é".repeat(20_001);
+  assert.equal((await post(oversized)).status, 413);
+  assert.equal(
+    (await post(oversized, { "Transfer-Encoding": "chunked" })).status,
+    413,
+  );
+  assert.equal(checks.length, 2 + denied.length);
+  assert.equal(render.mock.callCount(), 2);
+});
+
+test(
+  "unfinished diagram uploads occupy slots before auth and expire",
+  { timeout: 10_000 },
+  async (t) => {
+    let checks = 0;
+    const pi = await listen(
+      t,
+      createServer((_req, res) => {
+        checks++;
+        res.end('{"owner":true}');
+      }),
+    );
+    const preview = createPreview(
+      pi,
+      host,
+      () => assert.fail("unexpected document request"),
+      undefined,
+      () => null,
+    );
+    const port = await listen(t, preview);
+    const headers = diagramHeaders(pi);
+    const replies: Promise<number | undefined>[] = [];
+    for (let i = 0; i < 4; i++) {
+      const arrived = once(preview, "request");
+      const req = request({
+        host: "127.0.0.1",
+        port,
+        method: "POST",
+        path: diagramPath,
+        headers: { Host: host, ...headers, "Content-Length": 2 },
+        agent: false,
+      });
+      replies.push(
+        new Promise((resolve, reject) => {
+          req.on("error", reject);
+          req.on("response", (res) => {
+            res.resume();
+            resolve(res.statusCode);
+          });
+        }),
+      );
+      req.write("x");
+      await arrived;
+    }
+    assert.equal(
+      (await http(port, "POST", diagramPath, headers, "ok")).status,
+      429,
+    );
+    assert.deepEqual(await Promise.all(replies), [408, 408, 408, 408]);
+    assert.equal(checks, 0);
+    assert.equal(
+      (await http(port, "POST", diagramPath, headers, "ok")).status,
+      200,
+    );
+    assert.equal(checks, 1);
   },
 );

@@ -1,3 +1,4 @@
+import { renderDiagramSvg } from "@harrhy/diagrams/server";
 import { familiarId, createDocumentServer } from "./document.tsx";
 import { readSnapshot } from "./snapshot.ts";
 import { createPreview } from "./preview.ts";
@@ -21,8 +22,12 @@ if (
 const listen = port("HARRHY_CLANK_PORT", 21975);
 const pi = port("HARRHY_CLANK_PI_PORT");
 if (listen === pi) throw Error("Clank and Pi must use different ports");
-createPreview(pi, url.host, createDocumentServer(url.host), (req, signal) =>
-  readSnapshot(pi, url.host, req, familiarId, signal),
+createPreview(
+  pi,
+  url.host,
+  createDocumentServer(url.host),
+  (req, signal) => readSnapshot(pi, url.host, req, familiarId, signal),
+  renderDiagramSvg,
 ).listen(listen, "127.0.0.1", () => {
   console.log(`Clank preview listening at 127.0.0.1:${listen}`);
 });

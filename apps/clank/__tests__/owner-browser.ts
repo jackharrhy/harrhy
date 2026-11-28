@@ -1080,6 +1080,8 @@ try {
     exact: true,
   });
   await branchHeading.waitFor();
+  await page.reload();
+  await branchHeading.waitFor();
   // Visiting the four-day-old session explicitly makes it eligible in this tab.
   // Branches still need a query.
   for (const [shortcut, destination] of [
@@ -1784,6 +1786,11 @@ try {
     await observer.getByText(/^Echo: steps/).waitFor();
     await observer.locator("[data-streaming]").waitFor({ state: "hidden" });
     await namedMessage.fill(
+      "json ~~~mermaid\nflowchart LR\n  Receive --> Publish\n~~~",
+    );
+    await namedMessage.press("Enter");
+    await observer.locator(".harrhy-diagram svg").waitFor();
+    await namedMessage.fill(
       `${"Historical fixture line\n".repeat(65)}Latest named receipt`,
     );
     await namedMessage.press("Enter");
@@ -1833,8 +1840,21 @@ try {
       settled
         .first()
         .evaluate((node) => node.getAnimations({ subtree: true }).length);
-    const ssrAnimation = await summaryAnimation();
     const painted = await sample();
+    const diagram = cold.locator(".harrhy-diagram").first();
+    const ssrSvg = await diagram.locator("svg").elementHandle();
+    assert(ssrSvg);
+    await diagram.getByLabel("Diagram source").press("Enter");
+    assert.match(
+      await diagram.locator("pre").innerText(),
+      /Receive --> Publish/,
+    );
+    await diagram.getByLabel("Diagram source").press("Enter");
+    let diagramPosts = 0;
+    cold.on("request", (request) => {
+      if (request.url() === origin + "/owner/diagram") diagramPosts++;
+    });
+    const ssrAnimation = await summaryAnimation();
     const timestamp = cold.locator("time[data-message-time]").first();
     const localTime = await timestamp.evaluate((node: HTMLTimeElement) => {
       const date = new Date(node.dateTime);
@@ -1871,6 +1891,13 @@ try {
           'button[aria-label="Session tools"]',
         )?.disabled,
     );
+    assert(
+      await diagram
+        .locator("svg")
+        .evaluate((node, before) => node === before, ssrSvg),
+    );
+    assert.equal(diagramPosts, 0);
+    await ssrSvg.dispose();
     const connected = await sample();
     console.log("Named history position across hydration/Chord", [
       reading.top,
@@ -1893,6 +1920,36 @@ try {
     assert(
       reading.readingFocus && waiting.readingFocus && connected.readingFocus,
     );
+    // Stop the browser entry on refresh: the first paint must restore history on its own.
+    const resume = Promise.withResolvers<void>();
+    await cold.route("**/owner-sessions.js", async (route) => {
+      await resume.promise;
+      await route.continue();
+    });
+    await cold.reload({ waitUntil: "commit" });
+    await cold.locator('[data-ssr-positioned="true"]').waitFor();
+    assert.equal((await sample()).top, reading.top);
+    resume.resolve();
+    const latest = cold.getByRole("button", { name: "Jump to latest" });
+    await latest.waitFor();
+    await cold
+      .getByRole("button", { name: "Session tools" })
+      .and(cold.locator(":enabled"))
+      .waitFor();
+    assert.equal((await sample()).top, reading.top);
+    await cold.emulateMedia({ reducedMotion: "reduce" });
+    assert.equal(
+      await latest.evaluate(
+        (node) => getComputedStyle(node).transitionDuration,
+      ),
+      "0s",
+    );
+    await latest.press("Enter");
+    await latest.waitFor({ state: "hidden" });
+    assert((await sample()).readingFocus);
+    assert((await sample()).gap <= 2);
+    await cold.reload();
+    assert((await sample()).gap <= 2);
     await cold.close();
     await observer.reload();
     await observer.waitForFunction(
@@ -2119,11 +2176,8 @@ try {
   await hydratedJump.waitFor({ state: "hidden" });
   await hydrated.getByRole("button", { name: "Familiar", exact: true }).click();
   await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
-  assert(
-    await hydratedTranscript.evaluate(
-      (node) => node.scrollHeight - node.scrollTop - node.clientHeight <= 2,
-    ),
-  );
+  await hydratedJump.waitFor();
+  assert.deepEqual(await position(), readingPosition);
   const movingRow = hydrated.getByRole("button", {
     name: "Age hours",
     exact: true,

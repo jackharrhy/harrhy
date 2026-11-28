@@ -1,0 +1,28 @@
+{
+  "name": "@harrhy/diagrams",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./server": "./server.ts",
+    "./presentation": "./presentation.ts"
+  },
+  "scripts": {
+    "check": "tsrs --noEmit && node --test __tests__/*.test.ts"
+  },
+  "dependencies": {
+    "@harrhy/ui": "workspace:*",
+    "hast-util-from-html": "2.1.0",
+    "hast-util-sanitize": "5.0.2",
+    "hast-util-to-html": "9.0.6",
+    "pele": "1.13.0",
+    "remix": "3.2.0"
+  },
+  "devDependencies": {
+    "@types/hast": "3.0.5",
+    "@types/node": "26.6.6"
+  },
+  "engines": {
+    "node": ">=26.13.0 <27"
+  }
+}

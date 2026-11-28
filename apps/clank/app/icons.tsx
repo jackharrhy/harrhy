@@ -17,6 +17,7 @@ const paths = {
   send: "M12 19V5M5 12l7-7 7 7",
   search: "M20 20l-3.5-3.5",
   right: "m9 6 6 6-6 6",
+  latest: "M12 5v14M5 12l7 7 7-7",
   down: "m6 9 6 6 6-6",
   plus: "M12 5v14M5 12h14",
   edit: "M4 20h4L19 9l-4-4L4 16z",
@@ -29,11 +30,13 @@ const paths = {
 export function Icon(handle: Handle<{ name: keyof typeof paths }>) {
   return () => {
     const { name } = handle.props;
+    const size =
+      name === "latest" ? 18 : name === "copy" || name === "edit" ? 15 : 16;
     return (
       <svg
         aria-hidden="true"
-        width={name === "copy" || name === "edit" ? 15 : 16}
-        height={name === "copy" || name === "edit" ? 15 : 16}
+        width={size}
+        height={size}
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"

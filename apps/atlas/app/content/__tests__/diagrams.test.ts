@@ -22,3 +22,22 @@ test("diagram links, images, callbacks and authored SVG never acquire browser ca
   );
   assert.deepEqual(result.links, []);
 });
+
+test("only the first eight Mermaid fences render; all nine stay outside quotes", async () => {
+  const source = "flowchart TD\n Reader --> Source";
+  const fence = "```mermaid\n" + source + "\n```";
+  const result = await renderMarkdown(
+    ["Before", ...Array<string>(9).fill(fence), "After"].join("\n\n"),
+  );
+  assert.equal(result.html.match(/class="harrhy-diagram"/g)?.length, 8);
+  assert.equal(
+    result.annotationText.trim().replace(/\s+/g, " "),
+    "Before After",
+  );
+  const fallback = result.html.slice(
+    result.html.lastIndexOf("<pre"),
+    result.html.lastIndexOf("</pre>"),
+  );
+  assert.match(fallback, /data-atlas-diagram/);
+  assert.equal(fallback.replace(/<[^>]+>/g, ""), source + "\n");
+});

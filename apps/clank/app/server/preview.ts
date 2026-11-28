@@ -5,6 +5,11 @@ import {
   type IncomingHttpHeaders,
   type IncomingMessage,
 } from "node:http";
+import {
+  serveDiagram,
+  rejectDiagram,
+  type RenderDiagram,
+} from "./diagram-request.ts";
 import { CHORD_PATH, SESSION_LIST_PATH, sessionKey } from "../routes.ts";
 import {
   readThemeCookie,
@@ -95,9 +100,12 @@ export function createPreview(
     request: IncomingMessage,
     signal: AbortSignal,
   ) => Promise<Snapshot | undefined>,
+  renderDiagram?: RenderDiagram,
 ) {
+  let pendingDiagrams = 0;
   const server = createServer((req, res) => {
     const route = `${req.method} ${req.url}`;
+    const diagram = route === "POST /owner/diagram" && renderDiagram;
     const ui =
       uiPaths.has(route) ||
       (req.method === "GET" &&
@@ -108,9 +116,19 @@ export function createPreview(
       req.headers.upgrade ||
       (req.method === "GET" &&
         (req.headers["content-length"] || req.headers["transfer-encoding"])) ||
-      (!piPaths.has(route) && !ui)
+      (!piPaths.has(route) && !ui && !diagram)
     ) {
       res.writeHead(404, { "Cache-Control": "no-store" }).end();
+      return;
+    }
+    if (diagram) {
+      if (pendingDiagrams >= 4) return rejectDiagram(res, 429);
+      pendingDiagrams++;
+      void serveDiagram(req, res, piPort, ownerHost, diagram)
+        .catch(() => rejectDiagram(res, 500))
+        .finally(() => {
+          pendingDiagrams--;
+        });
       return;
     }
     if (ui) {
@@ -125,7 +143,9 @@ export function createPreview(
               : undefined;
           if (abort.signal.aborted) return;
           return serve(
-            new Request(`https://${ownerHost}${req.url}`),
+            new Request(`https://${ownerHost}${req.url}`, {
+              signal: abort.signal,
+            }),
             data,
             readThemeCookie(req.headers.cookie),
             readTintCookie(req.headers.cookie),

@@ -4,6 +4,7 @@ import { createHtmlRenderer } from "@pierre/words/html";
 import {
   markdownHtml,
   markdownOptions,
+  openMermaidFence,
 } from "../app/conversation/markdown-renderer.ts";
 
 test("only absolute HTTP(S) and mailto links get destinations", () => {
@@ -59,6 +60,17 @@ test("highlighted and plain code keep literal source for display and copy", () =
     );
     if (lang !== "js") assert.doesNotMatch(body, /<span style=/);
   }
+});
+
+test("streaming preserves literal Mermaid source down to a trailing emphasis opener", () => {
+  const partial = '~~~mermaid title\nflowchart LR\n  A["<tag>&"] **';
+  const closed = partial + "\n~~~";
+  assert.equal(openMermaidFence(partial), true);
+  assert.equal(openMermaidFence(closed), false);
+  assert.match(
+    markdownHtml(partial, true),
+    /flowchart LR\n  A\[&quot;&lt;tag&gt;&amp;&quot;\] \*\*/,
+  );
 });
 
 test("a delta ending on a strong opener waits for the label, not settlement", () => {

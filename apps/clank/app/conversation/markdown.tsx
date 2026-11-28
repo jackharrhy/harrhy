@@ -1,14 +1,56 @@
+import { diagramStyles } from "@harrhy/diagrams/presentation";
 import { space } from "@harrhy/ui/theme";
 import { createDomRenderer } from "@pierre/words/html";
 import { css, ref, unsafeHTML, type Handle } from "remix/component";
+import { enhanceDiagrams } from "./markdown-diagrams.ts";
 import {
   markdownHtml,
   markdownOptions,
+  openMermaidFence,
   wordsSource,
 } from "./markdown-renderer.ts";
 
 const prose = css({
   overflowWrap: "anywhere",
+  "& .harrhy-diagram": {
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 2.75rem",
+    minHeight: "2.75rem",
+  },
+  "& .harrhy-diagram > svg[role=img]": {
+    alignSelf: "center",
+    justifySelf: "center",
+    "& > *": {
+      "--_s": "var(--hui-selected-surface)",
+      "--_b": "var(--hui-muted)",
+    },
+  },
+  "& .harrhy-diagram > details": {
+    gridColumn: "1 / -1",
+    "& summary": {
+      display: "grid",
+      placeItems: "center",
+      position: "absolute",
+      insetBlockStart: 0,
+      insetInlineEnd: 0,
+      width: "2.75rem",
+      height: "2.75rem",
+      color: "var(--hui-muted)",
+      fontFamily: "var(--hui-font-mono)",
+      fontSize: "0.8125rem",
+      textDecoration: "none",
+      borderRadius: "var(--hui-control-radius)",
+      "&::-webkit-details-marker": { display: "none" },
+      "&:hover, &:focus-visible": {
+        color: "var(--hui-ink)",
+        backgroundColor: "var(--hui-hover-surface)",
+      },
+      "&:focus-visible": { outlineColor: "currentColor" },
+    },
+    "&[open] summary": { color: "var(--hui-ink)", fontWeight: 600 },
+    "& > [data-markdown=code-block]": { margin: 0 },
+  },
   "& p": { margin: "0 0 1em" },
   "& > :last-child": { marginBlockEnd: 0 },
   // Pi-brand Elanor Link and soft InlineCode, scoped to Words prose.
@@ -107,20 +149,32 @@ const prose = css({
 export function Markdown(
   handle: Handle<{ text: string; streaming?: boolean }>,
 ) {
-  let renderer: ReturnType<typeof createDomRenderer> | undefined;
-  const update = () => {
-    const { text, streaming = false } = handle.props;
-    renderer?.update(wordsSource(text, streaming), streaming, streaming);
-  };
+  let update: (() => void) | undefined;
   const host = ref((node: HTMLDivElement, signal) => {
-    renderer = createDomRenderer(node, markdownOptions);
+    const renderer = createDomRenderer(node, markdownOptions);
+    let enhancement: AbortController | undefined;
+    let adopt = node.querySelector(".harrhy-diagram") !== null;
     renderer.connect();
+    update = () => {
+      enhancement?.abort();
+      const { text, streaming = false } = handle.props;
+      // Words delegates Copy at the host. Adopt the SSR subtree, including a
+      // disclosure the reader may already have opened, until the text changes.
+      if (!adopt || streaming)
+        renderer.update(wordsSource(text, streaming), streaming, streaming);
+      adopt = false;
+      if (!streaming) {
+        enhancement = new AbortController();
+        void enhanceDiagrams(node, text, enhancement.signal);
+      }
+    };
     update();
     signal.addEventListener(
       "abort",
       () => {
-        renderer?.disconnect();
-        renderer = undefined;
+        enhancement?.abort();
+        renderer.disconnect();
+        update = undefined;
       },
       { once: true },
     );
@@ -129,22 +183,28 @@ export function Markdown(
   let previousStreaming: boolean | undefined;
   return () => {
     const { text, streaming = false } = handle.props;
-    if (renderer && (text !== previousText || streaming !== previousStreaming))
-      handle.queueTask(update);
+    if (update && (text !== previousText || streaming !== previousStreaming))
+      handle.queueTask(() => update?.());
     previousText = text;
     previousStreaming = streaming;
-    // Remix assigns innerHTML even while hydrating. Only supply it on the
-    // server; Words adopts those children and owns them until unmount.
+    // Remix assigns innerHTML during hydration; leave the adopted subtree alone.
+    const html =
+      typeof document === "undefined"
+        ? markdownHtml(text, streaming)
+        : undefined;
     return (
       <div
         data-markdown="root"
-        data-streaming={streaming ? "" : undefined}
-        mix={[prose, host]}
-        innerHTML={
-          typeof document === "undefined"
-            ? unsafeHTML(markdownHtml(text, streaming))
+        data-mermaid-fences={
+          html && !streaming && /data-language="mermaid"/i.test(html)
+            ? openMermaidFence(text)
+              ? "open-tail"
+              : "closed"
             : undefined
         }
+        data-streaming={streaming ? "" : undefined}
+        mix={[prose, diagramStyles, host]}
+        innerHTML={html !== undefined ? unsafeHTML(html) : undefined}
       />
     );
   };

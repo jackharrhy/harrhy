@@ -1,3 +1,4 @@
+import { deviceCookie } from "./device-cookie.ts";
 import { cacheHitRate } from "../../../pi/src/runtime/conversation-stats.ts";
 import { startSnapshotBranding, type Branding } from "../pi/branding.ts";
 import { ownerSessions } from "../pi/session-wire.ts";
@@ -87,23 +88,12 @@ export async function readSnapshot(
       headers["sec-fetch-dest"] !== "document")
   )
     return;
-  // Forward only the native device-cookie slot. Pi verifies signature, expiry, revocation and remote authority.
-  const cookieKey = `p2_owner_${port}=`;
-  const cookies = headers.cookie
-    ?.split(";")
-    .map((part) => part.trim())
-    .filter((part) => part.startsWith(cookieKey));
-  if (
-    cookies?.length !== 1 ||
-    !/^[a-f0-9]{32}\.\d{1,16}\.[a-f0-9]{64}$/.test(
-      cookies[0].slice(cookieKey.length),
-    )
-  )
-    return;
+  const cookie = deviceCookie(port, headers.cookie);
+  if (!cookie) return;
   const signal = AbortSignal.any([disconnected, AbortSignal.timeout(1800)]);
   const upstream: Record<string, string> = {
     Host: ownerHost,
-    Cookie: cookies[0],
+    Cookie: cookie,
     "x-p2-proxy-secret": "clank-preview",
   };
   for (const name of metadata)

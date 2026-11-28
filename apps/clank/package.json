@@ -5,18 +5,21 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:owner": "node scripts/build-owner.mjs",
-    "dev:owner": "node --watch-path=app --watch-path=scripts/build-owner.mjs --watch-path=../../packages/ui scripts/build-owner.mjs --serve",
+    "dev:owner": "node --watch-path=app --watch-path=scripts/build-owner.mjs --watch-path=../../packages/ui --watch-path=../../packages/diagrams scripts/build-owner.mjs --serve",
     "start:owner": "node .celld/owner/server.mjs",
     "check": "npm run build && npm run build:owner && node --test __tests__/*.test.ts",
+    "check:diagram-browser": "node __tests__/markdown-diagrams-browser.ts",
     "check:owner-browser": "node --import ../pi/src/source.ts __tests__/owner-browser.ts",
     "check:fixture": "node __tests__/live-fixture.mjs"
   },
   "dependencies": {
     "@harrhy/board": "workspace:*",
+    "@harrhy/diagrams": "workspace:*",
     "@harrhy/ui": "workspace:*",
     "@pierre/highlights": "0.5.1",
     "@pierre/words": "0.3.0",
     "capnweb": "0.13.0",
+    "parse5": "8.1.1",
     "remix": "3.2.0",
     "ws": "8.21.0"
   },

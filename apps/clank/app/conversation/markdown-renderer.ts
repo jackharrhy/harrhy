@@ -1,5 +1,6 @@
 import pierreDark from "@pierre/highlights/themes/pierre-dark";
 import pierreLight from "@pierre/highlights/themes/pierre-light";
+import { createHtmlSession } from "@pierre/words";
 import { createHighlightsPlugin } from "@pierre/words/highlights";
 import { createHtmlRenderer, type HtmlOptions } from "@pierre/words/html";
 
@@ -64,7 +65,7 @@ export const markdownOptions: HtmlOptions = {
           isIncomplete ||
           code.length > 20_000 ||
           /[^\r\n]{2001}/.test(code) ||
-          language.toLowerCase() === "ansi"
+          /^(ansi|mermaid)$/i.test(language)
         )
           return null;
         return pierre.highlight(options);
@@ -73,13 +74,29 @@ export const markdownOptions: HtmlOptions = {
   },
 };
 
+// Words marks the open tail in its incremental parse, but not in its settled
+// formatted HTML. Ask the parser rather than guessing at nested/tilde fences.
+export function openMermaidFence(text: string): boolean {
+  const { pending } = createHtmlSession().render(text, {
+    incomplete: true,
+    math: false,
+    allowedHtml: {},
+  });
+  return /<pre data-markdown-incomplete><code class="language-mermaid">/i.test(
+    pending,
+  );
+}
+
 // Words completes **bold as soon as there is a letter. If a delta ends on
 // the opener itself, hold those one or two ambiguous characters for one tick.
 // Settlement always receives the original, even when the stars were literal.
 export function wordsSource(text: string, streaming: boolean): string {
-  return streaming && text.endsWith("*")
-    ? text.replace(/(^|[\s([{])\*{1,2}$/, "$1")
-    : text;
+  if (!streaming || !text.endsWith("*")) return text;
+  const held = text.replace(/(^|[\s([{])\*{1,2}$/, "$1");
+  // A trailing star in a diagram is source, not an emphasis opener.
+  return held !== text && /mermaid/i.test(text) && openMermaidFence(text)
+    ? text
+    : held;
 }
 
 export function markdownHtml(text: string, streaming: boolean): string {

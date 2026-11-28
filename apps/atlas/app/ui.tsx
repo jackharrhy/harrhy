@@ -1,3 +1,4 @@
+import { diagramStyles } from "@harrhy/diagrams/presentation";
 import { space as spacing } from "@harrhy/ui/styles";
 import {
   annotationTitle,
@@ -85,21 +86,6 @@ const documentStyles = css({
     border: "1px solid var(--hui-border)",
     lineHeight: 1.6,
     tabSize: 2,
-  },
-  "& .atlas-diagram": { marginBlock: spacing(3), overflowX: "auto" },
-  "& .atlas-diagram > svg": {
-    display: "block",
-    maxWidth: "100%",
-    height: "auto",
-    font: "16px sans-serif",
-    "--_bg": "var(--hui-surface)",
-    "--_fg": "var(--hui-ink)",
-    "--_m": "var(--hui-ink)",
-    "--_l": "var(--hui-ink)",
-    "--_s": "var(--hui-surface)",
-    "--_a": "var(--hui-selected-surface)",
-    "--_b": "var(--hui-border)",
-    "--_c": "var(--hui-ink)",
   },
   "& .atlas-table": {
     width: "100%",
@@ -704,7 +690,11 @@ export function article(
             {"\n"}
           </>
         )}
-        <div data-atlas-markdown innerHTML={unsafeHTML(enhanced)} />
+        <div
+          data-atlas-markdown
+          mix={diagramStyles}
+          innerHTML={unsafeHTML(enhanced)}
+        />
       </div>
       {widgets.map((widget) => (
         <script
