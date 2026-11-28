@@ -23,8 +23,7 @@ const prose = css({
     justifySelf: "center",
     // Pele paints node shapes and arrowheads separately. Leave labels and lines in theme ink.
     "& > *": {
-      "--_s": "var(--clank-diagram-node, var(--hui-selected-surface))",
-      "--_a": "var(--_s)",
+      "--_s": "var(--hui-selected-surface)",
       "--_b": "var(--hui-muted)",
     },
   },
