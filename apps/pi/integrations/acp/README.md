@@ -7,7 +7,9 @@ For a disposable Pi instance only, install `acp` as a real directory in its plug
 - `HARRHY_PI_ACP_AGY`: absolute path to the Antigravity CLI executable.
 - `HARRHY_PI_ACP_WORKSPACE`: absolute path to an approved disposable workspace. The session must be local and in exactly that workspace.
 
-Neither setting is a credential. Restarting to change startup environment is separate from reloading code. No key or login token goes in Pi settings. Prompts and any gathered context go to Google. Denying ACP permission requests is not a sandbox; do not use this prototype in a service account or home with production data. A task waits for a single reply, with a two-minute deadline. It is not resumable.
+For a session-scoped trial instead, the operator can put `trial.json` in the installed plugin directory with `command` and `workspace` set to absolute paths and `session` set to the one permitted Pi session ID. It takes precedence over the environment and is read for each call. Remove the file to end the trial (unless the startup environment also enables ACP). Do not commit it or put credentials in it.
+
+Antigravity owns sign-in. Prompts and any gathered context go to Google. This plugin adds no sandbox: denying ACP permission requests does not limit the CLI's own filesystem access. Use a disposable workspace unless the operator has explicitly accepted that access for the trial. A task waits for a single reply, with a two-minute deadline. It is not resumable.
 
 ```js
 text(await tools.acp_task({ prompt: "Without reading or writing files, reply with ACP OK." }));
