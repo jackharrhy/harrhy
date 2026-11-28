@@ -80,17 +80,11 @@ export async function runAcp(options: {
 	prompt: string;
 	signal: AbortSignal;
 	adapter?: AcpSessionAdapter;
-	onText?: (chunk: string) => void;
-	timeoutMs?: number;
-	// A trusted launcher can watch fd 3 for EOF when the worker dies. It must own cleanup of its group.
-	parentLease?: true;
 }): Promise<string> {
-	const { command, args, cwd, prompt, signal, adapter, onText, parentLease, timeoutMs = TURN_TIMEOUT_MS } = options;
+	const { command, args, cwd, prompt, signal, adapter } = options;
 	const aborted = () => new DOMException("ACP run was cancelled.", "AbortError");
 	if (signal.aborted) throw aborted();
-	if (!Number.isFinite(timeoutMs) || timeoutMs <= 0) throw new Error("ACP run timed out.");
 	if (!isAbsolute(cwd)) throw new Error("ACP working directory must be absolute.");
-	if (parentLease && process.platform === "win32") throw new Error("Leased ACP launch requires POSIX process groups.");
 	const env: NodeJS.ProcessEnv = {};
 	for (const key of ["PATH", "HOME"]) {
 		if (process.env[key] !== undefined) env[key] = process.env[key];
@@ -102,7 +96,7 @@ export async function runAcp(options: {
 			env,
 			shell: false,
 			detached: process.platform !== "win32",
-			stdio: parentLease ? ["pipe", "pipe", "ignore", "pipe"] : ["pipe", "pipe", "ignore"],
+			stdio: ["pipe", "pipe", "ignore"],
 		});
 	} catch {
 		throw new Error("Could not start ACP agent.");
@@ -121,7 +115,7 @@ export async function runAcp(options: {
 	};
 	const onAbort = () => interrupt(aborted());
 	signal.addEventListener("abort", onAbort, { once: true });
-	const deadline = setTimeout(() => interrupt(new Error("ACP run timed out.")), timeoutMs);
+	const deadline = setTimeout(() => interrupt(new Error("ACP run timed out.")), TURN_TIMEOUT_MS);
 	child.on("error", () => interrupt(new Error("Could not start or stop ACP agent.")));
 	stdin.on("error", () => interrupt(new Error("Could not write to ACP agent.")));
 	const reader = frames(stdout);
@@ -179,7 +173,6 @@ export async function runAcp(options: {
 						textBytes += Buffer.byteLength(content.text);
 						if (textBytes > MAX_TEXT_BYTES) throw new Error("ACP assistant text exceeded the output limit.");
 						text += content.text;
-						onText?.(content.text);
 					}
 				}
 				continue;
@@ -233,13 +226,11 @@ export async function runAcp(options: {
 				signalAgent(child, "SIGTERM");
 				stopped = await waitForExit(exited);
 			}
-			// The leased guard kills its own group on exit. Do not signal a reaped guard's old group again.
-			if (!stopped || !parentLease) signalAgent(child, "SIGKILL");
+			signalAgent(child, "SIGKILL");
 			if (!stopped && !(await waitForExit(exited))) child.unref();
 		} finally {
 			stdout.destroy();
 			stdin.destroy();
-			child.stdio[3]?.destroy();
 			void reader.return(undefined).catch(() => {});
 		}
 	}

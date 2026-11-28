@@ -1,8 +1,8 @@
 # ACP delegation (experimental)
 
-This optional p2 plugin gives agents one foreground `acp_task` tool for Antigravity (`agy acp`) and Cursor (`agent acp`). See the [design note](DESIGN.md) for the scope and what remains before it can replace a detached Cursor run.
+This optional p2 plugin gives agents one foreground `acp_task` tool for Antigravity (`agy acp`) and Cursor (`agent acp`). See the [design note](DESIGN.md) for mode and access details.
 
-Install `acp` as a real directory in the Pi plugin root using `cp -RL` from this checkout. This copies the shared runtime into the installed plugin rather than leaving a link to source. The plugin has no npm dependencies. Use a trusted installation of Google's official Antigravity CLI that supports `agy acp` (`agy acp --help`). [Sign in outside Pi](https://antigravity.google/docs/cli/acp/) under the same test account and home. Set the test server's startup environment:
+Install `acp` as a real directory in the Pi plugin root. The plugin has no npm dependencies. Use a trusted installation of Google's official Antigravity CLI that supports `agy acp` (`agy acp --help`). [Sign in outside Pi](https://antigravity.google/docs/cli/acp/) under the same test account and home. Set the test server's startup environment:
 
 - `HARRHY_PI_ACP_AGY`: absolute path to the Antigravity CLI executable.
 - `HARRHY_PI_ACP_WORKSPACE`: absolute path to an approved disposable workspace. The session must be local and in exactly that workspace.

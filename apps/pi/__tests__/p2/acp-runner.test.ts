@@ -6,8 +6,8 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
-import { cursorAcpSession } from "../../integrations/cursor/acp-runtime/cursor.ts";
-import { runAcp } from "../../integrations/cursor/acp-runtime/runner.ts";
+import { cursorAcpSession } from "../../integrations/acp/runtime/cursor.ts";
+import { runAcp } from "../../integrations/acp/runtime/runner.ts";
 
 const fixture = fileURLToPath(new URL("./fixtures/acp-agent.ts", import.meta.url));
 const options = {
@@ -24,21 +24,18 @@ test("ACP collects only its session's assistant text, denies permissions, and do
 	assert.equal(await run(), "hello from ACP");
 });
 
-function runCursor(scenario: string, onText?: (chunk: string) => void, model?: string) {
+function runCursor(scenario: string, model?: string) {
 	return runAcp({
 		...options,
 		args: [fixture, "cursor", scenario],
 		signal: new AbortController().signal,
 		adapter: cursorAcpSession(scenario === "agent" ? "agent" : scenario === "plan" ? "plan" : "ask", model),
-		onText,
 	});
 }
 
 test("Cursor ACP negotiates advertised read-only modes and rejects tool and interactive approvals over the common transport", async () => {
 	for (const mode of ["ask", "plan"]) {
-		const chunks: string[] = [];
-		assert.equal(await runCursor(mode, (chunk) => chunks.push(chunk)), "hello from Cursor ACP");
-		assert.deepEqual(chunks, ["hello ", "from Cursor ACP"]);
+		assert.equal(await runCursor(mode), "hello from Cursor ACP");
 	}
 });
 
@@ -47,8 +44,8 @@ test("Cursor ACP agent mode grants one-time native tool requests", async () => {
 });
 
 test("Cursor ACP selects the advertised Composer variant and rejects unknown models", async () => {
-	assert.equal(await runCursor("composer", undefined, "composer-2.5"), "hello from Cursor ACP");
-	await assert.rejects(runCursor("composer", undefined, "missing-model"), /did not advertise an unambiguous match/);
+	assert.equal(await runCursor("composer", "composer-2.5"), "hello from Cursor ACP");
+	await assert.rejects(runCursor("composer", "missing-model"), /did not advertise an unambiguous match/);
 });
 
 test("Cursor ACP fails closed on missing authentication, an unconfirmed read-only mode, a mode change or ambiguous permissions", async () => {

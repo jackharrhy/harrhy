@@ -72,12 +72,7 @@ test("Settings › Cursor clears the write-only key and saves owner choices", { 
 	await browser.wait(`${model}?.value === 'composer-2' && !${total}.disabled`);
 	await choose("Runs at once, all sessions", "3");
 	const capsSaved = `${total}?.value === '3' && ${perSession}?.value === '3'`;
-	const sandbox = select("Sandbox local agents");
-	await browser.wait(`${capsSaved} && !${sandbox}.disabled`);
-	await choose("Sandbox local agents", "required");
-	await browser.wait(`${sandbox}?.value === 'required' && !${sandbox}.disabled`);
-	await browser.wait(`document.body.textContent.includes('New local runs use unsandboxed Cursor ACP. Required blocks them.')`);
-	assert.equal(await browser.evaluate(`Array.from(document.querySelectorAll('button')).some((button) => button.textContent.trim() === 'Check sandbox')`), false);
+	await browser.wait(capsSaved);
 	await type("Repository", "not a repo");
 	await clickText("Allow");
 	await browser.wait(`document.querySelector('[role=alert]')?.textContent.includes('owner/name')`);
@@ -87,7 +82,7 @@ test("Settings › Cursor clears the write-only key and saves owner choices", { 
 	const reopened = await openCursor();
 	await reopened.wait(keyStored);
 	assert.equal(await reopened.evaluate(`document.body.innerHTML.includes(${JSON.stringify(KEY)})`), false, "the key is not rehydrated");
-	await reopened.wait(`${model}?.value === 'composer-2' && ${capsSaved} && ${sandbox}?.value === 'required'`);
+	await reopened.wait(`${model}?.value === 'composer-2' && ${capsSaved}`);
 	await clickText("Remove", reopened);
 	await reopened.wait(`document.body.textContent.includes('None yet')`);
 });

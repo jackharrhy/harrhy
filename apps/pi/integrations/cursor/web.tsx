@@ -1,4 +1,4 @@
-// Settings › Cursor (owner): the API key (write-only), the default model and runtime, the repositories cloud agents may use,
+// Settings › Cursor (owner): the API key (write-only), the default model, the repositories cloud agents may use,
 // and whether agents may change files.
 import { BACKGROUND_CONTEXT, contribute, defineFacet } from "@p2/app/v1";
 import {
@@ -23,15 +23,10 @@ function CursorSheet() {
 	const keyStored = useReadable(settings?.keyStored);
 	const keyFromEnv = useReadable(settings?.keyFromEnv);
 	const model = useReadable(settings?.model);
-	const runtime = useReadable(settings?.runtime);
 	const repos = useReadable(settings?.repos);
-	const allowLocalEdits = useReadable(settings?.allowLocalEdits);
 	const allowCloudEdits = useReadable(settings?.allowCloudEdits);
-	const sandbox = useReadable(settings?.sandbox);
-	const autoResume = useReadable(settings?.autoResume);
 	const maxRuns = useReadable(settings?.maxRuns);
 	const maxPerSession = useReadable(settings?.maxPerSession);
-	const survival = useReadable(settings?.workerSurvival);
 	const [key, setKey] = useState("");
 	const [repo, setRepo] = useState("");
 	const [models, setModels] = useState<Models>([]);
@@ -52,7 +47,7 @@ function CursorSheet() {
 		? "A key is stored. It is never shown again."
 		: keyFromEnv
 			? "No key stored: using CURSOR_API_KEY from the Pi server's environment."
-			: "No key yet: cloud Cursor and legacy SDK recovery need a key. Local ACP uses Cursor CLI sign-in.";
+			: "No key yet. Add a Cursor API key to run cloud agents.";
 	return (
 		<Sheet title="Cursor" onClose={closeLayers}>
 			<p className="muted small">
@@ -127,7 +122,7 @@ function CursorSheet() {
 						value={chosenModel}
 						disabled={busy || !settings}
 						onChange={(event) =>
-							run(() => settings?.setDefaults({ model: event.target.value, runtime: runtime ?? "local" }, BACKGROUND_CONTEXT) ?? Promise.resolve())
+							run(() => settings?.setDefaults({ model: event.target.value }, BACKGROUND_CONTEXT) ?? Promise.resolve())
 						}
 					>
 						<option value="">Use Cursor default</option>
@@ -154,27 +149,6 @@ function CursorSheet() {
 						Load models
 					</button>
 				</div>
-				<label className="field">
-					<span className="label">Runtime</span>
-					<select
-						className="input"
-						aria-label="Default runtime"
-						value={runtime ?? "local"}
-						disabled={busy || !settings}
-						onChange={(event) =>
-							run(
-								() =>
-									settings?.setDefaults(
-										{ model: chosenModel, runtime: event.target.value === "cloud" ? "cloud" : "local" },
-										BACKGROUND_CONTEXT,
-									) ?? Promise.resolve(),
-							)
-						}
-					>
-						<option value="local">Local: on this machine</option>
-						<option value="cloud">Cloud: a Cursor VM</option>
-					</select>
-				</label>
 			</div>
 			<div className="list">
 				<span className="label">Allowed repositories (cloud agents)</span>
@@ -226,33 +200,6 @@ function CursorSheet() {
 			<div className="list">
 				<span className="label">Changing files</span>
 				<Switch
-					label="Allow local agents to edit files"
-					checked={allowLocalEdits ?? false}
-					disabled={busy || !settings}
-					onChange={(allow) => run(() => settings?.setAllowLocalEdits({ allow }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
-				/>
-				<p className="muted small">
-					Off: Pi requests ask or plan mode from the Cursor CLI. On: agent mode can also use unsandboxed shell and file tools.
-				</p>
-				<label className="field">
-					<span className="label">Sandbox local agents</span>
-					<select
-						className="input"
-						aria-label="Sandbox local agents"
-						value={sandbox ?? "when-possible"}
-						disabled={busy || !settings}
-						onChange={(event) => {
-							const mode = event.target.value === "required" ? "required" : event.target.value === "off" ? "off" : "when-possible";
-							run(() => settings?.setSandbox({ mode }, BACKGROUND_CONTEXT) ?? Promise.resolve());
-						}}
-					>
-						<option value="when-possible">When possible</option>
-						<option value="required">Required</option>
-						<option value="off">Off</option>
-					</select>
-				</label>
-				<p className="muted small">New local runs use unsandboxed Cursor ACP. Required blocks them. The SDK sandbox applies only when resuming older SDK runs.</p>
-				<Switch
 					label="Allow cloud agents to change repositories"
 					checked={allowCloudEdits ?? false}
 					disabled={busy || !settings}
@@ -288,28 +235,6 @@ function CursorSheet() {
 				<p className="muted small">
 					More than this many runs are refused with a message saying so. A session cannot have more than the total. At most 12.
 				</p>
-			</div>
-			<div className="list">
-				<span className="label">Interrupted runs</span>
-				<Switch
-					label="Auto-resume interrupted runs"
-					checked={autoResume ?? false}
-					disabled={busy || !settings}
-					onChange={(allow) => run(() => settings?.setAutoResume({ allow }, BACKGROUND_CONTEXT) ?? Promise.resolve())}
-				/>
-				<p className="muted small">
-					Off: an interrupted run waits for the agent to call cursor_resume. On: Pi resumes it by itself, at most twice per run,
-					telling the Cursor agent what interrupted it.
-				</p>
-				<output className="muted small" aria-label="Worker survival">
-					Detached workers:{" "}
-					{survival?.status === "survives"
-						? "outlived the last Pi stop"
-						: survival?.status === "killed"
-							? "were killed at the last Pi stop"
-							: "not observed yet"}
-					{survival?.detail ? `. ${survival.detail}` : ""}
-				</output>
 			</div>
 			{error && (
 				<p className="notice error" role="alert">
