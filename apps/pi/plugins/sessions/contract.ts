@@ -90,8 +90,17 @@ export const CreateSchema = obj({
 /** A session ID: a UUID, chosen by the server or by the client (so a page can navigate before the answer). */
 export const SessionIdSchema = str({ pattern: "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$" });
 
+const SessionSlugSchema = str({
+	maxLength: 64,
+	pattern: "^(?![0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$)[a-z0-9]+(?:-[a-z0-9]+)*(?![\\s\\S])",
+});
+const AssignSlug = obj({ id: SessionIdSchema, slug: SessionSlugSchema });
+const OwnerSessionSchema = obj({ ...propertiesOf(SessionSchema), slug: opt(SessionSlugSchema) });
+export type OwnerSession = Static<typeof OwnerSessionSchema>;
+
 /** `Sessions.create` from version 6: `id`, the new session's ID chosen by the caller (default a new one). */
 export const CreateArgsSchema = obj({ ...propertiesOf(CreateSchema), id: opt(SessionIdSchema) });
+const OwnerCreateArgs = obj({ ...propertiesOf(CreateArgsSchema), slug: opt(SessionSlugSchema) });
 
 /** A lifecycle operation: what runs as a job after its method answered. */
 export const OperationKindSchema = union([literal("relocate"), literal("clone"), literal("fork"), literal("archive")]);
@@ -225,7 +234,13 @@ const CatalogV5 = evolve(CatalogV4, (e) =>
 );
 
 /** Full discovery candidates, independent of the bounded sidebar projection. */
-export const Catalog = evolve(CatalogV5, (e) => e.addMethod("openIds", obj({}), arr(str())));
+const CatalogV6 = evolve(CatalogV5, (e) => e.addMethod("openIds", obj({}), arr(str())));
+
+export const Catalog = evolve(CatalogV6, (e) =>
+	e.state("sessions", arr(OwnerSessionSchema))
+		.method("create", obj({ ...propertiesOf(CatalogCreate), slug: opt(SessionSlugSchema) }), OwnerSessionSchema)
+		.addMethod("assignSlug", AssignSlug, nul()),
+);
 
 
 /**
@@ -360,7 +375,15 @@ const SessionsV7 = evolve(SessionsV6, (e) =>
 );
 
 /** 8: stable owner-controlled names. Agents report separate activity and cannot rename sessions. */
-export const Sessions = evolve(SessionsV7, (e) => e.removeMethod("renameSelf"));
+export const SessionsV8 = evolve(SessionsV7, (e) => e.removeMethod("renameSelf"));
+
+/** 9: an explicitly claimed URL slug on owner rows only. */
+export const Sessions = evolve(SessionsV8, (e) =>
+	e.state("owner", "sessions", arr(OwnerSessionSchema))
+		.args("create", OwnerCreateArgs)
+		.result("create", OwnerSessionSchema)
+		.addMethod("owner", "assignSlug", AssignSlug, nul()),
+);
 
 const Location = obj({ id: str(), cwd: str({ minLength: 1 }), env: union([str(), nul()]) });
 
@@ -369,7 +392,7 @@ const Location = obj({ id: str(), cwd: str({ minLength: 1 }), env: union([str(),
  * persist): each lifecycle method answers once its visible effect committed and runs the rest as a job (`operations`). `move` is the agent's
  * relocation (`SessionMoves`): it waits for the job and answers why a busy worker refused (nothing recorded).
  */
-export const SessionOperations = local("p2.session-operations", {
+const SessionOperationsV1 = local("p2.session-operations", {
 	version: 1,
 	params: {},
 	members: {
@@ -392,6 +415,10 @@ export const SessionOperations = local("p2.session-operations", {
 		dismiss: method(obj({ operation: str() })),
 	},
 });
+
+export const SessionOperations = evolve(SessionOperationsV1, (e) =>
+	e.method("create", OwnerCreateArgs, OwnerSessionSchema),
+);
 
 /**
  * Moving a session to another location (server, host-internal): `Sessions.relocate` for the owner, and the locations

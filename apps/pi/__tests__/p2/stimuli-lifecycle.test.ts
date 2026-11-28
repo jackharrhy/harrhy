@@ -210,6 +210,9 @@ it("recovers interrupted native admissions across restart and grant changes", { 
 							throw new Error("unused");
 						},
 						activity: async () => null,
+						assignSlug: async () => {
+							throw new Error("unused");
+						},
 						update: async () => {
 							throw new Error("unused");
 						},

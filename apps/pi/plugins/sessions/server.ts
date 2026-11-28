@@ -16,6 +16,7 @@ import {
 	defineJob,
 	defineState,
 	deriveTyped,
+	eq,
 	forbidden,
 	PluginError,
 	query,
@@ -46,6 +47,7 @@ import {
 	CATALOG_WINDOW,
 	type SessionRow,
 	SessionRows,
+	SessionSlugs,
 	sessionOf,
 	updateRow,
 } from "./catalog.ts";
@@ -55,6 +57,7 @@ import {
 	isThinkingLevel,
 	MAX_TITLE,
 	type Operation,
+	type OwnerSession,
 	OperationSchema,
 	type Session,
 	SessionArchived,
@@ -68,32 +71,41 @@ import { copySessionDirectory, removeSessionCopy } from "./copy.ts";
 import { serveLocks } from "./locks.ts";
 import { serveSidebarSettings } from "./sidebar-settings.ts";
 
+/** Strip owner-only metadata before serving a guest, worker, or earlier contract. */
+function withoutSlug(row: OwnerSession): Session {
+	if (row.slug === undefined) return row;
+	const { slug: _slug, ...session } = row;
+	return session;
+}
+const publicSessions = mapShared(withoutSlug);
+
 /** A row as `Sessions` v5 and v6 and `Catalog` v4 consumers read it: branches without their `parent`. */
 function sessionV5(row: Session) {
-	return { ...row, branches: row.branches.map(({ conversation, label }) => ({ conversation, label })) };
+	return { ...withoutSlug(row), branches: row.branches.map(({ conversation, label }) => ({ conversation, label })) };
 }
 
 /** A row as `Sessions` v4 and `Catalog` v3 consumers read it: a null branch label is the session title, no `parent`. */
 function sessionV4(row: Session) {
 	return {
-		...row,
+		...withoutSlug(row),
 		branches: row.branches.map(({ conversation, label }) => ({ conversation, label: label ?? row.title })),
 	};
 }
 
 /** A row as `Sessions` v3 and `Catalog` v2 consumers read it: before `/tree`, without `main` and `branches`. */
-function sessionV3({ main: _main, branches: _branches, ...row }: Session) {
+function sessionV3({ main: _main, branches: _branches, slug: _slug, ...row }: OwnerSession) {
 	return row;
 }
 
 /** Catalog consumers built before its current version (a server plugin not reloaded yet) read rows mapped back. */
 const CATALOG_ACCEPTS: AcceptsTable<typeof Catalog> = {
-	5: {},
+	6: { state: { sessions: publicSessions }, methods: { create: { args: (old) => old, result: withoutSlug } } },
+	5: { state: { sessions: publicSessions }, methods: { create: { args: (old) => old, result: withoutSlug } } },
 	2: {
 		state: { sessions: (rows) => rows.map(sessionV3) },
 		methods: {
 			get: { result: sessionV3 },
-			create: { result: sessionV3 },
+			create: { args: (old) => old, result: sessionV3 },
 			// Older arguments are a subset of the current ones.
 			update: { args: (old) => old, result: sessionV3 },
 		},
@@ -102,7 +114,7 @@ const CATALOG_ACCEPTS: AcceptsTable<typeof Catalog> = {
 		state: { sessions: (rows) => rows.map(sessionV4) },
 		methods: {
 			get: { result: sessionV4 },
-			create: { result: sessionV4 },
+			create: { args: (old) => old, result: sessionV4 },
 			update: { args: (old) => old, result: sessionV4 },
 		},
 	},
@@ -110,7 +122,7 @@ const CATALOG_ACCEPTS: AcceptsTable<typeof Catalog> = {
 		state: { sessions: (rows) => rows.map(sessionV5) },
 		methods: {
 			get: { result: sessionV5 },
-			create: { result: sessionV5 },
+			create: { args: (old) => old, result: sessionV5 },
 			update: { args: (old) => old, result: sessionV5 },
 		},
 	},
@@ -167,13 +179,20 @@ const SESSIONS_ACCEPTS: AcceptsTable<typeof Sessions> = {
 		state: stateAs(sessionV5),
 		methods: {
 			renameSelf: "refuse",
-			create: { result: sessionV5 },
+			create: { ...SAME_ARGS, result: sessionV5 },
 			clone: { result: sessionV5 },
 			fork: { result: sessionV5 },
 			treeSelf: SAME_ARGS,
 		},
 	},
-	7: { methods: { renameSelf: "refuse" } },
+	7: {
+		state: { owner: { sessions: publicSessions } },
+		methods: { renameSelf: "refuse", create: { ...SAME_ARGS, result: withoutSlug } },
+	},
+	8: {
+		state: { owner: { sessions: publicSessions } },
+		methods: { create: { ...SAME_ARGS, result: withoutSlug } },
+	},
 };
 
 const cleanTitle = (title: string): string => title.replace(/\s+/g, " ").trim();
@@ -303,7 +322,19 @@ export default defineFacet((host) => {
 			const table = self.table(SessionRows);
 			const admission = sessionAdmissionOf(self);
 			const rows = self.query(table, BY_ACTIVITY, CATALOG_WINDOW);
+			const claims = self.table(SessionSlugs);
+			// Claims have a different sort order from the catalog window; do not truncate them to that window.
+			const slugRows = self.query(claims, query(SessionSlugs), Number.MAX_SAFE_INTEGER - 1);
+			const slugById = deriveTyped(self, [slugRows], ([value]) =>
+				Object.fromEntries(value.map(({ session, slug }) => [session.params.id, slug])),
+			);
 			const toSession = mapShared(sessionOf);
+			const claim = async (tx: Tx, key: { session: ReturnType<typeof SessionHost> }, slug: string) => {
+				const matching = query(SessionSlugs).where((row) => eq(row.slug, slug));
+				if ((await tx.page(claims, matching, 1)).items.length !== 0)
+					throw new PluginError("session_slug_taken", "Session URL slug is already reserved");
+				tx.put(claims, { ...key, slug });
+			};
 			const read = async (id: string, ctx: Ctx): Promise<Session> => {
 				const row = await table.get({ session: SessionHost({ id }) }, ctx);
 				if (row === undefined) throw new PluginError("session_not_found", "Session not found");
@@ -316,14 +347,21 @@ export default defineFacet((host) => {
 						if (row.archivedAt === undefined) ids.push(row.session.params.id);
 					return ids;
 				},
-				sessions: deriveTyped(self, [rows], ([value]) => toSession(value)),
+				sessions: deriveTyped(self, [rows, slugById], ([value, slugs]): OwnerSession[] =>
+					toSession(value).map((row) => Object.hasOwn(slugs, row.id) ? { ...row, slug: slugs[row.id] } : row),
+				),
 				get: async ({ id }, ctx) => read(id, ctx),
 				create: async (input, ctx) => {
 					const id = input.id ?? randomUUID();
 					const now = Date.now();
 					const row = await self.tx(async (tx) => {
 						const key = { session: SessionHost({ id }) };
-						if ((await tx.get(table, key)) !== undefined) throw new Error("Session already exists");
+						const existing = await tx.get(table, key);
+						if (existing !== undefined) {
+							if (input.slug !== undefined && (await tx.get(claims, key))?.slug === input.slug) return existing;
+							throw new Error("Session already exists");
+						}
+						if (input.slug !== undefined) await claim(tx, key, input.slug);
 						const created: SessionRow = {
 							session: key.session,
 							cwd: input.cwd,
@@ -341,7 +379,7 @@ export default defineFacet((host) => {
 						tx.put(table, created);
 						return created;
 					}, ctx);
-					return sessionOf(row);
+					return { ...sessionOf(row), ...(input.slug === undefined ? {} : { slug: input.slug }) };
 				},
 				activity: async ({ id, timestamp, firstUserText }, ctx) => {
 					const title = automaticTitle(firstUserText);
@@ -356,6 +394,18 @@ export default defineFacet((host) => {
 					}, ctx);
 					return null;
 				},
+				assignSlug: ({ id, slug }, ctx) =>
+					self.tx(async (tx) => {
+						const key = { session: SessionHost({ id }) };
+						const row = await tx.get(table, key);
+						if (row === undefined) throw new PluginError("session_not_found", "Session not found");
+						const existing = await tx.get(claims, key);
+						if (existing?.slug === slug) return null;
+						if (existing !== undefined)
+							throw new PluginError("session_slug_immutable", "Session already has a URL slug");
+						await claim(tx, key, slug);
+						return null;
+					}, ctx),
 				update: async ({ id, ...change }, ctx) => {
 					const commit = () => self.tx((tx) => updateRow(tx, table, id, change, Date.now()), ctx);
 					return sessionOf(await (change.archived === true ? admission().mutate(id, commit, ctx) : commit()));
@@ -672,10 +722,14 @@ export default defineFacet((host) => {
 		};
 		return {
 			operations,
-			create: async ({ id, env, cwd, createDirectory, title, model, thinkingLevel }, ctx) => {
+			create: async ({ id, slug, env, cwd, createDirectory, title, model, thinkingLevel }, ctx) => {
 				// A chosen ID already in the catalog is a retry of the same request (its answer was lost).
 				const existing = id === undefined ? undefined : catalog.sessions.value.find((row) => row.id === id);
-				if (existing) return existing;
+				if (existing) {
+					if (slug === undefined) return withoutSlug(existing);
+					if (existing.slug === slug) return existing;
+					throw new Error("Session already exists");
+				}
 				if (env) cwd = await envs().manager.workingDirectory(env, cwd, createDirectory);
 				else {
 					cwd = expandHome(cwd);
@@ -693,6 +747,7 @@ export default defineFacet((host) => {
 				return catalog.create(
 					{
 						...(id === undefined ? {} : { id }),
+						...(slug === undefined ? {} : { slug }),
 						cwd,
 						env: env ?? null,
 						title: cleanTitle(title ?? "").slice(0, 100) || "New session",
@@ -752,7 +807,7 @@ export default defineFacet((host) => {
 				return null;
 			},
 		};
-	});
+	}, { accepts: { 1: { methods: { create: { ...SAME_ARGS, result: withoutSlug } } } } });
 
 	host.serve(SessionMoves, (_params, self) => {
 		const operations = self.get(SessionOperations, {});
@@ -765,7 +820,7 @@ export default defineFacet((host) => {
 		const catalog = self.get(Catalog, {});
 		return {
 			byId: deriveTyped(self, [catalog.sessions], ([sessions]) =>
-				Object.fromEntries(sessions.map((row) => [row.id, row])),
+				Object.fromEntries(publicSessions(sessions).map((row) => [row.id, row])),
 			),
 		};
 	});
@@ -805,7 +860,7 @@ export default defineFacet((host) => {
 			if (isGuest(principal)) {
 				const shared = principal.sessions;
 				const sessionsView = deriveTyped(self, [catalog.sessions], ([sessions]) =>
-					sessions.filter((s) => Object.hasOwn(shared, s.id) && s.archivedAt === null),
+					publicSessions(sessions.filter((s) => Object.hasOwn(shared, s.id) && s.archivedAt === null)),
 				);
 				return { variant: "guest", members: { sessions: sessionsView } };
 			}
@@ -828,6 +883,7 @@ export default defineFacet((host) => {
 					defaultCwd,
 					defaultEnv,
 					operations: lifecycle.operations,
+					assignSlug: (args, ctx) => catalog.assignSlug(args, ctx),
 					create: (args, ctx) => lifecycle.create(args, ctx),
 					relocate: (target, ctx) => lifecycle.relocate(target, ctx),
 					clone: ({ id, copy }, ctx) => lifecycle.clone({ id, copy: copy ?? randomUUID() }, ctx),
