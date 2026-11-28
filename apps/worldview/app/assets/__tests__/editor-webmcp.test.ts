@@ -23,7 +23,8 @@ it("registers the existing catalog and keeps schema, identity, revision, and con
     replaceMapSource,
   } as unknown as EditorActions);
   expect(dataset.teaMapsSiteTools).toBe("ready");
-  expect(tools.size).toBe(21);
+  expect(tools.size).toBe(20);
+  expect(tools.has("tea_maps_open_project_map")).toBe(false);
   const replace = tools.get("tea_maps_replace_map_source")!;
   expect(replace.annotations).toEqual({
     readOnlyHint: false,

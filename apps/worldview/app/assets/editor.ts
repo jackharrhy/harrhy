@@ -1,3 +1,4 @@
+import type { MapProject } from "./editor-project.ts";
 import {
   applyCollaborationOperation,
   COLLABORATION_SCHEMA_VERSION,
@@ -106,8 +107,6 @@ import { createBuildOverlays } from "./editor-build-overlays.ts";
 import { initEditorMaterialBrowser } from "./editor-material-browser.ts";
 import { createTextureUvEditor } from "./editor-uv.ts";
 import { initSourceComparison } from "./editor-source-compare.ts";
-import { initProjectSyncDialog } from "./editor-project-sync-dialog.ts";
-import { initProjectMapSelector } from "./editor-project-map-selector.ts";
 import { registerEditorWebMcpTools } from "./editor-webmcp.ts";
 import { initEditorPerformance } from "./editor-performance.ts";
 import { initHostedPresence } from "./editor-hosted-presence.ts";
@@ -138,23 +137,7 @@ import {
   writeMapFile,
   type MapFileHandle,
 } from "./editor-files.ts";
-import {
-  openMapProject,
-  pickProjectDirectory,
-  supportsProjectPicker,
-  type MapDirectoryHandle,
-  type MapProject,
-} from "./editor-project.ts";
-import {
-  recentProject,
-  rememberRecentProject,
-  rememberRecentProjectMap,
-} from "./editor-recent-projects.ts";
-import type { OpenRecentProjectRequest } from "./editor-recent-projects-panel.tsx";
-import {
-  openProjectBuildBindings,
-  type ProjectBuildBindings,
-} from "./editor-project-build-bindings.ts";
+import type { ProjectBuildBindings } from "./editor-project-build-bindings.ts";
 import { initHostedSourceDialog } from "./editor-hosted-source-dialog.ts";
 import { createEditorClipboard } from "./editor-clipboard.ts";
 import {
@@ -335,7 +318,7 @@ const historyControls = initEditorHistory({
   undo: () => void runHistoryAction("undo"),
   redo: () => void runHistoryAction("redo"),
 });
-const projectContext = initEditorProjectContext(openProjectMap, {
+const projectContext = initEditorProjectContext({
   addWads: importStandaloneWads,
   setPalette: importStandalonePalette,
   clearResources: clearStandaloneResources,
@@ -456,7 +439,6 @@ const documentControls = initEditorDocumentControls({
   exampleMap: exampleMapFromControls,
   openPicker: openPickerFromControls,
   openFile: (file) => openMapFile(file, null),
-  openProject: openProjectFromControls,
   save: saveCurrentMap,
   exportNormalized: exportNormalizedMap,
   checkpoint: createCheckpointFromControls,
@@ -508,7 +490,6 @@ function setMapName(name: string) {
   );
 }
 let documentId: string = crypto.randomUUID();
-let projectRecoveryScope: string = crypto.randomUUID();
 let project: MapProject | null = null;
 let hostedResources: HostedEditorResources | null = null;
 let hostedResourceGeneration = 0;
@@ -561,8 +542,6 @@ let latestBuildExport: {
   readonly name: string;
   readonly game: MapsGameProfile;
 } | null = null;
-let activeProjectPath: string | null = null;
-let activeRecentProjectId: string | null = null;
 let hostedMap: HostedMapLaunch | null = null;
 let hostedConnection: HostedEditorConnection | null = null;
 let hostedConnectionState:
@@ -575,15 +554,6 @@ let hostedGeneration = 0;
 let remoteParticipants: readonly CollaborationPresence[] = [];
 let hostedControls: ReturnType<typeof initHostedEditor> | null = null;
 let hostedBuildControls: ReturnType<typeof initHostedBuilds> | null = null;
-let projectSyncControls: ReturnType<typeof initProjectSyncDialog> | null = null;
-const projectMapSelector = initProjectMapSelector({
-  openMap(path) {
-    void openProjectMap(path);
-  },
-  openSync() {
-    projectSyncControls?.open();
-  },
-});
 let hostedSourceControls: ReturnType<typeof initHostedSourceDialog> | null =
   null;
 let inspectedEntityId: EntityId | null = null;
@@ -1412,7 +1382,6 @@ function setProject(value: MapProject | null) {
   buildControls.exportStatus = "";
   refreshBuildExport();
   project = value;
-  projectSyncControls?.setProject(value);
   if (activeGame() !== previousGame) {
     buildGeneration += 1;
     clearCompiledPreview();
@@ -1431,14 +1400,7 @@ function setProject(value: MapProject | null) {
   });
   refreshResourceCatalog();
   publishStandaloneResources();
-  if (value) return;
-  projectMapSelector.hide();
-  activeProjectPath = null;
-  activeRecentProjectId = null;
   projectContext.update({
-    projectName: null,
-    paths: [],
-    selectedPath: "",
     resourceInfo: "",
     diagnostics: [],
   });
@@ -4127,156 +4089,6 @@ async function openPickerFromControls() {
   }
 }
 
-async function openProjectDirectory(
-  directory: MapDirectoryHandle,
-  recentId?: string,
-  lastMapPath?: string,
-) {
-  const opened = await openMapProject(directory);
-  const bindings = await openProjectBuildBindings(directory).catch(() => null);
-  if (!(await mayReplaceMap())) return;
-  persistDraft();
-  leaveHostedMap();
-  openedFile = null;
-  openedFingerprint = null;
-  setMapName("tea-map.map");
-  documentId = crypto.randomUUID();
-  savedSource = emptySource;
-  setProject(opened);
-  setMap(createEmptyDocument());
-  projectBindings = bindings;
-  projectRecoveryScope = bindings?.scopeId ?? crypto.randomUUID();
-  loadCurrentExportSettings();
-  activeProjectPath = null;
-  projectContext.update({
-    projectName: opened.manifest.name,
-    paths: opened.maps.map((entry) => entry.path),
-    selectedPath: "",
-  });
-  activeRecentProjectId =
-    (
-      await rememberRecentProject(directory, opened.manifest.name).catch(
-        () => null,
-      )
-    )?.id ??
-    recentId ??
-    null;
-  status.textContent = `${opened.manifest.name}: ${opened.maps.length} maps${bindings ? "" : " · build profile choices will not be remembered"}`;
-  projectMapSelector.show(opened.manifest.name, opened.maps, lastMapPath);
-}
-
-async function openRecentProject(id: string, requestPermission: boolean) {
-  const current = await recentProject(id);
-  if (!current) throw new Error("This recent project is unavailable");
-  const permission =
-    (await current.handle.queryPermission?.({ mode: "readwrite" })) ??
-    "granted";
-  if (permission !== "granted") {
-    if (!requestPermission)
-      throw new Error("Choose Recent projects to grant folder permission");
-    const granted = await current.handle.requestPermission?.({
-      mode: "readwrite",
-    });
-    if (granted !== "granted")
-      throw new Error("Project folder permission was not granted");
-  }
-  await openProjectDirectory(current.handle, current.id, current.lastMapPath);
-}
-
-window.addEventListener("tea-maps-open-recent-project", (event) => {
-  const request = (event as CustomEvent<OpenRecentProjectRequest>).detail;
-  event.preventDefault();
-  void openRecentProject(request.id, true).then(
-    request.resolve,
-    request.reject,
-  );
-});
-
-async function openProjectFromControls() {
-  if (!supportsProjectPicker()) {
-    status.textContent =
-      "This browser cannot open project folders; open a .map file instead";
-    return;
-  }
-  try {
-    const directory = await pickProjectDirectory();
-    if (directory) await openProjectDirectory(directory);
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") return;
-    status.textContent = error instanceof Error ? error.message : String(error);
-  }
-}
-
-async function openProjectMap(
-  path: string,
-  siteTool?: {
-    readonly expectedDocumentId: string;
-    readonly expectedRevision: number;
-    readonly discardUnsavedChanges: boolean;
-    readonly signal: AbortSignal;
-  },
-) {
-  const previous = activeProjectPath ?? "";
-  const entry = project?.maps.find((projectMap) => projectMap.path === path);
-  if (!entry) {
-    projectContext.update({ selectedPath: previous });
-    if (siteTool) throw new Error(`Unknown project map ${path}`);
-    return false;
-  }
-  if (path === activeProjectPath) return true;
-  try {
-    const file = await entry.handle.getFile();
-    const text = await file.text();
-    const parsed = parseMapSource(text);
-    const document = parsed.document;
-    if (siteTool)
-      await checkSiteToolReplacement(
-        siteTool.expectedDocumentId,
-        siteTool.expectedRevision,
-        siteTool.discardUnsavedChanges,
-      );
-    else if (!(await mayReplaceMap())) {
-      projectContext.update({ selectedPath: previous });
-      return false;
-    }
-    siteTool?.signal.throwIfAborted();
-    persistDraft();
-    leaveHostedMap();
-    const identity = `project:${projectRecoveryScope}:${path}`;
-    const diskSource = serializeMap(document);
-    const recovery = siteTool
-      ? null
-      : await newerLocalRecovery(identity, file, diskSource);
-    if (recovery) {
-      openRecoveredLocalCopy(recovery, entry.handle.name);
-      return true;
-    }
-    openedFile = entry.handle;
-    openedFingerprint = mapSourceFingerprint(text);
-    setMapName(entry.handle.name);
-    savedSource = diskSource;
-    activeProjectPath = path;
-    documentId = identity;
-    setMap(document, parsed.source);
-    projectContext.update({ selectedPath: path });
-    projectMapSelector.hide();
-    if (activeRecentProjectId)
-      void rememberRecentProjectMap(activeRecentProjectId, path).catch(
-        () => {},
-      );
-    if (siteTool) {
-      persistDraft();
-      await saveQueue;
-    }
-    return true;
-  } catch (error) {
-    projectContext.update({ selectedPath: previous });
-    status.textContent = error instanceof Error ? error.message : String(error);
-    if (siteTool) throw error;
-    return false;
-  }
-}
-
 async function exportLatestBuild(settings: ExportSettings): Promise<void> {
   const latest = latestBuildExport;
   if (!latest || !isBuildExportCurrent(latest)) {
@@ -4742,27 +4554,6 @@ buildControls.update({ profileDisabled: false });
 loadCurrentExportSettings();
 setHostedEditability();
 const sourceComparison = initSourceComparison();
-projectSyncControls = initProjectSyncDialog({
-  linked(updated) {
-    project = updated;
-    status.textContent = `Linked ${updated.manifest.hosted?.maps.length ?? 0} project maps`;
-  },
-  canSync(path) {
-    return path === activeProjectPath && hasUnsavedChanges()
-      ? "Save or discard open editor changes before syncing this map"
-      : null;
-  },
-  pulled(path, text) {
-    if (path !== activeProjectPath) return;
-    const parsed = parseMapSource(text);
-    const document = parsed.document;
-    openedFingerprint = mapSourceFingerprint(text);
-    savedSource = serializeMap(document);
-    setMap(document, parsed.source);
-    status.textContent = `Pulled ${path} from the hosted map`;
-  },
-});
-projectSyncControls.setProject(project);
 hostedBuildControls = initHostedBuilds({
   map: () => hostedMap,
   onUpdate(build, durationHint) {
@@ -4841,14 +4632,6 @@ hostedSourceControls = initHostedSourceDialog({
   },
 });
 
-const launchRecentProject = new URL(location.href).searchParams.get(
-  "recentProject",
-);
-if (launchRecentProject)
-  void openRecentProject(launchRecentProject, false).catch((error: unknown) => {
-    status.textContent = error instanceof Error ? error.message : String(error);
-  });
-
 const detachedMapUrl = new URL(location.href);
 const launchDetachedMap = detachedMapUrl.searchParams.get("detachedMap");
 if (launchDetachedMap)
@@ -4906,7 +4689,6 @@ void registerEditorWebMcpTools(
     workingSource: source.value,
     sourceState: mapSourceState,
     dirty: hasUnsavedChanges(),
-    project,
     hostedMap,
     renderer,
     materials: currentMaterials(),
@@ -4929,21 +4711,6 @@ void registerEditorWebMcpTools(
       signal.throwIfAborted();
       if (hostedMap) await hostedConnection![action]();
       else session[action]();
-    },
-    async openProjectMap(
-      path,
-      discardUnsavedChanges,
-      expectedDocumentId,
-      expectedRevision,
-      signal,
-    ) {
-      signal.throwIfAborted();
-      await openProjectMap(path, {
-        expectedDocumentId,
-        expectedRevision,
-        discardUnsavedChanges,
-        signal,
-      });
     },
     async replaceMapSource(
       text,

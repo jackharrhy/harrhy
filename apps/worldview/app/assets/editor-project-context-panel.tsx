@@ -20,44 +20,6 @@ function subscribeProjectContext(
   });
 }
 
-export const EditorProjectContextPanel = clientEntry(
-  `file:///app/assets/editor-project-context-panel.tsx#EditorProjectContextPanel`,
-  function EditorProjectContextPanelComponent(handle: Handle) {
-    let context: EditorProjectContext | null = null;
-
-    subscribeProjectContext(handle, (next) => {
-      context = next;
-      handle.update();
-    });
-
-    return () => {
-      const state = context?.state;
-      return (
-        <div mix={css({ display: "contents" })}>
-          <label for="project-maps">Project maps</label>
-          <select
-            id="project-maps"
-            disabled={!state?.projectName || state.paths.length === 0}
-            value={state?.selectedPath ?? ""}
-            mix={on<HTMLSelectElement>("change", (event) => {
-              const path = event.currentTarget.value;
-              if (path) void context?.openMap(path);
-            })}
-          >
-            <option value="">
-              {state?.projectName
-                ? `${state.projectName} · choose a map`
-                : "No project open"}
-            </option>
-            {state?.paths.map((path) => (
-              <option value={path}>{path}</option>
-            ))}
-          </select>
-        </div>
-      );
-    };
-  },
-);
 
 export const EditorProjectResourcesPanel = clientEntry(
   `file:///app/assets/editor-project-context-panel.tsx#EditorProjectResourcesPanel`,
