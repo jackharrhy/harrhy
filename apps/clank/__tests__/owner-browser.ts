@@ -609,35 +609,138 @@ try {
     .getByRole("button", { name: /ran a command.*Show the steps/i })
     .waitFor({ timeout: 15000 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  // Native faux `json <text>` streams the exact answer. Finish the formatted
+  // blocks first, then keep emitting deltas so a settled render cannot pass.
   const markdown = [
     "**Strong receipt** and [Pi docs](https://example.com/pi).",
-    "[Unsafe destination](javascript:alert%281%29) and <img src=x onerror=alert(1)>.",
-    "```text",
-    "retained code fence",
-    "```",
+    "[Unsafe destination](javascript:void%200)",
+    `![Fixture media](${origin}/fixture-media.png) <button>Raw fixture control</button>`,
+    "```js\nconst answer = 42;\n```",
+    "Still writing. ".repeat(250) + "End of fixture answer.",
   ].join("\n\n");
+  // In the response-body case inspect parsed elements, not matching strings in
+  // the serialized session seed. Return only diagnostic labels, never the HTML.
+  function receiptProblem(scope: Element, html?: string) {
+    const root =
+      html === undefined
+        ? scope
+        : new DOMParser()
+            .parseFromString(html, "text/html")
+            .querySelector('[aria-label="Transcript"]');
+    if (!root) return "missing transcript";
+    const has = (selector: string, label: string) =>
+      [...root.querySelectorAll(selector)].some(
+        (node) => node.textContent.trim() === label,
+      );
+    if (!has("strong", "Strong receipt")) return "missing strong";
+    if (!has('a[href="https://example.com/pi"]', "Pi docs"))
+      return "missing safe link";
+    if (
+      !has("pre code", "const answer = 42;") ||
+      !has("pre code span[style]", "42")
+    )
+      return "missing highlighted code block";
+    if (
+      root.querySelector('a[href^="javascript:" i]') ||
+      has("a[href]", "Unsafe destination")
+    )
+      return "active unsafe link";
+    if (root.querySelector("img") || has("button", "Raw fixture control"))
+      return "active media or raw HTML";
+    return null;
+  }
   const transcript = page.getByLabel("Transcript");
+  const liveText = transcript.locator("[data-streaming]");
+  const strong = transcript
+    .locator("strong")
+    .filter({ hasText: /^Strong receipt$/ });
+  const markerWatch = await transcript.evaluateHandle((node) => {
+    let sawMarkers = false;
+    const watch = new MutationObserver(() => {
+      const live = node.querySelector<HTMLElement>("[data-streaming]");
+      if (live?.innerText.includes("**")) sawMarkers = true;
+    });
+    watch.observe(node, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["data-streaming"],
+    });
+    return () => {
+      watch.disconnect();
+      return sawMarkers;
+    };
+  });
   await message.fill(`json ${markdown}`);
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  await transcript
+  const liveStrong = liveText
     .locator("strong")
-    .getByText("Strong receipt", { exact: true })
+    .filter({ hasText: /^Strong receipt$/ });
+  await liveText.getByRole("link", { name: "Pi docs", exact: true }).waitFor();
+  await liveText
+    .locator("pre code")
+    .filter({ hasText: "const answer = 42;" })
     .waitFor();
+  await liveStrong.waitFor();
+  assert.equal(await liveText.evaluate(receiptProblem), null);
+  const prefix = await liveStrong.evaluateHandle((node) => ({
+    host: node.closest("[data-streaming]")!,
+    strong: node,
+  }));
+  assert(
+    await prefix.evaluate(
+      ({ host }) =>
+        host.isConnected &&
+        !host.textContent.includes("End of fixture answer."),
+    ),
+    "sample must precede the final delta",
+  );
+  const shots = process.env.HARRHY_CLANK_WORDS_SCREENSHOT_DIR;
+  if (shots) {
+    await liveStrong.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: join(shots, "words-streaming.png") });
+    assert(
+      await prefix.evaluate(({ host }) => host.hasAttribute("data-streaming")),
+    );
+  }
+  await liveText.waitFor({ state: "detached", timeout: 15000 });
   assert.equal(
-    await transcript
-      .getByRole("link", { name: "Pi docs" })
-      .getAttribute("href"),
-    "https://example.com/pi",
+    await markerWatch.evaluate((stop) => stop()),
+    false,
+    "visible ** while streaming",
+  );
+  await markerWatch.dispose();
+  assert(
+    await strong.evaluate(
+      (node, { host, strong }) =>
+        node === strong &&
+        host.contains(node) &&
+        host.textContent.includes("End of fixture answer."),
+      prefix,
+    ),
+    "settling replaced the live host or formatted prefix",
   );
   assert.equal(
-    await transcript.getByRole("link", { name: "Unsafe destination" }).count(),
-    0,
+    await prefix.evaluate(({ host }) => host.textContent.includes("**")),
+    false,
   );
-  assert.equal(await transcript.locator("img").count(), 0);
+  await prefix.dispose();
+  assert.equal(await transcript.evaluate(receiptProblem), null);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin,
+  });
   await transcript
-    .locator("code")
-    .filter({ hasText: "retained code fence" })
-    .waitFor();
+    .getByRole("button", { name: "Copy code", exact: true })
+    .click();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    "const answer = 42;\n",
+  );
+  if (shots) {
+    await strong.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: join(shots, "words-settled.png") });
+  }
   const jump = page.getByRole("button", { name: "Jump to latest" });
   const atLatest = () =>
     page.waitForFunction(() => {
@@ -677,14 +780,18 @@ try {
   await atLatest();
   assert(await transcript.evaluate((node) => node === document.activeElement));
   await message.fill(
-    [`json ${quoted}`, "", "Ordinary text after the quote."].join(
-      String.fromCharCode(10),
-    ),
+    [
+      `json ${quoted}`,
+      ">",
+      "> Quoted fixture line.",
+      "",
+      "Ordinary text after the quote.",
+    ].join(String.fromCharCode(10)),
   );
   await message.press("Enter");
   await transcript
     .locator("blockquote")
-    .getByText(/sender kind="external"/)
+    .filter({ hasText: "Quoted fixture line." })
     .waitFor();
   await transcript
     .getByText("Ordinary text after the quote.", { exact: true })
@@ -1499,6 +1606,11 @@ try {
     0,
   );
   const html = await signedIn.text();
+  assert.equal(
+    await staticPage.getByLabel("Transcript").evaluate(receiptProblem, html),
+    null,
+    "raw response markup",
+  );
   const direct = await staticPage.goto(`${origin}/session/${session.id}`);
   assert.equal(direct?.status(), 200);
   await staticPage.getByText("Strong receipt", { exact: true }).waitFor();
@@ -1563,10 +1675,25 @@ try {
   });
   await hydrated.goto(origin, { waitUntil: "commit" });
   await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
+  const hydratedTranscript = hydrated.getByLabel("Transcript");
+  assert.equal(
+    await hydratedTranscript.evaluate(receiptProblem),
+    null,
+    "bundle held",
+  );
+  const ssrStrong = await hydratedTranscript
+    .locator("strong")
+    .filter({ hasText: /^Strong receipt$/ })
+    .evaluateHandle((node) => node);
   const ssrGeometry = await geometry();
   console.log("SSR geometry", JSON.stringify(ssrGeometry));
   script.resolve();
   await checkStarted.promise;
+  assert.equal(
+    await hydratedTranscript.evaluate(receiptProblem),
+    null,
+    "hydrated, owner check held",
+  );
   const hydratedGeometry = await geometry();
   assert.deepEqual(hydratedGeometry.boxes, ssrGeometry.boxes);
   check.resolve();
@@ -1594,7 +1721,16 @@ try {
     (liveGeometry.shifts ?? []).reduce((sum, shift) => sum + shift, 0) < 0.01,
   );
   console.log("Live geometry", JSON.stringify(liveGeometry));
-  const hydratedTranscript = hydrated.getByLabel("Transcript");
+  assert.equal(
+    await hydratedTranscript.evaluate(receiptProblem),
+    null,
+    "connected",
+  );
+  assert(
+    await ssrStrong.evaluate((node) => node.isConnected),
+    "SSR strong node replaced during hydration or live connection",
+  );
+  await ssrStrong.dispose();
   const hydratedJump = hydrated.getByRole("button", { name: "Jump to latest" });
   await hydratedTranscript.evaluate((node) => {
     node.scrollTop = 0;

@@ -233,6 +233,12 @@ type Props = {
 };
 export function Conversation(handle: Handle<Props>) {
   let feed: ChatFeed | undefined;
+  // Settlement appends pi.assistant and clears generation in one Durable view.
+  // Carry only its render key across that boundary, never the partial's body.
+  let inFlight:
+    | { attempt: string; key: string; at: number; tail: number }
+    | undefined;
+  let settledKeys = new Map<number, string>();
   let animateActivity = false;
   let disconnected = false;
   let draft = "";
@@ -420,29 +426,25 @@ export function Conversation(handle: Handle<Props>) {
         const previous = parts.at(-1);
         if (previous?.kind === "activity") previous.endedAt = message.timestamp;
       }
+      const lastText = streaming
+        ? -1
+        : message.content.findLastIndex(
+            (item) => item.type === "text" && Boolean(item.text.trim()),
+          );
       for (const [i, part] of message.content.entries()) {
         const partKey = key + ":" + i;
         if (part.type === "text" && part.text.trim()) {
           body(
             partKey,
-            streaming ? (
-              <p data-streaming mix={plain}>
-                {part.text}
-              </p>
-            ) : (
-              <>
-                <Markdown text={part.text} />
-                {i ===
-                  message.content.findLastIndex(
-                    (item) => item.type === "text" && Boolean(item.text.trim()),
-                  ) && (
-                  <MessageActions
-                    text={textOf(message.content)}
-                    at={message.timestamp}
-                  />
-                )}
-              </>
-            ),
+            <>
+              <Markdown text={part.text} streaming={streaming} />
+              {i === lastText && (
+                <MessageActions
+                  text={textOf(message.content)}
+                  at={message.timestamp}
+                />
+              )}
+            </>,
             streaming ? undefined : message.timestamp,
           );
         } else if (part.type === "thinking" && part.thinking.trim()) {
@@ -486,6 +488,8 @@ export function Conversation(handle: Handle<Props>) {
         }
       }
     };
+    const retainedKeys = new Map<number, string>();
+    if (inFlight && (view?.before ?? 0) > inFlight.tail) inFlight = undefined;
     for (const entry of view?.entries ?? []) {
       const input = structuredAttribution(entry.kind, entry.data);
       if (input)
@@ -515,8 +519,22 @@ export function Conversation(handle: Handle<Props>) {
         );
       for (const [i, message] of (entry.model ?? []).entries()) {
         const key = "entry:" + entry.id + ":" + i;
-        if (message.role === "assistant") assistant(message, false, key);
-        else if (message.role === "user" && !input)
+        if (message.role === "assistant") {
+          let responseKey = i === 0 ? settledKeys.get(entry.id) : undefined;
+          // Match the first new provider result, not the last entry: the same
+          // commit can also append a continuation or the next run's input.
+          if (
+            inFlight &&
+            entry.id > inFlight.tail &&
+            entry.kind === "pi.assistant" &&
+            i === 0
+          ) {
+            if (message.timestamp === inFlight.at) responseKey = inFlight.key;
+            inFlight = undefined;
+          }
+          if (responseKey) retainedKeys.set(entry.id, responseKey);
+          assistant(message, false, responseKey ?? key);
+        } else if (message.role === "user" && !input)
           body(
             key,
             <TranscriptInput
@@ -546,7 +564,24 @@ export function Conversation(handle: Handle<Props>) {
         }
       }
     }
-    if (partial) assistant(partial, true, "live:" + partial.timestamp);
+    settledKeys = retainedKeys;
+    if (partial) {
+      const tail = view?.entries.at(-1)?.id ?? view?.before ?? 0;
+      const attempt = `${live?.run?.taskId}:${live?.generation?.attempt}:${partial.timestamp}`;
+      if (inFlight?.attempt !== attempt) {
+        inFlight = {
+          attempt,
+          key: `response:${attempt}:${tail}`,
+          at: partial.timestamp,
+          tail,
+        };
+      } else {
+        inFlight.tail = tail;
+      }
+      assistant(partial, true, inFlight.key);
+    } else {
+      inFlight = undefined;
+    }
     if (live?.run && parts.at(-1)?.kind !== "activity" && !partial)
       parts.push({ kind: "activity", key: "waiting", steps: [] });
     return (
