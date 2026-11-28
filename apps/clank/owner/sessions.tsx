@@ -348,6 +348,19 @@ export const OwnerSessions = clientEntry(
     let branch: number | undefined;
     let agentId: number | undefined;
     const expanded = new Set<string>();
+    let sidebarList: HTMLUListElement | undefined;
+    const sidebarListRef = ref<HTMLUListElement>((node) => {
+      sidebarList = node;
+    });
+    function toggleSubagents(id: string, button: HTMLButtonElement) {
+      if (expanded.delete(id)) {
+        const list = button.ownerDocument.getElementById(`agents-${id}`);
+        if (list?.contains(button.ownerDocument.activeElement)) button.focus();
+      } else {
+        expanded.add(id);
+      }
+      void handle.update();
+    }
     async function open(id: string, child?: number, from?: HTMLButtonElement) {
       const row = (
         view.kind === "ready" ? view.catalog.rows : cached?.rows
@@ -633,6 +646,24 @@ export const OwnerSessions = clientEntry(
       );
     });
     return () => {
+      const doc = sidebarList?.ownerDocument;
+      const focused = doc?.activeElement;
+      if (
+        doc &&
+        focused instanceof HTMLElement &&
+        sidebarList?.contains(focused)
+      ) {
+        // A keyed row survives a move, but moving it can drop DOM focus.
+        handle.queueTask(() => {
+          if (
+            doc.activeElement === doc.body &&
+            focused.isConnected &&
+            focused.getClientRects().length
+          ) {
+            focused.focus({ preventScroll: true });
+          }
+        });
+      }
       const live = view.kind === "ready" ? view.catalog : undefined;
       const catalog = live ?? cached;
       const selected = catalog?.rows.find((item) => item.id === selectedId);
@@ -805,13 +836,16 @@ export const OwnerSessions = clientEntry(
               )}
               {catalog && (
                 <ul
-                  mix={css({
-                    listStyle: "none",
-                    margin: 0,
-                    padding: "6px 6px",
-                    display: "grid",
-                    gap: "2px",
-                  })}
+                  mix={[
+                    sidebarListRef,
+                    css({
+                      listStyle: "none",
+                      margin: 0,
+                      padding: "6px 6px",
+                      display: "grid",
+                      gap: "2px",
+                    }),
+                  ]}
                 >
                   {sidebarRows.flatMap((row) => {
                     if (row) {
@@ -861,11 +895,12 @@ export const OwnerSessions = clientEntry(
                                 mix={[
                                   iconAction,
                                   css({ color: "var(--hui-muted)" }),
-                                  on("click", () => {
-                                    if (isOpen) expanded.delete(row.id);
-                                    else expanded.add(row.id);
-                                    void handle.update();
-                                  }),
+                                  on("click", (event) =>
+                                    toggleSubagents(
+                                      row.id,
+                                      event.currentTarget,
+                                    ),
+                                  ),
                                 ]}
                               >
                                 <Icon name={isOpen ? "down" : "right"} />
@@ -879,11 +914,27 @@ export const OwnerSessions = clientEntry(
                             <ul
                               id={listId}
                               hidden={!isOpen}
-                              mix={css({
-                                listStyle: "none",
-                                margin: "4px 0",
-                                paddingInlineStart: "24px",
-                              })}
+                              mix={[
+                                css({
+                                  listStyle: "none",
+                                  margin: "4px 0",
+                                  paddingInlineStart: "24px",
+                                }),
+                                on("keydown", (event) => {
+                                  if (
+                                    event.key !== "Escape" ||
+                                    event.defaultPrevented
+                                  )
+                                    return;
+                                  const button =
+                                    event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(
+                                      "button[aria-controls]",
+                                    );
+                                  if (!button) return;
+                                  event.preventDefault();
+                                  toggleSubagents(row.id, button);
+                                }),
+                              ]}
                             >
                               {agents.map((child) => (
                                 <li key={child.conversationId}>

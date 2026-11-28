@@ -496,6 +496,19 @@ try {
   assert.equal(await helper.isVisible(), false);
   await toggle.press("Enter");
   assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+  await page.keyboard.press("Tab");
+  assert(await helper.evaluate((node) => node === document.activeElement));
+  await page.keyboard.press("Escape");
+  await helper.waitFor({ state: "hidden" });
+  assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+  assert(await toggle.evaluate((node) => node === document.activeElement));
+  await page.keyboard.press("Tab");
+  assert(
+    await page
+      .getByRole("button", { name: "New session", exact: true })
+      .evaluate((node) => node === document.activeElement),
+  );
+  await toggle.press("Enter");
   await helper.press("Enter");
   await transcript.getByText("hello helper", { exact: true }).waitFor();
   assert.equal(
@@ -962,6 +975,33 @@ try {
       (node) => node.scrollHeight - node.scrollTop - node.clientHeight <= 2,
     ),
   );
+  const movingRow = hydrated.getByRole("button", {
+    name: "Age hours",
+    exact: true,
+  });
+  const rowIndex = (node: Element) => {
+    const row = node.closest("li")!;
+    return Array.from(row.parentElement!.children).indexOf(row);
+  };
+  const originalIndex = await movingRow.evaluate(rowIndex);
+  await movingRow.focus();
+  await fixture.server.host.root(async (ctx) => {
+    const catalog = await ctx.get(Catalog, {});
+    const row = catalog.sessions.value.find(
+      (item) => item.title === "Age hours",
+    );
+    assert(row);
+    await catalog.update({ id: row.id, cwd: fixture.workspace }, ctx);
+  }, TEST);
+  await hydrated.waitForFunction((original) => {
+    const row = [...document.querySelectorAll("#clank-sidebar li")].find(
+      (item) => item.querySelector("button")?.textContent === "Age hours",
+    );
+    return (
+      row && Array.from(row.parentElement!.children).indexOf(row) < original
+    );
+  }, originalIndex);
+  assert(await movingRow.evaluate((node) => node === document.activeElement));
   await hydrated.close();
   const startServer = (
     await import(new URL("src/hosts/server.ts", piRoot).href)
