@@ -29,8 +29,9 @@ const EVENTS_MAX = 1_000_000;
 const WRITING = /edit|write|delete|replace|patch/i;
 
 const startedAt = Date.now();
-let request: WorkerRequest | undefined;
-let handle: RunHandle | undefined;
+type WorkerHandle = Omit<RunHandle, "agentId" | "runId"> & Partial<Pick<RunHandle, "agentId" | "runId">>;
+type StartAgent = (request: WorkerRequest) => Promise<WorkerHandle>;
+let handle: WorkerHandle | undefined;
 let start = "";
 let state: WorkerStatus["state"] = "starting";
 let sandbox: WorkerStatus["sandbox"];
@@ -51,7 +52,8 @@ const status = (): WorkerStatus => ({
 	bootAt: Date.now() - Math.round(uptime() * 1000),
 	state,
 	heartbeatAt: Date.now(),
-	...(handle === undefined ? {} : { agentId: handle.agentId, cursorRunId: handle.runId }),
+	...(handle?.agentId === undefined ? {} : { agentId: handle.agentId }),
+	...(handle?.runId === undefined ? {} : { cursorRunId: handle.runId }),
 	...(sandbox === undefined ? {} : { sandbox }),
 	...(activity === undefined ? {} : { activity }),
 	files: [...files].slice(0, 50),
@@ -67,7 +69,7 @@ function record(event: RunEvent): void {
 	// State first, all at once: the order of events is the order of the stream.
 	let piece = "";
 	if (event.type === "text") {
-		// The SDK streams the answer as small deltas: they are joined as they come, with nothing between them (the text's own
+		// Backends stream the answer as small deltas: they are joined as they come, with nothing between them (the text's own
 		// line breaks are the only ones).
 		piece = safe(event.text).slice(0, Math.max(0, PARTIAL_MAX - partial.length));
 		partial += piece;
@@ -110,12 +112,9 @@ async function end(result: Pick<WorkerExit, "status"> & Partial<WorkerExit>, tex
 }
 
 const failed = (error: unknown) => end({ status: "failed", error: error instanceof Error ? error.message : String(error) }, partial);
-process.on("uncaughtException", (error) => void failed(error));
-process.on("unhandledRejection", (error) => void failed(error));
-process.on("SIGTERM", () => void end({ status: cancelRequested ? "cancelled" : "failed", error: "The worker was told to stop" }, partial));
 
-async function main(): Promise<void> {
-	request = await readJson<WorkerRequest>(join(directory, FILES.request));
+async function main(startAgent: StartAgent): Promise<void> {
+	const request = await readJson<WorkerRequest>(join(directory, FILES.request));
 	if (request === undefined) throw new Error("No request");
 	start = (await processStart(process.pid)) ?? "";
 	await writeStatus();
@@ -144,29 +143,7 @@ async function main(): Promise<void> {
 		}
 	}, pollMs);
 
-	const client = await sdkClient(key);
-	const base = {
-		runtime: "local" as const,
-		prompt: request.prompt,
-		model: request.model,
-		...(request.modelParams === undefined ? {} : { modelParams: request.modelParams }),
-		cwd: request.cwd,
-		mode: request.mode,
-		// A resumed run goes on with the Cursor agent an earlier worker made, and is told what happened.
-		...(request.resume === undefined ? {} : { resume: request.resume }),
-	};
-	if (request.mode === "agent") sandbox = request.sandbox ? "on" : request.sandboxMode === "off" ? "off" : "unavailable";
-	try {
-		handle = await client.start({ ...base, sandbox: request.sandbox });
-	} catch (error) {
-		const refused = error instanceof SandboxUnsupportedError || (error instanceof Error && isSandboxUnsupported(error.message));
-		if (!refused || !request.sandbox) throw error;
-		sandboxUnsupported = true;
-		if (request.sandboxMode === "required")
-			throw new Error("Local sandboxing is set to “required” in Settings › Cursor, but Cursor's SDK says it is not supported on this machine. Set it to “when possible” or “off”, or use a cloud run");
-		sandbox = "unavailable";
-		handle = await client.start({ ...base, sandbox: false });
-	}
+	handle = await startAgent(request);
 	handle.watch?.((event) => record(event));
 	state = "running";
 	await writeStatus();
@@ -190,4 +167,37 @@ async function main(): Promise<void> {
 	else await end({ status: "finished", ...common }, text);
 }
 
-main().catch((error: unknown) => void failed(error));
+async function startSdk(request: WorkerRequest): Promise<RunHandle> {
+	const client = await sdkClient(key);
+	const base = {
+		runtime: "local" as const,
+		prompt: request.prompt,
+		model: request.model,
+		...(request.modelParams === undefined ? {} : { modelParams: request.modelParams }),
+		cwd: request.cwd,
+		mode: request.mode,
+		// A resumed run goes on with the Cursor agent an earlier worker made, and is told what happened.
+		...(request.resume === undefined ? {} : { resume: request.resume }),
+	};
+	if (request.mode === "agent") sandbox = request.sandbox ? "on" : request.sandboxMode === "off" ? "off" : "unavailable";
+	try {
+		return await client.start({ ...base, sandbox: request.sandbox });
+	} catch (error) {
+		const refused = error instanceof SandboxUnsupportedError || (error instanceof Error && isSandboxUnsupported(error.message));
+		if (!refused || !request.sandbox) throw error;
+		sandboxUnsupported = true;
+		if (request.sandboxMode === "required")
+			throw new Error("Local sandboxing is set to “required” in Settings › Cursor, but Cursor's SDK says it is not supported on this machine. Set it to “when possible” or “off”, or use a cloud run");
+		sandbox = "unavailable";
+		return await client.start({ ...base, sandbox: false });
+	}
+}
+
+export function runAgentProcess(startAgent: StartAgent = startSdk): void {
+	process.on("uncaughtException", (error) => void failed(error));
+	process.on("unhandledRejection", (error) => void failed(error));
+	process.on("SIGTERM", () => void end({ status: cancelRequested ? "cancelled" : "failed", error: "The worker was told to stop" }, partial));
+	void main(startAgent).catch(failed);
+}
+
+if (import.meta.main) runAgentProcess();

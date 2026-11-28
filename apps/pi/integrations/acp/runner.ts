@@ -1,6 +1,6 @@
-import { spawn, type ChildProcess, type ChildProcessByStdio } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { isAbsolute } from "node:path";
-import type { Readable, Writable } from "node:stream";
+import type { Readable } from "node:stream";
 
 const TURN_TIMEOUT_MS = 120_000;
 const SHUTDOWN_GRACE_MS = 250;
@@ -80,27 +80,32 @@ export async function runAcp(options: {
 	signal: AbortSignal;
 	adapter?: AcpSessionAdapter;
 	onText?: (chunk: string) => void;
+	// A trusted launcher can watch fd 3 for EOF when the worker dies. It must own cleanup of its group.
+	parentLease?: true;
 }): Promise<string> {
-	const { command, args, cwd, prompt, signal, adapter, onText } = options;
+	const { command, args, cwd, prompt, signal, adapter, onText, parentLease } = options;
 	const aborted = () => new DOMException("ACP run was cancelled.", "AbortError");
 	if (signal.aborted) throw aborted();
 	if (!isAbsolute(cwd)) throw new Error("ACP working directory must be absolute.");
+	if (parentLease && process.platform === "win32") throw new Error("Leased ACP launch requires POSIX process groups.");
 	const env: NodeJS.ProcessEnv = {};
 	for (const key of ["PATH", "HOME"]) {
 		if (process.env[key] !== undefined) env[key] = process.env[key];
 	}
-	let child: ChildProcessByStdio<Writable, Readable, null>;
+	let child: ChildProcess;
 	try {
 		child = spawn(command, args, {
 			cwd,
 			env,
 			shell: false,
 			detached: process.platform !== "win32",
-			stdio: ["pipe", "pipe", "ignore"],
+			stdio: parentLease ? ["pipe", "pipe", "ignore", "pipe"] : ["pipe", "pipe", "ignore"],
 		});
 	} catch {
 		throw new Error("Could not start ACP agent.");
 	}
+	if (!child.stdin || !child.stdout) throw new Error("Could not open ACP agent pipes.");
+	const { stdin, stdout } = child;
 	const exited = new Promise<void>((resolve) => {
 		child.once("exit", () => resolve());
 		child.once("error", () => { if (!child.pid) resolve(); });
@@ -115,8 +120,8 @@ export async function runAcp(options: {
 	signal.addEventListener("abort", onAbort, { once: true });
 	const deadline = setTimeout(() => interrupt(new Error("ACP run timed out.")), TURN_TIMEOUT_MS);
 	child.on("error", () => interrupt(new Error("Could not start or stop ACP agent.")));
-	child.stdin.on("error", () => interrupt(new Error("Could not write to ACP agent.")));
-	const reader = frames(child.stdout);
+	stdin.on("error", () => interrupt(new Error("Could not write to ACP agent.")));
+	const reader = frames(stdout);
 
 	let sessionId: string | undefined;
 	let promptPending = false;
@@ -126,7 +131,7 @@ export async function runAcp(options: {
 
 	function send(message: JsonObject): Promise<void> {
 		return new Promise((resolve, reject) => {
-			child.stdin.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`, (error) => {
+			stdin.write(`${JSON.stringify({ jsonrpc: "2.0", ...message })}\n`, (error) => {
 				if (error) reject(new Error("Could not write to ACP agent."));
 				else resolve();
 			});
@@ -213,10 +218,10 @@ export async function runAcp(options: {
 	} finally {
 		clearTimeout(deadline);
 		signal.removeEventListener("abort", onAbort);
-		if (promptPending && child.stdin.writable) {
+		if (promptPending && stdin.writable) {
 			void send({ method: "session/cancel", params: { sessionId } }).catch(() => {});
 		}
-		child.stdin.end();
+		stdin.end();
 		try {
 			if (!(await waitForExit(exited))) {
 				signalAgent(child, "SIGTERM");
@@ -226,8 +231,9 @@ export async function runAcp(options: {
 			signalAgent(child, "SIGKILL");
 			if (!(await waitForExit(exited))) child.unref();
 		} finally {
-			child.stdout.destroy();
-			child.stdin.destroy();
+			stdout.destroy();
+			stdin.destroy();
+			child.stdio[3]?.destroy();
 			void reader.return(undefined).catch(() => {});
 		}
 	}

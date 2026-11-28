@@ -1,8 +1,8 @@
 // The Cursor integration against a fake `@cursor/sdk` package (fixtures/fake-cursor-sdk) in the fixture plugin's
 // node_modules and disposable real stores with the fake model: never touches Cursor, the network or a real credential.
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, it } from "node:test";
@@ -276,7 +276,7 @@ function walk(directory: string): string[] {
 	});
 }
 
-async function harness() {
+async function harness(backend: "sdk" | "fixture-acp" = "sdk") {
 	const fake = new World();
 	(globalThis as { __cursorFake?: unknown }).__cursorFake = fake.api();
 	process.env.CURSOR_FAKE_CONTROL = fake.control;
@@ -285,10 +285,17 @@ async function harness() {
 	for (const name of ["error", "log", "warn"] as const) console[name] = (...args: unknown[]) => void logged.push(args.map(String).join(" "));
 	const fixture = await startFixture({
 		integrations: ["cursor"],
-		prepare: (dataDir) =>
-			cpSync(join(APP, "__tests__/fixtures/fake-cursor-sdk"), join(userPluginsDirectory(dataDir), "cursor", "node_modules", "@cursor", "sdk"), {
-				recursive: true,
-			}),
+		prepare: (dataDir) => {
+			const plugin = join(userPluginsDirectory(dataDir), "cursor");
+			cpSync(join(APP, "__tests__/fixtures/fake-cursor-sdk"), join(plugin, "node_modules", "@cursor", "sdk"), { recursive: true });
+			if (backend === "fixture-acp") {
+				// Only this disposable installation substitutes the worker entrypoint. The server and its manager are unmodified.
+				const worker = join(plugin, "agent-process.ts");
+				renameSync(worker, join(plugin, "agent-process-core.ts"));
+				const adapter = join(APP, "__tests__/p2/fixtures/cursor-acp-worker.ts");
+				writeFileSync(worker, `import { runAgentProcess } from "./agent-process-core.ts";\nimport { startFixtureAcp } from ${JSON.stringify(adapter)};\nrunAgentProcess(startFixtureAcp);\n`);
+			}
+		},
 	});
 	let holds: { release(): void }[] = [];
 	let settings = await holdIn(fixture.browser(), CursorSettings, {}, "owner");
@@ -988,6 +995,88 @@ const noKeyAnywhere = (h: Awaited<ReturnType<typeof harness>>) => {
 	}
 	assert(!h.logged.join("\n").includes(KEY), "the key was logged");
 };
+
+function processEnded(pid: number): boolean {
+	if (!alive(pid)) return true;
+	// A dead child can be a zombie until the host/container init reaps it.
+	return /^Z/.test(spawnSync("ps", ["-o", "state=", "-p", String(pid)], { encoding: "utf8" }).stdout?.trim() ?? "");
+}
+
+async function startSyntheticAcp(h: Awaited<ReturnType<typeof harness>>, label: string) {
+	const session = await h.session(label);
+	const { runId } = await session.start({ timeoutMinutes: 20 });
+	const dir = join(h.fixture.dataDir, "cursor-runs", runId);
+	const result = () => session.runs.result({ id: runId }, TEST);
+	await poll(async () => (await result()).text === "synthetic partial", 5000, "ACP partial text");
+	const pids: number[] = [Number(readFileSync(join(dir, "acp-group"), "utf8")), ...JSON.parse(readFileSync(join(dir, "acp-processes"), "utf8"))];
+	assert.equal(pids.length, 3);
+	assert(pids.every((pid) => !processEnded(pid)), "launcher, agent and its descendant are running");
+	return { session, runId, dir, result, pids };
+}
+
+it("observes synthetic ACP partial text across a Pi restart, settles the same run and publishes one wake", { timeout: 60_000, skip: process.platform === "win32" }, async () => {
+	const h = await harness("fixture-acp");
+	await h.withKey();
+	const { session, runId, dir, result, pids } = await startSyntheticAcp(h, "ACP restart");
+	const worker = h.workerOf(runId);
+	assert.equal(worker.agentId, undefined);
+	assert.equal(worker.cursorRunId, undefined);
+	await h.restart();
+	assert.equal(h.workerOf(runId).pid, worker.pid);
+	const going = await result();
+	assert.equal(going.run.id, runId);
+	assert.equal(going.run.status, "running");
+	assert.equal(going.text, "synthetic partial");
+	writeFileSync(join(dir, "finish-acp"), "");
+	await until(session.chat.view, () => session.wakes().length === 1);
+	const finished = await result();
+	assert.equal(finished.run.id, runId);
+	assert.equal(finished.run.status, "finished");
+	assert.equal(finished.text, "synthetic partial finished after restart");
+	await poll(async () => pids.every(processEnded), 5000, "ACP process group ends");
+	await h.restart();
+	assert.equal(session.wakes().length, 1);
+	assert.match(session.wakes()[0]!, /synthetic partial finished after restart/);
+});
+
+it("settles synthetic ACP cancellation and failure, leaving no live child or descendant", { timeout: 60_000, skip: process.platform === "win32" }, async () => {
+	const h = await harness("fixture-acp");
+	await h.withKey();
+	const cancelled = await startSyntheticAcp(h, "ACP cancel");
+	await cancelled.session.runs.cancel({ id: cancelled.runId }, TEST);
+	await until(cancelled.session.chat.view, () => cancelled.session.wakes().length === 1);
+	assert.equal((await cancelled.result()).run.status, "cancelled");
+	assert.equal(readFileSync(join(cancelled.dir, "acp-cancelled"), "utf8"), "yes");
+	await poll(async () => cancelled.pids.every(processEnded), 5000, "cancelled ACP process group ends");
+
+	const failed = await startSyntheticAcp(h, "ACP failure");
+	writeFileSync(join(failed.dir, "fail-acp"), "");
+	await until(failed.session.chat.view, () => failed.session.wakes().length === 1);
+	const result = await failed.result();
+	assert.equal(result.run.status, "failed");
+	assert.equal(result.text, "synthetic partial");
+	assert.match(failed.session.wakes()[0]!, /ACP agent rejected session\/prompt/);
+	assert.doesNotMatch(failed.session.wakes()[0]!, /untrusted backend error/);
+	await poll(async () => failed.pids.every(processEnded), 5000, "failed ACP process group ends");
+});
+
+it("cleans up synthetic ACP after a bare SIGKILL of its detached worker with no server watching", { timeout: 60_000, skip: process.platform === "win32" }, async () => {
+	const h = await harness("fixture-acp");
+	await h.withKey();
+	const { session, runId, result, pids } = await startSyntheticAcp(h, "ACP abrupt worker death");
+	const { pid } = h.workerOf(runId);
+	await h.restart(async () => {
+		// Kill just the worker PID, not either process group. The lease—not a server sweep—must end all three.
+		process.kill(pid, "SIGKILL");
+		await poll(async () => pids.every(processEnded), 5000, "ACP group ends on lease loss while Pi is stopped");
+	});
+	await until(session.chat.view, () => session.wakes().length === 1);
+	const failed = await result();
+	assert.equal(failed.run.status, "failed");
+	assert.equal(failed.run.id, runId);
+	assert.equal(failed.text, "synthetic partial");
+	await assert.rejects(session.runs.resume({ id: runId }, TEST), /failed and cannot be resumed/);
+});
 
 it("keeps a local run going across a Pi restart and wakes the session once", { timeout: 120_000 }, async () => {
 	const h = await harness();
