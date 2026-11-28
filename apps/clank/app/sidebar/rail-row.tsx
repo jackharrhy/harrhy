@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { css, on, type Handle, type RemixNode } from "remix/component";
 import type { RowMarks } from "./sidebar-indicators.ts";
 import { presentMarks } from "./rail-mark.tsx";
@@ -12,7 +13,7 @@ const rowStyle = css({
   display: "flex",
   alignItems: "center",
   minWidth: 0,
-  paddingInline: "0.5rem 0.375rem",
+  paddingInline: `${space(1)} ${space(0.75)}`,
   borderRadius: "var(--hui-control-radius)",
   fontSize: "0.875rem",
   minHeight: "1.75rem",
@@ -40,10 +41,10 @@ const rowStyle = css({
   },
   "& .rail-open": {
     display: "flex",
-    gap: "0.5rem",
+    gap: space(1),
     alignItems: "center",
     minWidth: 0,
-    padding: "0.25rem 0.125rem",
+    padding: `${space(0.5)} ${space(0.25)}`,
     textAlign: "start",
   },
   // Stretch only the primary hit area. Disclosure and archive are sibling buttons above it.
@@ -66,7 +67,7 @@ const rowStyle = css({
   "& .rail-label svg": {
     width: "12px",
     height: "12px",
-    marginInlineEnd: "0.25rem",
+    marginInlineEnd: space(0.5),
     verticalAlign: "-1px",
     color: "var(--hui-muted)",
   },
@@ -75,7 +76,7 @@ const rowStyle = css({
     display: "flex",
     alignItems: "center",
     flex: "none",
-    gap: "0.25rem",
+    gap: space(0.5),
   },
   "& .rail-control": {
     position: "relative",
@@ -96,7 +97,7 @@ const rowStyle = css({
   },
   "& .rail-tail > *": { gridArea: "1 / 1" },
   "& .rail-age": {
-    paddingInline: "0.25rem",
+    paddingInline: space(0.5),
     color: "var(--hui-muted)",
     fontSize: "0.75rem",
     fontWeight: 400,
@@ -104,7 +105,7 @@ const rowStyle = css({
   },
   "& .rail-control.rail-archive": {
     justifyItems: "end",
-    paddingInlineEnd: "0.25rem",
+    paddingInlineEnd: space(0.5),
     boxSizing: "border-box",
     opacity: 0,
     pointerEvents: "none",

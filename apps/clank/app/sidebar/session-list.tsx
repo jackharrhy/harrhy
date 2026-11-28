@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { Button, Input, Text } from "@harrhy/ui/native";
 import { css, on, ref, type Handle } from "remix/component";
 import type { SearchResults } from "../../../pi/plugins/search/contract.ts";
@@ -10,7 +11,7 @@ const rowStyle = css({
   width: "100%",
   display: "flex",
   justifyContent: "space-between",
-  gap: "0.5rem",
+  gap: space(1),
   textAlign: "start",
   overflowWrap: "anywhere",
   "&[data-aged]": { color: "var(--hui-muted)" },
@@ -89,7 +90,7 @@ export function SessionList(
         <div
           mix={css({
             maxWidth: "50rem",
-            padding: "1.25rem 1rem",
+            padding: `${space(2.5)} ${space(2)}`,
             marginInline: "auto",
           })}
         >
@@ -97,10 +98,10 @@ export function SessionList(
             mix={css({
               display: "flex",
               alignItems: "center",
-              gap: "0.5rem",
-              paddingInline: "0.25rem",
+              gap: space(1),
+              paddingInline: space(0.5),
               borderBottom: line,
-              marginBottom: "0.5rem",
+              marginBottom: space(1),
             })}
           >
             <Icon name="search" />

@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { DialogClose } from "../dialog-close.tsx";
 import { Dialog } from "@harrhy/ui/interactive";
 import { Input, Text } from "@harrhy/ui/native";
@@ -174,12 +175,12 @@ const resultStyle = css({
   display: "grid",
   gridTemplateColumns: "minmax(0,1fr) auto 3rem",
   alignItems: "center",
-  columnGap: "0.5rem",
+  columnGap: space(1),
   minHeight: "2.75rem",
-  paddingInline: "1rem",
+  paddingInline: space(2),
   overflowWrap: "anywhere",
   cursor: "pointer",
-  "&[data-child]": { paddingInlineStart: "2rem" },
+  "&[data-child]": { paddingInlineStart: space(4) },
   "&:hover, &:focus-visible": {
     background: "var(--hui-selected-surface)",
     "& > :first-child": { fontWeight: 600 },
@@ -223,7 +224,7 @@ function resultButton(
           display: "flex",
           alignItems: "center",
           justifyContent: "end",
-          gap: "0.25rem",
+          gap: space(0.5),
         })}
       >
         {marks?.primary}
@@ -298,9 +299,9 @@ export function Switcher(
             "&:has(input:focus) button[data-default]": {
               background: "var(--hui-selected-surface)",
             },
-            insetBlockStart: "min(12dvh, 6rem)",
+            insetBlockStart: `min(12dvh, ${space(12)})`,
             marginBlockStart: 0,
-            width: "min(40rem, calc(100% - 1.5rem))",
+            width: `min(40rem, calc(100% - ${space(3)}))`,
             padding: 0,
             boxShadow: "none",
             "&::backdrop": { background: "rgb(0 0 0 / 0.16)" },
@@ -312,7 +313,7 @@ export function Switcher(
               gridTemplateColumns: "minmax(0, 1fr) 3rem",
             },
             "@media (max-width: 42rem)": {
-              insetBlockStart: "max(0.75rem, env(safe-area-inset-top))",
+              insetBlockStart: `max(${space(1.5)}, env(safe-area-inset-top))`,
             },
           }),
           on("keydown", (event) => {
@@ -368,7 +369,7 @@ export function Switcher(
             css({
               minHeight: "3rem",
               fontSize: "1rem",
-              paddingInline: "1rem",
+              paddingInline: space(2),
               border: 0,
               borderRadius: 0,
               boxShadow: "none",
@@ -440,7 +441,7 @@ export function Switcher(
           <Text
             role="status"
             tone="muted"
-            mix={css({ gridColumn: "1 / -1", margin: 0, padding: "1rem" })}
+            mix={css({ gridColumn: "1 / -1", margin: 0, padding: space(2) })}
           >
             {search
               ? "No matching commands or conversations."

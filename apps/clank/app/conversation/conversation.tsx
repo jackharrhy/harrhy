@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { Activity, type Step } from "./activity.tsx";
 import { localizeMessageTime } from "./message-time.ts";
@@ -12,13 +13,13 @@ import type { Catalog, ChatFeed } from "../pi/catalog.ts";
 const plain = css({
   whiteSpace: "pre-wrap",
   overflowWrap: "anywhere",
-  margin: "0.375rem 0",
+  margin: `${space(0.75)} 0`,
 });
 const measure = css({
   width: "100%",
   maxWidth: "52rem",
   marginInline: "auto",
-  padding: "1rem",
+  padding: space(2),
   boxSizing: "border-box",
 });
 const status = {
@@ -28,7 +29,7 @@ const status = {
   note: "wrote",
 };
 // The attribution glyph keeps its intrinsic width; only the gap scales with text.
-const attributionGap = "0.5rem";
+const attributionGap = space(1);
 const incomingTextInset = `calc(16px + ${attributionGap})`;
 const senderLabel = {
   guest: "Guest",
@@ -62,7 +63,7 @@ function TranscriptInput(
             width: "fit-content",
             maxWidth: "88%",
             background: "var(--hui-selected-surface)",
-            padding: "0.5rem 0.75rem",
+            padding: `${space(1)} ${space(1.5)}`,
             borderRadius: "0.25rem",
             boxSizing: "border-box",
           })}
@@ -75,14 +76,14 @@ function TranscriptInput(
     return (
       <article
         aria-label={senderLabel[sender.kind] + " message"}
-        mix={css({ marginBlock: "0.75rem", overflowWrap: "anywhere" })}
+        mix={css({ marginBlock: space(1.5), overflowWrap: "anywhere" })}
       >
         <header
           mix={css({
             display: "flex",
             alignItems: "center",
             gap: attributionGap,
-            marginBlockEnd: "0.5rem",
+            marginBlockEnd: space(1),
             fontSize: "0.8125rem",
             color: "var(--hui-muted)",
             "& > svg": { flex: "none" },
@@ -121,7 +122,7 @@ function TranscriptInput(
             <blockquote
               mix={css({
                 marginInline: 0,
-                paddingInlineStart: "0.5rem",
+                paddingInlineStart: space(1),
                 borderInlineStart: "2px solid var(--hui-border)",
                 whiteSpace: "pre-wrap",
               })}
@@ -146,7 +147,7 @@ const messageAction = css({
   display: "inline-flex",
   alignItems: "center",
   minHeight: "2rem",
-  padding: "0 0.5rem",
+  padding: `0 ${space(1)}`,
   border: 0,
   background: "transparent",
   color: "inherit",
@@ -180,11 +181,11 @@ function MessageActions(
           alignItems: "center",
           justifyContent: alignEnd ? "flex-end" : "flex-start",
           minHeight: "2rem",
-          marginInline: alignEnd ? "0 -0.5rem" : "-0.5rem 0",
+          marginInline: alignEnd ? `0 ${space(-1)}` : `${space(-1)} 0`,
           paddingInlineStart: handle.props.indentToBody ? incomingTextInset : 0,
           color: "var(--hui-muted)",
           fontSize: "0.6875rem",
-          "& time": { paddingInline: "0.5rem" },
+          "& time": { paddingInline: space(1) },
         })}
       >
         {alignEnd && time}
@@ -679,7 +680,7 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                padding: "2rem 1rem 1.5rem",
+                padding: `${space(4)} ${space(2)} ${space(3)}`,
                 fontSize: "1rem",
                 lineHeight: 1.5,
                 "& > :first-child": { marginBlockStart: 0 },
@@ -710,8 +711,8 @@ export function Conversation(handle: Handle<Props>) {
                 <div
                   key={part.key}
                   mix={css({
-                    marginBlock: "1.25rem",
-                    "@media (min-width: 48rem)": { marginBlock: "1.625rem" },
+                    marginBlock: space(2.5),
+                    "@media (min-width: 48rem)": { marginBlock: space(3.25) },
                   })}
                 >
                   {part.content}
@@ -735,7 +736,7 @@ export function Conversation(handle: Handle<Props>) {
                 alignSelf: "end",
                 justifySelf: "center",
                 zIndex: 1,
-                marginBottom: "0.75rem",
+                marginBottom: space(1.5),
                 minHeight: "2.75rem",
                 backgroundColor: "var(--hui-surface)",
                 border: "1px solid var(--hui-border)",
@@ -766,7 +767,7 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                paddingBlock: "0.5rem 0",
+                paddingBlock: `${space(1)} 0`,
                 borderBlock: "1px solid var(--hui-border)",
               }),
             ]}
@@ -859,7 +860,7 @@ export function Conversation(handle: Handle<Props>) {
               </Button>
             </div>
           </div>
-          <div mix={[measure, css({ paddingBlock: "0 0.5rem" })]}>
+          <div mix={[measure, css({ paddingBlock: `0 ${space(1)}` })]}>
             {handle.props.showMetadata && (
               <div
                 aria-label={
@@ -871,8 +872,8 @@ export function Conversation(handle: Handle<Props>) {
                   display: "flex",
                   flexWrap: "wrap",
                   alignItems: "center",
-                  gap: "0 0.75rem",
-                  paddingBlock: "0.25rem 0",
+                  gap: `0 ${space(1.5)}`,
+                  paddingBlock: `${space(0.5)} 0`,
                   color: "var(--hui-muted)",
                   fontSize: "0.6875rem",
                   lineHeight: 1.5,
@@ -887,7 +888,7 @@ export function Conversation(handle: Handle<Props>) {
                     alignItems: "center",
                     flex: 1,
                     minWidth: 0,
-                    gap: "0.25rem",
+                    gap: space(0.5),
                     whiteSpace: "nowrap",
                     minHeight: "1.5rem",
                   })}
@@ -909,7 +910,7 @@ export function Conversation(handle: Handle<Props>) {
                 <div
                   mix={css({
                     display: "flex",
-                    gap: "0.25rem",
+                    gap: space(0.5),
                     marginInlineStart: "auto",
                     whiteSpace: "nowrap",
                     fontFamily: "ui-monospace, monospace",
@@ -932,7 +933,7 @@ export function Conversation(handle: Handle<Props>) {
                           stroke-width="2"
                           mix={css({
                             verticalAlign: "-2px",
-                            marginInlineEnd: "0.25rem",
+                            marginInlineEnd: space(0.5),
                           })}
                         >
                           <circle cx="9" cy="7" r="3" />
@@ -964,7 +965,7 @@ export function Conversation(handle: Handle<Props>) {
                     display: "flex",
                     alignItems: "center",
                     flex: "1 0 100%",
-                    gap: "0.5rem",
+                    gap: space(1),
                     minHeight: "1rem",
                     fontFamily: "ui-monospace, monospace",
                     "& progress": {

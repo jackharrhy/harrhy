@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { createDomRenderer } from "@pierre/words/html";
 import { css, ref, unsafeHTML, type Handle } from "remix/component";
 import {
@@ -33,13 +34,13 @@ const prose = css({
     fontFamily: "var(--hui-font-mono)",
     fontSize: "0.9375em",
     overflowWrap: "break-word",
-    padding: "0.0625rem 0.3125rem",
+    padding: `${space(0.125)} ${space(0.625)}`,
     borderRadius: "0.1875rem",
     "@media (forced-colors: active)": { outline: "1px solid CanvasText" },
   },
   "& blockquote": {
     marginInline: 0,
-    paddingInlineStart: "0.75rem",
+    paddingInlineStart: space(1.5),
     borderInlineStart: "2px solid var(--hui-border)",
   },
   '& [data-markdown="code-block"]': {
@@ -47,21 +48,21 @@ const prose = css({
     color: "light-dark(#0a0a0a, #fafafa)",
     border: "1px solid var(--hui-border)",
     borderRadius: "0.25rem",
-    padding: "0.75rem",
+    padding: space(1.5),
     marginBlock: "0 1em",
   },
   '& [data-markdown="code-header"]': {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
-    gap: "0.5rem",
+    gap: space(1),
     "& > span:first-child": {
       overflow: "hidden",
       textOverflow: "ellipsis",
       whiteSpace: "nowrap",
     },
     fontSize: "0.75rem",
-    marginBlockEnd: "0.375rem",
+    marginBlockEnd: space(0.75),
   },
   "& [data-code-action='copy']": {
     color: "inherit",
@@ -70,7 +71,7 @@ const prose = css({
     minWidth: "4rem",
     borderRadius: "0.25rem",
     backgroundColor: "transparent",
-    padding: "0.125rem 0.5rem",
+    padding: `${space(0.25)} ${space(1)}`,
     minHeight: "1.5rem",
     cursor: "pointer",
     "&:hover:not(:disabled)": { textDecoration: "underline" },
@@ -98,7 +99,7 @@ const prose = css({
     borderCollapse: "collapse",
   },
   "& th, & td": {
-    padding: "0.25rem 0.5rem",
+    padding: `${space(0.5)} ${space(1)}`,
     border: "1px solid var(--hui-border)",
   },
 });

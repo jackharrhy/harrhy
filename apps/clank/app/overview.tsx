@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { attachViewport } from "@harrhy/board/viewport";
 import { connectorPath, nodeStyle, type Box } from "@harrhy/board/geometry";
 import { Button, Heading, Inline, Stack } from "@harrhy/ui/native";
@@ -174,7 +175,7 @@ function Canvas(handle: Handle<{ graph: ReturnType<typeof layoutOverview> }>) {
                   css({
                     position: "absolute",
                     boxSizing: "border-box",
-                    padding: "0.5rem 0.75rem",
+                    padding: `${space(1)} ${space(1.5)}`,
                     textAlign: "left",
                     border: "1px solid var(--hui-border)",
                     borderRadius: "0.25rem",

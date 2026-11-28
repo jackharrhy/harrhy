@@ -1,7 +1,7 @@
 import { renderToString } from "remix/component/server";
 import { createRouter } from "remix/router";
 import { css } from "remix/component";
-import { cleanTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { space, cleanTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { Badge, Heading, Inline, Stack } from "@harrhy/ui/native";
 import { deployment, type DeploymentBindings } from "./app/deployment.ts";
 import { SessionList } from "./app/sessions.tsx";
@@ -43,7 +43,7 @@ function catalogRouter(readOnly: boolean) {
             mix={css({
               maxWidth: "56rem",
               marginInline: "auto",
-              padding: "clamp(1rem, 4vw, 2rem)",
+              padding: `clamp(${space(2)}, 4vw, ${space(4)})`,
             })}
           >
             <Stack>

@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import {
   Menu,
   MenuTrigger,
@@ -71,7 +72,7 @@ export function SessionTitle(
         {edit ? (
           <form
             mix={[
-              css({ width: "100%", paddingBlock: "0.25rem" }),
+              css({ width: "100%", paddingBlock: space(0.5) }),
               on("submit", (event) => {
                 event.preventDefault();
                 void save();
@@ -88,7 +89,7 @@ export function SessionTitle(
               mix={css({
                 display: "flex",
                 alignItems: "center",
-                gap: "0.375rem",
+                gap: space(0.75),
               })}
             >
               <Input
@@ -169,7 +170,7 @@ export function SessionTitle(
               mix={css({
                 display: "flex",
                 alignItems: "center",
-                gap: "0.25rem",
+                gap: space(0.5),
                 marginInlineStart: "auto",
                 flex: "none",
               })}

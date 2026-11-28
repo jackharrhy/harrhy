@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { DialogClose } from "../dialog-close.tsx";
 import { Dialog } from "@harrhy/ui/interactive";
 import { Button } from "@harrhy/ui/native";
@@ -75,13 +76,13 @@ export function ArchiveDialog(
         }}
         mix={css({
           overflowWrap: "anywhere",
-          "&:has([role=alert]) > h2": { paddingInlineEnd: "2.5rem" },
+          "&:has([role=alert]) > h2": { paddingInlineEnd: space(5) },
         })}
       >
         {error && <p role="alert">{error}</p>}
         {pending && <p role="status">Archiving…</p>}
         <div
-          mix={css({ display: "flex", justifyContent: "end", gap: "0.5rem" })}
+          mix={css({ display: "flex", justifyContent: "end", gap: space(1) })}
         >
           {error ? (
             <DialogClose label="Close archive notice" close={close} />

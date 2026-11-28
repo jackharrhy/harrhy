@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { Button } from "@harrhy/ui/native";
 import { css, on, ref, type Handle } from "remix/component";
 import { childMarks, sessionMarks } from "./sidebar-indicators.ts";
@@ -18,7 +19,7 @@ const sessionButton = css({
   justifyContent: "flex-start",
   fontSize: "0.875rem",
   textAlign: "left",
-  padding: "0.25rem 0.625rem",
+  padding: `${space(0.5)} ${space(1.25)}`,
   "& > svg": { flex: "none", color: "var(--hui-muted)" },
   "& span": {
     minWidth: 0,
@@ -160,9 +161,9 @@ export function createSessionRail(
           css({
             listStyle: "none",
             margin: 0,
-            padding: "0.5rem",
+            padding: space(1),
             display: "grid",
-            gap: "0.25rem",
+            gap: space(0.5),
           }),
         ]}
       >
@@ -213,8 +214,8 @@ export function createSessionRail(
                     mix={[
                       css({
                         listStyle: "none",
-                        margin: "0.25rem 0",
-                        paddingInlineStart: "calc(16px + 0.5rem)",
+                        margin: `${space(0.5)} 0`,
+                        paddingInlineStart: `calc(16px + ${space(1)})`,
                       }),
                       on("keydown", (event) => {
                         if (event.key !== "Escape" || event.defaultPrevented)
@@ -266,7 +267,7 @@ export function createSessionRail(
             <li
               key="new"
               mix={css({
-                marginBlockEnd: "0.625rem",
+                marginBlockEnd: space(1.25),
               })}
             >
               <Button
@@ -292,7 +293,7 @@ export function createSessionRail(
                 css({
                   display: "block",
                   // Match the row label: fixed marker, scalable padding and gap.
-                  padding: "0.375rem calc(16px + 1.125rem)",
+                  padding: `${space(0.75)} calc(16px + ${space(2.25)})`,
                   color: "var(--hui-muted)",
                   textDecoration: "none",
                   borderRadius: "0.25rem",

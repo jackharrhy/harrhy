@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { Button } from "@harrhy/ui/native";
 import { css, on, type Handle } from "remix/component";
 import { Icon } from "./icons.tsx";
@@ -14,8 +15,8 @@ export function DialogClose(
       mix={[
         css({
           position: "absolute",
-          insetBlockStart: "0.125rem",
-          insetInlineEnd: "0.125rem",
+          insetBlockStart: space(0.25),
+          insetInlineEnd: space(0.25),
           width: "2.75rem",
           height: "2.75rem",
           padding: 0,

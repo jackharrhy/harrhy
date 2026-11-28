@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { isChordError } from "@earendil-works/chord";
 import { validSlug, canonicalSessionRedirect } from "./routes.ts";
 import {
@@ -96,10 +97,10 @@ const bar = css({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "0.5rem",
+  gap: space(1),
   minHeight: "3.25rem",
   boxSizing: "border-box",
-  paddingInline: "1rem",
+  paddingInline: space(2),
   borderBottom: line,
 });
 const scroll = css({
@@ -110,7 +111,7 @@ const scroll = css({
 const measure = css({
   maxWidth: "72ch",
   marginInline: "auto",
-  padding: "1.5rem 1rem",
+  padding: `${space(3)} ${space(2)}`,
   overflowWrap: "anywhere",
 });
 
@@ -818,7 +819,7 @@ export const OwnerSessions = clientEntry(
           >
             <div mix={bar}>
               <BrandMark logo={branding?.logo} />
-              <div mix={css({ display: "flex", gap: "0.125rem" })}>
+              <div mix={css({ display: "flex", gap: space(0.25) })}>
                 {catalog && (
                   <Button
                     variant="quiet"
@@ -879,10 +880,10 @@ export const OwnerSessions = clientEntry(
               <footer
                 mix={css({
                   borderTop: line,
-                  padding: "0.25rem 0.5rem",
+                  padding: `${space(0.5)} ${space(1)}`,
                   display: "flex",
                   justifyContent: "flex-end",
-                  gap: "0.25rem",
+                  gap: space(0.5),
                 })}
               >
                 <Button
@@ -945,15 +946,15 @@ export const OwnerSessions = clientEntry(
                 captureDetail,
                 css({
                   justifyContent: "flex-start",
-                  gap: "0.25rem",
+                  gap: space(0.5),
                   "& h1, & h2": {
                     minWidth: 0,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   },
-                  paddingBlock: "0.25rem",
-                  [phone]: { paddingInline: "0.375rem" },
+                  paddingBlock: space(0.5),
+                  [phone]: { paddingInline: space(0.75) },
                   "&:focus-visible": { outlineOffset: "-2px" },
                 }),
               ]}
@@ -1039,9 +1040,9 @@ export const OwnerSessions = clientEntry(
                     mix={[
                       css({
                         display: "grid",
-                        gap: "0.75rem",
+                        gap: space(1.5),
                         maxWidth: "30rem",
-                        "& label": { display: "grid", gap: "0.25rem" },
+                        "& label": { display: "grid", gap: space(0.5) },
                         "& button": { justifySelf: "start" },
                       }),
                       on("submit", async (event) => {
@@ -1275,7 +1276,7 @@ export const OwnerSessions = clientEntry(
                       <label
                         mix={css({
                           display: "grid",
-                          gap: "0.25rem",
+                          gap: space(0.5),
                           maxWidth: "24rem",
                         })}
                       >
@@ -1292,7 +1293,7 @@ export const OwnerSessions = clientEntry(
                         type="submit"
                         variant="primary"
                         disabled={signingIn}
-                        mix={css({ marginTop: "0.5rem" })}
+                        mix={css({ marginTop: space(1) })}
                       >
                         {signingIn ? "Signing in…" : "Sign in"}
                       </Button>

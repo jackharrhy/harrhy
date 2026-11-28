@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import {
   Badge,
   Button,
@@ -146,7 +147,7 @@ function OrderedList(handle: Handle<{ archived: boolean; disabled: boolean }>) {
           padding: 0,
           margin: 0,
           display: "grid",
-          gap: "0.75rem",
+          gap: space(1.5),
         })}
       >
         {rows.current?.map((row) => (

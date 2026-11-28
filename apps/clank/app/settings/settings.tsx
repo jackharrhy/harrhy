@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { DialogClose } from "../dialog-close.tsx";
 import { Dialog } from "@harrhy/ui/interactive";
 import { Checkbox } from "@harrhy/ui/native";
@@ -54,19 +55,23 @@ export function savePreference(change: Partial<Preferences>) {
 
 const layout = css({
   display: "grid",
-  gap: "0.75rem",
+  gap: space(1.5),
   "& fieldset": { border: 0, padding: 0, margin: 0, minWidth: 0 },
   "& legend": { padding: 0, fontWeight: 600 },
   "& label": {
     display: "flex",
-    gap: "0.375rem",
+    gap: space(0.75),
     alignItems: "center",
     minHeight: "2rem",
     cursor: "pointer",
   },
   "& input": { margin: 0, accentColor: "var(--hui-ink)" },
 });
-const choices = css({ display: "flex", flexWrap: "wrap", gap: "0 1rem" });
+const choices = css({
+  display: "flex",
+  flexWrap: "wrap",
+  gap: `0 ${space(2)}`,
+});
 
 export function Settings(
   handle: Handle<{
@@ -89,8 +94,8 @@ export function Settings(
         title="Settings"
         description="Preferences for Clank on this browser."
         mix={css({
-          width: "min(26rem, calc(100% - 2rem))",
-          "& > h2": { paddingInlineEnd: "2.5rem" },
+          width: `min(26rem, calc(100% - ${space(4)}))`,
+          "& > h2": { paddingInlineEnd: space(5) },
         })}
         onClose={close}
       >
@@ -114,14 +119,14 @@ export function Settings(
               mix={[
                 css({
                   justifyContent: "space-between",
-                  marginBlock: "0.375rem",
+                  marginBlock: space(0.75),
                   "& select": {
                     font: "inherit",
                     color: "var(--hui-ink)",
                     backgroundColor: "var(--hui-surface)",
                     border: "1px solid var(--hui-control-border)",
                     borderRadius: "var(--hui-control-radius)",
-                    padding: "0.375rem 0.5rem",
+                    padding: `${space(0.75)} ${space(1)}`,
                   },
                 }),
                 on("change", ({ target }) => {
@@ -156,7 +161,7 @@ export function Settings(
               mix={css({
                 display: "grid",
                 gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-                gap: "0.5rem",
+                gap: space(1),
               })}
             >
               {(["light", "dark"] as const).map((scheme) => (
@@ -164,7 +169,7 @@ export function Settings(
                   key={scheme}
                   mix={css({
                     colorScheme: scheme,
-                    padding: "0.5rem",
+                    padding: space(1),
                     background: "var(--hui-surface)",
                     color: "var(--hui-ink)",
                     border: "1px solid var(--hui-border)",
@@ -175,8 +180,8 @@ export function Settings(
                   <strong>{scheme === "light" ? "Light" : "Dark"}</strong>
                   <div
                     mix={css({
-                      marginBlockStart: "0.375rem",
-                      padding: "0.25rem 0.5rem",
+                      marginBlockStart: space(0.75),
+                      padding: `${space(0.5)} ${space(1)}`,
                       backgroundColor: "var(--hui-selected-surface)",
                       borderRadius: "var(--hui-control-radius)",
                     })}

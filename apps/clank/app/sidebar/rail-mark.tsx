@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import type { RowMarks } from "./sidebar-indicators.ts";
 import { css, type Handle, type RemixNode } from "remix/component";
 
@@ -185,7 +186,7 @@ export function presentMarks(
         mix={css({
           display: "inline-flex",
           alignItems: "center",
-          gap: "0.125rem",
+          gap: space(0.25),
           fontSize: "0.75rem",
           fontWeight: 400,
           color: "var(--hui-muted)",

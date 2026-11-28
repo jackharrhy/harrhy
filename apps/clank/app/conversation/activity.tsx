@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/theme";
 import { Button } from "@harrhy/ui/native";
 import { css, on, ref, type Handle } from "remix/component";
 import { Icon } from "../icons.tsx";
@@ -61,7 +62,7 @@ const output = css({
   whiteSpace: "pre-wrap",
   overflowWrap: "anywhere",
   background: "var(--hui-canvas)",
-  padding: "0.5rem",
+  padding: space(1),
   fontSize: "0.75rem",
   maxHeight: "16rem",
   overflow: "auto",
@@ -208,7 +209,7 @@ export function Activity(
         mix={[
           working ? clock : undefined,
           css({
-            marginBlock: "0.625rem",
+            marginBlock: space(1.25),
             color: "var(--hui-muted)",
             fontSize: "0.8125rem",
           }),
@@ -277,7 +278,7 @@ export function Activity(
             mix={css({
               display: "flex",
               alignItems: "center",
-              gap: "0.5rem",
+              gap: space(1),
               whiteSpace: "nowrap",
               fontVariantNumeric: "tabular-nums",
             })}
@@ -289,7 +290,7 @@ export function Activity(
         <ol
           id={id}
           hidden={!shown}
-          mix={css({ margin: "0.25rem 0", paddingInlineStart: "1.5rem" })}
+          mix={css({ margin: `${space(0.5)} 0`, paddingInlineStart: space(3) })}
         >
           {steps.map((step) => (
             <li key={step.id}>
