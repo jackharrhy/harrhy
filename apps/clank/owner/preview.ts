@@ -69,7 +69,7 @@ function responseHeaders(headers: IncomingHttpHeaders) {
     ...(headers.connection ?? "")
       .toLowerCase()
       .split(",")
-      .map((name) => name.trim()),
+      .map((header) => header.trim()),
   ]) {
     delete result[name];
   }

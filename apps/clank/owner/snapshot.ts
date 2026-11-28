@@ -52,14 +52,16 @@ export async function readSnapshot(
   )
     return;
   // Forward only the native device-cookie slot. Pi verifies signature, expiry, revocation and remote authority.
-  const key = `p2_owner_${port}=`;
+  const cookieKey = `p2_owner_${port}=`;
   const cookies = headers.cookie
     ?.split(";")
     .map((part) => part.trim())
-    .filter((part) => part.startsWith(key));
+    .filter((part) => part.startsWith(cookieKey));
   if (
     cookies?.length !== 1 ||
-    !/^[a-f0-9]{32}\.\d{1,16}\.[a-f0-9]{64}$/.test(cookies[0].slice(key.length))
+    !/^[a-f0-9]{32}\.\d{1,16}\.[a-f0-9]{64}$/.test(
+      cookies[0].slice(cookieKey.length),
+    )
   )
     return;
   const signal = AbortSignal.any([disconnected, AbortSignal.timeout(1800)]);

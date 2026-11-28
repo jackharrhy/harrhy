@@ -95,6 +95,13 @@ function TranscriptInput(
   };
 }
 
+const textOf = (content: readonly { type: string; text?: string }[]) =>
+  content
+    .flatMap((part) =>
+      part.type === "text" && part.text !== undefined ? [part.text] : [],
+    )
+    .join("\n");
+
 type Props = {
   chat?: Catalog["chat"];
   seed?: Omit<ChatFeed, "send">;
@@ -225,12 +232,6 @@ export function Conversation(handle: Handle<Props>) {
       if (last?.kind === "activity" && time !== undefined) last.endedAt = time;
       parts.push({ kind: "body", key, content });
     };
-    const textOf = (content: readonly { type: string; text?: string }[]) =>
-      content
-        .flatMap((part) =>
-          part.type === "text" && part.text !== undefined ? [part.text] : [],
-        )
-        .join("\n");
     const assistant = (
       message: AssistantMessage | NonNullable<typeof partial>,
       streaming: boolean,

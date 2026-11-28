@@ -660,14 +660,16 @@ try {
     await observer.getByRole("combobox", { name: "Conversation" }).press("Tab");
     await observer.getByRole("button", { name: "Session tools" }).press("Tab");
     await observer.keyboard.press("Tab");
-    for (const [target, input] of [
+    for (const [target, focusInput] of [
       [native, nativeMessage],
       [observer, observer.getByRole("textbox", { name: "Message" })],
     ] as const) {
       await target.keyboard.press("Tab");
-      await input.focus();
+      await focusInput.focus();
       assert.equal(
-        await input.evaluate((node) => getComputedStyle(node).outlineStyle),
+        await focusInput.evaluate(
+          (node) => getComputedStyle(node).outlineStyle,
+        ),
         "none",
       );
       await target.keyboard.type("Focus sample");
@@ -802,7 +804,7 @@ try {
     const named = await fixture.server.host.root(
       async (ctx) =>
         (await ctx.get(Catalog, {})).sessions.value.find(
-          (row) => row.title === "Created in disposable Clank",
+          (item) => item.title === "Created in disposable Clank",
         ),
       TEST,
     );

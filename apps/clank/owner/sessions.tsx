@@ -351,7 +351,7 @@ export const OwnerSessions = clientEntry(
     async function open(id: string, child?: number, from?: HTMLButtonElement) {
       const row = (
         view.kind === "ready" ? view.catalog.rows : cached?.rows
-      )?.find((row) => row.id === id);
+      )?.find((item) => item.id === id);
       if (!row) return;
       const path = sessionPath(row);
       if (location.pathname !== path || history.state?.agentId !== child) {
@@ -405,13 +405,15 @@ export const OwnerSessions = clientEntry(
             )
               return;
             const id = Number(event.target.value);
-            const row = view.catalog.rows.find((row) => row.id === selectedId);
+            const row = view.catalog.rows.find(
+              (item) => item.id === selectedId,
+            );
             if (!row) return;
             const child = view.catalog.children[row.id]?.find(
-              (child) =>
-                child.conversationId === id &&
-                !child.archived &&
-                child.kind !== "agent",
+              (candidate) =>
+                candidate.conversationId === id &&
+                !candidate.archived &&
+                candidate.kind !== "agent",
             );
             agentId = child?.conversationId;
             branch =
@@ -633,7 +635,7 @@ export const OwnerSessions = clientEntry(
     return () => {
       const live = view.kind === "ready" ? view.catalog : undefined;
       const catalog = live ?? cached;
-      const selected = catalog?.rows.find((row) => row.id === selectedId);
+      const selected = catalog?.rows.find((item) => item.id === selectedId);
       const familiar = catalog?.rows.find(
         (row) => row.id === handle.props.familiarId,
       );
@@ -1249,7 +1251,7 @@ export const OwnerSessions = clientEntry(
                   } catch {}
                 }}
                 open={(id, child) => {
-                  const row = catalog.rows.find((row) => row.id === id);
+                  const row = catalog.rows.find((item) => item.id === id);
                   if (child === undefined || child === row?.main) {
                     void open(id);
                     return;

@@ -11,7 +11,7 @@ export type Step = {
   at?: number;
   end?: number;
 };
-export function summary(steps: readonly Step[]) {
+function summary(steps: readonly Step[]) {
   const counts = new Map<string, number>();
   for (const step of steps)
     if (step.name !== "Thought") {
@@ -35,7 +35,7 @@ export function summary(steps: readonly Step[]) {
   const text = words.join(", ") || "done";
   return text[0].toUpperCase() + text.slice(1);
 }
-export function elapsed(ms: number) {
+function elapsed(ms: number) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
@@ -74,13 +74,13 @@ export function Activity(
   let openStep: string | undefined;
   let now: number | undefined;
   const id = `${handle.id}-steps`;
+  const update = () => {
+    if (handle.props.working) {
+      now = Date.now();
+      void handle.update();
+    }
+  };
   const clock = ref<HTMLDivElement>((_node, signal) => {
-    const update = () => {
-      if (handle.props.working) {
-        now = Date.now();
-        void handle.update();
-      }
-    };
     update();
     const timer = setInterval(update, 1000);
     signal.addEventListener("abort", () => clearInterval(timer), {
@@ -98,9 +98,9 @@ export function Activity(
         )
           return;
         event.preventDefault();
-        const now = performance.now();
-        if (now - last > 85) {
-          last = now;
+        const tick = performance.now();
+        if (tick - last > 85) {
+          last = tick;
           turn(Math.sign(event.deltaY));
         }
       },

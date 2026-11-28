@@ -66,7 +66,7 @@ export type Snapshot = Pick<Catalog, "rows" | "children" | "activeIds"> & {
 export function activeRows(sessions: readonly Session[]): Row[] {
   return sessions
     .filter((row) => row.archivedAt === null)
-    .sort(
+    .toSorted(
       (a, b) =>
         Number(b.pinned) - Number(a.pinned) ||
         b.updatedAt - a.updatedAt ||
@@ -144,17 +144,17 @@ export async function followCatalog(
       const chat: Catalog["chat"] = async (
         session,
         conversation,
-        signal,
+        chatSignal,
         receive,
       ) => {
-        const active = AbortSignal.any([signal, lifetime.signal]);
+        const active = AbortSignal.any([chatSignal, lifetime.signal]);
         await host.root(
           async (chatScope) => {
             const ref = await chatScope.get(Chat, { session, conversation });
             if (ref.variant !== "participant")
               throw Error("Pi chat is not writable");
-            const binding = await ref.state.watch(chatScope);
-            const watch = await ref.view.watch(chatScope);
+            const chatBinding = await ref.state.watch(chatScope);
+            const viewWatch = await ref.view.watch(chatScope);
             const canSend = () =>
               !active.aborted &&
               authorized() &&
@@ -169,8 +169,8 @@ export async function followCatalog(
             };
             try {
               if (!canSend()) return;
-              binding.start(async () => {});
-              let view = watch.value;
+              chatBinding.start(async () => {});
+              let view = viewWatch.value;
               const model = await ref.model.watch(chatScope);
               const stats = await ref.stats.watch(chatScope);
               let currentModel = model.value;
@@ -190,15 +190,15 @@ export async function followCatalog(
                 }
               });
               await publishChat();
-              watch.start(async (call) => {
+              viewWatch.start(async (call) => {
                 if (call.kind === "value" && !call.retired && canSend()) {
                   view = call.value;
                   await publishChat();
                 }
               });
-              await Promise.race([binding.closed, watch.closed]);
+              await Promise.race([chatBinding.closed, viewWatch.closed]);
             } finally {
-              await Promise.all([binding.stop(), watch.stop()]);
+              await Promise.all([chatBinding.stop(), viewWatch.stop()]);
             }
           },
           withAbortSignal(active, ctx),
@@ -219,12 +219,15 @@ export async function followCatalog(
         }
         return sessions.create({ cwd, title }, scope);
       };
-      const search: Catalog["search"] = (query, sessions) =>
+      const search: Catalog["search"] = (query, sessionIds) =>
         host.root(async (searchScope) => {
           if (!authorized()) throw Error("Owner Sessions ended");
           const ref = await searchScope.get(Search, {});
           if (ref.variant !== "owner") throw Error("Pi search unavailable");
-          return ref.search({ query, archived: false, sessions }, searchScope);
+          return ref.search(
+            { query, archived: false, sessions: sessionIds },
+            searchScope,
+          );
         }, ctx);
       let rows = activeRows(watch.value);
       let children: Catalog["children"] = {};

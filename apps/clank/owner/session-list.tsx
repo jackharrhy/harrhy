@@ -38,7 +38,7 @@ export function SessionList(
   let generation = 0;
   function refresh() {
     const { rows, search } = handle.props;
-    const ids = rows.map((row) => row.id).sort();
+    const ids = rows.map((row) => row.id).toSorted();
     const trimmed = query.trim();
     const key = JSON.stringify([trimmed, ids]);
     if (last === key && lastSearch === search) return;
