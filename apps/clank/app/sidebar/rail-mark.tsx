@@ -1,4 +1,5 @@
-import { css, type Handle } from "remix/component";
+import type { RowMarks } from "./sidebar-indicators.ts";
+import { css, type Handle, type RemixNode } from "remix/component";
 
 // Same frames and bit order as P2's PiDots; draw physical cells, not glyphs.
 const positions = [
@@ -49,7 +50,7 @@ const dots = css({
   },
 });
 
-export function WorkingDots() {
+function WorkingDots() {
   // A late-mounted row joins the page clock without a timer or DOM updates per frame.
   const delay =
     typeof document === "undefined"
@@ -89,7 +90,7 @@ const dot = css({
   "@media (forced-colors: active)": { forcedColorAdjust: "none" },
 });
 
-export function AnswerDot(handle: Handle<{ failure?: string }>) {
+function AnswerDot(handle: Handle<{ failure?: string }>) {
   return () => (
     <span
       data-rail-mark={handle.props.failure === undefined ? "unread" : "failed"}
@@ -128,7 +129,7 @@ const outline = {
   pathLength: 100,
 } as const;
 
-export function WorkingFrame() {
+function WorkingFrame() {
   return () => (
     <svg
       data-rail-mark="frame"
@@ -143,4 +144,56 @@ export function WorkingFrame() {
       <rect class="dash" {...outline} />
     </svg>
   );
+}
+
+// The leading slot carries the most important mark. Keep concurrent work
+// visible alongside an answer/failure instead of replacing it.
+export function presentMarks(
+  { failure, unread, running = 0 }: RowMarks,
+  familiarLogo?: RemixNode,
+) {
+  const working = running > 0;
+  const answered = failure !== undefined || unread;
+  const backgroundWork = !familiarLogo && working && answered;
+  const workText =
+    running > 1
+      ? `${running} agents running`
+      : backgroundWork
+        ? "Running"
+        : "Working";
+  const status = [failure, unread && "New answer", working && workText]
+    .filter(Boolean)
+    .join(" · ");
+  const primary = familiarLogo ? (
+    <>
+      {familiarLogo}
+      {working && <WorkingFrame />}
+    </>
+  ) : answered ? (
+    <AnswerDot failure={failure} />
+  ) : working ? (
+    <WorkingDots />
+  ) : null;
+  const secondary =
+    familiarLogo && unread ? (
+      <AnswerDot />
+    ) : backgroundWork ? (
+      <span
+        class="rail-work-count"
+        title={workText}
+        aria-hidden="true"
+        mix={css({
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "0.125rem",
+          fontSize: "0.75rem",
+          fontWeight: 400,
+          color: "var(--hui-muted)",
+        })}
+      >
+        <WorkingDots />
+        {running > 1 && running}
+      </span>
+    ) : null;
+  return { primary, secondary, status };
 }

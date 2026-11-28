@@ -10,37 +10,82 @@ const prose = css({
   overflowWrap: "anywhere",
   "& p": { margin: "0 0 1em" },
   "& > :last-child": { marginBlockEnd: 0 },
-  "& a": { color: "inherit", textUnderlineOffset: "3px" },
+  // Pi-brand Elanor Link and soft InlineCode, scoped to Words prose.
+  "& a[href]": {
+    color: "light-dark(oklch(48.15% 0.075 231.49), oklch(74.2% 0.077 231.49))",
+    textDecorationLine: "underline",
+    textDecorationThickness: "from-font",
+    textUnderlinePosition: "from-font",
+    textUnderlineOffset: "0.1875rem",
+    "&:hover": { textDecorationThickness: "10%" },
+    "&:focus-visible": {
+      outline: "1px solid var(--hui-ink)",
+      outlineOffset: "2px",
+      borderRadius: "0.1875rem",
+    },
+  },
+  // Words marks fenced code with the same data-markdown value, inside pre.
+  '& :not(pre) > code[data-markdown="code"]': {
+    color: "var(--hui-ink)",
+    backgroundColor:
+      "color-mix(in srgb, var(--hui-selected-surface) 92%, gray)",
+    font: "inherit",
+    fontFamily: "var(--hui-font-mono)",
+    fontSize: "0.9375em",
+    overflowWrap: "break-word",
+    padding: "0.0625rem 0.3125rem",
+    borderRadius: "0.1875rem",
+    "@media (forced-colors: active)": { outline: "1px solid CanvasText" },
+  },
   "& blockquote": {
     marginInline: 0,
-    paddingInlineStart: "12px",
+    paddingInlineStart: "0.75rem",
     borderInlineStart: "2px solid var(--hui-border)",
   },
   '& [data-markdown="code-block"]': {
-    backgroundColor: "#0d1117",
-    color: "#e1e4e8",
-    borderRadius: "4px",
-    padding: "10px 12px",
+    backgroundColor: "light-dark(#fff, #0a0a0a)",
+    color: "light-dark(#0a0a0a, #fafafa)",
+    border: "1px solid var(--hui-border)",
+    borderRadius: "0.25rem",
+    padding: "0.75rem",
     marginBlock: "0 1em",
   },
   '& [data-markdown="code-header"]': {
     display: "flex",
     justifyContent: "space-between",
-    alignItems: "baseline",
-    fontSize: "12px",
-    marginBlockEnd: "6px",
+    alignItems: "center",
+    gap: "0.5rem",
+    "& > span:first-child": {
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+    },
+    fontSize: "0.75rem",
+    marginBlockEnd: "0.375rem",
   },
   "& [data-code-action='copy']": {
     color: "inherit",
     font: "inherit",
-    border: "1px solid #58616b",
-    borderRadius: "4px",
+    border: "1px solid transparent",
+    minWidth: "4rem",
+    borderRadius: "0.25rem",
     backgroundColor: "transparent",
-    padding: "2px 8px",
-    minHeight: "24px",
+    padding: "0.125rem 0.5rem",
+    minHeight: "1.5rem",
     cursor: "pointer",
+    "&:hover:not(:disabled)": { textDecoration: "underline" },
+    "&:focus-visible": { outline: "2px solid currentColor" },
+    "&:disabled": { cursor: "default" },
   },
-  "& pre": {
+  // Limit Lab lightness for small text on the two editor backgrounds.
+  // Pierre Light and Dark use the same bold and italic scopes.
+  '& [data-markdown="code-block"] code span[style]': {
+    color:
+      "light-dark(lab(from var(--hls-light) min(l, 47) a b), lab(from var(--hls-dark) max(l, 52) a b))",
+    fontStyle: "var(--hls-light-font-style, normal)",
+    fontWeight: "var(--hls-light-font-weight, inherit)",
+  },
+  '& [data-markdown="code-block"] pre': {
     margin: 0,
     maxHeight: "28rem",
     overflow: "auto",
@@ -52,7 +97,10 @@ const prose = css({
     overflowX: "auto",
     borderCollapse: "collapse",
   },
-  "& th, & td": { padding: "4px 8px", border: "1px solid var(--hui-border)" },
+  "& th, & td": {
+    padding: "0.25rem 0.5rem",
+    border: "1px solid var(--hui-border)",
+  },
 });
 
 export function Markdown(

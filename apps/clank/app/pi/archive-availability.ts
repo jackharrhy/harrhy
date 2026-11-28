@@ -1,8 +1,8 @@
 import type { RefState } from "@earendil-works/chord";
 import { withCancel, type Context } from "@earendil-works/chord/context";
 import type { NativeWatchable, Watchable } from "@earendil-works/chord/watch";
-import type { Operation } from "../../pi/plugins/sessions/contract.ts";
-import type { Status } from "../../pi/plugins/status/contract.ts";
+import type { Operation } from "../../../pi/plugins/sessions/contract.ts";
+import type { Status } from "../../../pi/plugins/status/contract.ts";
 
 export type Work = {
   statuses: Readonly<Record<string, Status>>;

@@ -177,7 +177,7 @@ function Canvas(handle: Handle<{ graph: ReturnType<typeof layoutOverview> }>) {
                     padding: "0.5rem 0.75rem",
                     textAlign: "left",
                     border: "1px solid var(--hui-border)",
-                    borderRadius: "4px",
+                    borderRadius: "0.25rem",
                     background: "var(--hui-surface)",
                     color: "var(--hui-ink)",
                     font: "inherit",

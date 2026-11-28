@@ -18,7 +18,7 @@ export interface DialogProps extends Omit<
   title: string;
   description?: string;
   children: RemixNode;
-  onClose: (details: { reason: "escape" | "native"; value: string }) => void;
+  onClose: (details: { reason: "cancel" | "native"; value: string }) => void;
   /** A selector within this dialog. Otherwise native autofocus rules apply. */
   initialFocus?: string;
 }
@@ -26,6 +26,7 @@ export interface DialogProps extends Omit<
 /** Controlled native modal. The owner supplies trigger, close/save actions and open state. */
 export function Dialog(handle: Handle<DialogProps>) {
   let element: HTMLDialogElement | undefined;
+  let reconcileCancel = false;
   const titleId = `${handle.id}-title`;
   const descriptionId = `${handle.id}-description`;
 
@@ -45,6 +46,8 @@ export function Dialog(handle: Handle<DialogProps>) {
       title,
       description,
       children,
+      closedby,
+      closedBy,
       onClose: _onClose,
       initialFocus: _initialFocus,
       mix,
@@ -54,6 +57,7 @@ export function Dialog(handle: Handle<DialogProps>) {
     return (
       <dialog
         {...props}
+        closedby={closedby ?? closedBy ?? "any"}
         aria-labelledby={titleId}
         aria-describedby={mergeIds(
           props["aria-describedby"],
@@ -64,6 +68,8 @@ export function Dialog(handle: Handle<DialogProps>) {
           mix,
           ref((node, signal) => {
             element = node;
+            if (!("closedBy" in HTMLDialogElement.prototype))
+              installBackdropFallback(node, signal);
             signal.addEventListener(
               "abort",
               () => {
@@ -74,10 +80,18 @@ export function Dialog(handle: Handle<DialogProps>) {
             );
           }),
           on("cancel", (event) => {
+            // The platform can force a close, e.g. on repeated Escape.
+            reconcileCancel = !event.cancelable;
             event.preventDefault();
-            handle.props.onClose({ reason: "escape", value: "" });
+            if (event.currentTarget.getAttribute("closedby") !== "none")
+              handle.props.onClose({ reason: "cancel", value: "" });
           }),
           on("close", () => {
+            if (reconcileCancel) {
+              reconcileCancel = false;
+              sync();
+              return;
+            }
             if (element && !element.open && handle.props.open)
               handle.props.onClose({
                 reason: "native",
@@ -104,6 +118,53 @@ export function Dialog(handle: Handle<DialogProps>) {
     );
   };
 }
+// The browser retargets a modal's backdrop events to the dialog. Padding
+// and descendants (including top-layer descendants) are still inside.
+function installBackdropFallback(
+  dialog: HTMLDialogElement,
+  signal: AbortSignal,
+) {
+  let pointer: number | undefined;
+  function onBackdrop(event: PointerEvent) {
+    if (event.target !== dialog || dialog.getAttribute("closedby") !== "any")
+      return false;
+    const { left, right, top, bottom } = dialog.getBoundingClientRect();
+    return (
+      event.clientX < left ||
+      event.clientX >= right ||
+      event.clientY < top ||
+      event.clientY >= bottom
+    );
+  }
+  dialog.addEventListener(
+    "pointerdown",
+    (event) => {
+      pointer =
+        event.isPrimary && event.button === 0 && onBackdrop(event)
+          ? event.pointerId
+          : undefined;
+    },
+    { signal },
+  );
+  dialog.addEventListener(
+    "pointercancel",
+    () => {
+      pointer = undefined;
+    },
+    { signal },
+  );
+  dialog.addEventListener(
+    "pointerup",
+    (event) => {
+      const dismiss = pointer === event.pointerId && onBackdrop(event);
+      pointer = undefined;
+      if (dismiss)
+        dialog.dispatchEvent(new Event("cancel", { cancelable: true }));
+    },
+    { signal },
+  );
+}
+
 const titleStyles = css({ margin: 0, fontSize: "1.25rem" });
 const dialogStyles = css({
   boxSizing: "border-box",

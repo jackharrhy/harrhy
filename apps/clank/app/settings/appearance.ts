@@ -1,4 +1,4 @@
-import type { Branding } from "./branding.ts";
+import type { Branding } from "../pi/branding.ts";
 import { extendTheme, graphiteTheme } from "@harrhy/ui/theme";
 import { css } from "remix/component";
 import {
@@ -57,11 +57,14 @@ export const ownerTheme = extendTheme(graphiteTheme, {
 
 // P2's custom base, hover, message, code and line ramps, in the current scheme.
 const tintPair = (light: string, dark: string) =>
-  `light-dark(oklch(${light} var(--pi-base-hue)), oklch(${dark} var(--pi-base-hue)))`;
+  `light-dark(oklch(${light} var(--clank-hue, var(--pi-base-hue))), oklch(${dark} var(--clank-hue, var(--pi-base-hue))))`;
 
 export const ownerScheme = css({
   colorScheme: "var(--hui-color-scheme)",
-  "&[data-pi-tint=custom]": {
+  "&[data-clank-tint=slate]": { "--clank-hue": "250" },
+  "&[data-clank-tint=sage]": { "--clank-hue": "145" },
+  "&[data-clank-tint=plum]": { "--clank-hue": "315" },
+  "&[data-pi-tint=custom], &[data-clank-tint]": {
     "--hui-surface": tintPair("0.985 0.012", "0.19 0.022"),
     "--hui-canvas": tintPair("0.96 0.017", "0.21 0.022"),
     "--hui-elevated": tintPair("0.985 0.012", "0.19 0.022"),
@@ -76,7 +79,7 @@ export const ownerScheme = css({
   },
 });
 
-// One owner connection owns these document effects; never persist them as preferences.
+// One document owns these effects across reconnects; never persist private branding.
 export function documentBranding(doc: Document, initial?: Branding) {
   const root = doc.documentElement;
   let icon =

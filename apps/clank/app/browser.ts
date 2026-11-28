@@ -1,5 +1,5 @@
 import { run } from "remix/component";
-import { OwnerSessions } from "./sessions.tsx";
+import { OwnerSessions } from "./shell.tsx";
 
 run({
   async loadModule(_url, name) {

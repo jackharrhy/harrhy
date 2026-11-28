@@ -1,44 +1,58 @@
 import type { AssistantMessage } from "@earendil-works/pi-ai";
 import { Activity, type Step } from "./activity.tsx";
 import { localizeMessageTime } from "./message-time.ts";
-import { Icon } from "./icons.tsx";
+import { Icon } from "../icons.tsx";
 import { Markdown } from "./markdown.tsx";
 import { structuredAttribution, type Attribution } from "./attribution.ts";
 import { Button, Text, Textarea } from "@harrhy/ui/native";
 import type { LiveState } from "@earendil-works/pi-durable";
 import { css, on, ref, type Handle, type RemixNode } from "remix/component";
-import type { Catalog, ChatFeed } from "./catalog.ts";
+import type { Catalog, ChatFeed } from "../pi/catalog.ts";
 
 const plain = css({
   whiteSpace: "pre-wrap",
   overflowWrap: "anywhere",
-  margin: "6px 0",
+  margin: "0.375rem 0",
 });
 const measure = css({
   width: "100%",
   maxWidth: "52rem",
   marginInline: "auto",
-  padding: "16px",
+  padding: "1rem",
   boxSizing: "border-box",
 });
 const status = {
-  answered: "Answered",
-  failed: "Failed",
-  question: "Question",
-  note: "Note",
+  answered: "answered",
+  failed: "failed",
+  question: "asks",
+  note: "wrote",
 };
+// The attribution glyph keeps its intrinsic width; only the gap scales with text.
+const attributionGap = "0.5rem";
+const incomingTextInset = `calc(16px + ${attributionGap})`;
 const senderLabel = {
-  owner: "Owner",
   guest: "Guest",
   session: "Session",
   external: "External peer",
   subagent: "Subagent",
 };
+function messageTime(at: number) {
+  return (
+    <time
+      data-message-time
+      datetime={new Date(at).toISOString()}
+      mix={[
+        ref<HTMLTimeElement>(localizeMessageTime),
+        css({ fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" }),
+      ]}
+    />
+  );
+}
 function TranscriptInput(
-  handle: Handle<{ text: string; sender?: Attribution }>,
+  handle: Handle<{ text: string; sender?: Attribution; at?: number }>,
 ) {
   return () => {
-    const { text, sender } = handle.props;
+    const { text, sender, at } = handle.props;
     if (!sender) return <p mix={plain}>{text}</p>;
     if (sender.kind === "owner")
       return (
@@ -48,21 +62,11 @@ function TranscriptInput(
             width: "fit-content",
             maxWidth: "88%",
             background: "var(--hui-selected-surface)",
-            padding: "8px 12px",
-            borderRadius: "4px",
+            padding: "0.5rem 0.75rem",
+            borderRadius: "0.25rem",
             boxSizing: "border-box",
           })}
         >
-          <div
-            mix={css({
-              fontSize: "11px",
-              fontWeight: 600,
-              color: "var(--hui-muted)",
-              marginBottom: "4px",
-            })}
-          >
-            {sender.name || "Owner"}
-          </div>
           <div mix={css({ whiteSpace: "pre-wrap", overflowWrap: "anywhere" })}>
             {text}
           </div>
@@ -71,21 +75,53 @@ function TranscriptInput(
     return (
       <article
         aria-label={senderLabel[sender.kind] + " message"}
-        mix={css({ marginBlock: "12px", overflowWrap: "anywhere" })}
+        mix={css({ marginBlock: "0.75rem", overflowWrap: "anywhere" })}
       >
-        <header mix={css({ fontSize: "13px", color: "var(--hui-muted)" })}>
-          <strong mix={css({ color: "var(--hui-ink)" })}>{sender.name}</strong>
-          {" · "}
+        <header
+          mix={css({
+            display: "flex",
+            alignItems: "center",
+            gap: attributionGap,
+            marginBlockEnd: "0.5rem",
+            fontSize: "0.8125rem",
+            color: "var(--hui-muted)",
+            "& > svg": { flex: "none" },
+          })}
+        >
+          <Icon
+            name={
+              sender.kind === "subagent"
+                ? sender.intent === "failed"
+                  ? "failed"
+                  : "bot"
+                : sender.kind === "guest"
+                  ? "guest"
+                  : "peer"
+            }
+          />
           <span>
-            {sender.intent ? status[sender.intent] : senderLabel[sender.kind]}
+            <strong mix={css({ color: "var(--hui-ink)" })}>
+              {sender.name}
+            </strong>
+            {" · "}
+            <span>
+              {sender.intent
+                ? status[sender.intent]
+                : sender.kind === "guest"
+                  ? "(guest) wrote"
+                  : sender.kind === "external"
+                    ? "(external peer) wrote"
+                    : "wrote"}
+            </span>
+            {at !== undefined && <> · {messageTime(at)}</>}
           </span>
         </header>
-        <div mix={css({ paddingInlineStart: "16px" })}>
+        <div mix={css({ paddingInlineStart: incomingTextInset })}>
           {sender.quote && (
             <blockquote
               mix={css({
                 marginInline: 0,
-                paddingInlineStart: "8px",
+                paddingInlineStart: "0.5rem",
                 borderInlineStart: "2px solid var(--hui-border)",
                 whiteSpace: "pre-wrap",
               })}
@@ -109,8 +145,8 @@ function TranscriptInput(
 const messageAction = css({
   display: "inline-flex",
   alignItems: "center",
-  minHeight: "32px",
-  padding: "0 8px",
+  minHeight: "2rem",
+  padding: "0 0.5rem",
   border: 0,
   background: "transparent",
   color: "inherit",
@@ -128,6 +164,7 @@ function MessageActions(
     text: string;
     at?: number;
     alignEnd?: boolean;
+    indentToBody?: boolean;
     edit?: () => void;
     editDisabled?: boolean;
   }>,
@@ -135,31 +172,19 @@ function MessageActions(
   let announcement = "";
   return () => {
     const { text, at, alignEnd, edit, editDisabled } = handle.props;
-    const time =
-      at === undefined ? undefined : (
-        <time
-          data-message-time
-          datetime={new Date(at).toISOString()}
-          mix={[
-            ref<HTMLTimeElement>(localizeMessageTime),
-            css({
-              paddingInline: "8px",
-              fontVariantNumeric: "tabular-nums",
-              whiteSpace: "nowrap",
-            }),
-          ]}
-        />
-      );
+    const time = at === undefined ? undefined : messageTime(at);
     return (
       <div
         mix={css({
           display: "flex",
           alignItems: "center",
           justifyContent: alignEnd ? "flex-end" : "flex-start",
-          minHeight: "32px",
-          marginInline: alignEnd ? "0 -8px" : "-8px 0",
+          minHeight: "2rem",
+          marginInline: alignEnd ? "0 -0.5rem" : "-0.5rem 0",
+          paddingInlineStart: handle.props.indentToBody ? incomingTextInset : 0,
           color: "var(--hui-muted)",
-          fontSize: "11px",
+          fontSize: "0.6875rem",
+          "& time": { paddingInline: "0.5rem" },
         })}
       >
         {alignEnd && time}
@@ -407,15 +432,34 @@ export function Conversation(handle: Handle<Props>) {
       | { kind: "body"; key: string; content: RemixNode };
     const parts: Part[] = [];
     const calls = new Set<string>();
-    const pushStep = (step: Step) => {
-      const last = parts.at(-1);
+    // The first wheel belongs to the turn, even before it has any steps.
+    // Later wheels are separated by prose and belong to their first part.
+    let after = "start";
+    let turnStart = 0;
+    const startTurn = (key: string) => {
+      after = key;
+      turnStart = parts.length;
+    };
+    const turnTail = () =>
+      parts.length > turnStart ? parts.at(-1) : undefined;
+    const pushStep = (partKey: string, step: Step) => {
+      const last = turnTail();
       if (last?.kind === "activity") last.steps.push(step);
-      else parts.push({ kind: "activity", key: step.id, steps: [step] });
+      else
+        parts.push({
+          kind: "activity",
+          key: `activity:${last ? partKey : after}`,
+          steps: [step],
+        });
     };
     const body = (key: string, content: RemixNode, time?: number) => {
-      const last = parts.at(-1);
+      const last = turnTail();
       if (last?.kind === "activity" && time !== undefined) last.endedAt = time;
       parts.push({ kind: "body", key, content });
+    };
+    const inputBody = (key: string, content: RemixNode) => {
+      body(key, content);
+      startTurn(key);
     };
     const assistant = (
       message: AssistantMessage | NonNullable<typeof partial>,
@@ -423,7 +467,7 @@ export function Conversation(handle: Handle<Props>) {
       key: string,
     ) => {
       if (!streaming) {
-        const previous = parts.at(-1);
+        const previous = turnTail();
         if (previous?.kind === "activity") previous.endedAt = message.timestamp;
       }
       const lastText = streaming
@@ -448,7 +492,7 @@ export function Conversation(handle: Handle<Props>) {
             streaming ? undefined : message.timestamp,
           );
         } else if (part.type === "thinking" && part.thinking.trim()) {
-          pushStep({
+          pushStep(partKey, {
             id: partKey,
             name: "Thought",
             state:
@@ -462,7 +506,7 @@ export function Conversation(handle: Handle<Props>) {
           calls.add(part.id);
           const slot = slots.get(part.id);
           const result = results.get(part.id);
-          pushStep({
+          pushStep(partKey, {
             id: part.id,
             name: part.name,
             args: part.arguments,
@@ -491,16 +535,26 @@ export function Conversation(handle: Handle<Props>) {
     const retainedKeys = new Map<number, string>();
     if (inFlight && (view?.before ?? 0) > inFlight.tail) inFlight = undefined;
     for (const entry of view?.entries ?? []) {
+      // Native markers/failures split runs even when Clank has no row for them.
+      if (
+        entry.kind === "pi.reset" ||
+        entry.kind === "pi.compaction" ||
+        entry.kind === "p2.shell" ||
+        entry.kind === "app.model-error"
+      )
+        startTurn(`marker:${entry.id}`);
       const input = structuredAttribution(entry.kind, entry.data);
-      if (input)
-        body(
+      if (input) {
+        const at = entry.model?.find((item) => item.role === "user")?.timestamp;
+        inputBody(
           "input:" + entry.id,
           <>
-            <TranscriptInput text={input.text} sender={input} />
+            <TranscriptInput text={input.text} sender={input} at={at} />
             <MessageActions
               text={input.text}
-              at={entry.model?.find((item) => item.role === "user")?.timestamp}
+              at={input.kind === "owner" ? at : undefined}
               alignEnd={input.kind === "owner"}
+              indentToBody={input.kind === "subagent"}
               edit={
                 input.kind === "owner" && handle.props.canEdit
                   ? () => void edit(entry.id)
@@ -517,6 +571,7 @@ export function Conversation(handle: Handle<Props>) {
             />
           </>,
         );
+      }
       for (const [i, message] of (entry.model ?? []).entries()) {
         const key = "entry:" + entry.id + ":" + i;
         if (message.role === "assistant") {
@@ -535,7 +590,7 @@ export function Conversation(handle: Handle<Props>) {
           if (responseKey) retainedKeys.set(entry.id, responseKey);
           assistant(message, false, responseKey ?? key);
         } else if (message.role === "user" && !input)
-          body(
+          inputBody(
             key,
             <TranscriptInput
               text={
@@ -550,7 +605,7 @@ export function Conversation(handle: Handle<Props>) {
           !calls.has(message.toolCallId)
         ) {
           calls.add(message.toolCallId);
-          pushStep({
+          pushStep(key, {
             id: message.toolCallId,
             name: message.toolName,
             output: textOf(message.content),
@@ -582,8 +637,8 @@ export function Conversation(handle: Handle<Props>) {
     } else {
       inFlight = undefined;
     }
-    if (live?.run && parts.at(-1)?.kind !== "activity" && !partial)
-      parts.push({ kind: "activity", key: "waiting", steps: [] });
+    if (live?.run && !turnTail())
+      parts.push({ kind: "activity", key: `activity:${after}`, steps: [] });
     return (
       <div
         mix={css({
@@ -624,8 +679,8 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                padding: "24px 16px",
-                fontSize: "16px",
+                padding: "2rem 1rem 1.5rem",
+                fontSize: "1rem",
                 lineHeight: 1.5,
                 "& > :first-child": { marginBlockStart: 0 },
               }),
@@ -655,8 +710,8 @@ export function Conversation(handle: Handle<Props>) {
                 <div
                   key={part.key}
                   mix={css({
-                    marginBlock: "20px",
-                    "@media (min-width: 48rem)": { marginBlock: "26px" },
+                    marginBlock: "1.25rem",
+                    "@media (min-width: 48rem)": { marginBlock: "1.625rem" },
                   })}
                 >
                   {part.content}
@@ -680,8 +735,8 @@ export function Conversation(handle: Handle<Props>) {
                 alignSelf: "end",
                 justifySelf: "center",
                 zIndex: 1,
-                marginBottom: "12px",
-                minHeight: "44px",
+                marginBottom: "0.75rem",
+                minHeight: "2.75rem",
                 backgroundColor: "var(--hui-surface)",
                 border: "1px solid var(--hui-border)",
               }),
@@ -711,7 +766,7 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                paddingBlock: "8px 0",
+                paddingBlock: "0.5rem 0",
                 borderBlock: "1px solid var(--hui-border)",
               }),
             ]}
@@ -741,9 +796,9 @@ export function Conversation(handle: Handle<Props>) {
                     },
                   },
                   padding: 0,
-                  fontSize: "16px",
-                  lineHeight: "24px",
-                  minHeight: "24px",
+                  fontSize: "1rem",
+                  lineHeight: 1.5,
+                  minHeight: "1.5rem",
                   background: "transparent",
                   fieldSizing: "content",
                   maxHeight: "min(28dvh, 12rem)",
@@ -790,8 +845,8 @@ export function Conversation(handle: Handle<Props>) {
                   !draft.trim()
                 }
                 mix={css({
-                  width: "44px",
-                  minHeight: "44px",
+                  width: "2.75rem",
+                  minHeight: "2.75rem",
                   padding: 0,
                   '&[data-variant="quiet"]:disabled': {
                     background: "transparent",
@@ -804,7 +859,7 @@ export function Conversation(handle: Handle<Props>) {
               </Button>
             </div>
           </div>
-          <div mix={[measure, css({ paddingBlock: "0 8px" })]}>
+          <div mix={[measure, css({ paddingBlock: "0 0.5rem" })]}>
             {handle.props.showMetadata && (
               <div
                 aria-label={
@@ -816,12 +871,12 @@ export function Conversation(handle: Handle<Props>) {
                   display: "flex",
                   flexWrap: "wrap",
                   alignItems: "center",
-                  gap: "0 12px",
-                  paddingBlock: "4px 0",
+                  gap: "0 0.75rem",
+                  paddingBlock: "0.25rem 0",
                   color: "var(--hui-muted)",
-                  fontSize: "11px",
-                  lineHeight: "16.5px",
-                  minHeight: "40px",
+                  fontSize: "0.6875rem",
+                  lineHeight: 1.5,
+                  minHeight: "2.5rem",
                   boxSizing: "content-box",
                   fontVariantNumeric: "tabular-nums",
                 })}
@@ -832,9 +887,9 @@ export function Conversation(handle: Handle<Props>) {
                     alignItems: "center",
                     flex: 1,
                     minWidth: 0,
-                    gap: "4px",
+                    gap: "0.25rem",
                     whiteSpace: "nowrap",
-                    minHeight: "24px",
+                    minHeight: "1.5rem",
                   })}
                 >
                   {model && (
@@ -854,7 +909,7 @@ export function Conversation(handle: Handle<Props>) {
                 <div
                   mix={css({
                     display: "flex",
-                    gap: "4px",
+                    gap: "0.25rem",
                     marginInlineStart: "auto",
                     whiteSpace: "nowrap",
                     fontFamily: "ui-monospace, monospace",
@@ -877,7 +932,7 @@ export function Conversation(handle: Handle<Props>) {
                           stroke-width="2"
                           mix={css({
                             verticalAlign: "-2px",
-                            marginInlineEnd: "4px",
+                            marginInlineEnd: "0.25rem",
                           })}
                         >
                           <circle cx="9" cy="7" r="3" />
@@ -909,8 +964,8 @@ export function Conversation(handle: Handle<Props>) {
                     display: "flex",
                     alignItems: "center",
                     flex: "1 0 100%",
-                    gap: "8px",
-                    minHeight: "16px",
+                    gap: "0.5rem",
+                    minHeight: "1rem",
                     fontFamily: "ui-monospace, monospace",
                     "& progress": {
                       flex: 1,

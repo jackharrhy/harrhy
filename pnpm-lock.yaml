@@ -620,6 +620,9 @@ importers:
       '@harrhy/ui':
         specifier: workspace:*
         version: link:../../packages/ui
+      '@pierre/highlights':
+        specifier: 0.5.1
+        version: 0.5.1
       '@pierre/words':
         specifier: 0.3.0
         version: 0.3.0(@pierre/highlights@0.5.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)

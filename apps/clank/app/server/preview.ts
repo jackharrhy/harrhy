@@ -1,12 +1,17 @@
-import type { Snapshot } from "./catalog.ts";
+import type { Snapshot } from "../pi/catalog.ts";
 import {
   createServer,
   request,
   type IncomingHttpHeaders,
   type IncomingMessage,
 } from "node:http";
-import { CHORD_PATH, SESSION_LIST_PATH, sessionKey } from "./routes.ts";
-import { readThemeCookie, type Mode } from "./theme-cookie.ts";
+import { CHORD_PATH, SESSION_LIST_PATH, sessionKey } from "../routes.ts";
+import {
+  readThemeCookie,
+  readTintCookie,
+  type Tint,
+  type Mode,
+} from "../settings/theme-cookie.ts";
 
 const uiPaths = new Set([
   "GET /",
@@ -84,6 +89,7 @@ export function createPreview(
     request: Request,
     snapshot?: Snapshot,
     mode?: Mode,
+    tint?: Tint,
   ) => Response | Promise<Response>,
   snapshot?: (
     request: IncomingMessage,
@@ -122,6 +128,7 @@ export function createPreview(
             new Request(`https://${ownerHost}${req.url}`),
             data,
             readThemeCookie(req.headers.cookie),
+            readTintCookie(req.headers.cookie),
           );
         })
         .then(async (response) => {

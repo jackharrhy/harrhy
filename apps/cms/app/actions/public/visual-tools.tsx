@@ -166,6 +166,7 @@ export const VisualTools = clientEntry(
           <Dialog
             id="tea-visual-dialog"
             open={Boolean(selected)}
+            closedby={saving ? "none" : "closerequest"}
             title="Edit this block"
             initialFocus="textarea"
             onClose={() => {

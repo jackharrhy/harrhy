@@ -2,6 +2,10 @@
 
 The [Pi owner preview](../../docs/clank/owner-preview.md) is a Remix client for native Pi sessions, branches, subagents and chat. It uses Harrhy UI controls, reads declarative Pi instance branding, and keeps its display and composer preferences local to the browser. Build with `npm run build:owner`; its single loopback Node listener serves the UI and the fixed native Pi routes without a fixture or separate identity.
 
+`app/browser.ts` hydrates `app/shell.tsx`. The shell owns selection, routing and the live connection; `app/sidebar/`, `app/commands/`, `app/conversation/` and `app/settings/` own their controls. `app/pi/` binds the native contracts. `app/server/start.ts` wires the loopback listener, relay, SSR document and bounded snapshot. The standalone fixture still uses `app/start.ts`. The `dev:owner` script watches `app/`; the owner build artifact and HTTP routes are unchanged.
+
+Cmd/Ctrl+K opens recent conversations. With a blank query, sessions qualify for 12 hours after an explicit visit recorded in this tab or Pi catalog activity (creation, indexed messages or a location update). Subagents qualify for 30 minutes after their latest reported message, or while their conversation ID is busy. These are activity proxies: Pi does not expose a catalog-wide owner-interaction clock or subagent spawn times. Typing searches all available sessions, branches, subagents and commands; clearing the query restores the recent list. The tab stores at most 16 destination IDs with optional visit times, never titles.
+
 ## Earlier fixture and read-only modes
 
 Standalone Clank is a Remix 3 session list and read-only Overview for a disposable Pi. Create a fixture session, rename it, or archive it in one tab and other tabs update over a persistent WebSocket. See [realtime sessions](../../docs/clank/realtime-sessions.md) for the authorization boundary, Chord watch lifecycle, wire model, limits and measured browser behavior.

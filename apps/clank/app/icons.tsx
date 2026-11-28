@@ -2,6 +2,12 @@ import type { Handle } from "remix/component";
 
 // Outline geometry follows the installed P2 web icons; labels belong to the buttons.
 const paths = {
+  close: "M6 6l12 12M18 6 6 18",
+  bot: "M12 4v4M9 13h.01M15 13h.01M9 17h6",
+  failed: "M12 8v5M12 17h.01",
+  guest:
+    "M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75",
+  peer: "M20 15a2 2 0 0 1-2 2H8l-4 4V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z",
   sidebar: "M9 4v16",
   drawer: "M4 7h16M4 12h12M4 17h8",
   settings:
@@ -35,6 +41,9 @@ export function Icon(handle: Handle<{ name: keyof typeof paths }>) {
         stroke-linecap="round"
         stroke-linejoin="round"
       >
+        {name === "bot" && <rect x="4" y="8" width="16" height="12" rx="3" />}
+        {name === "failed" && <circle cx="12" cy="12" r="9" />}
+        {name === "guest" && <circle cx="9" cy="7" r="4" />}
         {name === "sidebar" && (
           <rect x="3" y="4" width="18" height="16" rx="2" />
         )}

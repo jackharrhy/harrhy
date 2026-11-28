@@ -1,6 +1,7 @@
 import { css, on, type Handle, type RemixNode } from "remix/component";
-import { AnswerDot, WorkingDots, WorkingFrame } from "./rail-mark.tsx";
-import { Icon } from "./icons.tsx";
+import type { RowMarks } from "./sidebar-indicators.ts";
+import { presentMarks } from "./rail-mark.tsx";
+import { Icon } from "../icons.tsx";
 
 const reveal = {
   "& .rail-control.rail-archive": { opacity: 1, pointerEvents: "auto" },
@@ -11,11 +12,11 @@ const rowStyle = css({
   display: "flex",
   alignItems: "center",
   minWidth: 0,
-  paddingInline: "8px 6px",
+  paddingInline: "0.5rem 0.375rem",
   borderRadius: "var(--hui-control-radius)",
-  fontSize: "14px",
-  minHeight: "28px",
-  "&[data-child]": { color: "var(--hui-muted)", fontSize: "13px" },
+  fontSize: "0.875rem",
+  minHeight: "1.75rem",
+  "&[data-child]": { color: "var(--hui-muted)", fontSize: "0.8125rem" },
   "&:hover, &:has(:focus-visible)": {
     background: "var(--hui-hover-surface)",
     ...reveal,
@@ -39,10 +40,10 @@ const rowStyle = css({
   },
   "& .rail-open": {
     display: "flex",
-    gap: "8px",
+    gap: "0.5rem",
     alignItems: "center",
     minWidth: 0,
-    padding: "4px 2px",
+    padding: "0.25rem 0.125rem",
     textAlign: "start",
   },
   // Stretch only the primary hit area. Disclosure and archive are sibling buttons above it.
@@ -65,7 +66,7 @@ const rowStyle = css({
   "& .rail-label svg": {
     width: "12px",
     height: "12px",
-    marginInlineEnd: "4px",
+    marginInlineEnd: "0.25rem",
     verticalAlign: "-1px",
     color: "var(--hui-muted)",
   },
@@ -74,15 +75,7 @@ const rowStyle = css({
     display: "flex",
     alignItems: "center",
     flex: "none",
-    gap: "4px",
-  },
-  "& .rail-work-count": {
-    display: "inline-flex",
-    alignItems: "center",
-    gap: "2px",
-    fontSize: "12px",
-    fontWeight: 400,
-    color: "var(--hui-muted)",
+    gap: "0.25rem",
   },
   "& .rail-control": {
     position: "relative",
@@ -90,8 +83,8 @@ const rowStyle = css({
     placeItems: "center",
     padding: 0,
     flex: "none",
-    width: "28px",
-    height: "28px",
+    width: "1.75rem",
+    height: "1.75rem",
     color: "var(--hui-muted)",
   },
   "& .rail-control:is(:hover,:focus-visible)": { color: "var(--hui-ink)" },
@@ -103,46 +96,45 @@ const rowStyle = css({
   },
   "& .rail-tail > *": { gridArea: "1 / 1" },
   "& .rail-age": {
-    paddingInline: "4px",
+    paddingInline: "0.25rem",
     color: "var(--hui-muted)",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     fontWeight: 400,
     fontVariantNumeric: "tabular-nums",
   },
   "& .rail-control.rail-archive": {
     justifyItems: "end",
-    paddingInlineEnd: "4px",
+    paddingInlineEnd: "0.25rem",
     boxSizing: "border-box",
     opacity: 0,
     pointerEvents: "none",
   },
   "@media (pointer: coarse), (hover: none)": { ...reveal },
   "@media (pointer: coarse), (max-width: 40rem)": {
-    minHeight: "44px",
-    "& .rail-control": { width: "44px", height: "44px" },
+    minHeight: "2.75rem",
+    "& .rail-control": { width: "2.75rem", height: "2.75rem" },
   },
 });
 
 export function RailRow(
-  handle: Handle<{
-    label: string;
-    title?: string;
-    familiarLogo?: RemixNode;
-    pinned?: boolean;
-    unread?: boolean;
-    failure?: string;
-    running?: number;
-    child?: boolean;
-    selected: boolean;
-    age?: string;
-    open(button: HTMLButtonElement): void;
-    disclosure?: {
-      controls: string;
-      expanded: boolean;
-      toggle(button: HTMLButtonElement): void;
-    };
-    archive?: (button: HTMLButtonElement) => void;
-  }>,
+  handle: Handle<
+    RowMarks & {
+      label: string;
+      title?: string;
+      familiarLogo?: RemixNode;
+      pinned?: boolean;
+      child?: boolean;
+      selected: boolean;
+      age?: string;
+      open(button: HTMLButtonElement): void;
+      disclosure?: {
+        controls: string;
+        expanded: boolean;
+        toggle(button: HTMLButtonElement): void;
+      };
+      archive?: (button: HTMLButtonElement) => void;
+    }
+  >,
 ) {
   return () => {
     const {
@@ -151,8 +143,6 @@ export function RailRow(
       familiarLogo,
       pinned,
       unread,
-      failure,
-      running = 0,
       child,
       selected,
       age,
@@ -160,19 +150,10 @@ export function RailRow(
       disclosure,
       archive,
     } = handle.props;
-    const working = running > 0;
-    const failed = failure !== undefined;
-    const backgroundWork = !familiarLogo && working && (failed || unread);
-    const workText =
-      running > 1
-        ? `${running} agents running`
-        : backgroundWork
-          ? "Running"
-          : "Working";
-    const reason = child && failed ? `Failed: ${failure}` : failure;
-    const status = [reason, unread && "New answer", working && workText]
-      .filter(Boolean)
-      .join(" · ");
+    const { primary, secondary, status } = presentMarks(
+      handle.props,
+      familiarLogo,
+    );
     const description = [title !== label && title, status]
       .filter(Boolean)
       .join(" · ");
@@ -188,16 +169,7 @@ export function RailRow(
           mix={on("click", (e) => open(e.currentTarget))}
         >
           <span class="rail-marker" aria-hidden="true">
-            {familiarLogo ? (
-              <>
-                {familiarLogo}
-                {working && <WorkingFrame />}
-              </>
-            ) : failed || unread ? (
-              <AnswerDot failure={failure} />
-            ) : working ? (
-              <WorkingDots />
-            ) : null}
+            {primary}
           </span>
           <span class="rail-label" data-unread={unread ? "" : undefined}>
             {pinned && <Icon name="pin" />}
@@ -221,15 +193,9 @@ export function RailRow(
             </button>
           )}
         </span>
-        {(age || archive || backgroundWork || (familiarLogo && unread)) && (
+        {(age || archive || secondary) && (
           <span class="rail-details">
-            {familiarLogo && unread && <AnswerDot />}
-            {backgroundWork && (
-              <span class="rail-work-count" title={workText} aria-hidden="true">
-                <WorkingDots />
-                {running > 1 && running}
-              </span>
-            )}
+            {secondary}
             {(age || archive) && (
               <span class="rail-tail">
                 <span class="rail-age" aria-hidden="true">

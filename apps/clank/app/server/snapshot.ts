@@ -1,12 +1,12 @@
-import { cacheHitRate } from "../../pi/src/runtime/conversation-stats.ts";
-import { startSnapshotBranding, type Branding } from "./branding.ts";
-import { ownerSessions } from "./session-wire.ts";
+import { cacheHitRate } from "../../../pi/src/runtime/conversation-stats.ts";
+import { startSnapshotBranding, type Branding } from "../pi/branding.ts";
+import { ownerSessions } from "../pi/session-wire.ts";
 import {
   startSnapshotFeed,
   readsFeed,
   statusFeed,
-} from "./sidebar-activity.ts";
-import { projectSidebar } from "./sidebar-indicators.ts";
+} from "../pi/sidebar-activity.ts";
+import { projectSidebar } from "../sidebar/sidebar-indicators.ts";
 import type { IncomingMessage } from "node:http";
 import WebSocket from "ws";
 import { webSocketLink, type WebSocketLike } from "@earendil-works/chord";
@@ -14,18 +14,18 @@ import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
 } from "@earendil-works/chord/context";
-import { Chat } from "../../pi/plugins/chat/contract.ts";
-import { Subagents } from "../../pi/plugins/subagents/contract.ts";
-import { Access } from "../../pi/src/runtime/access.ts";
-import { createHost } from "../../pi/src/runtime/chord.ts";
-import { SERVER } from "../../pi/src/runtime/principals.ts";
-import { activeRows, type Snapshot } from "./catalog.ts";
+import { Chat } from "../../../pi/plugins/chat/contract.ts";
+import { Subagents } from "../../../pi/plugins/subagents/contract.ts";
+import { Access } from "../../../pi/src/runtime/access.ts";
+import { createHost } from "../../../pi/src/runtime/chord.ts";
+import { SERVER } from "../../../pi/src/runtime/principals.ts";
+import { activeRows, type Snapshot } from "../pi/catalog.ts";
 import {
   CHORD_PATH,
   findSession,
   sessionKey,
   canonicalSessionRedirect,
-} from "./routes.ts";
+} from "../routes.ts";
 
 const metadata = [
   "origin",

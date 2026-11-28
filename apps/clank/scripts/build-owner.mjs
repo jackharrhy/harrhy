@@ -4,7 +4,7 @@ const dev = process.argv.includes("--serve");
 const outfile = dev ? ".celld/owner/dev.mjs" : ".celld/owner/server.mjs";
 
 const browser = await build({
-  entryPoints: ["owner/start.ts"],
+  entryPoints: ["app/browser.ts"],
   tsconfig: "tsconfig.json",
   bundle: true,
   format: "esm",
@@ -12,7 +12,7 @@ const browser = await build({
   write: false,
 });
 await build({
-  entryPoints: ["owner/server.ts"],
+  entryPoints: ["app/server/start.ts"],
   tsconfig: "tsconfig.json",
   bundle: true,
   minify: !dev,

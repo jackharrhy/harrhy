@@ -5,9 +5,9 @@ import type { Status } from "../../pi/plugins/status/contract.ts";
 // Resolve native Pi contracts from source, like the owner bundle.
 import "../../pi/src/source-resolver.ts";
 const { failedRun, projectSidebar } =
-  await import("../owner/sidebar-indicators.ts");
-const { mainReadMarker } = await import("../owner/sidebar-activity.ts");
-const { boundedSnapshot } = await import("../owner/snapshot.ts");
+  await import("../app/sidebar/sidebar-indicators.ts");
+const { mainReadMarker } = await import("../app/pi/sidebar-activity.ts");
+const { boundedSnapshot } = await import("../app/server/snapshot.ts");
 
 const rows = ["source", "target", "other"].map((id) => ({ id, main: 3 }));
 const worker: Status = {

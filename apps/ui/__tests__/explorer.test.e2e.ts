@@ -96,6 +96,71 @@ it("explores actual props, matching source, and global themes", async (t) => {
   assert.deepEqual(errors, []);
 });
 
+it("dismisses only a completed backdrop press on the active modal", async (t) => {
+  const app = createApp();
+  t.after(() => app.close());
+  const page = await t.serve(await createTestServer(app.fetch));
+  await page.goto("/explorer/dialog");
+  await page.waitForFunction(
+    () => document.documentElement.dataset.uiReady === "true",
+  );
+  const trigger = page.getByRole("button", {
+    name: "Rename collection",
+    exact: true,
+  });
+  await trigger.click();
+  const dialog = page.getByRole("dialog", { name: "Rename collection" });
+  const box = await dialog.boundingBox();
+  assert.ok(box);
+  // Padding targets the dialog itself, just like its ::backdrop.
+  const inside = { x: box.x + box.width / 2, y: box.y + 3 };
+  const outside = { x: 2, y: 2 };
+  for (const [down, up] of [
+    [inside, inside],
+    [inside, outside],
+    [outside, inside],
+  ]) {
+    await page.mouse.move(down.x, down.y);
+    await page.mouse.down();
+    await page.mouse.move(up.x, up.y);
+    await page.mouse.up();
+    assert.equal(await dialog.isVisible(), true);
+  }
+
+  // A descendant popover may paint beyond the modal's bounds.
+  await dialog.evaluate((node) => {
+    const popup = document.createElement("button");
+    popup.popover = "auto";
+    popup.style.cssText = "position:fixed;inset:4px auto auto 4px;margin:0";
+    popup.textContent = "Popover action";
+    node.append(popup);
+    popup.showPopover();
+  });
+  await page.getByRole("button", { name: "Popover action" }).click();
+  await page.keyboard.press("Escape");
+  await page.getByText("Popover action").waitFor({ state: "hidden" });
+  assert.equal(await dialog.isVisible(), true);
+
+  // A second modal mounted elsewhere owns its own backdrop.
+  await dialog.evaluate(() => {
+    const child = document.createElement("dialog");
+    child.setAttribute("closedby", "any");
+    child.textContent = "Child dialog";
+    document.body.append(child);
+    child.showModal();
+  });
+  await page.mouse.click(outside.x, outside.y);
+  await page.getByText("Child dialog").waitFor({ state: "hidden" });
+  assert.equal(await dialog.isVisible(), true);
+
+  await page.mouse.click(outside.x, outside.y);
+  await dialog.waitFor({ state: "hidden" });
+  assert.equal(
+    await trigger.evaluate((node) => node === document.activeElement),
+    true,
+  );
+});
+
 it("wires Explorer dialog, tabs and async failure controls", async (t) => {
   const app = createApp();
   t.after(() => app.close());

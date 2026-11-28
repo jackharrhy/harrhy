@@ -30,8 +30,8 @@
     "apps/clank": {
       "entry": [
         "app/start.ts",
-        "owner/start.ts",
-        "owner/server.ts",
+        "app/browser.ts",
+        "app/server/start.ts",
         "standalone.tsx",
         "bridge.ts",
         "read-only/source.ts",

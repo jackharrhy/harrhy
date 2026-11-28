@@ -1,8 +1,8 @@
 import { Button, Input, Text } from "@harrhy/ui/native";
 import { css, on, ref, type Handle } from "remix/component";
-import type { SearchResults } from "../../pi/plugins/search/contract.ts";
-import type { Catalog, Row } from "./catalog.ts";
-import { Icon } from "./icons.tsx";
+import type { SearchResults } from "../../../pi/plugins/search/contract.ts";
+import type { Catalog, Row } from "../pi/catalog.ts";
+import { Icon } from "../icons.tsx";
 import { age } from "./sidebar-time.ts";
 
 const line = "1px solid var(--hui-border)";
@@ -10,11 +10,11 @@ const rowStyle = css({
   width: "100%",
   display: "flex",
   justifyContent: "space-between",
-  gap: "8px",
+  gap: "0.5rem",
   textAlign: "start",
   overflowWrap: "anywhere",
   "&[data-aged]": { color: "var(--hui-muted)" },
-  "@media (max-width: 40rem)": { minHeight: "44px" },
+  "@media (max-width: 40rem)": { minHeight: "2.75rem" },
 });
 export function SessionList(
   handle: Handle<{
@@ -89,7 +89,7 @@ export function SessionList(
         <div
           mix={css({
             maxWidth: "50rem",
-            padding: "20px 16px",
+            padding: "1.25rem 1rem",
             marginInline: "auto",
           })}
         >
@@ -97,10 +97,10 @@ export function SessionList(
             mix={css({
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              paddingInline: "4px",
+              gap: "0.5rem",
+              paddingInline: "0.25rem",
               borderBottom: line,
-              marginBottom: "8px",
+              marginBottom: "0.5rem",
             })}
           >
             <Icon name="search" />
@@ -138,7 +138,7 @@ export function SessionList(
                   <span
                     aria-hidden="true"
                     mix={css({
-                      fontSize: "12px",
+                      fontSize: "0.75rem",
                       color: "var(--hui-muted)",
                       flexShrink: 0,
                     })}

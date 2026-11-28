@@ -3,8 +3,8 @@ import {
   peerMessage,
   peerCitation,
   type AgentMessage,
-} from "../../pi/src/runtime/entries.ts";
-import { messageData } from "../../pi/src/runtime/input.ts";
+} from "../../../pi/src/runtime/entries.ts";
+import { messageData } from "../../../pi/src/runtime/input.ts";
 
 export type Attribution = {
   kind: "owner" | "guest" | "session" | "external" | "subagent";

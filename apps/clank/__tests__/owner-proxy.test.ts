@@ -10,7 +10,7 @@ import type { Socket } from "node:net";
 import { test, type TestContext } from "node:test";
 import { inspect } from "node:util";
 import WebSocket, { WebSocketServer } from "ws";
-import { createPreview } from "../owner/preview.ts";
+import { createPreview } from "../app/server/preview.ts";
 
 const host = "clank.example.test";
 const origin = `https://${host}`;

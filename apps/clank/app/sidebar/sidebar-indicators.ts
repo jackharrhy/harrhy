@@ -1,11 +1,35 @@
-import type { Operation } from "../../pi/plugins/sessions/contract.ts";
+import type { Child } from "../../../pi/plugins/subagents/contract.ts";
+import type { Operation } from "../../../pi/plugins/sessions/contract.ts";
 import {
   failureWords,
   runState,
-} from "../../pi/plugins/sessions/sidebar/run-state.ts";
-import type { RunFailure, Status } from "../../pi/plugins/status/contract.ts";
+} from "../../../pi/plugins/sessions/sidebar/run-state.ts";
+import type {
+  RunFailure,
+  Status,
+} from "../../../pi/plugins/status/contract.ts";
 
 export type Indicator = { failure?: string; unread?: boolean; busy?: number[] };
+export type RowMarks = { failure?: string; unread?: boolean; running?: number };
+
+export function sessionMarks(indicator?: Indicator): RowMarks | undefined {
+  if (!indicator) return undefined;
+  return {
+    failure: indicator.failure,
+    unread: indicator.unread,
+    running: indicator.busy?.length,
+  };
+}
+
+export function childMarks(
+  child: Child,
+  busy?: number[],
+): RowMarks | undefined {
+  if (busy?.includes(child.conversationId)) return { running: 1 };
+  const failure = failedRun(child.failure, false);
+  return failure === undefined ? undefined : { failure: `Failed: ${failure}` };
+}
+
 export type ReadMarks = {
   answers: Readonly<Record<string, number>>;
   reads: Readonly<Record<string, number>>;

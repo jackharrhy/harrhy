@@ -1,3 +1,4 @@
+import { isChordError } from "@earendil-works/chord";
 import { validSlug, canonicalSessionRedirect } from "./routes.ts";
 import {
   SESSION_LIST_PATH,
@@ -5,22 +6,18 @@ import {
   findSession,
   sessionPath,
 } from "./routes.ts";
-import { ArchiveDialog } from "./archive-dialog.tsx";
-import { RailRow } from "./rail-row.tsx";
-import { SessionList } from "./session-list.tsx";
-import { age, isRecent } from "./sidebar-time.ts";
+import { ArchiveDialog } from "./sidebar/archive-dialog.tsx";
+import { createSessionRail, railEntries } from "./sidebar/session-rail.tsx";
+import { SessionList } from "./sidebar/session-list.tsx";
 import {
   Settings,
   defaultPreferences,
   readPreferences,
   savePreference,
-} from "./settings.tsx";
-import {
-  Menu,
-  MenuTrigger,
-  MenuContent,
-  MenuItem,
-} from "@harrhy/ui/interactive";
+} from "./settings/settings.tsx";
+import { SessionTitle, sessionTitle } from "./conversation/session-heading.tsx";
+import { iconAction, phone, titleStyle } from "./layout-styles.ts";
+import { tintCookie, type Tint } from "./settings/theme-cookie.ts";
 import { BrandMark } from "./brand-mark.tsx";
 import {
   documentBranding,
@@ -28,18 +25,17 @@ import {
   modes,
   saveTheme,
   type Mode,
-} from "./appearance.ts";
+} from "./settings/appearance.ts";
 import { Icon } from "./icons.tsx";
-import { Switcher, type PaletteItem } from "./switcher.tsx";
 import {
-  failureWords,
-  runState,
-} from "../../pi/plugins/sessions/sidebar/run-state.ts";
-import {
-  byRecentActivity,
-  type Child,
-} from "../../pi/plugins/subagents/contract.ts";
-import { Conversation } from "./conversation.tsx";
+  destinationKey,
+  paletteChoices,
+  recentVisits,
+  recordVisit,
+  saveVisits,
+  Switcher,
+} from "./commands/palette.tsx";
+import { Conversation } from "./conversation/conversation.tsx";
 import { Button, Heading, Input, Text } from "@harrhy/ui/native";
 import { clientEntry, css, on, ref, type Handle } from "remix/component";
 import {
@@ -49,16 +45,15 @@ import {
   type Catalog,
   type Row,
   type Snapshot,
-} from "./catalog.ts";
-import { mountRailSwipe, phoneWidth } from "./swipe.ts";
+} from "./pi/catalog.ts";
+import { mountRailSwipe, phoneWidth } from "./sidebar/swipe.ts";
 
-const phone = `@media ${phoneWidth}`;
 const line = "1px solid var(--hui-border)";
 const shell = css({
   height: "100dvh",
   overflow: "hidden",
   display: "grid",
-  gridTemplateColumns: "clamp(220px, 22vw, 300px) minmax(0, 1fr)",
+  gridTemplateColumns: "clamp(13.75rem, 22vw, 18.75rem) minmax(0, 1fr)",
   "& .session-list, & .session-detail": { display: "grid" },
   "& .sessions-back": { display: "none" },
   "@media (min-width: 40.001rem)": {
@@ -102,9 +97,9 @@ const bar = css({
   alignItems: "center",
   justifyContent: "space-between",
   gap: "0.5rem",
-  minHeight: "52px",
+  minHeight: "3.25rem",
   boxSizing: "border-box",
-  paddingInline: "16px",
+  paddingInline: "1rem",
   borderBottom: line,
 });
 const scroll = css({
@@ -115,266 +110,9 @@ const scroll = css({
 const measure = css({
   maxWidth: "72ch",
   marginInline: "auto",
-  padding: "24px 16px",
+  padding: "1.5rem 1rem",
   overflowWrap: "anywhere",
 });
-const action = css({
-  "--hui-control-height": "2rem",
-  [phone]: { "--hui-control-height": "2.75rem" },
-});
-const titleStyle = css({
-  margin: 0,
-  fontSize: "15px",
-  fontWeight: 600,
-  overflowWrap: "anywhere",
-});
-const sessionButton = css({
-  width: "100%",
-  fontWeight: 400,
-  "&[data-variant=quiet]:hover": { background: "var(--hui-hover-surface)" },
-  minHeight: "28px",
-  justifyContent: "flex-start",
-  fontSize: "14px",
-  textAlign: "left",
-  padding: "4px 10px",
-  "& > svg": { flex: "none", color: "var(--hui-muted)" },
-  "& span": {
-    minWidth: 0,
-    overflow: "hidden",
-    textOverflow: "ellipsis",
-    whiteSpace: "nowrap",
-  },
-  "&[data-variant=quiet][aria-pressed=true]": {
-    backgroundColor: "var(--hui-selected-surface)",
-    color: "var(--hui-selected-ink)",
-    fontWeight: 600,
-  },
-  [phone]: { minHeight: "44px" },
-});
-const iconAction = css({
-  width: "2rem",
-  padding: 0,
-  minHeight: "2rem",
-  flex: "none",
-  [phone]: { width: "2.75rem", minHeight: "2.75rem" },
-});
-const sessionTitle = (row: Row) => row.title || "Untitled session";
-
-function SessionTitle(
-  handle: Handle<{
-    row: Row;
-    rename?: Catalog["rename"];
-    subtitle: string;
-    switchConversation?: (from?: HTMLElement) => void;
-  }>,
-) {
-  let edit: { draft: string; saving: boolean; error?: string } | undefined;
-  let editButton: HTMLButtonElement | undefined;
-  const focusButton = ref<HTMLButtonElement>((node) => {
-    editButton = node;
-  });
-  const focusInput = ref<HTMLInputElement>((node) => {
-    node.focus();
-    node.select();
-  });
-  async function finish() {
-    edit = undefined;
-    await handle.update();
-    editButton?.focus();
-  }
-  async function save() {
-    if (!edit || edit.saving) return;
-    const title = edit.draft.trim();
-    if (!title || title.length > MAX_TITLE) {
-      edit.error = `Enter a title between 1 and ${MAX_TITLE} characters.`;
-      await handle.update();
-      return;
-    }
-    if (title === handle.props.row.title) return finish();
-    edit.saving = true;
-    edit.error = undefined;
-    void handle.update();
-    try {
-      if (!handle.props.rename) return;
-      await handle.props.rename(handle.props.row.id, title);
-    } catch {
-      if (handle.signal.aborted) return;
-      edit.saving = false;
-      edit.error = "Could not rename this session. Try again.";
-      await handle.update();
-      return;
-    }
-    if (!handle.signal.aborted) await finish();
-  }
-  return () => {
-    const { row } = handle.props;
-    const title = sessionTitle(row);
-    return (
-      <>
-        {edit ? (
-          <form
-            mix={[
-              css({ width: "100%", paddingBlock: "0.25rem" }),
-              on("submit", (event) => {
-                event.preventDefault();
-                void save();
-              }),
-              on("keydown", (event) => {
-                if (event.key === "Escape" && !edit?.saving) {
-                  event.preventDefault();
-                  void finish();
-                }
-              }),
-            ]}
-          >
-            <div
-              mix={css({
-                display: "flex",
-                alignItems: "center",
-                gap: "0.375rem",
-              })}
-            >
-              <Input
-                aria-label="Session title"
-                defaultValue={edit.draft}
-                maxLength={MAX_TITLE}
-                readOnly={edit.saving}
-                aria-invalid={edit.error ? true : undefined}
-                mix={[
-                  action,
-                  css({ minWidth: 0, flex: 1 }),
-                  focusInput,
-                  on("input", (event) => {
-                    if (edit) edit.draft = event.currentTarget.value;
-                  }),
-                ]}
-              />
-              <Button
-                type="submit"
-                variant="primary"
-                disabled={edit.saving}
-                mix={action}
-              >
-                {edit.saving ? "Saving…" : "Save"}
-              </Button>
-              <Button
-                variant="quiet"
-                disabled={edit.saving}
-                mix={[action, on("click", finish)]}
-              >
-                Cancel
-              </Button>
-            </div>
-            {edit.error && <Text role="alert">{edit.error}</Text>}
-          </form>
-        ) : (
-          <>
-            <div
-              mix={[
-                css({
-                  minWidth: 0,
-                  flex: 1,
-                }),
-                on("dblclick", () =>
-                  handle.props.switchConversation?.(editButton),
-                ),
-              ]}
-            >
-              <Heading level={1} mix={titleStyle}>
-                <span
-                  title={title}
-                  mix={css({
-                    display: "block",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                    lineHeight: 1.3,
-                  })}
-                >
-                  {title}
-                </span>
-              </Heading>
-              <div
-                title={handle.props.subtitle}
-                mix={css({
-                  fontSize: "11px",
-                  lineHeight: 1.4,
-                  color: "var(--hui-muted)",
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                })}
-              >
-                {handle.props.subtitle}
-              </div>
-            </div>
-            <div
-              mix={css({
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-                marginInlineStart: "auto",
-                flex: "none",
-              })}
-            >
-              <Menu label="Session tools">
-                <MenuTrigger
-                  aria-label="Session tools"
-                  disabled={!handle.props.rename}
-                  mix={[
-                    iconAction,
-                    focusButton,
-                    css({
-                      "&[aria-haspopup]": {
-                        background: "transparent",
-                        borderColor: "transparent",
-                        color: "var(--hui-muted)",
-                      },
-                      "&[aria-haspopup]:hover": {
-                        background: "var(--hui-hover-surface)",
-                      },
-                    }),
-                  ]}
-                >
-                  <Icon name="more" />
-                </MenuTrigger>
-                <MenuContent
-                  onSelect={(item) => {
-                    if (item.name === "conversations") {
-                      handle.props.switchConversation?.(editButton);
-                      return;
-                    }
-                    edit = { draft: row.title, saving: false };
-                    void handle.update();
-                  }}
-                >
-                  {handle.props.switchConversation && (
-                    <MenuItem name="conversations">
-                      Switch conversation…
-                    </MenuItem>
-                  )}
-                  <MenuItem name="rename">Rename</MenuItem>
-                </MenuContent>
-              </Menu>
-            </div>
-          </>
-        )}
-      </>
-    );
-  };
-}
-
-function childMarks(child: Child, busy: number[] | undefined) {
-  const run = runState(
-    child.failure,
-    busy?.includes(child.conversationId) ?? false,
-    undefined,
-  );
-  if (run.kind === "busy") return { running: 1 };
-  if (run.kind === "failed")
-    return { failure: run.detail ?? failureWords(run.reason) };
-  return {};
-}
 
 type View =
   | { kind: "loading" | "sign-in" | "offline" }
@@ -387,6 +125,7 @@ export const OwnerSessions = clientEntry(
       familiarId?: string;
       snapshot?: string;
       initialMode?: Mode;
+      initialTint?: Tint;
       renderedAt: number;
       listPage?: boolean;
       target?: string;
@@ -395,9 +134,10 @@ export const OwnerSessions = clientEntry(
     let seed = handle.props.snapshot
       ? (JSON.parse(handle.props.snapshot) as Snapshot)
       : undefined;
-    // Seed this presentation once; reconnects must never replay old branding.
+    // Presentation belongs to this authorized document, not a particular socket.
     let branding = seed?.branding;
     if (seed) delete seed.branding;
+    let applyBranding: ReturnType<typeof documentBranding>;
     let now = handle.props.renderedAt;
     let listPage = Boolean(handle.props.listPage);
     let target = handle.props.target;
@@ -409,7 +149,66 @@ export const OwnerSessions = clientEntry(
     }
     let listQuery = "";
     let listScroll = 0;
-    function showList() {
+    // Only navigation handlers request focus. A Chord baseline (or the newly
+    // created row) can arrive after the shell commits the destination.
+    let pendingFocus: AbortController | undefined;
+    function requestFocus() {
+      pendingFocus?.abort();
+      const request = new AbortController();
+      pendingFocus = request;
+      const signal = AbortSignal.any([request.signal, handle.signal]);
+      const cancel = () => request.abort();
+      const options = { signal, capture: true };
+      document.addEventListener("pointerdown", cancel, options);
+      document.addEventListener("keydown", cancel, options);
+      document.addEventListener("visibilitychange", cancel, options);
+      window.addEventListener("popstate", cancel, options);
+      window.addEventListener("pagehide", cancel, options);
+      window.addEventListener("blur", cancel, { signal });
+      // Native Dialog.close() may restore its opener during this commit.
+      if (!switching) document.addEventListener("focusin", cancel, options);
+      async function afterUpdate(destination: string) {
+        await handle.update();
+        const detailPane = detailHeader?.parentElement;
+        if (signal.aborted || !detailPane || document.hidden) return cancel();
+        document.addEventListener("focusin", cancel, options);
+        const focus = () => {
+          if (detailPane.dataset.destination !== destination) {
+            if (detailPane.dataset.destination) cancel();
+            return;
+          }
+          const selector = matchMedia(`${phoneWidth}, (pointer: coarse)`)
+            .matches
+            ? "h1[tabindex], h2[tabindex]"
+            : destination === "list"
+              ? 'input[type="search"]'
+              : destination === "new"
+                ? 'input[name="title"]'
+                : "textarea:enabled";
+          const field = detailPane.querySelector<HTMLElement>(selector);
+          if (!field) return;
+          cancel();
+          field.focus({ preventScroll: true });
+        };
+        focus();
+        if (signal.aborted) return;
+        const observer = new MutationObserver(focus);
+        observer.observe(detailPane, {
+          childList: true,
+          subtree: true,
+          attributeFilter: ["disabled", "data-destination"],
+        });
+        signal.addEventListener("abort", () => observer.disconnect(), {
+          once: true,
+        });
+      }
+      return { afterUpdate, cancel };
+    }
+    function showList(from?: HTMLElement) {
+      const focus = requestFocus();
+      trigger = from ?? switchFrom;
+      switchFrom = undefined;
+      switching = false;
       if (!listPage) {
         history.replaceState(
           { clankSession: selectedId, branch, agentId, detailOpen },
@@ -421,14 +220,26 @@ export const OwnerSessions = clientEntry(
       target = undefined;
       detailOpen = true;
       newOpen = false;
-      void handle.update();
+      void focus.afterUpdate("list");
     }
     let sidebar = true;
     let switching = false;
-    let scopedSwitch = false;
+    let recent: ReturnType<typeof recentVisits> = [];
     let switchFrom: HTMLElement | undefined;
     let settings = false;
     let mode = handle.props.initialMode ?? "system";
+    let tint = handle.props.initialTint ?? "pi";
+    function setTint(next: Tint) {
+      tint = next;
+      if (next === "pi") delete document.documentElement.dataset.clankTint;
+      else document.documentElement.dataset.clankTint = next;
+      try {
+        document.cookie = tintCookie(next);
+      } catch {
+        /* Still applies for this visit. */
+      }
+      void handle.update();
+    }
     function applyMode(next: Mode) {
       mode = next;
       if (next === "system") delete document.documentElement.dataset.theme;
@@ -449,25 +260,20 @@ export const OwnerSessions = clientEntry(
       await handle.update();
       sidebarButton?.focus();
     }
-    function startConversationSwitch(from?: HTMLElement) {
-      if (from) switchFrom = from;
-      scopedSwitch = true;
-      switching = true;
-      void handle.update();
-    }
-    function startSwitch() {
-      scopedSwitch = false;
+    function startSwitch(from?: HTMLElement) {
+      if (view.kind !== "ready") return;
       switchFrom =
-        document.activeElement instanceof HTMLElement
+        from ??
+        (document.activeElement instanceof HTMLElement
           ? document.activeElement
-          : undefined;
+          : undefined);
       switching = true;
       void handle.update();
     }
     function closeSwitch() {
       switching = false;
       void handle.update().then(() => {
-        if (switchFrom?.isConnected) switchFrom.focus();
+        if (switchFrom?.isConnected) switchFrom.focus({ preventScroll: true });
         switchFrom = undefined;
       });
     }
@@ -476,20 +282,12 @@ export const OwnerSessions = clientEntry(
       | { session: string; conversation: number; text: string }
       | undefined;
     let agentId: number | undefined;
-    const expanded = new Set<string>();
-    let sidebarList: HTMLUListElement | undefined;
-    const sidebarListRef = ref<HTMLUListElement>((node) => {
-      sidebarList = node;
+    const sessionRail = createSessionRail(handle, {
+      open,
+      startNew,
+      showList,
+      archiveAction,
     });
-    function toggleSubagents(id: string, button: HTMLButtonElement) {
-      if (expanded.delete(id)) {
-        const list = button.ownerDocument.getElementById(`agents-${id}`);
-        if (list?.contains(button.ownerDocument.activeElement)) button.focus();
-      } else {
-        expanded.add(id);
-      }
-      void handle.update();
-    }
     async function open(
       id: string,
       destination?: number,
@@ -508,6 +306,12 @@ export const OwnerSessions = clientEntry(
       const nextBranch =
         !child && destination !== row?.main ? destination : undefined;
       if (!row) return;
+      if (view.kind === "ready")
+        recent = recordVisit(
+          recent,
+          destinationKey(id, destination ?? row.main),
+          Date.now(),
+        );
       const path = sessionPath(row);
       if (
         location.pathname !== path ||
@@ -537,35 +341,31 @@ export const OwnerSessions = clientEntry(
         nextBranch !== undefined
       )
         seed = undefined;
-      trigger = from;
+      const focus = requestFocus();
+      trigger = from ?? switchFrom;
       switchFrom = undefined;
-      if (child !== undefined) expanded.add(id);
+      if (child !== undefined) sessionRail.expand(id);
       switching = false;
       selectedId = id;
       branch = nextBranch;
       agentId = child;
       newOpen = false;
       detailOpen = true;
-      await handle.update();
-      if (!from || matchMedia(phoneWidth).matches) detailHeader?.focus();
+      await focus.afterUpdate(destinationKey(id, destination ?? row.main));
     }
     let creating = false;
     let newOpen = false;
     let createError = "";
     let createSlug = "";
-    let newTitle: HTMLInputElement | undefined;
-    const captureNewTitle = ref<HTMLInputElement>((node) => {
-      newTitle = node;
-    });
     async function startNew(from?: HTMLButtonElement) {
-      trigger = from;
+      const focus = requestFocus();
+      trigger = from ?? switchFrom;
       switchFrom = undefined;
       switching = false;
       newOpen = true;
       createSlug = "";
       createError = "";
-      await handle.update();
-      newTitle?.focus();
+      await focus.afterUpdate("new");
     }
     let selectedId = seed?.selectedId;
     let detailOpen = listPage || Boolean(target);
@@ -588,7 +388,7 @@ export const OwnerSessions = clientEntry(
       newOpen = false;
       if (!trigger?.isConnected || !rail?.contains(trigger)) trigger = rail;
       await handle.update();
-      trigger?.focus();
+      trigger?.focus({ preventScroll: true });
     }
     let archiving:
       | {
@@ -615,12 +415,7 @@ export const OwnerSessions = clientEntry(
       const { from } = archiving;
       archiving = undefined;
       await handle.update();
-      const next = from.isConnected
-        ? from
-        : (sidebarList?.querySelector<HTMLButtonElement>(
-            "button[aria-pressed=true]",
-          ) ??
-          sidebarList?.querySelector<HTMLButtonElement>("[data-new-session]"));
+      const next = from.isConnected ? from : sessionRail.archiveFallback();
       if (next?.getClientRects().length) next.focus();
       else detailHeader?.focus();
     }
@@ -637,30 +432,24 @@ export const OwnerSessions = clientEntry(
       const current = new AbortController();
       attempt = current;
       const signal = current.signal;
-      const applyBranding = documentBranding(document, branding);
-      signal.addEventListener(
-        "abort",
-        () => {
-          applyBranding();
-          if (branding) {
-            branding = undefined;
-            if (!handle.signal.aborted) void handle.update();
-          }
-        },
-        { once: true },
-      );
       async function show(next: View) {
         if (signal.aborted) return;
-        if (next.kind === "ready" && next.catalog.brandingReady)
-          branding = next.catalog.branding;
-        else if (next.kind === "offline" || next.kind === "sign-in")
-          branding = undefined;
+        if (next.kind === "ready" && next.catalog.branding !== undefined)
+          branding = next.catalog.branding ?? undefined;
+        else if (next.kind === "sign-in") branding = undefined;
         applyBranding(branding);
         if (next.kind === "sign-in") {
           archiving = undefined;
           cached = seed = undefined;
           switching = settings = newOpen = false;
           createSlug = "";
+        }
+        if (next.kind !== "ready") switching = false;
+        if (next.kind === "sign-in" || next.kind === "offline")
+          pendingFocus?.abort();
+        if (next.kind === "sign-in") {
+          recent = [];
+          saveVisits(recent);
         }
         const previous = cached;
         if (next.kind === "ready") {
@@ -745,16 +534,20 @@ export const OwnerSessions = clientEntry(
           (catalog) => show({ kind: "ready", catalog }),
           handle.props.familiarId,
         );
-      } catch {
-        // A failed upgrade and an unreachable Pi look the same to the browser.
+        await show({ kind: "offline" });
+      } catch (error) {
+        // A closed link alone is not evidence that the owner was signed out.
+        await show({
+          kind: isChordError(error, "forbidden") ? "sign-in" : "offline",
+        });
       }
-      await show({ kind: "offline" });
       if (!signal.aborted) {
         retry = setTimeout(() => void connect(), retryDelay);
         retryDelay = Math.min(8000, retryDelay * 2);
       }
     }
     const mount = ref<HTMLElement>((node, signal) => {
+      applyBranding = documentBranding(node.ownerDocument, branding);
       const updateVisibility = () => {
         void handle.update();
       };
@@ -815,6 +608,7 @@ export const OwnerSessions = clientEntry(
       signal.addEventListener("abort", () => clearInterval(clock), {
         once: true,
       });
+      recent = recentVisits();
       preferences = readPreferences();
       void handle.update();
       void connect();
@@ -825,6 +619,7 @@ export const OwnerSessions = clientEntry(
             view.kind !== "ready" ||
             event.defaultPrevented ||
             event.isComposing ||
+            event.keyCode === 229 ||
             event.repeat ||
             event.altKey ||
             event.shiftKey ||
@@ -844,6 +639,8 @@ export const OwnerSessions = clientEntry(
         () => {
           clearTimeout(retry);
           attempt?.abort();
+          applyBranding();
+          branding = undefined;
         },
         { once: true },
       );
@@ -864,51 +661,17 @@ export const OwnerSessions = clientEntry(
       );
     });
     return () => {
-      const doc = sidebarList?.ownerDocument;
-      const focused = doc?.activeElement;
-      if (
-        doc &&
-        focused instanceof HTMLElement &&
-        sidebarList?.contains(focused)
-      ) {
-        // A keyed row survives a move, but moving it can drop DOM focus.
-        handle.queueTask(() => {
-          if (doc.activeElement !== doc.body) return;
-          const next = focused.isConnected
-            ? focused
-            : sidebarList?.querySelector<HTMLButtonElement>(
-                "button[aria-pressed=true], [data-new-session]",
-              );
-          if (next?.getClientRects().length)
-            next.focus({ preventScroll: true });
-        });
-      }
       const live = view.kind === "ready" ? view.catalog : undefined;
       const catalog = live ?? cached;
       const selected = catalog?.rows.find((item) => item.id === selectedId);
-      const familiar = catalog?.rows.find(
-        (row) => row.id === handle.props.familiarId,
-      );
-      const rows = [
-        ...(familiar ? [familiar] : []),
-        null,
-        ...(catalog?.rows.filter((row) => row !== familiar) ?? []),
-      ];
-      const activeIds = new Set(catalog?.activeIds ?? seed?.activeIds);
-      const older = rows.filter((row): row is Row =>
-        Boolean(
-          row &&
-          row !== familiar &&
-          !activeIds.has(row.id) &&
-          !isRecent(row, selectedId, now, preferences.recency),
-        ),
-      );
-      const olderIds = new Set(older.map((row) => row.id));
-      const sidebarRows = rows.filter((row) => !row || !olderIds.has(row.id));
-      const children = (id: string) =>
-        (catalog?.children[id] ?? [])
-          .filter((child) => child.kind !== "agent" && !child.archived)
-          .toSorted(byRecentActivity);
+      const entries = railEntries(catalog, {
+        familiarId: handle.props.familiarId,
+        activeIds: catalog?.activeIds ?? seed?.activeIds,
+        selectedId,
+        recency: preferences.recency,
+        now,
+      });
+      const { familiar, children, olderIds } = entries;
       const selectedChild =
         selected &&
         children(selected.id).find((child) => child.conversationId === agentId);
@@ -942,83 +705,38 @@ export const OwnerSessions = clientEntry(
             live.markMainRead(selected.id);
         });
       }
-      const destinations = (row: Row) => {
-        const agents = children(row.id);
-        return [
-          { id: row.main, label: "Main conversation", kind: "Main" },
-          ...row.branches
-            .filter(
-              (item) =>
-                item.conversation !== row.main &&
-                !agents.some(
-                  (child) => child.conversationId === item.conversation,
-                ),
-            )
-            .map((item) => ({
-              id: item.conversation,
-              label: item.label || `Conversation ${item.conversation}`,
-              kind: "Branch",
-            })),
-          ...agents.map((child) => ({
-            id: child.conversationId,
-            label: child.name,
-            kind: "Subagent",
-          })),
-        ];
-      };
-      const currentDestinations = selected ? destinations(selected) : [];
-      const canSwitch = Boolean(
-        live && !newOpen && !listPage && currentDestinations.length > 1,
+      const currentBranch = selected?.branches.find(
+        (item) => item.conversation === conversation,
       );
-      const current = currentDestinations.find((d) => d.id === conversation);
-      type Choice = PaletteItem & {
-        target?: { session: string; conversation?: number };
-      };
-      const choices: Choice[] =
-        scopedSwitch && switching && selected
-          ? currentDestinations.map((d) => ({
-              id: `conversation:${selected.id}:${d.id}`,
-              label: d.label,
-              detail: d.id === conversation ? "Current" : d.kind,
-              target: { session: selected.id, conversation: d.id },
-            }))
-          : [
-              { id: "new", label: "New session", detail: "Command" },
-              {
-                id: "list",
-                label: "Search sessions and messages",
-                detail: "Command",
-              },
-              ...(canSwitch
-                ? [
-                    {
-                      id: "conversations",
-                      label: "Switch conversation…",
-                      detail: "This session",
-                    },
-                  ]
-                : []),
-              ...rows.flatMap((row) => {
-                if (!row) return [];
-                const label = row === familiar ? "Familiar" : sessionTitle(row);
-                return [
-                  {
-                    id: `session:${row.id}`,
-                    label,
-                    detail: "Session",
-                    target: { session: row.id },
-                  },
-                  ...destinations(row)
-                    .slice(1)
-                    .map((d) => ({
-                      id: `conversation:${row.id}:${d.id}`,
-                      label: d.label,
-                      detail: `${label} · ${d.kind}`,
-                      target: { session: row.id, conversation: d.id },
-                    })),
-                ];
-              }),
-            ];
+      const here =
+        live &&
+        selected &&
+        !listPage &&
+        !newOpen &&
+        conversation !== undefined &&
+        (conversation === selected.main ||
+          (agentId === undefined
+            ? currentBranch
+            : live.childrenReady && selectedChild))
+          ? destinationKey(selected.id, conversation)
+          : undefined;
+      if (
+        here &&
+        recent[0]?.id !== here &&
+        (!matchMedia(phoneWidth).matches || detailOpen)
+      )
+        recent = recordVisit(recent, here);
+      const choices =
+        switching && live
+          ? paletteChoices(
+              live.rows,
+              (row) => (row === familiar ? "Familiar" : sessionTitle(row)),
+              live.childrenReady ? live.children : {},
+              recent,
+              here,
+              live.indicators,
+            )
+          : [];
       return (
         <main
           aria-label="Clank"
@@ -1051,8 +769,6 @@ export const OwnerSessions = clientEntry(
           )}
           {catalog && (
             <Switcher
-              key={scopedSwitch ? "conversations" : "commands"}
-              scoped={scopedSwitch}
               open={switching}
               items={choices}
               close={closeSwitch}
@@ -1061,14 +777,8 @@ export const OwnerSessions = clientEntry(
                 if (!choice || !live) return;
                 if (choice.target)
                   void open(choice.target.session, choice.target.conversation);
-                else if (choice.id === "conversations")
-                  startConversationSwitch();
-                else if (choice.id === "list") {
-                  switching = false;
-                  switchFrom = undefined;
-                  showList();
-                  void handle.update().then(() => detailHeader?.focus());
-                } else void startNew();
+                else if (choice.id === "list") showList();
+                else void startNew();
               }}
             />
           )}
@@ -1077,6 +787,8 @@ export const OwnerSessions = clientEntry(
               open={settings}
               mode={mode}
               setMode={setMode}
+              tint={tint}
+              setTint={setTint}
               preferences={preferences}
               change={(change) => {
                 preferences = { ...preferences, ...change };
@@ -1106,13 +818,16 @@ export const OwnerSessions = clientEntry(
           >
             <div mix={bar}>
               <BrandMark logo={branding?.logo} />
-              <div mix={css({ display: "flex", gap: "2px" })}>
+              <div mix={css({ display: "flex", gap: "0.125rem" })}>
                 {catalog && (
                   <Button
                     variant="quiet"
                     aria-label="Switch session"
                     title="Switch session (⌘/Ctrl+K)"
-                    mix={[iconAction, on("click", startSwitch)]}
+                    mix={[
+                      iconAction,
+                      on("click", (event) => startSwitch(event.currentTarget)),
+                    ]}
                   >
                     <Icon name="search" />
                   </Button>
@@ -1153,199 +868,21 @@ export const OwnerSessions = clientEntry(
                   No active sessions.
                 </Text>
               )}
-              {catalog && (
-                <ul
-                  mix={[
-                    sidebarListRef,
-                    css({
-                      listStyle: "none",
-                      margin: 0,
-                      padding: "8px",
-                      display: "grid",
-                      gap: "4px",
-                    }),
-                  ]}
-                >
-                  {sidebarRows.flatMap((row) => {
-                    if (row) {
-                      const agents = children(row.id);
-                      const marks = catalog.indicators?.[row.id];
-                      const isOpen = expanded.has(row.id);
-                      const label =
-                        row === familiar ? "Familiar" : sessionTitle(row);
-                      const listId = `agents-${row.id}`;
-                      return [
-                        <li key={row.id}>
-                          <RailRow
-                            label={label}
-                            title={sessionTitle(row)}
-                            familiarLogo={
-                              row === familiar ? (
-                                <BrandMark logo={branding?.logo} />
-                              ) : undefined
-                            }
-                            pinned={row !== familiar && row.pinned}
-                            unread={marks?.unread}
-                            failure={marks?.failure}
-                            running={marks?.busy?.length}
-                            selected={
-                              !newOpen &&
-                              !listPage &&
-                              row.id === selectedId &&
-                              agentId === undefined
-                            }
-                            age={
-                              row === familiar
-                                ? undefined
-                                : age(row.updatedAt, now)
-                            }
-                            open={(from) => open(row.id, undefined, from)}
-                            disclosure={
-                              agents.length
-                                ? {
-                                    controls: listId,
-                                    expanded: isOpen,
-                                    toggle: (from) =>
-                                      toggleSubagents(row.id, from),
-                                  }
-                                : undefined
-                            }
-                            archive={archiveAction({
-                              session: row.id,
-                              name: sessionTitle(row),
-                            })}
-                          />
-                          {agents.length > 0 && (
-                            <ul
-                              id={listId}
-                              hidden={!isOpen}
-                              mix={[
-                                css({
-                                  listStyle: "none",
-                                  margin: "4px 0",
-                                  paddingInlineStart: "24px",
-                                }),
-                                on("keydown", (event) => {
-                                  if (
-                                    event.key !== "Escape" ||
-                                    event.defaultPrevented
-                                  )
-                                    return;
-                                  const button =
-                                    event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(
-                                      "button[aria-controls]",
-                                    );
-                                  if (!button) return;
-                                  event.preventDefault();
-                                  toggleSubagents(row.id, button);
-                                }),
-                              ]}
-                            >
-                              {agents.map((child) => (
-                                <li key={child.conversationId}>
-                                  <RailRow
-                                    child
-                                    label={child.name}
-                                    {...childMarks(child, marks?.busy)}
-                                    selected={
-                                      row.id === selectedId &&
-                                      agentId === child.conversationId &&
-                                      !listPage &&
-                                      !newOpen
-                                    }
-                                    age={
-                                      child.updatedAt === undefined
-                                        ? undefined
-                                        : age(child.updatedAt, now)
-                                    }
-                                    open={(from) =>
-                                      open(row.id, child.conversationId, from)
-                                    }
-                                    archive={archiveAction({
-                                      session: row.id,
-                                      conversation: child.conversationId,
-                                      name: child.name,
-                                    })}
-                                  />
-                                </li>
-                              ))}
-                            </ul>
-                          )}
-                        </li>,
-                      ];
-                    }
-                    return (
-                      <li
-                        key="new"
-                        mix={css({
-                          marginBlockEnd: "10px",
-                        })}
-                      >
-                        <Button
-                          variant="quiet"
-                          data-new-session=""
-                          aria-pressed={newOpen}
-                          mix={[
-                            sessionButton,
-                            on("click", (event) =>
-                              startNew(event.currentTarget),
-                            ),
-                          ]}
-                        >
-                          <Icon name="plus" /> New session
-                        </Button>
-                      </li>
-                    );
-                  })}
-                  {older.length > 0 && (
-                    <li>
-                      <a
-                        href={SESSION_LIST_PATH}
-                        aria-current={listPage ? "page" : undefined}
-                        mix={[
-                          css({
-                            display: "block",
-                            padding: "6px 34px",
-                            color: "var(--hui-muted)",
-                            textDecoration: "none",
-                            borderRadius: "4px",
-                            fontSize: "14px",
-                            "&[aria-current]": {
-                              background: "var(--hui-selected-surface)",
-                            },
-                            "&:hover": {
-                              background: "var(--hui-hover-surface)",
-                            },
-                          }),
-                          on("click", (event) => {
-                            if (
-                              event.button !== 0 ||
-                              event.metaKey ||
-                              event.ctrlKey ||
-                              event.altKey ||
-                              event.shiftKey
-                            )
-                              return;
-                            event.preventDefault();
-                            showList();
-                          }),
-                        ]}
-                      >
-                        {older.length} older
-                      </a>
-                    </li>
-                  )}
-                </ul>
-              )}
+              {catalog &&
+                sessionRail.render(
+                  entries,
+                  { selectedId, agentId, listPage, newOpen },
+                  branding?.logo,
+                )}
             </div>
             {catalog && (
               <footer
                 mix={css({
                   borderTop: line,
-                  padding: "4px 8px",
+                  padding: "0.25rem 0.5rem",
                   display: "flex",
                   justifyContent: "flex-end",
-                  gap: "4px",
+                  gap: "0.25rem",
                 })}
               >
                 <Button
@@ -1389,6 +926,15 @@ export const OwnerSessions = clientEntry(
           <section
             class="session-detail"
             id="clank-detail"
+            data-destination={
+              newOpen
+                ? "new"
+                : listPage
+                  ? "list"
+                  : selected && conversation !== undefined
+                    ? destinationKey(selected.id, conversation)
+                    : undefined
+            }
             aria-label="Session detail"
             mix={pane}
           >
@@ -1399,30 +945,19 @@ export const OwnerSessions = clientEntry(
                 captureDetail,
                 css({
                   justifyContent: "flex-start",
-                  gap: "4px",
+                  gap: "0.25rem",
                   "& h1, & h2": {
                     minWidth: 0,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   },
-                  paddingBlock: "4px",
-                  [phone]: { paddingInline: "6px" },
+                  paddingBlock: "0.25rem",
+                  [phone]: { paddingInline: "0.375rem" },
                   "&:focus-visible": { outlineOffset: "-2px" },
                 }),
               ]}
             >
-              {view.kind === "offline" && (
-                <span
-                  role="status"
-                  mix={css({
-                    fontSize: "12px",
-                    color: "var(--hui-danger, #9c3030)",
-                  })}
-                >
-                  Offline
-                </span>
-              )}
               {(selected || newOpen || listPage || target) && (
                 <span class="sessions-back">
                   <Button
@@ -1450,17 +985,20 @@ export const OwnerSessions = clientEntry(
               )}
               {listPage && !newOpen && catalog ? (
                 <div>
-                  <Heading level={2} mix={titleStyle}>
+                  <Heading level={2} tabindex={-1} mix={titleStyle}>
                     Sessions
                   </Heading>
-                  <Text tone="muted" mix={css({ margin: 0, fontSize: "12px" })}>
+                  <Text
+                    tone="muted"
+                    mix={css({ margin: 0, fontSize: "0.75rem" })}
+                  >
                     {preferences.recency === "forever"
                       ? "The sidebar shows all sessions."
                       : `Dimmed sessions are outside the ${preferences.recency}-day window and hidden from the sidebar.`}
                   </Text>
                 </div>
               ) : newOpen ? (
-                <Heading level={2} mix={titleStyle}>
+                <Heading level={2} tabindex={-1} mix={titleStyle}>
                   New session
                 </Heading>
               ) : selected && catalog ? (
@@ -1470,18 +1008,29 @@ export const OwnerSessions = clientEntry(
                   rename={live?.rename}
                   subtitle={
                     conversation && conversation !== selected.main
-                      ? `${current?.kind ?? "Branch"} · ${current?.label ?? `Conversation ${conversation}`}`
+                      ? `${selectedChild ? "Subagent" : "Branch"} · ${selectedChild?.name ?? (currentBranch?.label || `Conversation ${conversation}`)}`
                       : selected.cwd
                   }
-                  switchConversation={
-                    canSwitch ? startConversationSwitch : undefined
-                  }
+                  switchConversation={live ? startSwitch : undefined}
                 />
               ) : (
                 <Heading level={2} mix={titleStyle}>
                   {view.kind === "sign-in" ? "Sign in to Pi" : "Sessions"}
                 </Heading>
               )}
+              <span
+                role="status"
+                mix={css({
+                  flex: "none",
+                  minInlineSize: "6ch",
+                  marginInlineStart: "auto",
+                  textAlign: "end",
+                  fontSize: "0.75rem",
+                  color: "var(--hui-danger)",
+                })}
+              >
+                {view.kind === "offline" ? "Offline" : ""}
+              </span>
             </div>
             {newOpen && catalog ? (
               <div mix={scroll}>
@@ -1490,9 +1039,9 @@ export const OwnerSessions = clientEntry(
                     mix={[
                       css({
                         display: "grid",
-                        gap: "12px",
+                        gap: "0.75rem",
                         maxWidth: "30rem",
-                        "& label": { display: "grid", gap: "4px" },
+                        "& label": { display: "grid", gap: "0.25rem" },
                         "& button": { justifySelf: "start" },
                       }),
                       on("submit", async (event) => {
@@ -1511,11 +1060,17 @@ export const OwnerSessions = clientEntry(
                           void handle.update();
                           return;
                         }
+                        const focus = requestFocus();
+                        const source = event.currentTarget;
                         creating = true;
                         createError = "";
                         void handle.update();
                         try {
                           const row = await live.create(cwd, title, slug);
+                          if (!source.isConnected || !newOpen) {
+                            focus.cancel();
+                            return;
+                          }
                           const path = sessionPath(row);
                           history.pushState(
                             { clankSession: row.id, detailOpen: true },
@@ -1529,7 +1084,11 @@ export const OwnerSessions = clientEntry(
                           agentId = undefined;
                           newOpen = false;
                           detailOpen = true;
+                          void focus.afterUpdate(
+                            destinationKey(row.id, row.main),
+                          );
                         } catch (error) {
+                          focus.cancel();
                           createError =
                             error &&
                             typeof error === "object" &&
@@ -1546,12 +1105,7 @@ export const OwnerSessions = clientEntry(
                   >
                     <label>
                       Title{" "}
-                      <Input
-                        name="title"
-                        required
-                        maxLength={MAX_TITLE}
-                        mix={captureNewTitle}
-                      />
+                      <Input name="title" required maxLength={MAX_TITLE} />
                     </label>
                     <label>
                       Working directory{" "}

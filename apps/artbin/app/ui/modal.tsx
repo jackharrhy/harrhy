@@ -1,5 +1,5 @@
 import { space } from "@harrhy/ui/styles";
-import { css, on, type Handle, type RemixNode } from "remix/component";
+import { css, type Handle, type RemixNode } from "remix/component";
 import { Dialog } from "@harrhy/ui/interactive";
 
 const closeStyle = css({
@@ -44,20 +44,10 @@ export function ModalFrame(
         open
         title={title}
         onClose={() => onDismiss?.()}
-        mix={[
-          css({ position: "relative", "& > h2": { paddingRight: space(5) } }),
-          on("click", (event) => {
-            if (event.target !== event.currentTarget) return;
-            const bounds = event.currentTarget.getBoundingClientRect();
-            if (
-              event.clientX < bounds.left ||
-              event.clientX > bounds.right ||
-              event.clientY < bounds.top ||
-              event.clientY > bounds.bottom
-            )
-              onDismiss?.();
-          }),
-        ]}
+        mix={css({
+          position: "relative",
+          "& > h2": { paddingRight: space(5) },
+        })}
       >
         {closeControl ? <div mix={closeStyle}>{closeControl}</div> : null}
         {children}

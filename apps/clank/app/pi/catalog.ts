@@ -1,12 +1,16 @@
 import { followBranding, type Branding } from "./branding.ts";
-import { SessionTree } from "../../pi/plugins/tree/contract.ts";
-import { ownerSessions } from "./session-wire.ts";
-import { validSlug } from "./routes.ts";
+import { SessionTree } from "../../../pi/plugins/tree/contract.ts";
+import {
+  ownerDenied,
+  ownerSessions,
+  permissionDenied,
+} from "./session-wire.ts";
+import { validSlug } from "../routes.ts";
 import {
   Search,
   type SearchResults,
-} from "../../pi/plugins/search/contract.ts";
-import { Familiar } from "../../pi/plugins/familiar/contract.ts";
+} from "../../../pi/plugins/search/contract.ts";
+import { Familiar } from "../../../pi/plugins/familiar/contract.ts";
 import {
   followLive,
   workAllowsArchive,
@@ -19,28 +23,31 @@ import {
   statusFeed,
   type LiveMarks,
 } from "./sidebar-activity.ts";
-import { projectSidebar, type Indicator } from "./sidebar-indicators.ts";
+import {
+  projectSidebar,
+  type Indicator,
+} from "../sidebar/sidebar-indicators.ts";
 import {
   SubagentControl,
   Subagents,
   type Child,
-} from "../../pi/plugins/subagents/contract.ts";
+} from "../../../pi/plugins/subagents/contract.ts";
 import type { ConversationView } from "@earendil-works/pi-durable";
-import { SessionMetrics } from "../../pi/plugins/status/contract.ts";
-import { cacheHitRate } from "../../pi/src/runtime/conversation-stats.ts";
-import { Chat, type ModelMeta } from "../../pi/plugins/chat/contract.ts";
+import { SessionMetrics } from "../../../pi/plugins/status/contract.ts";
+import { cacheHitRate } from "../../../pi/src/runtime/conversation-stats.ts";
+import { Chat, type ModelMeta } from "../../../pi/plugins/chat/contract.ts";
 import { webSocketLink } from "@earendil-works/chord";
 import {
   BACKGROUND_CONTEXT,
   withAbortSignal,
 } from "@earendil-works/chord/context";
-import { type Session } from "../../pi/plugins/sessions/contract.ts";
-import { createHost, type Ctx } from "../../pi/src/runtime/chord.ts";
-import { SERVER_PART_LIMITS } from "../../pi/src/runtime/link-limits.ts";
-import { SERVER } from "../../pi/src/runtime/principals.ts";
-import { clientLinkPath } from "../../pi/src/runtime/stale-page.ts";
+import { type Session } from "../../../pi/plugins/sessions/contract.ts";
+import { createHost, type Ctx } from "../../../pi/src/runtime/chord.ts";
+import { SERVER_PART_LIMITS } from "../../../pi/src/runtime/link-limits.ts";
+import { SERVER } from "../../../pi/src/runtime/principals.ts";
+import { clientLinkPath } from "../../../pi/src/runtime/stale-page.ts";
 
-export { MAX_TITLE } from "../../pi/plugins/sessions/contract.ts";
+export { MAX_TITLE } from "../../../pi/plugins/sessions/contract.ts";
 export type Row = Pick<
   Session,
   | "id"
@@ -80,9 +87,8 @@ export type Catalog = {
     title: string,
     slug?: string,
   ): Promise<Session & { slug?: string }>;
-  /** False until this connection obtains branding or knows it is unavailable. */
-  brandingReady: boolean;
-  branding?: Branding;
+  /** Undefined until a live owner publication; null means permission was denied. */
+  branding?: Branding | null;
   canCreateSlug: boolean;
   rows: Row[];
   activeIds?: string[];
@@ -181,10 +187,18 @@ export async function followCatalog(
       const sessions = bindingVersion.ref;
       const binding = await sessions.state.watch(scope);
       const watch = await sessions.sessions.watch(scope);
+      const ownerLost = () =>
+        permissionDenied(sessions.state.value) ||
+        (sessions.state.value.kind === "live" && sessions.variant !== "owner");
+      let denied = false;
+      const endBinding = () => {
+        denied ||= ownerLost();
+        close();
+      };
       const authorized = () =>
         !lifetime.signal.aborted &&
-        sessions.variant === "owner" &&
-        sessions.state.value.kind === "live";
+        sessions.state.value.kind === "live" &&
+        sessions.variant === "owner";
       const rename = async (id: string, title: string) => {
         if (!authorized()) throw Error("Owner Sessions ended");
         await sessions.rename({ id, title }, scope);
@@ -322,8 +336,7 @@ export async function followCatalog(
             searchScope,
           );
         }, ctx);
-      let branding: Branding | undefined;
-      let brandingReady = false;
+      let branding: Branding | null | undefined;
       let rows = activeRows(watch.value);
       let readChildren: (() => Catalog["children"] | undefined) | undefined;
       let readStatuses: (() => Work["statuses"] | undefined) | undefined;
@@ -415,7 +428,6 @@ export async function followCatalog(
           archive,
           canArchive,
           branding,
-          brandingReady,
           rows,
           children: children ?? {},
           childrenReady: children !== undefined,
@@ -470,17 +482,22 @@ export async function followCatalog(
         void update().catch(() => {});
       }, 1500);
       try {
+        if (ownerLost()) throw ownerDenied();
         if (!authorized() || binding.value.kind !== "live")
           throw Error("Owner Sessions ended");
         clearTimeout(deadline);
         binding.start(async (call) => {
-          if (call.kind !== "value" || call.value.kind !== "live") close();
+          if (
+            call.kind !== "value" ||
+            call.value.kind !== "live" ||
+            !authorized()
+          )
+            endBinding();
         });
         await update();
         // Branding is optional: an older Pi must still get a working catalog.
-        const publishBranding = async (value: Branding | undefined) => {
+        const publishBranding = async (value: Branding | null) => {
           if (!authorized()) return;
-          brandingReady = true;
           branding = value;
           await update();
         };
@@ -489,7 +506,6 @@ export async function followCatalog(
             (brandScope) => followBranding(brandScope, publishBranding),
             ctx,
           )
-          .finally(() => publishBranding(undefined))
           .catch(() => {});
         follow(
           async (s) => {
@@ -536,13 +552,15 @@ export async function followCatalog(
           readMarks = read;
         });
         watch.start(async (call) => {
-          if (call.kind !== "value" || call.retired || !authorized()) close();
+          if (call.kind !== "value" || call.retired || !authorized())
+            endBinding();
           else {
             rows = activeRows(call.value);
             await update();
           }
         });
         await Promise.race([binding.closed, watch.closed]);
+        if (denied || ownerLost()) throw ownerDenied();
       } finally {
         clearTimeout(handoffDeadline);
         close();
