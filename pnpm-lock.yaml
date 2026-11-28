@@ -488,15 +488,15 @@ importers:
 
   apps/atlas:
     dependencies:
+      '@harrhy/diagrams':
+        specifier: workspace:*
+        version: link:../../packages/diagrams
       '@harrhy/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       esbuild:
         specifier: 0.28.2
         version: 0.28.2
-      pele:
-        specifier: 1.13.0
-        version: 1.13.0
       rehype-raw:
         specifier: 7.0.0
         version: 7.0.0
@@ -617,6 +617,9 @@ importers:
       '@harrhy/board':
         specifier: workspace:*
         version: link:../../packages/board
+      '@harrhy/diagrams':
+        specifier: workspace:*
+        version: link:../../packages/diagrams
       '@harrhy/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -1661,6 +1664,34 @@ importers:
         version: 1.4.4
 
   packages/dev-auth: {}
+
+  packages/diagrams:
+    dependencies:
+      '@harrhy/ui':
+        specifier: workspace:*
+        version: link:../ui
+      hast-util-from-html:
+        specifier: 2.1.0
+        version: 2.1.0
+      hast-util-sanitize:
+        specifier: 5.0.2
+        version: 5.0.2
+      hast-util-to-html:
+        specifier: 9.0.6
+        version: 9.0.6
+      pele:
+        specifier: 1.13.0
+        version: 1.13.0
+      remix:
+        specifier: 3.2.0
+        version: 3.2.0(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.3)(pg@8.16.3)(playwright@1.65.0)
+    devDependencies:
+      '@types/hast':
+        specifier: 3.0.5
+        version: 3.0.5
+      '@types/node':
+        specifier: 26.6.6
+        version: 26.6.6
 
   packages/gurgur-engine:
     dependencies:

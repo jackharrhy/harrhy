@@ -52,6 +52,7 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/board`](packages/board/) | Local board camera, input and geometry | [README](packages/board/README.md) |
 | [`@harrhy/burger-core`](packages/burger-core/) | Shared Burger ECS, physics, and wire constants | [README](packages/burger-core/README.md) |
 | [`@harrhy/dev-auth`](packages/dev-auth/) | Disposable local Jack Auth protocol issuer for app development | [README](packages/dev-auth/README.md) |
+| [`@harrhy/diagrams`](packages/diagrams/) | Bounded server-rendered Mermaid diagrams and shared source disclosure | [README](packages/diagrams/README.md) |
 | [`@harrhy/identity`](packages/identity/) | Jack Auth OIDC and API identity verification | [README](packages/identity/README.md) |
 | [`@harrhy/gurgur-engine`](packages/gurgur-engine/) | Gurgur Box3D physics, protocol and world format | [README](packages/gurgur-engine/README.md) |
 | [`@harrhy/gurgur-game`](packages/gurgur-game/) | Gurgur controllers, simulation and map compiler | [README](packages/gurgur-game/README.md) |

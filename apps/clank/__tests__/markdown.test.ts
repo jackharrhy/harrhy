@@ -4,6 +4,7 @@ import { createHtmlRenderer } from "@pierre/words/html";
 import {
   markdownHtml,
   markdownOptions,
+  openMermaidFence,
 } from "../app/conversation/markdown-renderer.ts";
 
 test("only absolute HTTP(S) and mailto links get destinations", () => {
@@ -58,6 +59,26 @@ test("highlighted and plain code keep literal source for display and copy", () =
       source.replace("<tag>&", "&lt;tag&gt;&amp;"),
     );
     if (lang !== "js") assert.doesNotMatch(body, /<span style=/);
+  }
+});
+
+test("Mermaid SSR shows only literal source through streaming and settlement", () => {
+  const partial = '~~~mermaid title\nflowchart LR\n  A["<tag>&"] **';
+  const closed = partial + "\n~~~";
+  assert.equal(openMermaidFence(partial), true);
+  assert.equal(openMermaidFence(closed), false);
+  for (const [text, streaming] of [
+    [partial, true],
+    [closed, true],
+    [closed, false],
+  ] as const) {
+    const html = markdownHtml(text, streaming);
+    assert.match(
+      html,
+      /flowchart LR\n  A\[&quot;&lt;tag&gt;&amp;&quot;\] \*\*/,
+    );
+    assert.match(html, /tabindex="0" aria-label="Code block"/);
+    assert.doesNotMatch(html, /<svg|<details|<tag>|role="status"/);
   }
 });
 

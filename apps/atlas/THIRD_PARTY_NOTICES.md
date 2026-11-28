@@ -16,4 +16,4 @@ Atlas redistributes the same Artbin-theme font assets as the shared UI Explorer,
 
 ## Diagram renderer
 
-[Pele 1.13.0](https://github.com/obsidianmd/pele) renders Mermaid syntax to static SVG in a bounded server worker. Copyright 2026 kepano, MIT. Its distribution also includes a Lucide reset-icon ISC notice; Atlas does not mount zoom controls. Both notices are retained in [LICENSES/Pele.txt](LICENSES/Pele.txt). No Mermaid.js runtime or remote scripts are bundled into articles.
+[Pele 1.13.0](https://github.com/obsidianmd/pele) renders Mermaid syntax to static SVG in a bounded server worker. Copyright 2026 kepano, MIT. Its distribution also includes a Lucide reset-icon ISC notice; Atlas does not mount zoom controls. Both notices are retained in [the shared renderer’s license file](../../packages/diagrams/LICENSES/Pele.txt). No Mermaid.js runtime or remote scripts are bundled into articles.

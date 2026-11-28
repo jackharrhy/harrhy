@@ -1,6 +1,8 @@
+import { diagramStyles } from "@harrhy/diagrams/presentation";
 import { space } from "@harrhy/ui/theme";
 import { createDomRenderer } from "@pierre/words/html";
 import { css, ref, unsafeHTML, type Handle } from "remix/component";
+import { enhanceDiagrams } from "./markdown-diagrams.ts";
 import {
   markdownHtml,
   markdownOptions,
@@ -9,6 +11,50 @@ import {
 
 const prose = css({
   overflowWrap: "anywhere",
+  // Reserve a side slot for the native disclosure. Its source opens below the drawing.
+  "& .harrhy-diagram": {
+    position: "relative",
+    display: "grid",
+    gridTemplateColumns: "minmax(0, 1fr) 2.75rem",
+    minHeight: "2.75rem",
+    backgroundColor: "white",
+    border: "1px solid var(--hui-border)",
+    borderRadius: "var(--hui-control-radius)",
+  },
+  "& .harrhy-diagram > svg[role=img]": {
+    alignSelf: "center",
+    justifySelf: "center",
+    colorScheme: "light",
+    color: "black",
+    "--hui-surface": "white",
+    "--hui-ink": "black",
+    "--hui-selected-surface": "#eee",
+    "--hui-border": "#555",
+    "& text, & tspan": { fill: "black" },
+  },
+  "& .harrhy-diagram > details": {
+    gridColumn: "1 / -1",
+    backgroundColor: "var(--hui-surface)",
+    "& summary": {
+      display: "grid",
+      placeItems: "center",
+      position: "absolute",
+      insetBlockStart: 0,
+      insetInlineEnd: 0,
+      width: "2.75rem",
+      height: "2.75rem",
+      color: "#555",
+      fontFamily: "var(--hui-font-mono)",
+      fontSize: "0.8125rem",
+      textDecoration: "none",
+      borderRadius: "var(--hui-control-radius)",
+      "&::-webkit-details-marker": { display: "none" },
+      "&:hover, &:focus-visible": { color: "black", backgroundColor: "#eee" },
+      "&:focus-visible": { outlineColor: "currentColor" },
+    },
+    "&[open] summary": { color: "black", fontWeight: 600 },
+    "& > [data-markdown=code-block]": { margin: 0 },
+  },
   "& p": { margin: "0 0 1em" },
   "& > :last-child": { marginBlockEnd: 0 },
   // Pi-brand Elanor Link and soft InlineCode, scoped to Words prose.
@@ -107,20 +153,27 @@ const prose = css({
 export function Markdown(
   handle: Handle<{ text: string; streaming?: boolean }>,
 ) {
-  let renderer: ReturnType<typeof createDomRenderer> | undefined;
-  const update = () => {
-    const { text, streaming = false } = handle.props;
-    renderer?.update(wordsSource(text, streaming), streaming, streaming);
-  };
+  let update: (() => void) | undefined;
   const host = ref((node: HTMLDivElement, signal) => {
-    renderer = createDomRenderer(node, markdownOptions);
+    const renderer = createDomRenderer(node, markdownOptions);
+    let enhancement: AbortController | undefined;
     renderer.connect();
+    update = () => {
+      enhancement?.abort();
+      const { text, streaming = false } = handle.props;
+      renderer.update(wordsSource(text, streaming), streaming, streaming);
+      if (!streaming) {
+        enhancement = new AbortController();
+        void enhanceDiagrams(node, text, enhancement.signal);
+      }
+    };
     update();
     signal.addEventListener(
       "abort",
       () => {
-        renderer?.disconnect();
-        renderer = undefined;
+        enhancement?.abort();
+        renderer.disconnect();
+        update = undefined;
       },
       { once: true },
     );
@@ -129,8 +182,8 @@ export function Markdown(
   let previousStreaming: boolean | undefined;
   return () => {
     const { text, streaming = false } = handle.props;
-    if (renderer && (text !== previousText || streaming !== previousStreaming))
-      handle.queueTask(update);
+    if (update && (text !== previousText || streaming !== previousStreaming))
+      handle.queueTask(() => update?.());
     previousText = text;
     previousStreaming = streaming;
     // Remix assigns innerHTML even while hydrating. Only supply it on the
@@ -139,7 +192,7 @@ export function Markdown(
       <div
         data-markdown="root"
         data-streaming={streaming ? "" : undefined}
-        mix={[prose, host]}
+        mix={[prose, diagramStyles, host]}
         innerHTML={
           typeof document === "undefined"
             ? unsafeHTML(markdownHtml(text, streaming))

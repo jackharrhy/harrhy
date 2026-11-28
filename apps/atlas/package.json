@@ -10,9 +10,9 @@
     "check": "pnpm run typecheck && pnpm test"
   },
   "dependencies": {
+    "@harrhy/diagrams": "workspace:*",
     "@harrhy/ui": "workspace:*",
     "esbuild": "0.28.2",
-    "pele": "1.13.0",
     "rehype-raw": "7.0.0",
     "rehype-sanitize": "6.0.0",
     "rehype-slug": "6.0.0",
