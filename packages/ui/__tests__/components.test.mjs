@@ -120,11 +120,12 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   assert.match(html, /--hui-font-ui:/);
 });
 
+const renderSpacingTheme = (theme) =>
+  renderToString(h("section", { mix: themeStyles(theme) }));
+
 test("spacing unit drives the default semantic gap and accepts a scoped override", async () => {
-  const render = (theme) =>
-    renderToString(h("section", { mix: themeStyles(theme) }));
-  const defaultHtml = await render(cleanTheme);
-  const overrideHtml = await render(
+  const defaultHtml = await renderSpacingTheme(cleanTheme);
+  const overrideHtml = await renderSpacingTheme(
     extendTheme(cleanTheme, { spaceUnit: "0.4375rem" }),
   );
   assert.match(defaultHtml, /--hui-space-unit: 0.5rem/);
