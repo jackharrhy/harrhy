@@ -54,7 +54,7 @@ export function HomePage() {
                   <span class="home-choice-kicker">02 / CREATE</span>
                   <strong>Editor</strong>
                   <span class="home-choice-description">
-                    Shape geometry, work with projects, and build maps.
+                    Shape geometry and edit maps in hosted projects.
                   </span>
                 </span>
                 <i

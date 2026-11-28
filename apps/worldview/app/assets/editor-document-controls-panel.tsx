@@ -82,14 +82,6 @@ export const EditorDocumentControls = clientEntry(
           })}
         />
         <button
-          id="open-project"
-          type="button"
-          disabled={!context}
-          mix={on("click", () => void context?.actions.openProject())}
-        >
-          <i class="ph ph-folders" aria-hidden="true" /> Open project
-        </button>
-        <button
           id="save-map"
           type="button"
           disabled={!context || context.state.saveDisabled}

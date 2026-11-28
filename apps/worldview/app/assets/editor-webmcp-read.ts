@@ -27,7 +27,7 @@ export function readEditorWebMcpTools(
     tool(z.strictObject({}), {
       name: "tea_maps_inspect_editor",
       description:
-        "Inspect the live Worldview document, selection, project, source-save safety, and perspective camera.",
+        "Inspect the live Worldview document, selection, hosted map, source-save safety, and perspective camera.",
       execute() {
         const current = state();
         const document = current.session.document;
@@ -62,13 +62,6 @@ export function readEditorWebMcpTools(
               current.workingSource !==
               (save.status === "safe" ? save.text : save.normalizedText),
           },
-          project: current.project
-            ? {
-                name: current.project.manifest.name,
-                game: current.project.manifest.game,
-                maps: current.project.maps.length,
-              }
-            : null,
           hostedMap: current.hostedMap
             ? {
                 id: current.hostedMap.id,

@@ -19,7 +19,6 @@ export const EditorFov = clientEntry(
         (event) => {
           context = (event as CustomEvent<EditorFovContext>).detail;
           if (input) input.value = String(context.currentFov);
-          if (context.compiled && details) details.open = false;
           handle.update();
         },
         { signal: handle.signal },
@@ -42,10 +41,8 @@ export const EditorFov = clientEntry(
       return (
         <details
           id="editor-fov"
-          inert={context?.compiled ?? false}
           mix={ref((node: HTMLDetailsElement) => {
             details = node;
-            if (context?.compiled) node.open = false;
           })}
         >
           <summary id="editor-fov-trigger">

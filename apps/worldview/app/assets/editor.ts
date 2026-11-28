@@ -40,7 +40,6 @@ import {
   type FaceTextureAlignmentOptions,
   type FaceTextureProjectionField,
   type MapDocument,
-  type MapCompileResult,
   type MapFace,
   type MapSourceState,
   type SurfaceFlagDefinition,
@@ -60,11 +59,6 @@ import {
   type EditorViewportContextMenuEvent,
 } from "@harrhy/maps-editor/render";
 import { editorRenderTheme, editorThemeEvent } from "./editor-theme.ts";
-import {
-  defineMapsViewElement,
-  type MapsViewElement,
-} from "@harrhy/worldview-renderer/element";
-import type { CameraUpdate, WorldSource } from "@harrhy/worldview-renderer";
 import type {
   CollaborationPresence,
   HostedMapLaunch,
@@ -78,8 +72,6 @@ import {
   type EditorVersion,
 } from "./editor-draft.ts";
 import { initHostedEditor } from "./editor-hosted.ts";
-import { listHostedResources } from "./editor-hosted-resources.ts";
-import { loadHostedWorldSource } from "./hosted-world-source.ts";
 import {
   loadHostedEditorResources,
   type HostedEditorResources,
@@ -102,19 +94,12 @@ import {
 } from "./editor-entity-properties.ts";
 import { initEditorFov } from "./editor-fov.ts";
 import { initEditorWorkspace } from "./editor-workspace.ts";
-import { createBuildOverlays } from "./editor-build-overlays.ts";
 import { initEditorMaterialBrowser } from "./editor-material-browser.ts";
 import { createTextureUvEditor } from "./editor-uv.ts";
 import { initSourceComparison } from "./editor-source-compare.ts";
-import { initProjectSyncDialog } from "./editor-project-sync-dialog.ts";
-import { initProjectMapSelector } from "./editor-project-map-selector.ts";
 import { registerEditorWebMcpTools } from "./editor-webmcp.ts";
 import { initEditorPerformance } from "./editor-performance.ts";
 import { initHostedPresence } from "./editor-hosted-presence.ts";
-import {
-  hostedBuildArtifactPath,
-  initHostedBuilds,
-} from "./editor-hosted-builds.ts";
 import { createEditorTopology } from "./editor-topology.ts";
 import { createEditorShapes } from "./editor-shapes.ts";
 import { createEditorTransform } from "./editor-transform.ts";
@@ -138,23 +123,6 @@ import {
   writeMapFile,
   type MapFileHandle,
 } from "./editor-files.ts";
-import {
-  openMapProject,
-  pickProjectDirectory,
-  supportsProjectPicker,
-  type MapDirectoryHandle,
-  type MapProject,
-} from "./editor-project.ts";
-import {
-  recentProject,
-  rememberRecentProject,
-  rememberRecentProjectMap,
-} from "./editor-recent-projects.ts";
-import type { OpenRecentProjectRequest } from "./editor-recent-projects-panel.tsx";
-import {
-  openProjectBuildBindings,
-  type ProjectBuildBindings,
-} from "./editor-project-build-bindings.ts";
 import { initHostedSourceDialog } from "./editor-hosted-source-dialog.ts";
 import { createEditorClipboard } from "./editor-clipboard.ts";
 import {
@@ -162,7 +130,6 @@ import {
   type ContextAction,
   type ContextSection,
 } from "./editor-context-menu.ts";
-import { buildMap, downloadBsp, launchLocalBuild } from "./editor-build.ts";
 import {
   addStandaloneWad,
   emptyStandaloneResources,
@@ -173,27 +140,6 @@ import {
   type StandaloneResources,
 } from "./editor-standalone-resources.ts";
 import {
-  listLocalBuilds,
-  recordLocalBuild,
-  type LocalBuildRecord,
-} from "./editor-local-build-history.ts";
-import {
-  downloadBuildFile,
-  packageBuildExport,
-  prepareBuildExport,
-  previewSourceWithExportAssets,
-  type BuildExportInput,
-} from "./editor-build-export.ts";
-import {
-  defaultExportSettings,
-  loadExportSettings,
-  pickExportDirectory,
-  saveExportSettings,
-  writeBuildExport,
-  type ExportSettings,
-} from "./editor-export-settings.ts";
-import { initEditorExportSettingsPanel } from "./editor-export-settings-bridge.ts";
-import {
   initEditorLayersPanel,
   type EditorLayerCommand,
 } from "./editor-layers-bridge.ts";
@@ -201,7 +147,6 @@ import {
   initEditorGroupsPanel,
   type EditorGroupCommand,
 } from "./editor-groups-bridge.ts";
-import { initEditorBuildControls } from "./editor-build-controls-bridge.ts";
 import { initEditorDocumentControls } from "./editor-document-controls-bridge.ts";
 import { initEditorSourcePanel } from "./editor-source-bridge.ts";
 import { initEditorProjectContext } from "./editor-project-context-bridge.ts";
@@ -335,7 +280,7 @@ const historyControls = initEditorHistory({
   undo: () => void runHistoryAction("undo"),
   redo: () => void runHistoryAction("redo"),
 });
-const projectContext = initEditorProjectContext(openProjectMap, {
+const projectContext = initEditorProjectContext({
   addWads: importStandaloneWads,
   setPalette: importStandalonePalette,
   clearResources: clearStandaloneResources,
@@ -347,12 +292,6 @@ const clipHull = initEditorClipHull({
   createHull,
   discardHull: () => renderer?.clearHullPoints(),
 });
-function setPerspectiveLabel(label: string) {
-  document.documentElement.dataset.editorPerspectiveLabel = label;
-  window.dispatchEvent(
-    new CustomEvent("tea-maps-editor-perspective-label", { detail: label }),
-  );
-}
 let faceInspectorVisible = false;
 let faceProjectionVisible = false;
 function setFaceInspectorVisibility(
@@ -435,28 +374,11 @@ let openGroupId: string | null = null;
 let selectedLayerId: string | null = null;
 const layersPanel = initEditorLayersPanel(runLayerCommand);
 const groupsPanel = initEditorGroupsPanel(runGroupCommand);
-const buildControls = initEditorBuildControls({
-  selectGame: selectGameProfile,
-  selectProfile(id) {
-    if (buildControls.state.profiles.some((profile) => profile.id === id))
-      buildControls.update({ profileId: id });
-  },
-  build: () => void runBuild(false),
-  buildExportOnce: () => void runBuild(true),
-  exportLatest: () => void exportCurrentBuild(),
-  togglePreview: () => showCompiledPreview(!compiledVisible),
-  toggleLeak: () => buildOverlays.toggleLeak(),
-  togglePortals: () => buildOverlays.togglePortals(),
-  launch: () => void launchCurrentBuild(),
-  inspectLocalBuild: (id) => inspectLocalBuild(id),
-  downloadLocalBuild: () => downloadSelectedLocalBuild(),
-});
 const documentControls = initEditorDocumentControls({
   newMap: newMapFromControls,
   exampleMap: exampleMapFromControls,
   openPicker: openPickerFromControls,
   openFile: (file) => openMapFile(file, null),
-  openProject: openProjectFromControls,
   save: saveCurrentMap,
   exportNormalized: exportNormalizedMap,
   checkpoint: createCheckpointFromControls,
@@ -464,10 +386,6 @@ const documentControls = initEditorDocumentControls({
   download: downloadCurrentMap,
 });
 let renderer: EditorSourceRenderer | null = null;
-const buildOverlays = createBuildOverlays({
-  renderer: () => renderer,
-  update: (state) => buildControls.update(state),
-});
 window.addEventListener(editorThemeEvent, () => {
   renderer?.setTheme(editorRenderTheme());
 });
@@ -508,61 +426,10 @@ function setMapName(name: string) {
   );
 }
 let documentId: string = crypto.randomUUID();
-let projectRecoveryScope: string = crypto.randomUUID();
-let project: MapProject | null = null;
 let hostedResources: HostedEditorResources | null = null;
 let hostedResourceGeneration = 0;
 let hostedResourceAbort: AbortController | null = null;
 let localGame: MapsGameProfile = "quake";
-let projectBindings: ProjectBuildBindings | null = null;
-let exportSettings = defaultExportSettings("default");
-let exportSettingsGeneration = 0;
-let exportSettingsSave = Promise.resolve();
-const exportSettingsPanel = initEditorExportSettingsPanel({
-  configure: configureExportSettings,
-  async chooseDirectory() {
-    const scopeId = exportSettings.scopeId;
-    try {
-      const directory = await pickExportDirectory();
-      if (scopeId === exportSettings.scopeId)
-        configureExportSettings({ directory });
-    } catch (error) {
-      if (error instanceof DOMException && error.name === "AbortError") return;
-      buildControls.exportStatus =
-        error instanceof Error ? error.message : String(error);
-    }
-  },
-});
-let exportBusy = false;
-let compiledPreview: MapsViewElement | null = null;
-let compiledDocument: MapDocument | null = null;
-let compiledSourceText: string | null = null;
-let compiledVisible = false;
-let buildGeneration = 0;
-let hostedBuildBusy = false;
-let localBuildBusy = false;
-let launchBusy = false;
-let latestLaunch: {
-  readonly result: MapCompileResult;
-  readonly profileId: string;
-  readonly document: MapDocument;
-  readonly sourceText: string;
-  readonly project: MapProject | null;
-  readonly name: string;
-  readonly game: MapsGameProfile;
-} | null = null;
-let localBuildRecords: readonly LocalBuildRecord[] = [];
-let localHistoryGeneration = 0;
-let latestBuildExport: {
-  readonly input: BuildExportInput;
-  readonly document: MapDocument;
-  readonly sourceText: string;
-  readonly project: MapProject | null;
-  readonly name: string;
-  readonly game: MapsGameProfile;
-} | null = null;
-let activeProjectPath: string | null = null;
-let activeRecentProjectId: string | null = null;
 let hostedMap: HostedMapLaunch | null = null;
 let hostedConnection: HostedEditorConnection | null = null;
 let hostedConnectionState:
@@ -574,16 +441,6 @@ let hostedConnectionState:
 let hostedGeneration = 0;
 let remoteParticipants: readonly CollaborationPresence[] = [];
 let hostedControls: ReturnType<typeof initHostedEditor> | null = null;
-let hostedBuildControls: ReturnType<typeof initHostedBuilds> | null = null;
-let projectSyncControls: ReturnType<typeof initProjectSyncDialog> | null = null;
-const projectMapSelector = initProjectMapSelector({
-  openMap(path) {
-    void openProjectMap(path);
-  },
-  openSync() {
-    projectSyncControls?.open();
-  },
-});
 let hostedSourceControls: ReturnType<typeof initHostedSourceDialog> | null =
   null;
 let inspectedEntityId: EntityId | null = null;
@@ -673,7 +530,7 @@ let standaloneMaterialCache: {
   materials: readonly EditorMaterial[];
 } | null = null;
 function standaloneContext() {
-  return !project && !hostedMap;
+  return !hostedMap;
 }
 
 function publishStandaloneResources(message = "") {
@@ -694,14 +551,6 @@ function applyStandaloneResources(
 ) {
   standaloneResources = resources;
   ++standaloneResourceGeneration;
-  ++buildGeneration;
-  latestBuildExport = null;
-  latestLaunch = null;
-  refreshBuildLaunch();
-  buildControls.exportStatus = "";
-  refreshBuildExport();
-  clearCompiledPreview();
-  buildOverlays.clear();
   renderer?.setMaterials(currentMaterials());
   materialBrowser.setMaterials(currentMaterials());
   publishStandaloneResources(message);
@@ -837,7 +686,6 @@ async function clearStandaloneResources() {
 }
 
 function currentMaterials(): readonly EditorMaterial[] {
-  if (project) return project.materials;
   if (hostedResources) return hostedResources.materials;
   const game = activeGame();
   if (
@@ -850,7 +698,7 @@ function currentMaterials(): readonly EditorMaterial[] {
   return materials;
 }
 function currentDefinitions() {
-  return project?.definitions ?? hostedResources?.definitions;
+  return hostedResources?.definitions;
 }
 const materialBrowser = initEditorMaterialBrowser({
   session: () => session,
@@ -974,7 +822,7 @@ const transformTool = createEditorTransform({
 });
 
 function activeGame(): MapsGameProfile {
-  return project?.manifest.game ?? hostedMap?.game ?? localGame;
+  return hostedMap?.game ?? localGame;
 }
 
 const collaboratorColors: Readonly<
@@ -1105,261 +953,8 @@ function stopSourceRenderer(message: string) {
   refreshStatus();
 }
 
-function showCompiledPreview(show: boolean) {
-  compiledVisible = show && compiledPreview !== null;
-  fov.setCompiled(compiledVisible);
-  if (compiledPreview) {
-    compiledPreview.dataset.active = String(compiledVisible);
-    if (compiledVisible) compiledPreview.viewer?.start();
-    else compiledPreview.viewer?.stop();
-  }
-  setPerspectiveLabel(compiledVisible ? "Compiled preview" : "Perspective");
-  buildControls.update({
-    previewLabel: compiledVisible
-      ? "Show source"
-      : compiledDocument &&
-          (compiledDocument !== session.document ||
-            compiledSourceText !== source.value)
-        ? "Show compiled (stale)"
-        : "Show compiled",
-  });
-}
-
-function refreshCompiledPreview() {
-  if (!compiledPreview) return;
-  if (
-    compiledDocument !== session.document ||
-    compiledSourceText !== source.value
-  ) {
-    showCompiledPreview(false);
-  }
-}
-
-function clearCompiledPreview() {
-  showCompiledPreview(false);
-  compiledPreview?.remove();
-  compiledPreview = null;
-  compiledDocument = null;
-  compiledSourceText = null;
-  buildControls.update({
-    previewDisabled: true,
-    previewLabel: "Show compiled",
-  });
-}
-
-function renderExportSettings() {
-  exportSettingsPanel.setSettings(exportSettings);
-}
-
-function loadCurrentExportSettings() {
-  const scopeId = projectBindings?.scopeId ?? "default";
-  const generation = ++exportSettingsGeneration;
-  exportSettings = defaultExportSettings(scopeId);
-  renderExportSettings();
-  void loadExportSettings(scopeId)
-    .then((settings) => {
-      if (generation !== exportSettingsGeneration) return;
-      exportSettings = settings;
-      renderExportSettings();
-    })
-    .catch(() => {
-      if (generation === exportSettingsGeneration)
-        buildControls.exportStatus =
-          "Export settings will only last for this session";
-    });
-}
-
-function configureExportSettings(
-  update: Partial<
-    Pick<ExportSettings, "includeSource" | "afterBuild" | "directory">
-  >,
-) {
-  ++exportSettingsGeneration;
-  exportSettings = { ...exportSettings, ...update };
-  renderExportSettings();
-  const settings = exportSettings;
-  exportSettingsSave = exportSettingsSave
-    .then(() => saveExportSettings(settings))
-    .catch(() => {
-      buildControls.exportStatus =
-        "Export settings will only last for this session";
-    });
-}
-
-function isBuildExportCurrent(
-  candidate: NonNullable<typeof latestBuildExport>,
-): boolean {
-  return (
-    latestBuildExport === candidate &&
-    candidate.document === session.document &&
-    candidate.sourceText === source.value &&
-    candidate.project === project &&
-    candidate.name === mapName &&
-    candidate.game === activeGame()
-  );
-}
-
-function refreshBuildExport() {
-  const current =
-    !!latestBuildExport && isBuildExportCurrent(latestBuildExport);
-  buildControls.update({ exportDisabled: exportBusy || !current });
-  if (latestBuildExport && !current) {
-    buildControls.exportStatus = "Map changed; rebuild to export";
-  } else if (
-    latestBuildExport &&
-    buildControls.exportStatus === "Map changed; rebuild to export"
-  ) {
-    buildControls.exportStatus = "Bundle ready";
-  }
-}
-
-function isBuildLaunchCurrent(candidate: NonNullable<typeof latestLaunch>) {
-  return (
-    latestLaunch === candidate &&
-    !localBuildBusy &&
-    !hostedMap &&
-    candidate.document === session.document &&
-    candidate.sourceText === source.value &&
-    candidate.project === project &&
-    candidate.name === mapName &&
-    candidate.game === activeGame()
-  );
-}
-
-function refreshBuildLaunch() {
-  buildControls.update({
-    launchDisabled:
-      launchBusy || !latestLaunch || !isBuildLaunchCurrent(latestLaunch),
-  });
-}
-
-function localBuildMessages(result: MapCompileResult): string {
-  return [
-    ...result.diagnostics.map(
-      (entry) => `${entry.severity}: ${entry.stage}: ${entry.message}`,
-    ),
-    ...result.logs.map((entry) => `${entry.stage}:\n${entry.text}`),
-  ].join("\n\n");
-}
-
-async function refreshLocalBuildHistory(selectedId = "") {
-  const generation = ++localHistoryGeneration;
-  const mapKey = hostedMap ? null : documentId;
-  localBuildRecords = [];
-  buildControls.update({
-    localHistoryHidden: !mapKey,
-    localHistory: [],
-    selectedLocalBuildId: "",
-    localHistoryStatus: mapKey ? "Loading retained builds" : "",
-  });
-  if (!mapKey) return;
-  try {
-    const records = await listLocalBuilds(mapKey);
-    if (
-      generation !== localHistoryGeneration ||
-      documentId !== mapKey ||
-      hostedMap
-    )
-      return;
-    localBuildRecords = records;
-    buildControls.update({
-      localHistory: records.map((record) => ({
-        id: record.id,
-        label: `${record.result.status} · ${new Date(record.createdAt).toLocaleString()} · r${record.result.sourceDocumentRevision}`,
-        hasBsp: record.result.artifacts.some(
-          (artifact) => artifact.kind === "bsp",
-        ),
-      })),
-      selectedLocalBuildId: records.some((record) => record.id === selectedId)
-        ? selectedId
-        : "",
-      localHistoryStatus: records.length
-        ? `${records.length} retained local ${records.length === 1 ? "build" : "builds"}`
-        : "No local builds yet",
-    });
-  } catch (error) {
-    if (generation === localHistoryGeneration)
-      buildControls.update({
-        localHistoryStatus: `Build history unavailable: ${error instanceof Error ? error.message : String(error)}`,
-      });
-  }
-}
-
-function inspectLocalBuild(id: string) {
-  const record = localBuildRecords.find((candidate) => candidate.id === id);
-  if (!record) return;
-  latestLaunch = null;
-  refreshBuildLaunch();
-  buildOverlays.inspect(record.result);
-  const output = localBuildMessages(record.result);
-  buildControls.update({
-    selectedLocalBuildId: id,
-    buildOutput: output,
-    buildLogVisible: output.length > 0,
-    buildStatus: `Showing retained build ${record.result.buildId.slice(0, 8)} from revision ${record.result.sourceDocumentRevision}`,
-  });
-}
-
-function downloadSelectedLocalBuild() {
-  const record = localBuildRecords.find(
-    (candidate) => candidate.id === buildControls.state.selectedLocalBuildId,
-  );
-  if (record) downloadBsp(record.result);
-}
-
-function compiledPreviewCamera(): CameraUpdate | null {
-  const camera = renderer?.viewportCamera("perspective");
-  return camera
-    ? {
-        position: [...camera.position],
-        yaw: camera.yaw,
-        pitch: camera.pitch,
-        fieldOfView: camera.fieldOfViewDegrees,
-      }
-    : null;
-}
-
-function installCompiledPreview(
-  previewSource: WorldSource,
-  documentAtBuild: MapDocument,
-  sourceAtBuild: string,
-  camera: CameraUpdate | null,
-) {
-  clearCompiledPreview();
-  defineMapsViewElement();
-  const preview = document.createElement("tea-map-view") as MapsViewElement;
-  preview.setAttribute("controls", "fly");
-  preview.setAttribute("autostart", "false");
-  preview.setAttribute("audio", "false");
-  preview.dataset.active = "false";
-  preview.source = previewSource;
-  preview.addEventListener("ready", () => {
-    if (compiledPreview !== preview) return;
-    if (camera) preview.viewer?.setCamera(camera);
-    buildControls.update({ previewDisabled: false });
-    buildControls.buildStatus = "Compiled preview ready";
-    if (
-      compiledDocument === session.document &&
-      compiledSourceText === source.value
-    ) {
-      showCompiledPreview(true);
-    } else {
-      showCompiledPreview(false);
-    }
-  });
-  preview.addEventListener("error", (event) => {
-    if (compiledPreview !== preview) return;
-    clearCompiledPreview();
-    buildControls.buildStatus = `Compiled preview unavailable: ${event.detail.error.message}`;
-  });
-  compiledPreview = preview;
-  compiledDocument = documentAtBuild;
-  compiledSourceText = sourceAtBuild;
-  canvases.perspective.parentElement!.append(preview);
-}
-
 function refreshResourceCatalog() {
-  const resources = project ?? hostedResources;
+  const resources = hostedResources;
   renderer?.setEntityDefinitions(resources?.definitions);
   renderer?.setMaterials(currentMaterials());
   materialBrowser.setMaterials(currentMaterials());
@@ -1406,39 +1001,10 @@ function refreshResourceCatalog() {
   refreshSelection();
 }
 
-function setProject(value: MapProject | null) {
-  const previousGame = activeGame();
-  latestBuildExport = null;
-  buildControls.exportStatus = "";
-  refreshBuildExport();
-  project = value;
-  projectSyncControls?.setProject(value);
-  if (activeGame() !== previousGame) {
-    buildGeneration += 1;
-    clearCompiledPreview();
-  }
-  projectBindings = null;
-  loadCurrentExportSettings();
-  const profiles = value?.manifest.buildProfiles.length
-    ? value.manifest.buildProfiles
-    : [
-        { id: "preview", label: "Preview", quality: "preview" as const },
-        { id: "final", label: "Final", quality: "final" as const },
-      ];
-  buildControls.update({
-    profiles: profiles.map(({ id, label }) => ({ id, label })),
-    profileId: value?.manifest.defaultBuildProfile ?? profiles[0]!.id,
-  });
+function resetResourceContext() {
   refreshResourceCatalog();
   publishStandaloneResources();
-  if (value) return;
-  projectMapSelector.hide();
-  activeProjectPath = null;
-  activeRecentProjectId = null;
   projectContext.update({
-    projectName: null,
-    paths: [],
-    selectedPath: "",
     resourceInfo: "",
     diagnostics: [],
   });
@@ -1482,8 +1048,6 @@ function refreshSource() {
         : null,
     );
   }
-  refreshCompiledPreview();
-  refreshBuildExport();
   refreshStatus();
   scheduleDraftSave();
 }
@@ -1619,10 +1183,6 @@ function refreshSelection() {
           isEditorLayerEntity(entity)),
     );
   selectionBrushes.setEnabled(selectionBrushReady);
-  buildControls.update({
-    game: activeGame(),
-    gameDisabled: project !== null || hostedMap !== null,
-  });
   const faces = faceRefs.flatMap(({ brushId: ownerId, faceId }) => {
     const face = findBrush(session.document, ownerId)?.faces.find(
       (candidate) => candidate.id === faceId,
@@ -2041,7 +1601,6 @@ function refreshPropertyActions() {
 function handleSessionChange(change: { kind: string }) {
   if (change.kind === "document" || change.kind === "history") {
     refreshSource();
-    refreshBuildLaunch();
     issueBrowser.refresh();
     materialBrowser.refresh();
   }
@@ -2093,13 +1652,6 @@ function setMap(value: MapDocument, sourceState?: MapSourceState) {
     new CustomEvent("tea-maps-pointer-position", { detail: null }),
   );
   editActions.update({ pastePointerDisabled: true });
-  latestBuildExport = null;
-  latestLaunch = null;
-  refreshBuildLaunch();
-  buildControls.exportStatus = "";
-  refreshBuildExport();
-  clearCompiledPreview();
-  buildOverlays.clear();
   unsubscribeSession();
   session = new EditorSession(value);
   mapSourceState = sourceState ?? rebaseMapSource(value, serializeMap(value));
@@ -2111,7 +1663,6 @@ function setMap(value: MapDocument, sourceState?: MapSourceState) {
   renderer?.focusDocument();
   void restoreStandaloneResources();
   workspace.switchDocument(hostedMap ? `hosted:${hostedMap.id}` : documentId);
-  void refreshLocalBuildHistory();
   refreshSource();
   scheduleRender();
 }
@@ -2254,14 +1805,6 @@ function setHostedEditability() {
     pastePointerDisabled:
       (readOnly && !hostedConnection) || latestPointer === null,
   });
-  const buildDisabled =
-    localBuildBusy ||
-    (readOnly && (hostedMap?.role === "viewer" || hostedBuildBusy));
-  buildControls.update({
-    buildLabel: readOnly ? "Build hosted BSP" : "Build BSP",
-    buildDisabled,
-    buildExportOnceDisabled: readOnly || buildDisabled,
-  });
   hostedSourceControls?.setAvailability();
   refreshSelection();
   issueBrowser.refresh();
@@ -2276,9 +1819,6 @@ function setHostedUrl(mapId: string | null) {
 
 function leaveHostedMap() {
   if (!hostedMap) return;
-  ++buildGeneration;
-  hostedBuildBusy = false;
-  hostedBuildControls?.setMap(null);
   hostedSourceControls?.close();
   hostedGeneration += 1;
   hostedConnection?.close();
@@ -2329,7 +1869,7 @@ async function openHostedMap(map: HostedMapLaunch): Promise<boolean> {
   persistDraft();
   openedFile = null;
   openedFingerprint = null;
-  setProject(null);
+  resetResourceContext();
   localGame = map.game;
   setMapName(`${map.slug}.map`);
   savedSource = map.source;
@@ -2337,7 +1877,6 @@ async function openHostedMap(map: HostedMapLaunch): Promise<boolean> {
   hostedConnectionState = map.role === "viewer" ? "viewing" : "connecting";
   setMap(map.document);
   void refreshHostedResources(map);
-  hostedBuildControls?.setMap(map);
   setHostedEditability();
   hostedControls?.setViewingHosted(true);
   setHostedUrl(map.id);
@@ -2410,7 +1949,7 @@ function openDetachedCopy(
   leaveHostedMap();
   openedFile = null;
   openedFingerprint = null;
-  setProject(null);
+  resetResourceContext();
   localGame = recovery?.game ?? copy.profile;
   documentId = copy.documentKey;
   setMapName(recovery?.fileName ?? copy.fileName);
@@ -2460,7 +1999,7 @@ function makeLocalCopy(): Promise<void> {
       leaveHostedMap();
       openedFile = null;
       openedFingerprint = null;
-      setProject(null);
+      resetResourceContext();
       documentId = crypto.randomUUID();
       savedSource = emptySource;
       setMap(map.document);
@@ -2482,7 +2021,7 @@ function clearOpenedFile() {
   openedFingerprint = null;
   setMapName("tea-map.map");
   documentId = crypto.randomUUID();
-  setProject(null);
+  resetResourceContext();
   savedSource = emptySource;
 }
 
@@ -2792,7 +2331,6 @@ try {
   status.textContent = "Local recovery is unavailable; download your map";
 }
 workspace.switchDocument(documentId);
-void refreshLocalBuildHistory();
 materialBrowser.setMaterials(currentMaterials());
 refreshStatus();
 scheduleDraftSave();
@@ -2881,7 +2419,6 @@ if (!navigator.gpu) {
       );
       setHostedEditability();
       renderer.focusDocument();
-      buildOverlays.apply();
       workspace.applyInitial(renderer);
       renderPresence();
       refreshStatus();
@@ -2907,9 +2444,6 @@ document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") persistDraft();
 });
 function onSourceInput() {
-  refreshCompiledPreview();
-  refreshBuildExport();
-  refreshBuildLaunch();
   if (hostedMap) return;
   status.textContent = "Source has unapplied edits";
   session.select(null);
@@ -2986,28 +2520,6 @@ function refreshPointEntityPlacementBounds() {
       currentDefinitions(),
     ).bounds,
   );
-}
-
-function selectGameProfile(value: string) {
-  if (project || hostedMap || !isMapsGameProfile(value)) {
-    buildControls.update({ game: activeGame() });
-    return;
-  }
-  if (value === localGame) return;
-  localGame = value;
-  void restoreStandaloneResources();
-  renderer?.setMaterials(currentMaterials());
-  materialBrowser.setMaterials(currentMaterials());
-  buildGeneration += 1;
-  latestBuildExport = null;
-  latestLaunch = null;
-  refreshBuildLaunch();
-  buildControls.exportStatus = "";
-  clearCompiledPreview();
-  buildOverlays.clear();
-  refreshBuildExport();
-  refreshSelection();
-  scheduleDraftSave();
 }
 
 async function newMapFromControls() {
@@ -4073,7 +3585,7 @@ async function newerLocalRecovery(
 }
 
 function openRecoveredLocalCopy(recovery: EditorVersion, fileName: string) {
-  setProject(null);
+  resetResourceContext();
   localGame = recovery.game ?? "quake";
   openedFile = null;
   openedFingerprint = null;
@@ -4105,7 +3617,7 @@ async function openMapFile(file: File, handle: MapFileHandle | null) {
       openRecoveredLocalCopy(recovery, file.name);
       return;
     }
-    setProject(null);
+    resetResourceContext();
     openedFile = handle;
     openedFingerprint = handle ? mapSourceFingerprint(text) : null;
     setMapName(file.name);
@@ -4124,491 +3636,6 @@ async function openPickerFromControls() {
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") return;
     status.textContent = error instanceof Error ? error.message : String(error);
-  }
-}
-
-async function openProjectDirectory(
-  directory: MapDirectoryHandle,
-  recentId?: string,
-  lastMapPath?: string,
-) {
-  const opened = await openMapProject(directory);
-  const bindings = await openProjectBuildBindings(directory).catch(() => null);
-  if (!(await mayReplaceMap())) return;
-  persistDraft();
-  leaveHostedMap();
-  openedFile = null;
-  openedFingerprint = null;
-  setMapName("tea-map.map");
-  documentId = crypto.randomUUID();
-  savedSource = emptySource;
-  setProject(opened);
-  setMap(createEmptyDocument());
-  projectBindings = bindings;
-  projectRecoveryScope = bindings?.scopeId ?? crypto.randomUUID();
-  loadCurrentExportSettings();
-  activeProjectPath = null;
-  projectContext.update({
-    projectName: opened.manifest.name,
-    paths: opened.maps.map((entry) => entry.path),
-    selectedPath: "",
-  });
-  activeRecentProjectId =
-    (
-      await rememberRecentProject(directory, opened.manifest.name).catch(
-        () => null,
-      )
-    )?.id ??
-    recentId ??
-    null;
-  status.textContent = `${opened.manifest.name}: ${opened.maps.length} maps${bindings ? "" : " · build profile choices will not be remembered"}`;
-  projectMapSelector.show(opened.manifest.name, opened.maps, lastMapPath);
-}
-
-async function openRecentProject(id: string, requestPermission: boolean) {
-  const current = await recentProject(id);
-  if (!current) throw new Error("This recent project is unavailable");
-  const permission =
-    (await current.handle.queryPermission?.({ mode: "readwrite" })) ??
-    "granted";
-  if (permission !== "granted") {
-    if (!requestPermission)
-      throw new Error("Choose Recent projects to grant folder permission");
-    const granted = await current.handle.requestPermission?.({
-      mode: "readwrite",
-    });
-    if (granted !== "granted")
-      throw new Error("Project folder permission was not granted");
-  }
-  await openProjectDirectory(current.handle, current.id, current.lastMapPath);
-}
-
-window.addEventListener("tea-maps-open-recent-project", (event) => {
-  const request = (event as CustomEvent<OpenRecentProjectRequest>).detail;
-  event.preventDefault();
-  void openRecentProject(request.id, true).then(
-    request.resolve,
-    request.reject,
-  );
-});
-
-async function openProjectFromControls() {
-  if (!supportsProjectPicker()) {
-    status.textContent =
-      "This browser cannot open project folders; open a .map file instead";
-    return;
-  }
-  try {
-    const directory = await pickProjectDirectory();
-    if (directory) await openProjectDirectory(directory);
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") return;
-    status.textContent = error instanceof Error ? error.message : String(error);
-  }
-}
-
-async function openProjectMap(
-  path: string,
-  siteTool?: {
-    readonly expectedDocumentId: string;
-    readonly expectedRevision: number;
-    readonly discardUnsavedChanges: boolean;
-    readonly signal: AbortSignal;
-  },
-) {
-  const previous = activeProjectPath ?? "";
-  const entry = project?.maps.find((projectMap) => projectMap.path === path);
-  if (!entry) {
-    projectContext.update({ selectedPath: previous });
-    if (siteTool) throw new Error(`Unknown project map ${path}`);
-    return false;
-  }
-  if (path === activeProjectPath) return true;
-  try {
-    const file = await entry.handle.getFile();
-    const text = await file.text();
-    const parsed = parseMapSource(text);
-    const document = parsed.document;
-    if (siteTool)
-      await checkSiteToolReplacement(
-        siteTool.expectedDocumentId,
-        siteTool.expectedRevision,
-        siteTool.discardUnsavedChanges,
-      );
-    else if (!(await mayReplaceMap())) {
-      projectContext.update({ selectedPath: previous });
-      return false;
-    }
-    siteTool?.signal.throwIfAborted();
-    persistDraft();
-    leaveHostedMap();
-    const identity = `project:${projectRecoveryScope}:${path}`;
-    const diskSource = serializeMap(document);
-    const recovery = siteTool
-      ? null
-      : await newerLocalRecovery(identity, file, diskSource);
-    if (recovery) {
-      openRecoveredLocalCopy(recovery, entry.handle.name);
-      return true;
-    }
-    openedFile = entry.handle;
-    openedFingerprint = mapSourceFingerprint(text);
-    setMapName(entry.handle.name);
-    savedSource = diskSource;
-    activeProjectPath = path;
-    documentId = identity;
-    setMap(document, parsed.source);
-    projectContext.update({ selectedPath: path });
-    projectMapSelector.hide();
-    if (activeRecentProjectId)
-      void rememberRecentProjectMap(activeRecentProjectId, path).catch(
-        () => {},
-      );
-    if (siteTool) {
-      persistDraft();
-      await saveQueue;
-    }
-    return true;
-  } catch (error) {
-    projectContext.update({ selectedPath: previous });
-    status.textContent = error instanceof Error ? error.message : String(error);
-    if (siteTool) throw error;
-    return false;
-  }
-}
-
-async function exportLatestBuild(settings: ExportSettings): Promise<void> {
-  const latest = latestBuildExport;
-  if (!latest || !isBuildExportCurrent(latest)) {
-    throw new Error("The map changed; build it again before exporting");
-  }
-  if (exportBusy) return;
-  exportBusy = true;
-  refreshBuildExport();
-  try {
-    buildControls.exportStatus = "Packaging build…";
-    const file = await packageBuildExport(latest.input, settings.includeSource);
-    if (!isBuildExportCurrent(latest)) {
-      throw new Error("The map changed while packaging the export");
-    }
-    if (settings.directory) await writeBuildExport(settings.directory, file);
-    else downloadBuildFile(file);
-    buildControls.exportStatus = settings.directory
-      ? `Exported ${settings.directory.name}/${file.name}`
-      : `Downloaded ${file.name}`;
-  } finally {
-    exportBusy = false;
-    refreshBuildExport();
-  }
-}
-
-async function launchCurrentBuild() {
-  const candidate = latestLaunch;
-  if (!candidate || !isBuildLaunchCurrent(candidate) || launchBusy) {
-    refreshBuildLaunch();
-    return;
-  }
-  launchBusy = true;
-  refreshBuildLaunch();
-  try {
-    const result = await launchLocalBuild(
-      candidate.result,
-      candidate.profileId,
-    );
-    if (latestLaunch === candidate)
-      buildControls.buildStatus = `Launched build ${result.buildId.slice(0, 8)} in engine`;
-  } catch (error) {
-    if (latestLaunch === candidate)
-      buildControls.buildStatus =
-        error instanceof Error ? error.message : String(error);
-  } finally {
-    launchBusy = false;
-    refreshBuildLaunch();
-  }
-}
-
-async function runBuild(exportOnce: boolean) {
-  if (standaloneContext() && standaloneResourcesLoading) {
-    buildControls.buildStatus = "Wait for map resources to load";
-    return;
-  }
-  if (
-    buildControls.state.buildDisabled ||
-    (exportOnce && buildControls.state.buildExportOnceDisabled)
-  )
-    return;
-  if (!applyWorkingSource()) return;
-  const selected = project?.manifest.buildProfiles.find(
-    (profile) => profile.id === buildControls.state.profileId,
-  );
-  const quality =
-    selected?.quality ??
-    (buildControls.state.profileId === "final" ? "final" : "preview");
-  if (hostedMap) {
-    const map = hostedMap;
-    const document = session.document;
-    const sourceAtStart = source.value;
-    const cameraAtStart = compiledPreviewCamera();
-    const generation = ++buildGeneration;
-    hostedBuildBusy = true;
-    buildControls.update({
-      buildDisabled: true,
-      buildExportOnceDisabled: true,
-    });
-    buildControls.buildLogHidden = true;
-    buildControls.buildStatus = `Checking hosted ${quality} build…`;
-    try {
-      if ((await new IndexedDbCollaborationOutbox().pending(map.id)).length > 0)
-        throw new Error("Wait for hosted edits to sync before building");
-      const result = await hostedBuildControls!.build(quality);
-      if (generation !== buildGeneration || hostedMap?.id !== map.id) return;
-      buildControls.buildOutput = [
-        ...(result.result?.diagnostics ?? []).map(
-          (entry) => `${entry.severity}: ${entry.stage}: ${entry.message}`,
-        ),
-        ...(result.result?.logs ?? []).map(
-          (entry) => `${entry.stage}:\n${entry.text}`,
-        ),
-        ...(result.result?.error ? [result.result.error] : []),
-      ].join("\n\n");
-      buildControls.buildLogHidden = buildControls.buildOutput.length === 0;
-      const bsp = result.result?.artifacts?.find(
-        (artifact) => artifact.kind === "bsp",
-      );
-      if (result.status !== "succeeded" || !bsp) {
-        buildControls.buildStatus = "Hosted build failed; see build messages";
-      } else if (
-        result.mapVersion === hostedMap.mapVersion &&
-        session.document === document &&
-        source.value === sourceAtStart
-      ) {
-        buildControls.buildStatus = "Hosted build succeeded · loading preview";
-        installCompiledPreview(
-          { bsp: hostedBuildArtifactPath(map.id, result.id, bsp.sha256) },
-          document,
-          sourceAtStart,
-          cameraAtStart,
-        );
-      } else {
-        buildControls.buildStatus =
-          "Hosted build succeeded for an earlier map version; use build history to download it";
-      }
-    } catch (error) {
-      if (generation === buildGeneration && hostedMap?.id === map.id)
-        buildControls.buildStatus =
-          error instanceof Error ? error.message : String(error);
-    } finally {
-      if (generation === buildGeneration) {
-        hostedBuildBusy = false;
-        setHostedEditability();
-      }
-    }
-    return;
-  }
-  const document = session.document;
-  const sourceAtStart = source.value;
-  const cameraAtStart = compiledPreviewCamera();
-  const projectAtStart = project;
-  const gameAtStart = activeGame();
-  const bindingsAtStart = projectBindings;
-  const preferredProfileId =
-    selected && bindingsAtStart?.preferred(selected.id);
-  const nameAtStart = mapName;
-  const documentKeyAtStart = documentId;
-  const resourceGenerationAtStart = standaloneResourceGeneration;
-  const standaloneAtStart = projectAtStart ? null : standaloneResources;
-  const settingsAtStart = exportSettings;
-  const autoExport = settingsAtStart.afterBuild || exportOnce;
-  const generation = ++buildGeneration;
-  localBuildBusy = true;
-  latestBuildExport = null;
-  latestLaunch = null;
-  refreshBuildLaunch();
-  buildControls.exportStatus = "";
-  refreshBuildExport();
-  buildControls.update({ buildDisabled: true, buildExportOnceDisabled: true });
-  buildControls.buildStatus = `Building ${quality}…`;
-  buildControls.buildLogHidden = true;
-  buildOverlays.clear();
-  try {
-    const { result, profileId, launchProfileId, previewSource, exportInput } =
-      await buildMap({
-        document,
-        mapName: nameAtStart,
-        project: projectAtStart,
-        quality,
-        game: gameAtStart,
-        standalone: standaloneAtStart,
-        ...(preferredProfileId ? { preferredProfileId } : {}),
-      });
-    buildControls.buildOutput = localBuildMessages(result);
-    buildControls.buildLogHidden = buildControls.buildOutput.length === 0;
-    void recordLocalBuild(documentKeyAtStart, result)
-      .then(() => {
-        if (documentId === documentKeyAtStart && !hostedMap)
-          void refreshLocalBuildHistory(
-            `${documentKeyAtStart}:${result.buildId}`,
-          );
-      })
-      .catch((error: unknown) => {
-        if (documentId === documentKeyAtStart && !hostedMap)
-          buildControls.update({
-            localHistoryStatus: `Build history could not save: ${error instanceof Error ? error.message : String(error)}`,
-          });
-      });
-    if (selected && bindingsAtStart && project === projectAtStart) {
-      try {
-        await bindingsAtStart.remember(selected.id, profileId);
-      } catch {
-        buildControls.buildOutput +=
-          "\n\nBuild profile choice could not be saved in this browser";
-        buildControls.buildLogHidden = false;
-      }
-    }
-    const resultIsCurrent =
-      session.document === document &&
-      project === projectAtStart &&
-      activeGame() === gameAtStart &&
-      mapName === nameAtStart &&
-      source.value === sourceAtStart &&
-      resourceGenerationAtStart === standaloneResourceGeneration &&
-      generation === buildGeneration;
-    if (resultIsCurrent) buildOverlays.inspect(result);
-    if (resultIsCurrent && result.status === "succeeded" && launchProfileId) {
-      latestLaunch = {
-        result,
-        profileId: launchProfileId,
-        document,
-        sourceText: sourceAtStart,
-        project: projectAtStart,
-        name: nameAtStart,
-        game: gameAtStart,
-      };
-      refreshBuildLaunch();
-    }
-    if (!resultIsCurrent) {
-      buildControls.buildStatus =
-        "Build finished; map changed, so result was not downloaded";
-    } else if (
-      result.status === "succeeded" &&
-      result.artifacts.some((artifact) => artifact.kind === "bsp")
-    ) {
-      if (!autoExport) downloadBsp(result);
-      const buildOutcome = autoExport ? "Build succeeded" : "BSP downloaded";
-      buildControls.buildStatus = `${buildOutcome} · ${Math.round(result.elapsedMilliseconds / 1000)}s`;
-      if (exportInput) {
-        buildControls.exportStatus = "Preparing bundle…";
-        if (previewSource) {
-          buildControls.buildStatus += " · preparing preview resources";
-        }
-        void prepareBuildExport(exportInput)
-          .then(async (prepared) => {
-            if (
-              generation !== buildGeneration ||
-              session.document !== document ||
-              source.value !== sourceAtStart ||
-              project !== projectAtStart ||
-              activeGame() !== gameAtStart ||
-              mapName !== nameAtStart ||
-              resourceGenerationAtStart !== standaloneResourceGeneration
-            ) {
-              return;
-            }
-            latestBuildExport = {
-              input: prepared,
-              document,
-              sourceText: sourceAtStart,
-              project: projectAtStart,
-              name: nameAtStart,
-              game: gameAtStart,
-            };
-            const preparedBuild = latestBuildExport;
-            buildControls.exportStatus = "Bundle ready";
-            refreshBuildExport();
-            if (previewSource) {
-              buildControls.buildStatus = `${buildOutcome} · loading compiled preview`;
-              installCompiledPreview(
-                previewSourceWithExportAssets(previewSource, prepared),
-                document,
-                sourceAtStart,
-                cameraAtStart,
-              );
-            }
-            if (autoExport) {
-              try {
-                await exportLatestBuild(settingsAtStart);
-              } catch (error) {
-                if (!isBuildExportCurrent(preparedBuild)) return;
-                downloadBsp(result);
-                buildControls.buildStatus =
-                  "BSP downloaded · automatic export unavailable";
-                buildControls.exportStatus =
-                  error instanceof Error ? error.message : String(error);
-              }
-            }
-          })
-          .catch((error: unknown) => {
-            if (
-              generation !== buildGeneration ||
-              session.document !== document ||
-              source.value !== sourceAtStart ||
-              project !== projectAtStart ||
-              activeGame() !== gameAtStart ||
-              mapName !== nameAtStart ||
-              resourceGenerationAtStart !== standaloneResourceGeneration
-            )
-              return;
-            buildControls.exportStatus =
-              error instanceof Error ? error.message : String(error);
-            if (autoExport) downloadBsp(result);
-            if (previewSource) {
-              buildControls.buildStatus = `${autoExport ? "BSP downloaded" : buildOutcome} · loading compiled preview without companion assets`;
-              installCompiledPreview(
-                previewSource,
-                document,
-                sourceAtStart,
-                cameraAtStart,
-              );
-            } else if (autoExport) {
-              buildControls.buildStatus =
-                "BSP downloaded · automatic export unavailable";
-            }
-          });
-      } else if (previewSource) {
-        buildControls.buildStatus += " · loading compiled preview";
-        installCompiledPreview(
-          previewSource,
-          document,
-          sourceAtStart,
-          cameraAtStart,
-        );
-      } else {
-        clearCompiledPreview();
-        buildControls.buildStatus +=
-          " · compiled preview unavailable for this format";
-      }
-    } else {
-      buildControls.buildStatus = "Build failed; see build messages";
-    }
-  } catch (error) {
-    buildControls.buildStatus =
-      error instanceof Error ? error.message : String(error);
-  } finally {
-    localBuildBusy = false;
-    refreshBuildLaunch();
-    setHostedEditability();
-  }
-}
-
-async function exportCurrentBuild() {
-  refreshBuildExport();
-  const latest = latestBuildExport;
-  if (!latest || buildControls.state.exportDisabled) return;
-  try {
-    await exportLatestBuild(exportSettings);
-  } catch (error) {
-    buildControls.exportStatus =
-      error instanceof Error ? error.message : String(error);
   }
 }
 
@@ -4733,81 +3760,13 @@ async function showVersionsFromControls() {
 }
 
 for (const button of document.querySelectorAll<HTMLButtonElement>(
-  ".editor-toolbar button:not(.transform-nudge, #add-box, #csg-merge, #csg-intersect, #csg-subtract, #csg-hollow, #delete-selection, #duplicate-selection, #hide-selection, #isolate-selection, #show-all, #snap-to-grid, #copy-selection, #paste-cursor, #make-brush-entity, #make-structural, #add-point-entity, #move-selection, #rotate-selection, #scale-selection, #shear-selection, #flip-x, #flip-y, #flip-z, #undo, #redo, #new-map, #example-map, #open-map-button, #open-project, #save-map, #export-normalized, #create-checkpoint, #show-versions, #download-map, #build-map, #build-export-once, #toggle-compiled, #export-build, #selection-brush-touching, #selection-brush-inside, #selection-brush-projected, #select-all, #invert-selection, #focus-selection, #lock-selection, #unlock-all, #repeat-commands, #clear-repeat-commands, #paste-original)",
+  ".editor-toolbar button:not(.transform-nudge, #add-box, #csg-merge, #csg-intersect, #csg-subtract, #csg-hollow, #delete-selection, #duplicate-selection, #hide-selection, #isolate-selection, #show-all, #snap-to-grid, #copy-selection, #paste-cursor, #make-brush-entity, #make-structural, #add-point-entity, #move-selection, #rotate-selection, #scale-selection, #shear-selection, #flip-x, #flip-y, #flip-z, #undo, #redo, #new-map, #example-map, #open-map-button, #save-map, #export-normalized, #create-checkpoint, #show-versions, #download-map, #selection-brush-touching, #selection-brush-inside, #selection-brush-projected, #select-all, #invert-selection, #focus-selection, #lock-selection, #unlock-all, #repeat-commands, #clear-repeat-commands, #paste-original)",
 )) {
   button.disabled = false;
 }
 source.disabled = false;
-buildControls.update({ profileDisabled: false });
-loadCurrentExportSettings();
 setHostedEditability();
 const sourceComparison = initSourceComparison();
-projectSyncControls = initProjectSyncDialog({
-  linked(updated) {
-    project = updated;
-    status.textContent = `Linked ${updated.manifest.hosted?.maps.length ?? 0} project maps`;
-  },
-  canSync(path) {
-    return path === activeProjectPath && hasUnsavedChanges()
-      ? "Save or discard open editor changes before syncing this map"
-      : null;
-  },
-  pulled(path, text) {
-    if (path !== activeProjectPath) return;
-    const parsed = parseMapSource(text);
-    const document = parsed.document;
-    openedFingerprint = mapSourceFingerprint(text);
-    savedSource = serializeMap(document);
-    setMap(document, parsed.source);
-    status.textContent = `Pulled ${path} from the hosted map`;
-  },
-});
-projectSyncControls.setProject(project);
-hostedBuildControls = initHostedBuilds({
-  map: () => hostedMap,
-  onUpdate(build, durationHint) {
-    buildControls.buildStatus = `Hosted ${build.quality} build · ${build.status} · v${build.mapVersion}${(build.status === "queued" || build.status === "running") && durationHint ? ` · ${durationHint}` : ""}`;
-  },
-  preview(build, artifactPath) {
-    void (async () => {
-      const map = hostedMap;
-      if (!map || map.mapVersion !== build.mapVersion) {
-        buildControls.buildStatus = "This build is from an earlier map version";
-        return;
-      }
-      if (
-        (await new IndexedDbCollaborationOutbox().pending(map.id)).length > 0
-      ) {
-        buildControls.buildStatus =
-          "Wait for hosted edits to sync before previewing";
-        return;
-      }
-      if (hostedMap?.id !== map.id || hostedMap.mapVersion !== build.mapVersion)
-        return;
-      buildControls.buildStatus = "Loading hosted preview resources";
-      const mounts = await listHostedResources(map.projectId);
-      if (hostedMap?.id !== map.id || hostedMap.mapVersion !== build.mapVersion)
-        return;
-      const previewSource = await loadHostedWorldSource(
-        artifactPath,
-        map.projectId,
-        mounts,
-      );
-      if (hostedMap?.id !== map.id || hostedMap.mapVersion !== build.mapVersion)
-        return;
-      buildControls.buildStatus = "Loading hosted compiled preview";
-      installCompiledPreview(
-        previewSource,
-        session.document,
-        source.value,
-        compiledPreviewCamera(),
-      );
-    })().catch((error: unknown) => {
-      buildControls.buildStatus =
-        error instanceof Error ? error.message : String(error);
-    });
-  },
-});
 hostedControls = initHostedEditor({
   open: openHostedMap,
   compare(map) {
@@ -4840,14 +3799,6 @@ hostedSourceControls = initHostedSourceDialog({
     status.textContent = message;
   },
 });
-
-const launchRecentProject = new URL(location.href).searchParams.get(
-  "recentProject",
-);
-if (launchRecentProject)
-  void openRecentProject(launchRecentProject, false).catch((error: unknown) => {
-    status.textContent = error instanceof Error ? error.message : String(error);
-  });
 
 const detachedMapUrl = new URL(location.href);
 const launchDetachedMap = detachedMapUrl.searchParams.get("detachedMap");
@@ -4906,7 +3857,6 @@ void registerEditorWebMcpTools(
     workingSource: source.value,
     sourceState: mapSourceState,
     dirty: hasUnsavedChanges(),
-    project,
     hostedMap,
     renderer,
     materials: currentMaterials(),
@@ -4930,21 +3880,6 @@ void registerEditorWebMcpTools(
       if (hostedMap) await hostedConnection![action]();
       else session[action]();
     },
-    async openProjectMap(
-      path,
-      discardUnsavedChanges,
-      expectedDocumentId,
-      expectedRevision,
-      signal,
-    ) {
-      signal.throwIfAborted();
-      await openProjectMap(path, {
-        expectedDocumentId,
-        expectedRevision,
-        discardUnsavedChanges,
-        signal,
-      });
-    },
     async replaceMapSource(
       text,
       name,
@@ -4963,7 +3898,7 @@ void registerEditorWebMcpTools(
       const game = activeGame();
       persistDraft();
       leaveHostedMap();
-      setProject(null);
+      resetResourceContext();
       localGame = game;
       openedFile = null;
       openedFingerprint = null;

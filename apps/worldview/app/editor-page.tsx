@@ -1,6 +1,5 @@
 import { browserAssets } from "./assets/build-manifest.ts";
 import type { Handle } from "remix/component";
-import { EditorRecentProjects } from "./assets/editor-recent-projects-panel.tsx";
 import {
   EditorHostedPresence,
   EditorHostedPresenceStrip,
@@ -8,17 +7,13 @@ import {
 import { EditorHostedAccess } from "./assets/editor-hosted-access-panel.tsx";
 import { EditorHostedResources } from "./assets/editor-hosted-resources-panel.tsx";
 import { EditorHostedPicker } from "./assets/editor-hosted-picker-panel.tsx";
-import { EditorHostedBuilds } from "./assets/editor-hosted-builds-panel.tsx";
 import { EditorFov } from "./assets/editor-fov-panel.tsx";
 import {
   EditorInspector,
   EditorInspectorToggle,
   EditorWorkspaceToggle,
 } from "./assets/editor-workspace-toggle.tsx";
-import { EditorExportSettings } from "./assets/editor-export-settings-panel.tsx";
-import { EditorBuildControls } from "./assets/editor-build-controls-panel.tsx";
 import { EditorDocumentControls } from "./assets/editor-document-controls-panel.tsx";
-import { EditorProjectContextPanel } from "./assets/editor-project-context-panel.tsx";
 import { EditorSelectionCommands } from "./assets/editor-selection-commands-panel.tsx";
 import { EditorEditActions } from "./assets/editor-edit-actions-panel.tsx";
 import { EditorToolSettings } from "./assets/editor-tool-settings-panel.tsx";
@@ -26,13 +21,8 @@ import { EditorHistory } from "./assets/editor-history-panel.tsx";
 import { EditorSwitchMapDialog } from "./assets/editor-switch-map-panel.tsx";
 import { EditorContextMenu } from "./assets/editor-context-menu-panel.tsx";
 import { EditorDetachedMaps } from "./assets/editor-detached-maps-panel.tsx";
-import { EditorProjectMapSelector } from "./assets/editor-project-map-selector-panel.tsx";
 import { EditorThemeControl } from "./assets/editor-theme-control.tsx";
 import { EditorVersions } from "./assets/editor-versions-panel.tsx";
-import {
-  EditorProjectSync,
-  EditorProjectSyncOpen,
-} from "./assets/editor-project-sync-panel.tsx";
 import {
   EditorHostedSource,
   EditorHostedSourceOpen,
@@ -81,7 +71,6 @@ export function EditorPage(handle: Handle<{ nonce?: string }>) {
                 <a href="/">Maps home</a>
                 <a href="/projects">Projects</a>
                 <EditorDocumentControls />
-                <EditorRecentProjects />
                 <div class="editor-menu-heading">Appearance</div>
                 <EditorThemeControl />
               </div>
@@ -102,31 +91,6 @@ export function EditorPage(handle: Handle<{ nonce?: string }>) {
                 <div class="editor-menu-heading">Selection and visibility</div>
                 <EditorSelectionCommands />
                 <EditorEditActions />
-              </div>
-            </details>
-            <details
-              class="editor-menu"
-              data-menu="project"
-              name="editor-topbar"
-            >
-              <summary aria-label="Project menu" title="Project">
-                <i class="ph ph-folders" aria-hidden="true" />
-              </summary>
-              <div class="editor-menu-content">
-                <div class="editor-menu-heading">Project</div>
-                <EditorProjectContextPanel />
-                <EditorProjectSyncOpen />
-              </div>
-            </details>
-            <details class="editor-menu" data-menu="build" name="editor-topbar">
-              <summary>
-                <i class="ph ph-hammer" aria-hidden="true" /> Build
-              </summary>
-              <div class="editor-menu-content">
-                <div class="editor-menu-heading">Build and export</div>
-                <EditorBuildControls />
-                <EditorExportSettings />
-                <EditorHostedBuilds />
               </div>
             </details>
             <details
@@ -249,7 +213,6 @@ export function EditorPage(handle: Handle<{ nonce?: string }>) {
               <EditorSelectionInfo />
               <EditorInspector />
             </aside>
-            <EditorProjectMapSelector />
           </div>
           <footer class="editor-statusbar">
             <EditorStatus />
@@ -260,7 +223,6 @@ export function EditorPage(handle: Handle<{ nonce?: string }>) {
         <EditorPerformancePanel />
         <EditorSwitchMapDialog />
         <EditorVersions />
-        <EditorProjectSync />
         <EditorSourceComparison />
         <EditorHostedSource />
         <EditorContextMenu />

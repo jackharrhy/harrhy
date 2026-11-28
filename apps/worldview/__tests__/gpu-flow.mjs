@@ -5,7 +5,6 @@ import { createServer } from "node:net";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import { chromium } from "playwright";
-import { syntheticQuakeBsp } from "../app/assets/synthetic.ts";
 
 const teaRoot = fileURLToPath(new URL("../../..", import.meta.url));
 const testCorpusAll = process.argv.includes("--corpus-all");
@@ -93,60 +92,6 @@ try {
     });
     window.teaMapsTestTools = tools;
   });
-  await page.addInitScript((bspBase64) => {
-    const originalFetch = window.fetch.bind(window);
-    let releaseCompile;
-    const compileReleased = new Promise((resolve) => {
-      releaseCompile = resolve;
-    });
-    window.teaMapsReleaseGpuCompile = () => releaseCompile();
-    window.teaMapsGpuCompilerRequests = [];
-    window.fetch = async (input, init) => {
-      const url = new URL(
-        input instanceof Request ? input.url : input,
-        location.href,
-      );
-      if (url.origin !== "http://127.0.0.1:8788")
-        return originalFetch(input, init);
-      if (url.pathname === "/capabilities")
-        return Response.json({
-          protocolVersion: 1,
-          compileProfiles: [
-            {
-              id: "gpu-smoke-quake",
-              label: "GPU smoke Quake",
-              game: "quake",
-              qualities: ["preview"],
-            },
-          ],
-          launchProfiles: [],
-        });
-      if (url.pathname === "/compile") {
-        const request = JSON.parse(init.body);
-        window.teaMapsGpuCompilerRequests.push(request);
-        await compileReleased;
-        return Response.json({
-          status: "succeeded",
-          buildId: "gpu-smoke-build",
-          sourceDocumentRevision: request.expectedDocumentRevision,
-          diagnostics: [],
-          logs: [
-            { stage: "qbsp", text: "GPU smoke artifact", truncated: false },
-          ],
-          elapsedMilliseconds: 7,
-          artifacts: [
-            {
-              name: "gpu-smoke.bsp",
-              kind: "bsp",
-              mediaType: "application/octet-stream",
-              base64: bspBase64,
-            },
-          ],
-        });
-      }
-      return new Response(null, { status: 404 });
-    };
-  }, Buffer.from(syntheticQuakeBsp()).toString("base64"));
   await page.goto(`${origin}/editor`);
   const gpu = await page.evaluate(async () => {
     const adapter = await navigator.gpu?.requestAdapter();
@@ -218,66 +163,6 @@ try {
   assert.equal(await page.locator("#editor-inspector").isVisible(), false);
   await page.locator("#toggle-inspector").click();
   assert.equal(await page.locator("#editor-inspector").isVisible(), true);
-  const cameraAtBuild = await page.evaluate(
-    () =>
-      window.teaMapsTestTools.get("tea_maps_inspect_editor").execute({})
-        .perspectiveCamera,
-  );
-  await page
-    .locator('.editor-menu[data-menu="build"]')
-    .evaluate((menu) => (menu.open = true));
-  await page.locator("#build-map:enabled").click();
-  await page.waitForFunction(
-    () => window.teaMapsGpuCompilerRequests.length === 1,
-  );
-  const perspectiveBounds = await page.locator("#perspective").boundingBox();
-  assert.ok(perspectiveBounds, "Perspective viewport has no bounds");
-  const centerX = perspectiveBounds.x + perspectiveBounds.width / 2;
-  const centerY = perspectiveBounds.y + perspectiveBounds.height / 2;
-  await page.mouse.move(centerX, centerY);
-  await page.mouse.down({ button: "right" });
-  await page.mouse.move(centerX + 90, centerY - 45, { steps: 5 });
-  await page.mouse.up({ button: "right" });
-  const cameraWhileCompiling = await page.evaluate(
-    () =>
-      window.teaMapsTestTools.get("tea_maps_inspect_editor").execute({})
-        .perspectiveCamera,
-  );
-  assert.notEqual(cameraWhileCompiling.yaw, cameraAtBuild.yaw);
-  await page.evaluate(() => window.teaMapsReleaseGpuCompile());
-  await page.waitForFunction(() =>
-    document
-      .querySelector("#build-status")
-      ?.textContent?.includes("Compiled preview ready"),
-  );
-  const compiled = page.locator(".perspective-header ~ tea-map-view");
-  const compiledDiagnostics = await compiled.evaluate(
-    (element) => element.viewer?.diagnostics,
-  );
-  assert.equal(compiledDiagnostics?.format, "quake-bsp29");
-  assert.ok(
-    compiledDiagnostics.triangles > 0,
-    "Compiled preview has no rendered faces",
-  );
-  const compiledCamera = await compiled.evaluate(
-    (element) => element.viewer?.camera,
-  );
-  assert.deepEqual(compiledCamera.position, cameraAtBuild.position);
-  assert.equal(compiledCamera.yaw, cameraAtBuild.yaw);
-  assert.equal(compiledCamera.pitch, cameraAtBuild.pitch);
-  assert.equal(compiledCamera.fieldOfView, cameraAtBuild.fieldOfViewDegrees);
-  assert.equal(await compiled.getAttribute("data-active"), "true");
-  await page
-    .locator('.editor-menu[data-menu="build"]')
-    .evaluate((menu) => (menu.open = true));
-  await page.locator("#toggle-compiled").click();
-  assert.equal(await compiled.getAttribute("data-active"), "false");
-  await page.locator("#toggle-compiled").click();
-  assert.equal(await compiled.getAttribute("data-active"), "true");
-  assert.equal(
-    await page.evaluate(() => window.teaMapsGpuCompilerRequests.length),
-    1,
-  );
   await page.goto(`${origin}/?example=quake`);
   await page
     .locator("#viewer-status")

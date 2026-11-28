@@ -421,49 +421,12 @@ export const editorStyles = css({
       color: "var(--editor-button-ink)",
       background: "var(--editor-button)",
     },
-  "& #build-profile, & #game-profile, & #viewport-tool": {
+  "& #viewport-tool": {
     color: "var(--editor-ink)",
     background: "var(--editor-field)",
     border: "1px solid var(--editor-border)",
     "border-radius": "5px",
     padding: "0.5rem",
-  },
-  "& #build-status": {
-    "font-size": "0.85rem",
-    color: "var(--editor-secondary-ink)",
-  },
-  "& #export-status": {
-    "font-size": "0.85rem",
-    color: "var(--editor-secondary-ink)",
-  },
-  "& #build-details summary": { cursor: "pointer", "font-size": "0.85rem" },
-  "& #local-build-history": {
-    flex: "1 1 100%",
-    padding: "0.45rem 0.65rem",
-    border: "1px solid var(--editor-border)",
-    "border-radius": "5px",
-  },
-  "& #local-build-history summary": {
-    cursor: "pointer",
-    "font-size": "0.85rem",
-  },
-  "& #local-build-select": {
-    color: "var(--editor-ink)",
-    background: "var(--editor-field)",
-    border: "1px solid var(--editor-border)",
-    "border-radius": "5px",
-    padding: "0.4rem",
-    margin: "0.3rem 0.5rem",
-  },
-  "& #local-build-history-status": {
-    "font-size": "0.85rem",
-    color: "var(--editor-secondary-ink)",
-  },
-  "& #build-output": {
-    "max-width": "34rem",
-    "max-height": "18rem",
-    overflow: "auto",
-    "white-space": "pre-wrap",
   },
   "& #project-resource-info": {
     "font-size": "0.85rem",
@@ -478,25 +441,6 @@ export const editorStyles = css({
     "padding-left": "1.25rem",
   },
   "& .editor-toolbar label": { "font-size": "0.85rem" },
-  "& #hosted-builds": {
-    flex: "1 1 100%",
-    padding: "0.45rem 0.65rem",
-    border: "1px solid var(--editor-border)",
-    "border-radius": "5px",
-  },
-  "& #hosted-builds[hidden]": { display: "none" },
-  "& #hosted-builds-list": {
-    display: "grid",
-    gap: "0.4rem",
-    padding: "0",
-    "list-style": "none",
-  },
-  "& #hosted-builds-list li": {
-    display: "flex",
-    "align-items": "center",
-    "flex-wrap": "wrap",
-    gap: "0.5rem",
-  },
   "& .hosted-editor-picker": {
     padding: "0.55rem 1rem",
     background: "var(--editor-panel)",
@@ -534,37 +478,28 @@ export const editorStyles = css({
     border: "1px solid var(--editor-border)",
     "border-radius": "5px",
   },
-  "& #hosted-project-resources[hidden], & #hosted-project-access[hidden], & #hosted-resource-upload[hidden], & #hosted-artbin-import[hidden]":
+  "& #hosted-project-resources[hidden], & #hosted-project-access[hidden], & #hosted-resource-upload[hidden]":
     {
       display: "none",
     },
-  "& #hosted-resource-list, & #hosted-artbin-results, & #hosted-access-list": {
+  "& #hosted-resource-list, & #hosted-access-list": {
     display: "grid",
     gap: "0.4rem",
     padding: "0",
     "list-style": "none",
   },
-  "& #hosted-resource-list li, & #hosted-artbin-results li, & #hosted-access-list li":
-    {
-      display: "flex",
-      "align-items": "center",
-      "flex-wrap": "wrap",
-      gap: "0.5rem",
-    },
+  "& #hosted-resource-list li, & #hosted-access-list li": {
+    display: "flex",
+    "align-items": "center",
+    "flex-wrap": "wrap",
+    gap: "0.5rem",
+  },
   "& #hosted-resource-upload": {
     display: "flex",
     "align-items": "center",
     "flex-wrap": "wrap",
     gap: "0.5rem",
   },
-  "& #hosted-artbin-import": { padding: "0.65rem 0" },
-  "& #hosted-artbin-search": {
-    display: "flex",
-    "align-items": "center",
-    gap: "0.5rem",
-    "flex-wrap": "wrap",
-  },
-  "& #hosted-artbin-query": { padding: "0.5rem" },
   "& #hosted-access-search": { padding: "0.5rem", margin: "0.5rem" },
   "& .hosted-access-actions": {
     display: "flex",
@@ -1472,20 +1407,6 @@ export const editorStyles = css({
     border: "1px solid var(--editor-border)",
     "border-radius": "5px",
     padding: "0.4rem",
-  },
-  "& .viewport-frame tea-map-view": {
-    position: "absolute",
-    inset: "0",
-    width: "100%",
-    height: "100%",
-    "min-height": "0",
-    "min-block-size": "0",
-    visibility: "hidden",
-    "pointer-events": "none",
-  },
-  "& .viewport-frame tea-map-view[data-active='true']": {
-    visibility: "visible",
-    "pointer-events": "auto",
   },
   "& canvas": {
     display: "block",

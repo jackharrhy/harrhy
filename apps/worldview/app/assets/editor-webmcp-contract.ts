@@ -10,7 +10,6 @@ import {
 import type { EditorSourceRenderer } from "@harrhy/maps-editor/render";
 import type { HostedMapLaunch } from "@harrhy/maps-protocol";
 import { z } from "zod";
-import type { MapProject } from "./editor-project.ts";
 
 export type JsonObject = Readonly<Record<string, unknown>>;
 
@@ -23,7 +22,6 @@ export interface EditorState {
   readonly workingSource: string;
   readonly sourceState: MapSourceState;
   readonly dirty: boolean;
-  readonly project: MapProject | null;
   readonly hostedMap: HostedMapLaunch | null;
   readonly renderer: EditorSourceRenderer | null;
   readonly canUndo: boolean;
@@ -35,13 +33,6 @@ export interface EditorState {
 export interface EditorActions {
   prepareEdit(): void;
   history(action: "undo" | "redo", signal: AbortSignal): Promise<void>;
-  openProjectMap(
-    path: string,
-    discardUnsavedChanges: boolean,
-    expectedDocumentId: string,
-    expectedRevision: number,
-    signal: AbortSignal,
-  ): Promise<void>;
   replaceMapSource(
     source: string,
     name: string,

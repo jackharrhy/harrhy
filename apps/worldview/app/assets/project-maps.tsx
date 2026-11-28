@@ -3,9 +3,8 @@ import {
   HostedSessionResponseSchema,
   type HostedProject,
 } from "@harrhy/maps-protocol";
-import { clientEntry, on, type Handle } from "remix/component";
+import { clientEntry, type Handle } from "remix/component";
 import { readHostedApi } from "./hosted-api.ts";
-import { openLinkedLocalProject } from "./project-local.ts";
 import { ProjectDetailHeader } from "./project-detail-header.tsx";
 
 export const ProjectMaps = clientEntry(
@@ -13,7 +12,6 @@ export const ProjectMaps = clientEntry(
   function ProjectMapsComponent(handle: Handle<{ projectId: string }>) {
     let project: HostedProject | null = null;
     let signInRequired = false;
-    let openingLocal = false;
     let status = "Loading project…";
 
     handle.queueTask(() => {
@@ -42,23 +40,6 @@ export const ProjectMaps = clientEntry(
       })();
     });
 
-    async function openLocalProject() {
-      if (!project || openingLocal) return;
-      openingLocal = true;
-      status = "";
-      handle.update();
-      try {
-        const recentId = await openLinkedLocalProject(project);
-        if (recentId)
-          location.href = `/editor?recentProject=${encodeURIComponent(recentId)}`;
-      } catch (cause) {
-        status = message(cause);
-      } finally {
-        openingLocal = false;
-        handle.update();
-      }
-    }
-
     return () => (
       <section class="project-detail">
         <p id="projects-status" role="status">
@@ -76,14 +57,6 @@ export const ProjectMaps = clientEntry(
         {project ? (
           <div>
             <ProjectDetailHeader project={project} section="maps" />
-            <button
-              id="project-open-local"
-              type="button"
-              disabled={openingLocal}
-              mix={on("click", () => void openLocalProject())}
-            >
-              Open local project
-            </button>
             <h2>Maps</h2>
             <div id="project-maps-list" class="project-list">
               {project.maps.length === 0

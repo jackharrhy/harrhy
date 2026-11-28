@@ -9,7 +9,6 @@ export interface EditorDocumentControlActions {
   readonly exampleMap: () => Promise<void>;
   readonly openPicker: () => Promise<void>;
   readonly openFile: (file: File) => Promise<void>;
-  readonly openProject: () => Promise<void>;
   readonly save: () => Promise<boolean>;
   readonly exportNormalized: () => void;
   readonly checkpoint: (label: string) => Promise<boolean>;
