@@ -5,6 +5,8 @@ import {
   findSession,
   sessionPath,
 } from "./routes.ts";
+import { ArchiveDialog } from "./archive-dialog.tsx";
+import { RailRow } from "./rail-row.tsx";
 import { SessionList } from "./session-list.tsx";
 import { age, isRecent } from "./sidebar-time.ts";
 import {
@@ -36,12 +38,14 @@ import { clientEntry, css, on, ref, type Handle } from "remix/component";
 import {
   followCatalog,
   MAX_TITLE,
+  type ArchiveTarget,
   type Catalog,
   type Row,
   type Snapshot,
 } from "./catalog.ts";
+import { mountRailSwipe, phoneWidth } from "./swipe.ts";
 
-const phone = "@media (max-width: 40rem)";
+const phone = `@media ${phoneWidth}`;
 const line = "1px solid var(--hui-border)";
 const shell = css({
   height: "100dvh",
@@ -60,9 +64,24 @@ const shell = css({
     "& .sessions-back": { display: "inline-flex" },
     "& .desktop-sidebar": { display: "none" },
     gridTemplateColumns: "minmax(0, 1fr)",
-    "&[data-pane=list] .session-detail, &[data-pane=detail] .session-list": {
-      display: "none",
+    "& .session-list, & .session-detail": {
+      gridArea: "1 / 1",
+      touchAction: "pan-y pinch-zoom",
     },
+    "& [aria-label=Transcript]": { touchAction: "pan-y pinch-zoom" },
+    "&[data-sliding] .session-list, &[data-sliding] .session-detail": {
+      pointerEvents: "none",
+    },
+    // Keep floating transcript controls behind the moving drawer.
+    "&[data-sliding] .session-detail": { zIndex: 0 },
+    "&[data-sliding] .session-list": {
+      zIndex: 1,
+      backgroundColor: "var(--hui-surface)",
+    },
+    "&:not([data-sliding])[data-pane=list] .session-detail, &:not([data-sliding])[data-pane=detail] .session-list":
+      {
+        display: "none",
+      },
   },
 });
 const pane = css({
@@ -81,7 +100,11 @@ const bar = css({
   paddingInline: "16px",
   borderBottom: line,
 });
-const scroll = css({ overflow: "auto", overscrollBehavior: "contain" });
+const scroll = css({
+  overflow: "auto",
+  overscrollBehavior: "contain",
+  [phone]: { touchAction: "pan-y pinch-zoom" },
+});
 const measure = css({
   maxWidth: "72ch",
   marginInline: "auto",
@@ -97,15 +120,6 @@ const titleStyle = css({
   fontSize: "15px",
   fontWeight: 600,
   overflowWrap: "anywhere",
-});
-const ageStyle = css({
-  flexShrink: 0,
-  marginInlineStart: "auto",
-  color: "var(--hui-muted)",
-  fontSize: "12px",
-  fontWeight: 400,
-  textAlign: "end",
-  fontVariantNumeric: "tabular-nums",
 });
 const sessionButton = css({
   width: "100%",
@@ -514,8 +528,7 @@ export const OwnerSessions = clientEntry(
       newOpen = false;
       detailOpen = true;
       await handle.update();
-      if (!from || matchMedia("(max-width: 40rem)").matches)
-        detailHeader?.focus();
+      if (!from || matchMedia(phoneWidth).matches) detailHeader?.focus();
     }
     let creating = false;
     let newOpen = false;
@@ -538,15 +551,59 @@ export const OwnerSessions = clientEntry(
     let selectedId = seed?.selectedId;
     let detailOpen = listPage || Boolean(target);
     let detailHeader: HTMLDivElement | undefined;
-    let trigger: HTMLButtonElement | undefined;
+    let trigger: HTMLElement | undefined;
     const captureDetail = ref<HTMLDivElement>((node) => {
       detailHeader = node;
     });
+    let rail: HTMLElement | undefined;
+    const captureRail = ref<HTMLElement>((node) => {
+      rail = node;
+    });
+    async function showDetail() {
+      detailOpen = true;
+      await handle.update();
+      detailHeader?.focus({ preventScroll: true });
+    }
     async function back() {
       detailOpen = false;
       newOpen = false;
+      if (!trigger?.isConnected || !rail?.contains(trigger)) trigger = rail;
       await handle.update();
       trigger?.focus();
+    }
+    let archiving:
+      | {
+          target: ArchiveTarget;
+          archive: Catalog["archive"];
+          from: HTMLButtonElement;
+        }
+      | undefined;
+    function archiveAction(item: ArchiveTarget) {
+      if (view.kind !== "ready" || !view.catalog.canArchive(item)) return;
+      return (from: HTMLButtonElement) => {
+        if (
+          archiving ||
+          view.kind !== "ready" ||
+          !view.catalog.canArchive(item)
+        )
+          return;
+        archiving = { target: item, archive: view.catalog.archive, from };
+        void handle.update();
+      };
+    }
+    async function closeArchive() {
+      if (!archiving) return;
+      const { from } = archiving;
+      archiving = undefined;
+      await handle.update();
+      const next = from.isConnected
+        ? from
+        : (sidebarList?.querySelector<HTMLButtonElement>(
+            "button[aria-pressed=true]",
+          ) ??
+          sidebarList?.querySelector<HTMLButtonElement>("[data-new-session]"));
+      if (next?.getClientRects().length) next.focus();
+      else detailHeader?.focus();
     }
     let cached: Snapshot | undefined = seed;
     let retry: ReturnType<typeof setTimeout> | undefined;
@@ -581,10 +638,12 @@ export const OwnerSessions = clientEntry(
           branding = undefined;
         applyBranding(branding);
         if (next.kind === "sign-in") {
+          archiving = undefined;
           cached = seed = undefined;
           switching = settings = newOpen = false;
           createSlug = "";
         }
+        const previous = cached;
         if (next.kind === "ready") {
           retryDelay = 500;
           const catalog = next.catalog;
@@ -599,12 +658,27 @@ export const OwnerSessions = clientEntry(
           };
         }
         view = next;
-        if (next.kind === "ready" && target) {
+        // A resolved selection disappearing is different from an unknown deep link.
+        if (
+          next.kind === "ready" &&
+          selectedId &&
+          previous?.rows.some((row) => row.id === selectedId) &&
+          !next.catalog.rows.some((row) => row.id === selectedId)
+        ) {
+          selectedId = target = undefined;
+          branch = agentId = undefined;
+          trigger = undefined;
+          if (!listPage) {
+            newOpen = detailOpen = true;
+            history.replaceState({ detailOpen }, "", "/");
+          }
+        } else if (next.kind === "ready" && target) {
           const row = findSession(next.catalog.rows, target);
           selectedId = row?.id;
           canonicalize(row);
         } else if (
           next.kind === "ready" &&
+          !newOpen &&
           !next.catalog.rows.some((row) => row.id === selectedId)
         ) {
           selectedId =
@@ -614,6 +688,18 @@ export const OwnerSessions = clientEntry(
           agentId = undefined;
           detailOpen = listPage;
           trigger = undefined;
+        }
+        if (
+          next.kind === "ready" &&
+          next.catalog.childrenReady &&
+          selectedId &&
+          agentId !== undefined &&
+          !next.catalog.children[selectedId]?.some(
+            (child) => child.conversationId === agentId && !child.archived,
+          )
+        ) {
+          agentId = branch = undefined;
+          history.replaceState({ clankSession: selectedId, detailOpen }, "");
         }
         await handle.update();
       }
@@ -631,8 +717,10 @@ export const OwnerSessions = clientEntry(
         const status = (await response.json()) as { owner?: unknown } | null;
         if (status?.owner !== true) throw Error("Pi owner check failed");
         if (signal.aborted) return;
-        await followCatalog(signal, (catalog) =>
-          show({ kind: "ready", catalog }),
+        await followCatalog(
+          signal,
+          (catalog) => show({ kind: "ready", catalog }),
+          handle.props.familiarId,
         );
       } catch {
         // A failed upgrade and an unreachable Pi look the same to the browser.
@@ -643,7 +731,8 @@ export const OwnerSessions = clientEntry(
         retryDelay = Math.min(8000, retryDelay * 2);
       }
     }
-    const mount = ref((_node, signal) => {
+    const mount = ref<HTMLElement>((node, signal) => {
+      mountRailSwipe(node, signal, (open) => (open ? back() : showDetail()));
       const restored = hydratedTheme(handle.props.initialMode);
       if (restored !== mode) applyMode(restored);
       try {
@@ -672,7 +761,12 @@ export const OwnerSessions = clientEntry(
               ? state.branch
               : undefined;
           agentId =
-            selectedId && selectedId === state?.clankSession
+            selectedId &&
+            selectedId === state?.clankSession &&
+            catalog?.children[selectedId]?.some(
+              (child) =>
+                child.conversationId === state.agentId && !child.archived,
+            )
               ? state.agentId
               : undefined;
           detailOpen =
@@ -707,7 +801,7 @@ export const OwnerSessions = clientEntry(
           )
             return;
           event.preventDefault();
-          if (settings) return;
+          if (settings || archiving) return;
           if (switching) closeSwitch();
           else startSwitch();
         },
@@ -747,13 +841,14 @@ export const OwnerSessions = clientEntry(
       ) {
         // A keyed row survives a move, but moving it can drop DOM focus.
         handle.queueTask(() => {
-          if (
-            doc.activeElement === doc.body &&
-            focused.isConnected &&
-            focused.getClientRects().length
-          ) {
-            focused.focus({ preventScroll: true });
-          }
+          if (doc.activeElement !== doc.body) return;
+          const next = focused.isConnected
+            ? focused
+            : sidebarList?.querySelector<HTMLButtonElement>(
+                "button[aria-pressed=true], [data-new-session]",
+              );
+          if (next?.getClientRects().length)
+            next.focus({ preventScroll: true });
         });
       }
       const live = view.kind === "ready" ? view.catalog : undefined;
@@ -870,6 +965,15 @@ export const OwnerSessions = clientEntry(
       return (
         <main
           aria-label="Clank"
+          data-can-slide={
+            catalog &&
+            !newOpen &&
+            !settings &&
+            !switching &&
+            (selected || target || listPage)
+              ? ""
+              : undefined
+          }
           data-sidebar={sidebar ? "shown" : "hidden"}
           data-pane={
             (!catalog && view.kind !== "loading") ||
@@ -880,6 +984,14 @@ export const OwnerSessions = clientEntry(
           }
           mix={[mount, shell]}
         >
+          {archiving && (
+            <ArchiveDialog
+              live={live}
+              target={archiving.target}
+              archive={archiving.archive}
+              close={closeArchive}
+            />
+          )}
           {catalog && (
             <Switcher
               key={scopedSwitch ? "conversations" : "commands"}
@@ -922,9 +1034,11 @@ export const OwnerSessions = clientEntry(
           )}
           <aside
             id="clank-sidebar"
+            tabindex={-1}
             class="session-list"
             aria-label="Session list"
             mix={[
+              captureRail,
               pane,
               css({
                 borderRight: line,
@@ -945,6 +1059,18 @@ export const OwnerSessions = clientEntry(
                   >
                     <Icon name="search" />
                   </Button>
+                )}
+                {catalog && (selected || listPage || target) && (
+                  <span class="sessions-back">
+                    <Button
+                      variant="quiet"
+                      aria-label="Show detail"
+                      aria-controls="clank-detail"
+                      mix={[iconAction, on("click", showDetail)]}
+                    >
+                      <Icon name="sidebar" />
+                    </Button>
+                  </span>
                 )}
                 <span class="desktop-sidebar">
                   <Button
@@ -992,85 +1118,43 @@ export const OwnerSessions = clientEntry(
                       const listId = `agents-${row.id}`;
                       return [
                         <li key={row.id}>
-                          <div
-                            mix={css({
-                              display: "flex",
-                              alignItems: "center",
-                              borderRadius: "var(--hui-control-radius)",
-                              "&:has(> button[aria-pressed=true])": {
-                                background: "var(--hui-selected-surface)",
-                              },
-                              "& > button[aria-pressed]": {
-                                flex: 1,
-                                minWidth: 0,
-                                paddingInlineEnd: "4px",
-                              },
+                          <RailRow
+                            label={label}
+                            title={sessionTitle(row)}
+                            marker={
+                              row === familiar ? (
+                                <BrandMark logo={branding?.logo} />
+                              ) : row.pinned ? (
+                                <Icon name="pin" />
+                              ) : null
+                            }
+                            selected={
+                              !newOpen &&
+                              !listPage &&
+                              row.id === selectedId &&
+                              agentId === undefined
+                            }
+                            age={
+                              row === familiar
+                                ? undefined
+                                : age(row.updatedAt, now)
+                            }
+                            open={(from) => open(row.id, undefined, from)}
+                            disclosure={
+                              agents.length
+                                ? {
+                                    controls: listId,
+                                    expanded: isOpen,
+                                    toggle: (from) =>
+                                      toggleSubagents(row.id, from),
+                                  }
+                                : undefined
+                            }
+                            archive={archiveAction({
+                              session: row.id,
+                              name: sessionTitle(row),
                             })}
-                          >
-                            <Button
-                              variant="quiet"
-                              aria-pressed={
-                                !newOpen &&
-                                !listPage &&
-                                row.id === selectedId &&
-                                agentId === undefined
-                              }
-                              title={sessionTitle(row)}
-                              mix={[
-                                sessionButton,
-                                on("click", (event) =>
-                                  open(row.id, undefined, event.currentTarget),
-                                ),
-                              ]}
-                            >
-                              <span
-                                aria-hidden="true"
-                                mix={css({
-                                  width: "16px",
-                                  height: "16px",
-                                  flex: "none",
-                                  display: "grid",
-                                  placeItems: "center",
-                                  "& svg, & img": {
-                                    width: "16px",
-                                    height: "16px",
-                                  },
-                                })}
-                              >
-                                {row === familiar ? (
-                                  <BrandMark logo={branding?.logo} />
-                                ) : row.pinned ? (
-                                  <Icon name="pin" />
-                                ) : null}
-                              </span>
-                              <span>{label}</span>
-                              {row !== familiar && (
-                                <span aria-hidden="true" mix={ageStyle}>
-                                  {age(row.updatedAt, now)}
-                                </span>
-                              )}
-                            </Button>
-                            {agents.length > 0 && (
-                              <Button
-                                variant="quiet"
-                                aria-label={`Subagents for ${label}`}
-                                aria-expanded={isOpen}
-                                aria-controls={listId}
-                                mix={[
-                                  iconAction,
-                                  css({ color: "var(--hui-muted)" }),
-                                  on("click", (event) =>
-                                    toggleSubagents(
-                                      row.id,
-                                      event.currentTarget,
-                                    ),
-                                  ),
-                                ]}
-                              >
-                                <Icon name={isOpen ? "down" : "right"} />
-                              </Button>
-                            )}
-                          </div>
+                          />
                           {agents.length > 0 && (
                             <ul
                               id={listId}
@@ -1099,37 +1183,29 @@ export const OwnerSessions = clientEntry(
                             >
                               {agents.map((child) => (
                                 <li key={child.conversationId}>
-                                  <Button
-                                    variant="quiet"
-                                    aria-pressed={
+                                  <RailRow
+                                    child
+                                    label={child.name}
+                                    selected={
                                       row.id === selectedId &&
-                                      agentId === child.conversationId
+                                      agentId === child.conversationId &&
+                                      !listPage &&
+                                      !newOpen
                                     }
-                                    mix={[
-                                      sessionButton,
-                                      css({
-                                        color: "var(--hui-muted)",
-                                        fontSize: "13px",
-                                      }),
-                                      on("click", (event) =>
-                                        open(
-                                          row.id,
-                                          child.conversationId,
-                                          event.currentTarget,
-                                        ),
-                                      ),
-                                    ]}
-                                  >
-                                    <span>
-                                      {child.name}
-                                      {child.archived ? " · Archived" : ""}
-                                    </span>
-                                    {child.updatedAt !== undefined && (
-                                      <span aria-hidden="true" mix={ageStyle}>
-                                        {age(child.updatedAt, now)}
-                                      </span>
-                                    )}
-                                  </Button>
+                                    age={
+                                      child.updatedAt === undefined
+                                        ? undefined
+                                        : age(child.updatedAt, now)
+                                    }
+                                    open={(from) =>
+                                      open(row.id, child.conversationId, from)
+                                    }
+                                    archive={archiveAction({
+                                      session: row.id,
+                                      conversation: child.conversationId,
+                                      name: child.name,
+                                    })}
+                                  />
                                 </li>
                               ))}
                             </ul>
@@ -1146,6 +1222,7 @@ export const OwnerSessions = clientEntry(
                       >
                         <Button
                           variant="quiet"
+                          data-new-session=""
                           aria-pressed={newOpen}
                           mix={[
                             sessionButton,
@@ -1250,6 +1327,7 @@ export const OwnerSessions = clientEntry(
           </aside>
           <section
             class="session-detail"
+            id="clank-detail"
             aria-label="Session detail"
             mix={pane}
           >
