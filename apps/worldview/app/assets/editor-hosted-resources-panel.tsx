@@ -23,7 +23,6 @@ export const EditorHostedResources = clientEntry(
     let mounts: readonly HostedResourceMount[] = [];
     let loaded = false;
     let resourceStatus = "";
-    let nextCursor: string | null = null;
     let resourceBusy = false;
     let generation = 0;
     let filesInput: HTMLInputElement | null = null;
