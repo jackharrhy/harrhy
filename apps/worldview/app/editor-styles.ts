@@ -488,13 +488,12 @@ export const editorStyles = css({
     padding: "0",
     "list-style": "none",
   },
-  "& #hosted-resource-list li, & #hosted-access-list li":
-    {
-      display: "flex",
-      "align-items": "center",
-      "flex-wrap": "wrap",
-      gap: "0.5rem",
-    },
+  "& #hosted-resource-list li, & #hosted-access-list li": {
+    display: "flex",
+    "align-items": "center",
+    "flex-wrap": "wrap",
+    gap: "0.5rem",
+  },
   "& #hosted-resource-upload": {
     display: "flex",
     "align-items": "center",

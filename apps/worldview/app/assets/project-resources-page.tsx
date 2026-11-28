@@ -14,7 +14,6 @@ import {
 import { readHostedApi } from "./hosted-api.ts";
 import { ProjectDetailHeader } from "./project-detail-header.tsx";
 
-
 export const ProjectResources = clientEntry(
   `file:///app/assets/project-resources-page.tsx#ProjectResources`,
   function ProjectResourcesComponent(handle: Handle<{ projectId: string }>) {

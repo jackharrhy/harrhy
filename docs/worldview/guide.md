@@ -57,6 +57,7 @@ Map details, entity support, and warnings render through a Remix diagnostics pan
 The viewer toolbar and BSP drop overlay render through Remix. The toolbar follows renderer progress and source changes; dropped files enter the same source-opening path as the viewer controls.
 
 ## Editor
+
 Projects now defaults to hosted maps. The editor and Projects pages no longer offer local folder opening, recents, or project sync. Existing recovery copies and standalone file editing are unchanged. The editor no longer starts builds. Open existing hosted BSP artifacts in the viewer.
 
 The editor document name, status message, and selection summary render through Remix client entries. The editor publishes their changes while keeping document and renderer state in its existing runtime.
@@ -124,7 +125,6 @@ Project owners can use Project access to find users who have signed in to Maps, 
 With a local map open, **Compare with current source** fetches the selected hosted map and shows both sources as read-only snapshots. It includes unapplied text edits on the local side and reports the first different line and hosted version. Comparing does not save or replace either source.
 
 The comparison dialog is a Remix client component; the editor supplies snapshots after the hosted map fetch completes.
-
 
 Local editing also keeps up to 20 automatic source versions per map identity in IndexedDB. Recovery versions lists local maps on this device; Save checkpoint creates a protected version that remains after automatic pruning. A restore opens a detached local copy with no disk file handle, so saving requires choosing a file. Existing single-draft databases are upgraded in place. The browser keeps a stable recovery identity for maps chosen from a project folder when the folder identity API is available. Reopening one of those project maps offers a newer unsaved recovery version as a detached copy. Standalone files use their name and original source fingerprint, so reopening an unchanged file finds its history; changes made outside Tea start a separate history identity.
 

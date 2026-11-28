@@ -11,7 +11,6 @@ import {
 } from "./editor-hosted-resources.ts";
 import type { EditorHostedResourcesContext } from "./editor-hosted-resources-bridge.ts";
 
-
 function message(cause: unknown) {
   return cause instanceof Error ? cause.message : String(cause);
 }
@@ -46,8 +45,7 @@ export const EditorHostedResources = clientEntry(
           if (project?.id === next.project?.id) {
             project = next.project;
             handle.update();
-            if (project && !resourceBusy)
-              void refresh(project, ++generation);
+            if (project && !resourceBusy) void refresh(project, ++generation);
             return;
           }
           project = next.project;

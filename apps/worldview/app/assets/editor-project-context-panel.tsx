@@ -20,7 +20,6 @@ function subscribeProjectContext(
   });
 }
 
-
 export const EditorProjectResourcesPanel = clientEntry(
   `file:///app/assets/editor-project-context-panel.tsx#EditorProjectResourcesPanel`,
   function EditorProjectResourcesPanelComponent(handle: Handle) {

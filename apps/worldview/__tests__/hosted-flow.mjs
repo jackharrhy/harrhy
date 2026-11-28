@@ -412,7 +412,9 @@ try {
     const { builds } = await response.json();
     const build = builds.find(({ id }) => id === created.id);
     assert.notEqual(build?.status, "failed", JSON.stringify(build));
-    const bspArtifact = build?.result?.artifacts?.find(({ kind }) => kind === "bsp");
+    const bspArtifact = build?.result?.artifacts?.find(
+      ({ kind }) => kind === "bsp",
+    );
     if (build?.status === "succeeded" && bspArtifact) {
       artifactPath = `${buildsUrl}/${build.id}/artifacts/${bspArtifact.sha256}`;
       break;
@@ -421,7 +423,9 @@ try {
   }
   assert.ok(artifactPath, "Hosted fixture did not produce a BSP");
   const projectId = new URL(projectUrl).pathname.split("/").at(-1);
-  await owner.goto(`${mapsOrigin}/viewer?hostedProject=${projectId}&hostedMap=${mapId}`);
+  await owner.goto(
+    `${mapsOrigin}/viewer?hostedProject=${projectId}&hostedMap=${mapId}`,
+  );
   await owner.getByText("Choose a compiled build to view").waitFor();
   const artifact = await owner.request.get(artifactPath);
   assert.equal(artifact.status(), 200);
