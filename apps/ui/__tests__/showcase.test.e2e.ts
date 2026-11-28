@@ -45,8 +45,15 @@ it("keeps Artbin reference geometry and visible focus scoped at desktop and mobi
     );
     await button.focus();
     assert.equal(
-      await button.evaluate((node) => getComputedStyle(node).outlineWidth),
-      "1px",
+      await button.evaluate((node) => {
+        const style = getComputedStyle(node);
+        return (
+          node.matches(":focus-visible") &&
+          style.outlineStyle !== "none" &&
+          parseFloat(style.outlineWidth) > 0
+        );
+      }),
+      true,
     );
     assert.equal(
       await specimen
