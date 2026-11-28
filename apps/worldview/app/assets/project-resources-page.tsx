@@ -23,7 +23,6 @@ export const ProjectResources = clientEntry(
     let loaded = false;
     let status = "Loading project…";
     let resourceStatus = "Loading project resources";
-    let nextCursor: string | null = null;
     let resourceBusy = false;
 
     handle.queueTask(() => {
