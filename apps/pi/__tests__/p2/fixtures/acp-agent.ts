@@ -9,10 +9,14 @@ const cursor = mode === "cursor";
 const noSafeChoice = argument === "ambiguous-permission";
 const requestedMode = argument === "plan" ? "plan" : "ask";
 let configuredMode = "agent";
+let configuredModel = "auto";
+const composer = "composer-2.5[fast=true]";
 
 function configOptions(currentValue: string) {
 	return [{ id: "mode", name: "Mode", category: "mode", type: "select", currentValue, options: [
 		{ value: "agent", name: "Agent" }, { value: "ask", name: "Ask" }, { value: "plan", name: "Plan" },
+	] }, { id: "model", name: "Model", category: "model", type: "select", currentValue: configuredModel, options: [
+		{ value: "auto", name: "Auto" }, { value: composer, name: "Composer 2.5" },
 	] }];
 }
 
@@ -51,8 +55,13 @@ for await (const line of input) {
 		}
 	} else if (message.method === "session/set_config_option") {
 		assert.ok(cursor && argument !== "missing-mode");
-		assert.deepEqual(message.params, { sessionId, configId: "mode", value: requestedMode });
-		if (argument !== "bad-mode-ack") configuredMode = requestedMode;
+		if (message.params.configId === "model") {
+			assert.deepEqual(message.params, { sessionId, configId: "model", value: composer });
+			configuredModel = composer;
+		} else {
+			assert.deepEqual(message.params, { sessionId, configId: "mode", value: requestedMode });
+			if (argument !== "bad-mode-ack") configuredMode = requestedMode;
+		}
 		send({ id: message.id, result: { configOptions: configOptions(configuredMode) } });
 	} else if (message.method === "session/prompt") {
 		assert.equal(message.params.sessionId, sessionId);
@@ -87,6 +96,7 @@ for await (const line of input) {
 		if (cursor) {
 			assert.ok(argument !== "missing-mode" && argument !== "bad-mode-ack");
 			assert.equal(configuredMode, requestedMode);
+			if (argument === "composer") assert.equal(configuredModel, composer);
 			if (argument === "mode-change") {
 				send({ method: "session/update", params: { sessionId, update: { sessionUpdate: "config_option_update", configOptions: configOptions("agent") } } });
 				continue;

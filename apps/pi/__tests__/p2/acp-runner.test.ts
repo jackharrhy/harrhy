@@ -24,12 +24,12 @@ test("ACP collects only its session's assistant text, denies permissions, and do
 	assert.equal(await run(), "hello from ACP");
 });
 
-function runCursor(scenario: string, onText?: (chunk: string) => void) {
+function runCursor(scenario: string, onText?: (chunk: string) => void, model?: string) {
 	return runAcp({
 		...options,
 		args: [fixture, "cursor", scenario],
 		signal: new AbortController().signal,
-		adapter: cursorAcpSession(scenario === "plan" ? "plan" : "ask"),
+		adapter: cursorAcpSession(scenario === "plan" ? "plan" : "ask", model),
 		onText,
 	});
 }
@@ -40,6 +40,11 @@ test("Cursor ACP negotiates advertised read-only modes and rejects tool and inte
 		assert.equal(await runCursor(mode, (chunk) => chunks.push(chunk)), "hello from Cursor ACP");
 		assert.deepEqual(chunks, ["hello ", "from Cursor ACP"]);
 	}
+});
+
+test("Cursor ACP selects the advertised Composer variant and rejects unknown models", async () => {
+	assert.equal(await runCursor("composer", undefined, "composer-2.5"), "hello from Cursor ACP");
+	await assert.rejects(runCursor("composer", undefined, "missing-model"), /did not advertise an unambiguous match/);
 });
 
 test("Cursor ACP fails closed on missing authentication, an unconfirmed read-only mode, a mode change or ambiguous permissions", async () => {
