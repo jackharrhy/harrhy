@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { createController } from "remix/router";
 import { css } from "remix/component";
 
@@ -23,8 +24,8 @@ import {
 } from "../../ui/primitives.tsx";
 import { narrowPageStyle } from "../../ui/styles.ts";
 
-const sectionStyle = css({ marginBottom: "2rem" });
-const topMarginStyle = css({ marginTop: "1rem" });
+const sectionStyle = css({ marginBottom: space(4) });
+const topMarginStyle = css({ marginTop: space(2) });
 
 export default createController(routes.settings, {
   middleware: [requireUser()],

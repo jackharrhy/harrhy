@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const siteStyles = css({
@@ -42,7 +43,7 @@ export const siteStyles = css({
     position: "fixed",
     left: "1rem",
     top: "-6rem",
-    padding: "0.5rem 1rem",
+    padding: `${space(1)} ${space(2)}`,
     background: "var(--surface)",
     "z-index": "3",
   },
@@ -73,7 +74,7 @@ export const siteStyles = css({
     display: "flex",
     "align-items": "center",
     "justify-content": "center",
-    gap: "20px",
+    gap: space(2.5),
   },
   "& .social-links a": {
     display: "flex",
@@ -96,7 +97,7 @@ export const siteStyles = css({
   "& .site-menu nav": {
     display: "flex",
     "justify-content": "center",
-    gap: "25px",
+    gap: space(3.125),
     "font-size": "20px",
     "line-height": "1.4",
   },
@@ -122,7 +123,7 @@ export const siteStyles = css({
   "& .prose h1, & .prose h2, & .prose h3": {
     "font-weight": "400",
     "line-height": "1.2",
-    margin: "0 0 32px",
+    margin: `0 0 ${space(4)}`,
   },
   "& .prose h1": {
     "font-size": "56px",
@@ -134,15 +135,15 @@ export const siteStyles = css({
     "font-size": "27px",
   },
   "& .prose p": {
-    margin: "0 0 22px",
+    margin: `0 0 ${space(2.75)}`,
   },
   "& .prose hr": {
     border: "0",
     "border-top": "1px solid var(--line)",
-    margin: "45px 0",
+    margin: `${space(5.625)} 0`,
   },
   "& .prose > img": {
-    margin: "0 auto 32px",
+    margin: `0 auto ${space(4)}`,
   },
   "& .prose strong": {
     "font-weight": "650",
@@ -152,11 +153,11 @@ export const siteStyles = css({
   },
   "& .site-footer": {
     "text-align": "center",
-    padding: "110px 24px 105px",
+    padding: `${space(13.75)} ${space(3)} ${space(13.125)}`,
     "font-size": "17px",
   },
   "& .site-footer .social-links": {
-    gap: "9px",
+    gap: space(1.125),
     "margin-bottom": "10px",
   },
   "& .site-footer img": {
@@ -177,7 +178,7 @@ export const siteStyles = css({
     "max-width": "none",
   },
   "& .page-home": {
-    padding: "56px 24px 48px",
+    padding: `${space(7)} ${space(3)} ${space(6)}`,
     "min-height": "0",
   },
   "& .page-home .prose > img": {
@@ -200,13 +201,13 @@ export const siteStyles = css({
     display: "flex",
     "align-items": "center",
     "justify-content": "space-around",
-    gap: "24px",
+    gap: space(3),
     "flex-wrap": "wrap",
   },
   "& .outline-link": {
     display: "inline-block",
     border: "1px solid var(--text)",
-    padding: "15px 28px",
+    padding: `${space(1.875)} ${space(3.5)}`,
     "text-decoration": "none",
     "font-size": "17px",
     "white-space": "nowrap",
@@ -232,7 +233,7 @@ export const siteStyles = css({
   "& .works-links": {
     display: "flex",
     "justify-content": "space-around",
-    gap: "24px",
+    gap: space(3),
     "flex-wrap": "wrap",
   },
   "& .works-end": {
@@ -260,7 +261,7 @@ export const siteStyles = css({
   "& .page-contact .contact-copy h1": {
     "grid-column": "1",
     "align-self": "end",
-    margin: "0 0 42px",
+    margin: `0 0 ${space(5.25)}`,
     "font-size": "64px",
   },
   "& .page-contact .contact-copy p": {
@@ -283,7 +284,7 @@ export const siteStyles = css({
     "font-size": "44px",
   },
   "& .recording": {
-    margin: "0 0 80px",
+    margin: `0 0 ${space(10)}`,
     display: "flex",
     "flex-direction": "column",
   },
@@ -304,7 +305,7 @@ export const siteStyles = css({
   },
   "& .recording-caption h3": {
     "font-size": "27px",
-    margin: "0 0 12px",
+    margin: `0 0 ${space(1.5)}`,
   },
   "& .recording-caption p": {
     "font-size": "18px",
@@ -340,13 +341,13 @@ export const siteStyles = css({
       "line-height": "1.65",
     },
     "& .site-header": {
-      padding: "24px 22px",
+      padding: `${space(3)} ${space(2.75)}`,
       "min-height": "114px",
       "text-align": "left",
       display: "flex",
       "align-items": "flex-start",
       "justify-content": "space-between",
-      gap: "14px",
+      gap: space(1.75),
     },
     "& .site-title": {
       "font-size": "27px",
@@ -404,8 +405,8 @@ export const siteStyles = css({
       display: "flex",
       "flex-direction": "column",
       "align-items": "center",
-      gap: "14px",
-      padding: "28px 24px 36px",
+      gap: space(1.75),
+      padding: `${space(3.5)} ${space(3)} ${space(4.5)}`,
       "font-size": "27px",
       "border-bottom": "1px solid var(--line)",
     },
@@ -421,7 +422,7 @@ export const siteStyles = css({
       transform: "rotate(-45deg)",
     },
     "& .site-content": {
-      padding: "42px 24px 24px",
+      padding: `${space(5.25)} ${space(3)} ${space(3)}`,
     },
     "& .prose h1": {
       "font-size": "44px",
@@ -433,14 +434,14 @@ export const siteStyles = css({
       "font-size": "25px",
     },
     "& .prose hr": {
-      margin: "32px 0",
+      margin: `${space(4)} 0`,
     },
     "& .site-footer": {
-      padding: "70px 20px",
+      padding: `${space(8.75)} ${space(2.5)}`,
       "font-size": "16px",
     },
     "& .page-home": {
-      padding: "32px 24px 40px",
+      padding: `${space(4)} ${space(3)} ${space(5)}`,
     },
     "& .page-home .prose > img": {
       width: "min(82vw, 480px)",
@@ -455,19 +456,19 @@ export const siteStyles = css({
     "& .download-links": {
       display: "grid",
       "grid-template-columns": "1fr",
-      gap: "16px",
+      gap: space(2),
       "text-align": "center",
     },
     "& .outline-link": {
       "font-size": "16px",
-      padding: "14px 18px",
+      padding: `${space(1.75)} ${space(2.25)}`,
       "white-space": "normal",
     },
     "& .works-links": {
       display: "grid",
       "grid-template-columns": "1fr",
       "text-align": "center",
-      gap: "16px",
+      gap: space(2),
     },
     "& .page-works .prose": {
       "font-size": "17px",
@@ -512,9 +513,9 @@ export const siteStyles = css({
     },
     "& .listen-section": {
       "grid-template-columns": "1fr",
-      gap: "28px",
-      margin: "60px -24px -24px",
-      padding: "36px 24px",
+      gap: space(3.5),
+      margin: `${space(7.5)} ${space(-3)} ${space(-3)}`,
+      padding: `${space(4.5)} ${space(3)}`,
     },
     "& .recording-audio iframe": {
       height: "260px",

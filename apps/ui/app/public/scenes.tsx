@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { clientEntry, css, on } from "remix/component";
 import type { Handle } from "remix/component";
@@ -31,22 +32,22 @@ const shell = css({
 const main = css({
   maxWidth: "80rem",
   margin: "0 auto",
-  padding: "2rem 1.5rem 4rem",
+  padding: `${space(4)} ${space(3)} ${space(8)}`,
   display: "grid",
-  gap: "1.75rem",
-  "@media (max-width: 37.5rem)": { padding: "1.5rem 1rem" },
+  gap: space(3.5),
+  "@media (max-width: 37.5rem)": { padding: `${space(3)} ${space(2)}` },
 });
 const grid = css({
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "1.5rem",
+  gap: space(3),
   alignItems: "start",
   "@media (max-width: 47.5rem)": { gridTemplateColumns: "1fr" },
 });
 const comparison = css({
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "1rem",
+  gap: space(2),
   "@media (max-width: 62.5rem)": { gridTemplateColumns: "1fr" },
 });
 const muted = css({
@@ -91,7 +92,7 @@ export const Scenes = clientEntry(
             <div>
               <h1
                 mix={css({
-                  margin: "0 0 0.5rem",
+                  margin: `0 0 ${space(1)}`,
                   fontSize: "1.75rem",
                   lineHeight: "1.2",
                 })}
@@ -186,7 +187,7 @@ export const Scenes = clientEntry(
                       </div>
                       <form
                         mix={[
-                          css({ display: "grid", gap: "1rem" }),
+                          css({ display: "grid", gap: space(2) }),
                           on("submit", (event) => {
                             event.preventDefault();
                             board = String(
@@ -262,7 +263,7 @@ export const Scenes = clientEntry(
                         mix={[
                           workbenchTheme(name, density),
                           themeRoot,
-                          css({ padding: "0.75rem" }),
+                          css({ padding: space(1.5) }),
                         ]}
                       >
                         <Panel>

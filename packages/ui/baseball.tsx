@@ -1,3 +1,4 @@
+import { space } from "./spacing.ts";
 import { css, on, type Handle } from "remix/component";
 import { focusStyles } from "./recipes.ts";
 
@@ -253,7 +254,7 @@ const markerStyles = css({
     outlineOffset: "2px",
   },
   "& strong": {
-    padding: "0 0.25rem",
+    padding: `0 ${space(0.5)}`,
     background: "var(--hui-surface)",
     borderRadius: "0.1875rem",
   },
@@ -269,7 +270,7 @@ const markerStyles = css({
       textOverflow: "ellipsis",
       whiteSpace: "nowrap",
       background: "var(--hui-surface)",
-      padding: "0.125rem 0.25rem",
+      padding: `${space(0.25)} ${space(0.5)}`,
     },
   },
   "@container baseball (max-width:30rem)": {
@@ -291,18 +292,18 @@ const fieldTargetStyles = css({
 const fieldKeyStyles = css({
   display: "none",
   listStyle: "none",
-  margin: "0.25rem 0 0",
-  padding: "0.5rem",
-  gap: "0.5rem",
+  margin: `${space(0.5)} 0 0`,
+  padding: space(1),
+  gap: space(1),
   fontSize: "0.75rem",
   "& li": { minWidth: 0 },
   "& button": {
     display: "flex",
-    gap: "0.5rem",
+    gap: space(1),
     alignItems: "center",
     width: "100%",
     minHeight: "2.75rem",
-    padding: "0.375rem 0.5rem",
+    padding: `${space(0.75)} ${space(1)}`,
     font: "inherit",
     textAlign: "left",
     color: "var(--hui-ink)",
@@ -407,7 +408,7 @@ const scoreStyles = css({
   },
   "& caption": {
     textAlign: "left",
-    padding: "0.625rem 0.75rem",
+    padding: `${space(1.25)} ${space(1.5)}`,
     color: "var(--hui-muted)",
     fontSize: "0.75rem",
   },
@@ -424,7 +425,7 @@ const scoreStyles = css({
   "& th img": {
     display: "block",
     objectFit: "contain",
-    marginBottom: "0.25rem",
+    marginBottom: space(0.5),
   },
   "& td": { fontFamily: "var(--hui-font-display)" },
   "& [data-total]": {

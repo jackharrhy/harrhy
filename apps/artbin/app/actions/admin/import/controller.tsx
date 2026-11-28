@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { count, sql, sum } from "drizzle-orm";
 import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
@@ -28,34 +29,34 @@ import {
 } from "../../../ui/primitives.tsx";
 import { theme } from "../../../ui/styles.ts";
 
-const sectionStyle = css({ marginBottom: "2rem" });
-const statsCardStyle = css({ marginBottom: "1.5rem" });
+const sectionStyle = css({ marginBottom: space(4) });
+const statsCardStyle = css({ marginBottom: space(3) });
 const kindStatsStyle = css({
   color: theme.color.muted,
   display: "flex",
   flexWrap: "wrap",
   fontSize: "0.75rem",
-  gap: "1rem",
-  marginTop: "1rem",
+  gap: space(2),
+  marginTop: space(2),
 });
 const descriptionStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0 0 1rem",
+  margin: `0 0 ${space(2)}`,
 });
-const submitStyle = css({ marginTop: "1rem" });
+const submitStyle = css({ marginTop: space(2) });
 const archiveCardStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
 });
 const onlineCardStyle = css({
   alignItems: "flex-start",
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
-  marginBottom: "1rem",
+  marginBottom: space(2),
 });
 const sourceDescriptionStyle = css({
   color: theme.color.muted,

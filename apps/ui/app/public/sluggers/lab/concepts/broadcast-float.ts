@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
 import { originalBlue, originalSteel } from "../original.ts";
@@ -17,7 +18,7 @@ export const broadcastFloat: LabConcept = {
   tokens: composeTheme(broadcastPrism.tokens, {
     panelRadius: "1.5rem",
     controlRadius: "1.125rem",
-    tableCellPadding: "0.5625rem 1rem",
+    tableCellPadding: `${space(1.125)} ${space(2)}`,
   }),
   parts: {
     ...broadcastPrism.parts,
@@ -33,16 +34,16 @@ export const broadcastFloat: LabConcept = {
     "& [data-lab-panel]": glassEdges,
     "& [data-panel-title]": {
       fontSize: "1.25rem",
-      padding: "0.875rem 1.25rem",
+      padding: `${space(1.75)} ${space(2.5)}`,
     },
     "& [data-match]": {
-      padding: "0.875rem",
+      padding: space(1.75),
       background: `${originalBlue[700]}59`,
     },
     "& [data-roster-card]": {
       background: `${originalBlue[700]}66`,
       borderRadius: "1.25rem",
-      padding: "0.75rem 0.625rem",
+      padding: `${space(1.5)} ${space(1.25)}`,
     },
     "@media (min-width: 30.0625rem) and (max-width: 62.5rem)": {
       "& [data-match-list]": { gridTemplateColumns: "repeat(2,minmax(0,1fr))" },

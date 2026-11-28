@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
 import { broadcastPrism } from "./broadcast-prism.ts";
@@ -16,7 +17,7 @@ export const frostStudio: LabConcept = {
   tokens: composeTheme(broadcastPrism.tokens, {
     panelRadius: "8px",
     controlRadius: "6px",
-    tableCellPadding: "6px 9px",
+    tableCellPadding: `${space(0.75)} ${space(1.125)}`,
   }),
   parts: {
     ...broadcastPrism.parts,
@@ -31,21 +32,24 @@ export const frostStudio: LabConcept = {
   },
   recipe: css({
     "& [data-lab-panel]": glassEdges,
-    "& [data-panel-title]": { fontSize: "20px", padding: "9px 12px" },
+    "& [data-panel-title]": {
+      fontSize: "20px",
+      padding: `${space(1.125)} ${space(1.5)}`,
+    },
     "& [data-match]": {
-      padding: "9px 10px",
+      padding: `${space(1.125)} ${space(1.25)}`,
       background: "var(--lab-card-surface)",
     },
-    "& [data-match-meta]": { marginBottom: "5px" },
+    "& [data-match-meta]": { marginBottom: space(0.625) },
     "& [data-roster-card]": {
       borderRadius: "5px",
-      padding: "9px",
-      gap: "3px",
+      padding: space(1.125),
+      gap: space(0.375),
     },
     "@media (min-width: 1001px)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {
         gridTemplateColumns: "repeat(3,minmax(0,1fr))",
-        gap: "6px",
+        gap: space(0.75),
       },
     },
   }),

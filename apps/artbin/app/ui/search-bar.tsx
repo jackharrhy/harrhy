@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { Input } from "@harrhy/ui/native";
 import { css, type Handle } from "remix/component";
 
@@ -8,13 +9,13 @@ const formStyle = css({
   alignItems: "center",
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.5rem",
-  marginBottom: "1rem",
+  gap: space(1),
+  marginBottom: space(2),
 });
 const searchGroupStyle = css({
   display: "flex",
   flex: "1",
-  gap: "0.5rem",
+  gap: space(1),
   maxWidth: "400px",
   minWidth: "200px",
 });

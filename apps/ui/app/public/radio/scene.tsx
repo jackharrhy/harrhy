@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, on, ref } from "remix/component";
 import type { Handle } from "remix/component";
 import { Button, Inline } from "@harrhy/ui/native";
@@ -24,7 +25,7 @@ export function RadioScene(
   return () => (
     <section
       aria-label="Radio fixture"
-      mix={css({ display: "grid", gap: "1.25rem", minWidth: 0 })}
+      mix={css({ display: "grid", gap: space(2.5), minWidth: 0 })}
     >
       <Inline>
         <label htmlFor="radio-scenario">Scenario</label>

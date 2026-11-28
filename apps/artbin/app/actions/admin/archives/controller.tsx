@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { desc, eq } from "drizzle-orm";
 import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
@@ -27,12 +28,12 @@ import {
 } from "../../../ui/primitives.tsx";
 import { theme } from "../../../ui/styles.ts";
 
-const introStyle = css({ color: theme.color.muted, margin: "0 0 1.5rem" });
-const scanCardStyle = css({ marginBottom: "1.5rem" });
+const introStyle = css({ color: theme.color.muted, margin: `0 0 ${space(3)}` });
+const scanCardStyle = css({ marginBottom: space(3) });
 const scanRowStyle = css({
   alignItems: "center",
   display: "flex",
-  gap: "1rem",
+  gap: space(2),
   justifyContent: "space-between",
 });
 const scanNoteStyle = css({
@@ -40,29 +41,29 @@ const scanNoteStyle = css({
   fontSize: "0.875rem",
   margin: 0,
 });
-const progressStyle = css({ marginTop: "1rem" });
+const progressStyle = css({ marginTop: space(2) });
 const resultsNoteStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0 0 0.75rem",
+  margin: `0 0 ${space(1.5)}`,
 });
 const listStyle = css({
   display: "flex",
   flexDirection: "column",
-  gap: "0.75rem",
+  gap: space(1.5),
 });
-const batchStyle = css({ marginBottom: "1.5rem" });
+const batchStyle = css({ marginBottom: space(3) });
 const descriptionStyle = css({
   color: theme.color.muted,
   fontSize: "0.875rem",
-  margin: "0 0 0.75rem",
+  margin: `0 0 ${space(1.5)}`,
 });
 const archivePickerStyle = css({
   border: `1px solid ${theme.color.borderLight}`,
-  marginBottom: "1rem",
+  marginBottom: space(2),
   maxHeight: "16rem",
   overflow: "auto",
-  padding: "0.5rem",
+  padding: space(1),
 });
 const pathStyle = css({
   overflowWrap: "anywhere",
@@ -70,17 +71,17 @@ const pathStyle = css({
 });
 const twoColumnStyle = css({
   display: "grid",
-  gap: "0.75rem",
+  gap: space(1.5),
   gridTemplateColumns: "repeat(2, 1fr)",
   "@media (max-width: 640px)": { gridTemplateColumns: "1fr" },
 });
-const submitStyle = css({ marginTop: "1rem" });
-const archiveCardStyle = css({ marginBottom: "0.75rem" });
+const submitStyle = css({ marginTop: space(2) });
+const archiveCardStyle = css({ marginBottom: space(1.5) });
 const archiveHeaderStyle = css({
   display: "flex",
-  gap: "0.75rem",
+  gap: space(1.5),
   justifyContent: "space-between",
-  marginBottom: "0.75rem",
+  marginBottom: space(1.5),
 });
 const minWidthStyle = css({ minWidth: 0 });
 const archiveNameStyle = css({ overflowWrap: "anywhere" });
@@ -94,7 +95,7 @@ const archivePathStyle = css({
 const archiveFormStyle = css({
   alignItems: "end",
   display: "grid",
-  gap: "0.75rem",
+  gap: space(1.5),
   gridTemplateColumns: "1fr 1fr auto",
   "@media (max-width: 640px)": { gridTemplateColumns: "1fr" },
 });

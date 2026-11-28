@@ -3,6 +3,7 @@ import test from "node:test";
 import { createElement } from "remix/component";
 import { renderToString } from "remix/component/server";
 import {
+  space,
   uiActionStyles,
   uiPrimaryActionStyles,
   uiSecondaryActionStyles,
@@ -32,7 +33,7 @@ test("new action base emits opt-in control geometry", async () => {
   );
   for (const rule of [
     "min-height: var(--ui-action-min-height, 40px)",
-    "padding: var(--ui-action-padding, 9px 14px)",
+    `padding: var(--ui-action-padding, ${space(1.125)} ${space(1.75)})`,
     "border-radius: var(--ui-control-radius, 5px)",
     "var(--ui-control-hover)",
   ])

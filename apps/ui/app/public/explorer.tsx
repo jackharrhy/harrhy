@@ -23,7 +23,7 @@ import {
   Tab,
   TabPanel,
 } from "@harrhy/ui/interactive";
-import { themeRoot } from "@harrhy/ui/theme";
+import { space, themeRoot } from "@harrhy/ui/theme";
 import { CodeDiff } from "@harrhy/ui/code";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { HighlightedCode, prepareCode } from "./highlight.tsx";
@@ -59,7 +59,7 @@ const chrome = css({
     fontSize: "1.75rem",
     lineHeight: "1.2",
     letterSpacing: "-0.025em",
-    margin: "0 0 0.5rem",
+    margin: `0 0 ${space(1)}`,
     fontWeight: 650,
   },
   "& h2": { fontSize: "0.875rem", margin: 0, fontWeight: 600 },
@@ -69,11 +69,11 @@ const chrome = css({
   },
 });
 const contentStyle = css({
-  padding: "2.25rem 2.5rem 3.75rem",
+  padding: `${space(4.5)} ${space(5)} ${space(7.5)}`,
   minWidth: 0,
   maxWidth: "93.75rem",
-  "@media (max-width: 62.5rem)": { padding: "1.75rem 1.5rem" },
-  "@media (max-width: 37.5rem)": { padding: "1.5rem 1rem" },
+  "@media (max-width: 62.5rem)": { padding: `${space(3.5)} ${space(3)}` },
+  "@media (max-width: 37.5rem)": { padding: `${space(3)} ${space(2)}` },
 });
 const introStyle = css({ color: "var(--hui-muted)", maxWidth: "70ch" });
 const toolbar = css({
@@ -81,8 +81,8 @@ const toolbar = css({
   flexWrap: "wrap",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: "0.75rem",
-  padding: "0.75rem 1rem",
+  gap: space(1.5),
+  padding: `${space(1.5)} ${space(2)}`,
   borderBottom: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
 });
@@ -90,7 +90,7 @@ const bench = css({
   border: "1px solid var(--hui-border)",
   borderRadius: "var(--hui-panel-radius)",
   overflow: "hidden",
-  marginTop: "1.75rem",
+  marginTop: space(3.5),
 });
 const specimenLayout = css({
   display: "grid",
@@ -99,29 +99,29 @@ const specimenLayout = css({
 });
 const stage = css({
   minHeight: "20rem",
-  padding: "2.5rem",
+  padding: space(5),
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   minWidth: 0,
   "& > div": { width: "100%", maxWidth: "23.75rem" },
   "@media (max-width: 37.5rem)": {
-    padding: "1.75rem 1.25rem",
+    padding: `${space(3.5)} ${space(2.5)}`,
     minHeight: "16.25rem",
   },
 });
 const controls = css({
   borderLeft: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
-  padding: "1.25rem",
+  padding: space(2.5),
   display: "grid",
   alignContent: "start",
-  gap: "1rem",
-  "& label": { display: "grid", gap: "0.375rem", fontSize: "0.8125rem" },
+  gap: space(2),
+  "& label": { display: "grid", gap: space(0.75), fontSize: "0.8125rem" },
   "& label:has(input[type=checkbox])": {
     display: "flex",
     alignItems: "center",
-    gap: "0.625rem",
+    gap: space(1.25),
     minHeight: "1.5rem",
     cursor: "pointer",
   },
@@ -169,7 +169,7 @@ export const Explorer = clientEntry(
                 top: "0.75rem",
                 background: "var(--hui-surface)",
                 zIndex: 10,
-                padding: "0.5rem",
+                padding: space(1),
               },
             })}
           >
@@ -523,7 +523,7 @@ function Story(
                 </Field>
               )}
               {story === "range" && (
-                <label mix={css({ display: "grid", gap: "0.5rem" })}>
+                <label mix={css({ display: "grid", gap: space(1) })}>
                   <span>Volume</span>
                   <Range
                     name="volume"
@@ -595,7 +595,7 @@ function Story(
               {story === "tabs" && (
                 <div
                   data-navigation-examples
-                  mix={css({ display: "grid", gap: "1.5rem" })}
+                  mix={css({ display: "grid", gap: space(3) })}
                 >
                   <section aria-label="Route links example">
                     <h3>Route links</h3>
@@ -720,7 +720,7 @@ function Story(
                 <div
                   mix={css({
                     display: "grid",
-                    gap: "0.375rem",
+                    gap: space(0.75),
                     fontSize: "0.8125rem",
                   })}
                 >
@@ -793,7 +793,7 @@ function Story(
               <div
                 mix={css({
                   display: "grid",
-                  gap: "0.375rem",
+                  gap: space(0.75),
                   fontSize: "0.8125rem",
                 })}
               >
@@ -820,7 +820,7 @@ function Story(
               <div
                 mix={css({
                   display: "grid",
-                  gap: "0.375rem",
+                  gap: space(0.75),
                   fontSize: "0.8125rem",
                 })}
               >
@@ -937,7 +937,7 @@ function Story(
         {(story === "select" || story === "tabs") && (
           <details
             mix={css({
-              padding: "1rem",
+              padding: space(2),
               borderTop: "1px solid var(--hui-border)",
               minWidth: 0,
             })}
@@ -979,7 +979,7 @@ function Story(
               Copy code
             </Button>
           </div>
-          <div mix={css({ padding: "1.25rem", minWidth: 0 })}>
+          <div mix={css({ padding: space(2.5), minWidth: 0 })}>
             <HighlightedCode
               colorScheme={themes[theme].colorScheme}
               label="Code example"

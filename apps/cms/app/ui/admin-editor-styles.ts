@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const adminEditorStyles = css({
@@ -5,12 +6,12 @@ export const adminEditorStyles = css({
     display: "flex",
     "justify-content": "space-between",
     "align-items": "center",
-    gap: "24px",
+    gap: space(3),
     "margin-bottom": "24px",
   },
   "& .editor-heading h1": {
     "font-size": "28px",
-    margin: "10px 0px 5px",
+    margin: `${space(1.25)} ${space(0)} ${space(0.625)}`,
   },
   "& .back-link": {
     "font-size": "12px",
@@ -22,7 +23,7 @@ export const adminEditorStyles = css({
   "& .editor-actions": {
     display: "flex",
     "align-items": "center",
-    gap: "16px",
+    gap: space(2),
     "flex-wrap": "wrap",
   },
   "& .save-status": {
@@ -39,16 +40,16 @@ export const adminEditorStyles = css({
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    gap: "14px",
+    gap: space(1.75),
     "flex-wrap": "wrap",
     border: "0px",
-    padding: "6px 0px",
+    padding: `${space(0.75)} ${space(0)}`,
     "margin-bottom": "18px",
   },
   "& .editor-toolbar > div": {
     display: "flex",
     "align-items": "center",
-    gap: "10px",
+    gap: space(1.25),
   },
   "& .editor-toolbar .muted": {
     "font-size": "12px",
@@ -60,7 +61,7 @@ export const adminEditorStyles = css({
   "& .page-title-field": {
     border: "1px solid var(--line)",
     "border-radius": "var(--radius)",
-    padding: "0px 0px 12px",
+    padding: `${space(0)} ${space(0)} ${space(1.5)}`,
     background: "none",
   },
   "& .page-title-field > input": {
@@ -74,7 +75,7 @@ export const adminEditorStyles = css({
     "border-radius": "var(--radius)",
     "min-width": "0px",
     position: "relative",
-    padding: "10px 12px",
+    padding: `${space(1.25)} ${space(1.5)}`,
     "margin-bottom": "10px",
   },
   "& .block-top": {
@@ -84,12 +85,12 @@ export const adminEditorStyles = css({
     "font-size": "13px",
     color: "var(--muted)",
     "margin-bottom": "5px",
-    gap: "4px",
+    gap: space(0.5),
   },
   "& .block-top > span": {
     display: "flex",
     "align-items": "center",
-    gap: "7px",
+    gap: space(0.875),
   },
   "& .block-index": {
     color: "var(--muted)",
@@ -99,9 +100,9 @@ export const adminEditorStyles = css({
   "& .block-actions": {
     display: "flex",
     "align-items": "center",
-    gap: "0px",
+    gap: space(0),
     "--hui-button-height": "2rem",
-    "--hui-button-padding": "0.25rem 0.4rem",
+    "--hui-button-padding": `${space(0.5)} ${space(0.8)}`,
     "--hui-button-text-size": "0.8125rem",
   },
   "& .block-card label": {
@@ -134,13 +135,13 @@ export const adminEditorStyles = css({
     "flex-direction": "column",
     "align-items": "center",
     "justify-content": "center",
-    gap: "12px",
+    gap: space(1.5),
     "border-radius": "var(--radius-control)",
     "margin-bottom": "18px",
     "min-height": "130px",
     display: "block",
     background: "none",
-    padding: "0px",
+    padding: space(0),
   },
   "& .image-block-preview img": {
     "max-height": "240px",
@@ -149,7 +150,7 @@ export const adminEditorStyles = css({
   },
   "& .image-block-preview .button": {
     "font-size": "12px",
-    padding: "5px 10px",
+    padding: `${space(0.625)} ${space(1.25)}`,
     "min-height": "30px",
   },
   "& .image-block details": {
@@ -158,7 +159,7 @@ export const adminEditorStyles = css({
   },
   "& .image-block .field-grid": {
     "grid-template-columns": "repeat(3, minmax(0px, 1fr))",
-    gap: "0px 10px",
+    gap: `${space(0)} ${space(1.25)}`,
   },
   "& .image-block label": {
     "margin-bottom": "12px",
@@ -166,10 +167,10 @@ export const adminEditorStyles = css({
   "& .adornment-choices": {
     display: "flex",
     "flex-wrap": "wrap",
-    gap: "8px",
+    gap: space(1),
   },
   "& .adornment-choices .check-label": {
-    padding: "6px",
+    padding: space(0.75),
     border: "1px solid var(--line)",
     "border-radius": "var(--radius-control)",
     "font-size": "12px",
@@ -181,9 +182,9 @@ export const adminEditorStyles = css({
   },
   "& .add-block": {
     "border-radius": "var(--radius)",
-    margin: "20px 0px",
+    margin: `${space(2.5)} ${space(0)}`,
     "border-style": "solid",
-    padding: "12px",
+    padding: space(1.5),
     background: "none",
   },
   "& .add-block > .eyebrow": {
@@ -194,22 +195,22 @@ export const adminEditorStyles = css({
   "& .add-block > div": {
     display: "flex",
     "flex-wrap": "wrap",
-    gap: "8px",
+    gap: space(1),
   },
   "& .add-block .button": {
     "font-size": "12px",
     "min-height": "30px",
   },
   "& .seo-panel": {
-    padding: "16px",
+    padding: space(2),
     "font-size": "12px",
   },
   "& .seo-panel > summary": {
-    padding: "0px",
+    padding: space(0),
   },
   "& .seo-panel .seo-image": {
     display: "flex",
-    gap: "12px",
+    gap: space(1.5),
     "align-items": "center",
     "margin-bottom": "20px",
   },
@@ -229,12 +230,12 @@ export const adminEditorStyles = css({
     "font-size": "12px",
   },
   "& .special-block": {
-    padding: "18px",
+    padding: space(2.25),
     background: "var(--surface)",
     "border-radius": "var(--radius-control)",
   },
   "& .special-block p": {
-    margin: "4px 0px 0px",
+    margin: `${space(0.5)} ${space(0)} ${space(0)}`,
     "font-size": "12px",
   },
   "& .navigation-category .block-top": {
@@ -268,7 +269,7 @@ export const adminEditorStyles = css({
     top: "10px",
     width: "24px",
     height: "32px",
-    padding: "0px",
+    padding: space(0),
     border: "0px",
     background: "none",
     color: "var(--muted)",
@@ -293,7 +294,7 @@ export const adminEditorStyles = css({
     color: "var(--accent)",
   },
   "& .image-block-preview > .button": {
-    margin: "10px 0px",
+    margin: `${space(1.25)} ${space(0)}`,
   },
   "& .image-block-preview .composition": {
     "max-width": "320px",
@@ -305,25 +306,25 @@ export const adminEditorStyles = css({
     height: "auto",
     "max-width": "none",
     "max-height": "none",
-    margin: "0px",
+    margin: space(0),
   },
   "& .image-block-preview .composition-layer": {
     width: "auto",
     height: "auto",
     "max-width": "none",
     "max-height": "none",
-    margin: "0px",
+    margin: space(0),
   },
   "& .compact-choices": {
     display: "flex",
     "flex-wrap": "wrap",
-    gap: "5px",
-    margin: "10px 0px",
+    gap: space(0.625),
+    margin: `${space(1.25)} ${space(0)}`,
   },
   "& .compact-choices .button": {
     display: "inline-flex",
     "align-items": "center",
-    gap: "5px",
+    gap: space(0.625),
     "font-size": "12px",
   },
   "& .compact-choices img": {
@@ -336,7 +337,7 @@ export const adminEditorStyles = css({
     margin: "auto",
   },
   "& .composition-surround": {
-    padding: "36px",
+    padding: space(4.5),
     background: "var(--surface)",
     "border-radius": "6px",
     overflow: "hidden",
@@ -373,12 +374,12 @@ export const adminEditorStyles = css({
   "& .placement-controls": {
     display: "grid",
     "grid-template-columns": "1fr 1fr",
-    gap: "8px 18px",
+    gap: `${space(1)} ${space(2.25)}`,
     "align-items": "center",
     "margin-top": "12px",
   },
   "& .placement-controls label": {
-    margin: "0px",
+    margin: space(0),
   },
   "& .placement-controls output": {
     "font-size": "12px",
@@ -386,7 +387,7 @@ export const adminEditorStyles = css({
   },
   '& .placement-controls input[type="range"]': {
     width: "100%",
-    padding: "0px",
+    padding: space(0),
     border: "0px",
     "accent-color": "var(--accent)",
   },
@@ -396,16 +397,16 @@ export const adminEditorStyles = css({
   "& .image-appearance": {
     display: "grid",
     "grid-template-columns": "1fr 1fr",
-    gap: "10px 16px",
-    margin: "12px 0px",
+    gap: `${space(1.25)} ${space(2)}`,
+    margin: `${space(1.5)} ${space(0)}`,
   },
   "& .image-appearance label": {
     "min-width": "0px",
-    margin: "0px",
+    margin: space(0),
   },
   '& .image-appearance input[type="range"]': {
     width: "100%",
-    padding: "0px",
+    padding: space(0),
     border: "0px",
     "accent-color": "var(--accent)",
   },
@@ -417,7 +418,7 @@ export const adminEditorStyles = css({
     "font-size": "12px",
   },
   "& .adornment-workbench .composition-surround": {
-    padding: "32px",
+    padding: space(4),
   },
   "& .composition-viewport": {
     position: "relative",
@@ -439,7 +440,7 @@ export const adminEditorStyles = css({
     "max-width": "100%",
     "flex-shrink": "0",
     "align-self": "flex-start",
-    margin: "0px",
+    margin: space(0),
   },
   "& .adornment-workbench .composition-photo": {
     display: "block",
@@ -448,7 +449,7 @@ export const adminEditorStyles = css({
     height: "auto",
     "max-height": "none",
     "object-fit": "contain",
-    margin: "0px",
+    margin: space(0),
     "border-radius": "0px",
   },
   "& .adornment-workbench .composition-layer": {
@@ -456,7 +457,7 @@ export const adminEditorStyles = css({
     width: "auto",
     height: "auto",
     "max-height": "none",
-    margin: "0px",
+    margin: space(0),
     "border-radius": "0px",
   },
   "& .preview-photo-settings": {
@@ -466,26 +467,26 @@ export const adminEditorStyles = css({
     "& .editor-actions": {
       "flex-direction": "column",
       "align-items": "flex-end",
-      gap: "6px",
+      gap: space(0.75),
     },
     "& .editor-heading h1": {
       "font-size": "25px",
     },
     "& .editor-toolbar": {
-      gap: "12px",
+      gap: space(1.5),
     },
   },
   "@media (max-width: 540px)": {
     "& .block-top": {
       "align-items": "flex-start",
       "flex-flow": "column wrap",
-      gap: "5px",
+      gap: space(0.625),
     },
     "& .block-actions": {
       "align-self": "flex-end",
     },
     "& .block-card": {
-      padding: "8px",
+      padding: space(1),
     },
     "& .editor-toolbar > div": {
       "flex-wrap": "wrap",
@@ -494,7 +495,7 @@ export const adminEditorStyles = css({
       "font-size": "12px",
     },
     "& .editor-heading .button": {
-      padding: "8px 10px",
+      padding: `${space(1)} ${space(1.25)}`,
       "font-size": "12px",
     },
     "& .editor-heading .save-status": {
@@ -505,7 +506,7 @@ export const adminEditorStyles = css({
     },
     "& .navigation-item > .block-actions": {
       "grid-column": "1 / -1",
-      margin: "0px",
+      margin: space(0),
     },
     "& .editor-heading": {
       "align-items": "flex-start",
@@ -522,7 +523,7 @@ export const adminEditorStyles = css({
       "padding-left": "24px",
     },
     "& .composition-surround": {
-      padding: "24px",
+      padding: space(3),
     },
     "& .placement-controls": {
       "grid-template-columns": "1fr",

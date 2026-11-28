@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle, type RemixNode } from "remix/component";
 
 import type { User } from "#db";
@@ -19,12 +20,12 @@ const layoutStyle = css({
   "@media (max-width: 767px)": { gridTemplateColumns: "1fr" },
 });
 const sidebarStyle = css({
-  padding: "1.5rem 1rem",
+  padding: `${space(3)} ${space(2)}`,
   borderRight: `1px solid ${theme.color.borderLight}`,
   "@media (max-width: 767px)": {
     borderRight: 0,
     borderBottom: `1px solid ${theme.color.borderLight}`,
-    padding: "1rem",
+    padding: space(2),
   },
 });
 const navStyle = css({
@@ -32,12 +33,12 @@ const navStyle = css({
     color: theme.color.muted,
     fontSize: "0.75rem",
     fontWeight: 500,
-    margin: "1.5rem 0 0.5rem",
-    paddingInline: "0.5rem",
+    margin: `${space(3)} 0 ${space(1)}`,
+    paddingInline: space(1),
   },
   "& a": {
     display: "block",
-    padding: "0.625rem 0.5rem",
+    padding: `${space(1.25)} ${space(1)}`,
     textDecoration: "none",
     fontSize: "0.875rem",
     color: theme.color.text,
@@ -55,16 +56,16 @@ const navStyle = css({
   "@media (max-width: 767px)": {
     display: "flex",
     flexWrap: "wrap",
-    gap: "0.25rem",
+    gap: space(0.5),
     "& section": { display: "contents" },
     "& h2": { display: "none" },
   },
 });
 const contentStyle = css({
   minWidth: 0,
-  padding: "2rem 2.5rem",
+  padding: `${space(4)} ${space(5)}`,
   "& code": { fontFamily: theme.font.mono, overflowWrap: "anywhere" },
-  "@media (max-width: 767px)": { padding: "1.5rem 1rem" },
+  "@media (max-width: 767px)": { padding: `${space(3)} ${space(2)}` },
 });
 
 export function AdminPage(
@@ -87,8 +88,8 @@ export function AdminPage(
               mix={css({
                 fontSize: "0.875rem",
                 fontWeight: 700,
-                margin: "0 0 1rem",
-                paddingInline: "0.5rem",
+                margin: `0 0 ${space(2)}`,
+                paddingInline: space(1),
               })}
             >
               Administration

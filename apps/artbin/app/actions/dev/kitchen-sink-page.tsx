@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 
 import type { User } from "#db";
@@ -44,7 +45,7 @@ import { pageStyle, theme } from "../../ui/styles.ts";
 
 const introStyle = css({
   color: theme.color.muted,
-  margin: "-0.75rem 0 1.5rem",
+  margin: `${space(-1.5)} 0 ${space(3)}`,
   maxWidth: "54rem",
 });
 const indexStyle = css({
@@ -52,24 +53,24 @@ const indexStyle = css({
   display: "flex",
   flexWrap: "wrap",
   fontSize: "0.75rem",
-  gap: "0.5rem 1rem",
-  marginBottom: "2.5rem",
-  paddingBottom: "1rem",
+  gap: `${space(1)} ${space(2)}`,
+  marginBottom: space(5),
+  paddingBottom: space(2),
 });
-const sectionStyle = css({ marginBottom: "3rem", scrollMarginTop: "4rem" });
+const sectionStyle = css({ marginBottom: space(6), scrollMarginTop: "4rem" });
 const exampleGridStyle = css({
   display: "grid",
-  gap: "1rem",
+  gap: space(2),
   gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
 });
 const mediaGridStyle = css({
   display: "grid",
-  gap: "0.75rem",
+  gap: space(1.5),
   gridTemplateColumns: "repeat(auto-fit, minmax(150px, 220px))",
 });
 const swatchesStyle = css({
   display: "grid",
-  gap: "0.5rem",
+  gap: space(1),
   gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))",
 });
 const swatchStyle = css({ border: `1px solid ${theme.color.borderLight}` });
@@ -77,7 +78,7 @@ const swatchColorStyle = css({ height: "3rem" });
 const swatchLabelStyle = css({
   background: theme.color.background,
   fontSize: "0.7rem",
-  padding: "0.375rem",
+  padding: space(0.75),
 });
 const typeSampleStyle = css({ margin: 0 });
 const displayTypeStyle = css({ fontSize: "2.25rem", lineHeight: 1, margin: 0 });
@@ -86,20 +87,20 @@ const controlRowStyle = css({
   alignItems: "center",
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.5rem",
+  gap: space(1),
 });
 const formGridStyle = css({
   display: "grid",
-  gap: "1rem",
+  gap: space(2),
   gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
 });
 const fullSpanStyle = css({ gridColumn: "1 / -1" });
 const previewFrameStyle = css({
   background: theme.color.hover,
   border: `1px solid ${theme.color.borderLight}`,
-  padding: "1rem",
+  padding: space(2),
 });
-const fileListStyle = css({ marginTop: "1rem" });
+const fileListStyle = css({ marginTop: space(2) });
 const codeStyle = css({ fontFamily: theme.font.mono, fontSize: "0.75rem" });
 
 const sampleFiles = [

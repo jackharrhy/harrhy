@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 import { ButtonLink, Inline } from "@harrhy/ui/native";
 import { Select } from "@harrhy/ui/interactive";
@@ -80,7 +81,7 @@ const optionFonts = Object.fromEntries(
       css({
         display: "inline-flex",
         alignItems: "center",
-        gap: "0.5rem",
+        gap: space(1),
         "&::before": {
           content: '""',
           width: "0.5625rem",
@@ -108,7 +109,7 @@ const headerStyles = css({
   "--workbench-picker-height": "2rem",
   fontSize: "var(--hui-text-size)",
   lineHeight: "var(--hui-line-height)",
-  paddingRight: "1rem",
+  paddingRight: space(2),
   borderBottom: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
   "@media (max-width: 47.5rem), (pointer: coarse)": {
@@ -116,16 +117,16 @@ const headerStyles = css({
   },
   "@media (max-width: 47.5rem)": {
     gridTemplateColumns: "minmax(0, 1fr) auto",
-    padding: "0 0.75rem",
+    padding: `0 ${space(1.5)}`,
   },
 });
 const brandCell = css({
-  padding: "0.25rem 1rem",
+  padding: `${space(0.5)} ${space(2)}`,
   alignSelf: "stretch",
   display: "flex",
   alignItems: "center",
   borderRight: "1px solid var(--hui-border)",
-  "@media (max-width: 47.5rem)": { borderRight: 0, padding: "0.25rem 0" },
+  "@media (max-width: 47.5rem)": { borderRight: 0, padding: `${space(0.5)} 0` },
 });
 const brandStyles = css({
   fontFamily: "var(--hui-font-mono)",
@@ -136,9 +137,9 @@ const brandStyles = css({
 const contextStyles = css({
   display: "flex",
   alignItems: "baseline",
-  gap: "0.5rem",
+  gap: space(1),
   minWidth: 0,
-  paddingInline: "1rem",
+  paddingInline: space(2),
   fontSize: "0.875rem",
   color: "var(--hui-muted)",
   "& strong": {
@@ -152,14 +153,14 @@ const contextStyles = css({
 });
 const pickerStyles = css({
   flexWrap: "nowrap",
-  paddingBlock: "0.25rem",
-  gap: "0.5rem",
+  paddingBlock: space(0.5),
+  gap: space(1),
   justifyContent: "flex-end",
   "& > div": { flexShrink: 0 },
   "& #workbench-density, & #workbench-theme": {
     width: "auto",
     height: "var(--workbench-picker-height)",
-    paddingBlock: "0.25rem",
+    paddingBlock: space(0.5),
     fontSize: "0.875rem",
   },
   "& #workbench-theme": {
@@ -176,7 +177,7 @@ const pickerStyles = css({
     "& > span": { marginRight: "auto" },
   },
   "@media (max-width: 47.5rem)": {
-    gap: "0.25rem",
-    "& button": { paddingInline: "0.375rem" },
+    gap: space(0.5),
+    "& button": { paddingInline: space(0.75) },
   },
 });

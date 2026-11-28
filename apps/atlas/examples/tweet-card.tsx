@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, on, type Handle } from "remix/component";
 import { Button } from "@harrhy/ui/native";
 
@@ -13,20 +14,20 @@ interface TweetSnapshot {
 
 const card = css({
   border: "1px solid var(--hui-border)",
-  padding: "1.25rem",
+  padding: space(2.5),
   background: "var(--hui-surface)",
   color: "var(--hui-ink)",
   fontFamily: "var(--hui-font-ui)",
-  "& p": { whiteSpace: "pre-wrap", marginBlock: "1rem" },
-  "& figure": { margin: "1rem 0 0" },
+  "& p": { whiteSpace: "pre-wrap", marginBlock: space(2) },
+  "& figure": { margin: `${space(2)} 0 0` },
   "& img": { width: "100%", height: "auto", display: "block" },
-  "& figcaption": { fontSize: ".85rem", marginTop: ".5rem" },
+  "& figcaption": { fontSize: ".85rem", marginTop: space(1) },
   "& footer": {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: ".5rem",
-    marginTop: "1rem",
+    gap: space(1),
+    marginTop: space(2),
   },
 });
 

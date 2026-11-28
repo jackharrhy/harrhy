@@ -1,3 +1,4 @@
+import { space } from "./spacing.ts";
 import { css, type Handle, type Props } from "remix/component";
 import {
   focusStyles,
@@ -82,7 +83,7 @@ const breadcrumbListStyles = css({
   display: "flex",
   flexWrap: "wrap",
   alignItems: "center",
-  gap: "0.35rem",
+  gap: space(0.7),
   listStyle: "none",
   padding: 0,
   margin: 0,
@@ -98,7 +99,7 @@ export function BreadcrumbItem(handle: Handle<Props<"li">>) {
 const crumbStyles = css({
   display: "inline-flex",
   alignItems: "center",
-  gap: "0.35rem",
+  gap: space(0.7),
   minWidth: 0,
   overflowWrap: "anywhere",
 });

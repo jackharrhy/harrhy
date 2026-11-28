@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const operatorStyles = css({
@@ -9,14 +10,14 @@ export const operatorStyles = css({
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    gap: "24px",
+    gap: space(3),
     "min-height": "76px",
     "border-bottom": "1px solid var(--line)",
   },
   "& .operator-account": {
     display: "flex",
     "align-items": "center",
-    gap: "24px",
+    gap: space(3),
     color: "var(--muted)",
     "font-size": "13px",
   },
@@ -28,14 +29,14 @@ export const operatorStyles = css({
     "font-size": "12px",
   },
   "& .operator-heading": {
-    padding: "46px 0 20px",
+    padding: `${space(5.75)} 0 ${space(2.5)}`,
   },
   "& .operator-heading h1": {
     margin: "0",
   },
   "& .operator-sites": {
     display: "grid",
-    gap: "16px",
+    gap: space(2),
     "padding-bottom": "64px",
   },
   "& .operator-shell > .operator-site": {
@@ -45,14 +46,14 @@ export const operatorStyles = css({
     display: "grid",
     "grid-template-columns": "minmax(0, 1.4fr) minmax(260px, 1fr) 136px",
     "align-items": "center",
-    gap: "28px",
-    padding: "28px",
+    gap: space(3.5),
+    padding: space(3.5),
   },
   "& .operator-site-head": {
     display: "flex",
     "align-items": "baseline",
     "flex-wrap": "wrap",
-    gap: "8px 16px",
+    gap: `${space(1)} ${space(2)}`,
     "margin-bottom": "6px",
   },
   "& .operator-site h2": {
@@ -62,7 +63,7 @@ export const operatorStyles = css({
     "line-height": "1.3",
   },
   "& .operator-description": {
-    margin: "0 0 6px",
+    margin: `0 0 ${space(0.75)}`,
     color: "var(--muted)",
     "font-size": "13px",
   },
@@ -74,7 +75,7 @@ export const operatorStyles = css({
   "& .operator-facts": {
     display: "grid",
     "grid-template-columns": "repeat(3, minmax(0, 1fr))",
-    gap: "10px 14px",
+    gap: `${space(1.25)} ${space(1.75)}`,
     margin: "0",
   },
   "& .operator-facts dt": {
@@ -82,7 +83,7 @@ export const operatorStyles = css({
     "font-size": "11px",
   },
   "& .operator-facts dd": {
-    margin: "1px 0 0",
+    margin: `${space(0.125)} 0 0`,
     "font-size": "14px",
     "font-weight": "600",
   },
@@ -96,18 +97,18 @@ export const operatorStyles = css({
     display: "flex",
     "flex-direction": "column",
     "justify-content": "center",
-    gap: "36px",
+    gap: space(4.5),
     width: "min(420px, calc(100% - 40px))",
     "min-height": "100dvh",
     margin: "0 auto",
-    padding: "40px 0 72px",
+    padding: `${space(5)} 0 ${space(9)}`,
   },
   "& .operator-login-panel h1": {
-    margin: "0 0 28px",
+    margin: `0 0 ${space(3.5)}`,
   },
   "& .operator-login form": {
     display: "grid",
-    gap: "16px",
+    gap: space(2),
   },
   "& .operator-login form button": {
     width: "100%",
@@ -119,7 +120,7 @@ export const operatorStyles = css({
   "@media (max-width: 900px)": {
     "& .operator-site": {
       "grid-template-columns": "minmax(0, 1fr) 136px",
-      gap: "18px 24px",
+      gap: `${space(2.25)} ${space(3)}`,
     },
     "& .operator-facts": {
       "grid-column": "1 / -1",
@@ -139,23 +140,23 @@ export const operatorStyles = css({
       "align-items": "flex-start",
       "flex-direction": "column",
       "justify-content": "center",
-      gap: "10px",
-      padding: "18px 0",
+      gap: space(1.25),
+      padding: `${space(2.25)} 0`,
     },
     "& .operator-account": {
       width: "100%",
       "justify-content": "space-between",
     },
     "& .operator-heading": {
-      padding: "38px 0 18px",
+      padding: `${space(4.75)} 0 ${space(2.25)}`,
     },
     "& .operator-site": {
       display: "block",
-      padding: "24px",
+      padding: space(3),
     },
     "& .operator-facts": {
       "grid-template-columns": "repeat(3, minmax(0, 1fr))",
-      margin: "22px 0",
+      margin: `${space(2.75)} 0`,
     },
     "& .operator-site form button": {
       width: "100%",

@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, on, ref, type Handle } from "remix/component";
 import type { ThemeName } from "../themes.ts";
 import { themeRoot } from "@harrhy/ui/theme";
@@ -42,12 +43,12 @@ const views: { value: View; label: string }[] = [
 const nav = css({
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.5rem",
+  gap: space(1),
   "& button": {
     border: "1px solid var(--hui-control-border)",
     color: "var(--hui-ink)",
     background: "transparent",
-    padding: "0.625rem 0.875rem",
+    padding: `${space(1.25)} ${space(1.75)}`,
     borderRadius: "0.375rem",
     font: "inherit",
     cursor: "pointer",
@@ -259,7 +260,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
             }),
           css({
             borderRadius: "0.5rem",
-            padding: "1.25rem",
+            padding: space(2.5),
             minWidth: 0,
             overflowWrap: "anywhere",
             color: "var(--hui-ink)",
@@ -282,7 +283,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
               fontFamily: "SluggersRodin, system-ui, sans-serif",
             },
             "@media(max-width: 37.5rem)": {
-              padding: "1rem 0.625rem",
+              padding: `${space(2)} ${space(1.25)}`,
               "--hui-control-height": "2.75rem",
               "--hui-button-height": "2.75rem",
             },
@@ -292,7 +293,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
           }),
         ]}
       >
-        <Stack mix={css({ gap: "1.25rem" })}>
+        <Stack mix={css({ gap: space(2.5) })}>
           <Inline>
             <Badge>Synthetic league preview</Badge>
             <span mix={css({ color: "var(--hui-ink)", fontSize: "0.8125rem" })}>
@@ -304,7 +305,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
-              gap: "1rem",
+              gap: space(2),
               flexWrap: "wrap",
             })}
           >
@@ -322,7 +323,12 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
               >
                 Sluggers
               </Heading>
-              <p mix={css({ margin: "0.5rem 0 0", color: "var(--hui-muted)" })}>
+              <p
+                mix={css({
+                  margin: `${space(1)} 0 0`,
+                  color: "var(--hui-muted)",
+                })}
+              >
                 {league.name} / {league.season}
               </p>
             </div>
@@ -330,7 +336,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
               mix={css({
                 background: "var(--hui-table-header)",
                 color: "var(--hui-ink)",
-                padding: "0.5rem 0.75rem",
+                padding: `${space(1)} ${space(1.5)}`,
                 borderRadius: "0.5rem",
               })}
             >
@@ -365,7 +371,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
           </nav>
           <div mix={sheet}>
             {view === "standings" ? (
-              <Stack mix={css({ gap: "1.25rem" })}>
+              <Stack mix={css({ gap: space(2.5) })}>
                 <Inline>
                   <Heading level={3} mix={heading}>
                     League standings
@@ -451,7 +457,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                                           color: "var(--hui-muted)",
                                           fontSize: "0.75rem",
                                           display: "inline",
-                                          marginLeft: "0.5rem",
+                                          marginLeft: space(1),
                                           fontFamily:
                                             "SluggersCezanne, system-ui, sans-serif",
                                         })}
@@ -499,7 +505,10 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                     <p mix={quiet}>Match day 3 · Scheduled</p>
                     <Heading
                       level={5}
-                      mix={css({ fontSize: "1.25rem", margin: "0.75rem 0" })}
+                      mix={css({
+                        fontSize: "1.25rem",
+                        margin: `${space(1.5)} 0`,
+                      })}
                     >
                       {team.name}
                       <br />
@@ -525,7 +534,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
               </Stack>
             ) : null}
             {view === "match" ? (
-              <Stack mix={css({ gap: "1.25rem" })}>
+              <Stack mix={css({ gap: space(2.5) })}>
                 <Inline>
                   <Heading level={3} mix={heading}>
                     Match day {matchDay}
@@ -553,7 +562,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                   mix={css({
                     background: "var(--hui-table-header)",
                     borderRadius: "0.625rem",
-                    padding: "1rem",
+                    padding: space(2),
                     textAlign: "center",
                   })}
                 >
@@ -564,9 +573,9 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                     mix={css({
                       display: "grid",
                       gridTemplateColumns: "minmax(0,1fr) auto minmax(0,1fr)",
-                      gap: "0.75rem",
+                      gap: space(1.5),
                       alignItems: "center",
-                      marginTop: "1rem",
+                      marginTop: space(2),
                     })}
                   >
                     <div>
@@ -628,7 +637,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                       mix={css({
                         display: "flex",
                         flexWrap: "wrap",
-                        gap: "0.5rem",
+                        gap: space(1),
                       })}
                     >
                       {(statsSide === "away"
@@ -637,7 +646,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                       ).map((s, i) => (
                         <span
                           mix={css({
-                            padding: "0.5rem 0.625rem",
+                            padding: `${space(1)} ${space(1.25)}`,
                             background: "var(--hui-table-header)",
                             borderRadius: "0.375rem",
                           })}
@@ -653,7 +662,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
               </Stack>
             ) : null}
             {view === "lineup" ? (
-              <Stack mix={css({ gap: "1.25rem" })}>
+              <Stack mix={css({ gap: space(2.5) })}>
                 <Inline>
                   <Heading level={3} mix={heading}>
                     {league.teams[lineupTeamIndex]!.name} lineup
@@ -727,7 +736,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                       padding: 0,
                       margin: 0,
                       display: "grid",
-                      gap: "0.5rem",
+                      gap: space(1),
                     })}
                   >
                     {slots.map((slot, i) => (
@@ -739,14 +748,14 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                           gridTemplateColumns:
                             "2.25rem minmax(6.25rem,1fr) 6rem auto",
                           alignItems: "center",
-                          gap: "0.75rem",
-                          padding: "0.5rem 0.75rem",
+                          gap: space(1.5),
+                          padding: `${space(1)} ${space(1.5)}`,
                           background: "var(--hui-table-header)",
                           borderRadius: "0.5rem",
                           "@media(max-width:37.5rem)": {
                             gridTemplateColumns:
                               "1.75rem minmax(0,1fr) 5.625rem",
-                            gap: "0.5rem",
+                            gap: space(1),
                           },
                         })}
                       >
@@ -771,7 +780,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                         <div
                           mix={css({
                             display: "flex",
-                            gap: "0.375rem",
+                            gap: space(0.75),
                             "@media(max-width:37.5rem)": {
                               gridColumn: "2 / -1",
                             },
@@ -811,7 +820,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                         width: "100%",
                         maxWidth: "22.5rem",
                         aspectRatio: "1",
-                        margin: "0.75rem auto",
+                        margin: `${space(1.5)} auto`,
                         "&::before": {
                           content: "''",
                           position: "absolute",
@@ -894,7 +903,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
               </Stack>
             ) : null}
             {view === "import" ? (
-              <Stack mix={css({ gap: "1.25rem" })}>
+              <Stack mix={css({ gap: space(2.5) })}>
                 <Heading level={3} mix={heading}>
                   Review tracker result
                 </Heading>
@@ -1034,7 +1043,7 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                       <label
                         mix={css({
                           display: "flex",
-                          gap: "0.625rem",
+                          gap: space(1.25),
                           alignItems: "start",
                           minHeight: "1.5rem",
                           cursor: "pointer",

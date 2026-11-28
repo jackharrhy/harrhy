@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const richTextStyles = css({
@@ -8,7 +9,7 @@ export const richTextStyles = css({
     display: "flex",
     "align-items": "center",
     "flex-wrap": "wrap",
-    gap: "2px",
+    gap: space(0.25),
     border: "0",
     padding: "0",
     background: "none",
@@ -41,7 +42,7 @@ export const richTextStyles = css({
     "white-space": "pre-wrap",
     background: "var(--hui-surface)",
     "min-height": "46px",
-    padding: "8px 4px",
+    padding: `${space(1)} ${space(0.5)}`,
     "line-height": "1.6",
   },
   "& .rich-text:focus": {
@@ -56,7 +57,7 @@ export const richTextStyles = css({
   },
   "& .inline-link-form": {
     display: "flex",
-    gap: "4px",
+    gap: space(0.5),
     width: "100%",
   },
   "& .tiptap p": {

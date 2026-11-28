@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import {
   chemistryView,
   forceGraph,
@@ -37,14 +38,14 @@ const styles = css({
   "& [data-topbar], & main": {
     maxWidth: "1280px",
     margin: "auto",
-    padding: "20px",
+    padding: space(2.5),
   },
   "& [data-topbar]": {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
-    gap: "8px 40px",
-    padding: "16px",
+    gap: `${space(1)} ${space(5)}`,
+    padding: space(2),
   },
   "& body:has([data-graph-page])": {
     display: "flex",
@@ -64,7 +65,7 @@ const styles = css({
     width: "100%",
     maxWidth: "1280px",
     marginInline: "auto",
-    paddingInline: "16px",
+    paddingInline: space(2),
   },
   "& [data-topbar-shell]": {
     position: "relative",
@@ -80,14 +81,18 @@ const styles = css({
       transform: "translateY(-50%)",
     },
   },
-  "& [data-topbar] nav": { gap: "0 32px" },
+  "& [data-topbar] nav": { gap: `0 ${space(4)}` },
   "& [data-topbar] nav a:not([aria-current])": { textDecoration: "none" },
   "@media (max-width: 767px)": {
-    "& [data-topbar]": { gap: "4px 16px" },
-    "& [data-topbar] nav": { order: 2, flexBasis: "100%", gap: "0 16px" },
-    "& [data-topbar] select": { width: "128px", paddingInline: "6px" },
+    "& [data-topbar]": { gap: `${space(0.5)} ${space(2)}` },
+    "& [data-topbar] nav": {
+      order: 2,
+      flexBasis: "100%",
+      gap: `0 ${space(2)}`,
+    },
+    "& [data-topbar] select": { width: "128px", paddingInline: space(0.75) },
   },
-  "& nav": { display: "flex", flexWrap: "wrap", gap: "16px" },
+  "& nav": { display: "flex", flexWrap: "wrap", gap: space(2) },
   "& nav a, & button, & select": {
     minHeight: "44px",
     display: "inline-flex",
@@ -98,7 +103,7 @@ const styles = css({
     color: "var(--hui-ink)",
     border: "1px solid var(--lab-surface-edge)",
     borderRadius: "6px",
-    padding: "10px",
+    padding: space(1.25),
     font: "inherit",
     maxWidth: "100%",
   },
@@ -107,7 +112,7 @@ const styles = css({
   "& form": {
     display: "flex",
     flexWrap: "wrap",
-    gap: "8px",
+    gap: space(1),
     alignItems: "center",
   },
   "& h1, & h2, & h3, & [data-brand]": {
@@ -115,8 +120,11 @@ const styles = css({
     lineHeight: 1.25,
     textWrap: "balance",
   },
-  "& h1": { fontSize: "clamp(28px,4vw,46px)", margin: "16px 0 24px" },
-  "& h2": { fontSize: "22px", margin: "0 0 16px" },
+  "& h1": {
+    fontSize: "clamp(28px,4vw,46px)",
+    margin: `${space(2)} 0 ${space(3)}`,
+  },
+  "& h2": { fontSize: "22px", margin: `0 0 ${space(2)}` },
   "& p": { maxWidth: "72ch" },
   "& [data-brand]": {
     fontSize: "20px",
@@ -127,7 +135,7 @@ const styles = css({
   "& [data-columns]": {
     display: "grid",
     gridTemplateColumns: "minmax(0,1.5fr) minmax(300px,1fr)",
-    gap: "24px",
+    gap: space(3),
     alignItems: "start",
   },
   "& [data-lab-panel]": {
@@ -137,8 +145,8 @@ const styles = css({
     backgroundImage: "var(--lab-panel-image)",
     border: "2px solid var(--lab-surface-edge)",
     borderRadius: "var(--hui-panel-radius)",
-    padding: "16px",
-    marginBottom: "24px",
+    padding: space(2),
+    marginBottom: space(3),
     minWidth: 0,
     overflow: "hidden",
   },
@@ -162,19 +170,19 @@ const styles = css({
   "& [data-panel-title]": {
     backgroundImage: "var(--lab-heading-image)",
     color: "var(--lab-heading-ink)",
-    margin: "-16px -16px 16px",
-    padding: "12px 16px",
+    margin: `${space(-2)} ${space(-2)} ${space(2)}`,
+    padding: `${space(1.5)} ${space(2)}`,
   },
   "& [data-roster-grid]": {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fill,minmax(132px,1fr))",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& [data-roster-card]": {
     display: "grid",
     gridTemplateRows: "auto 1fr auto",
     alignContent: "start",
-    padding: "12px",
+    padding: space(1.5),
     background: "var(--lab-card-surface)",
     border: "1px solid var(--lab-surface-edge)",
     borderRadius: "var(--lab-card-radius)",
@@ -199,10 +207,13 @@ const styles = css({
     height: "100%",
     objectFit: "contain",
   },
-  "& [data-roster-card] h3": { margin: "6px 0 3px", fontSize: "15px" },
+  "& [data-roster-card] h3": {
+    margin: `${space(0.75)} 0 ${space(0.375)}`,
+    fontSize: "15px",
+  },
   "& [data-catalogue-grid]": {
     gridTemplateColumns: "repeat(auto-fill,minmax(132px,144px))",
-    gap: "16px",
+    gap: space(2),
   },
   "& [data-roster-grid] [data-player-card]": {
     position: "relative",
@@ -212,8 +223,8 @@ const styles = css({
     minHeight: "92px",
     textAlign: "center",
     justifyContent: "center",
-    padding: "16px 8px",
-    gap: "8px",
+    padding: `${space(2)} ${space(1)}`,
+    gap: space(1),
     borderWidth: "2px",
     textDecoration: "none",
   },
@@ -232,7 +243,7 @@ const styles = css({
   "& [data-player-team]": {
     display: "flex",
     alignItems: "center",
-    gap: "4px",
+    gap: space(0.5),
     position: "absolute",
     top: "4px",
     right: "6px",
@@ -288,12 +299,12 @@ const styles = css({
   "& [data-player-detail]": {
     display: "grid",
     justifyItems: "center",
-    gap: "16px",
+    gap: space(2),
   },
   "& [data-player-profile]": {
     display: "grid",
     justifyItems: "center",
-    gap: "24px",
+    gap: space(3),
     padding: "clamp(16px,4vw,32px)",
     background: "var(--lab-card-surface)",
     border: "2px solid var(--lab-surface-edge)",
@@ -310,20 +321,20 @@ const styles = css({
   "& [data-player-attributes]": {
     display: "grid",
     gridTemplateColumns: "repeat(4,minmax(0,1fr))",
-    gap: "32px",
+    gap: space(4),
   },
   "& [data-player-attributes] h2": {
     fontSize: "17px",
     borderBottom: "1px solid var(--hui-table-border)",
-    margin: "0 0 6px",
-    paddingBottom: "4px",
+    margin: `0 0 ${space(0.75)}`,
+    paddingBottom: space(0.5),
   },
   "& [data-player-attributes] dl": { margin: 0, fontSize: "14px" },
   "& [data-player-attributes] dl div": {
     display: "flex",
     justifyContent: "space-between",
-    gap: "8px",
-    paddingBlock: "2px",
+    gap: space(1),
+    paddingBlock: space(0.25),
   },
   "& [data-player-attributes] dd": {
     margin: 0,
@@ -331,7 +342,7 @@ const styles = css({
     fontWeight: 600,
   },
   "& [data-player-history]": { width: "min(100%, 42rem)", minWidth: 0 },
-  "& [data-player-history] details": { marginBottom: "12px" },
+  "& [data-player-history] details": { marginBottom: space(1.5) },
   "& main:has(> [data-player-detail]) > h1": {
     textAlign: "center",
     fontSize: "24px",
@@ -339,7 +350,7 @@ const styles = css({
   "@media (max-width: 850px)": {
     "& [data-player-attributes]": {
       gridTemplateColumns: "repeat(2,minmax(0,1fr))",
-      gap: "16px",
+      gap: space(2),
     },
   },
   "@media (max-width: 520px)": {
@@ -348,8 +359,8 @@ const styles = css({
   "& [data-conference]": {
     border: "4px solid var(--lab-surface-edge)",
     borderRadius: "8px",
-    padding: "12px",
-    marginBottom: "32px",
+    padding: space(1.5),
+    marginBottom: space(4),
     minWidth: 0,
   },
   "& [data-conference] > h2, & [data-team-heading]": { textAlign: "center" },
@@ -357,12 +368,12 @@ const styles = css({
     display: "flex",
     flexWrap: "wrap",
     justifyContent: "center",
-    gap: "32px",
+    gap: space(4),
   },
   "& [data-team-entry]": {
     width: "min(100%, 356px)",
     display: "grid",
-    gap: "12px",
+    gap: space(1.5),
     textDecoration: "none",
   },
   "& [data-team-heading] h3, & [data-team-heading] p": { margin: 0 },
@@ -374,7 +385,7 @@ const styles = css({
     minWidth: 0,
     display: "grid",
     justifyItems: "center",
-    gap: "12px",
+    gap: space(1.5),
     padding: "clamp(8px, 3vw, 16px)",
     border: "2px solid var(--lab-surface-edge)",
     borderRadius: "var(--lab-card-radius)",
@@ -387,9 +398,9 @@ const styles = css({
     display: "flex",
     justifyContent: "center",
     flexWrap: "wrap",
-    gap: "3px",
+    gap: space(0.375),
     width: "100%",
-    paddingBottom: "10px",
+    paddingBottom: space(1.25),
     borderBottom: "1px solid var(--lab-surface-edge)",
   },
   "& [data-team-order] > *, & [data-field-slot]": {
@@ -435,18 +446,18 @@ const styles = css({
   "& [data-team-detail]": {
     display: "grid",
     justifyItems: "center",
-    gap: "16px",
+    gap: space(2),
   },
   "& main:has(> [data-team-detail]) > h1": {
     textAlign: "center",
-    marginBottom: "8px",
+    marginBottom: space(1),
   },
   "& [data-team-detail-roster]": {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "center",
     justifyContent: "center",
-    gap: "20px",
+    gap: space(2.5),
     maxWidth: "100%",
   },
   "& [data-team-detail-roster] ul": {
@@ -454,15 +465,15 @@ const styles = css({
     margin: 0,
     padding: 0,
   },
-  "& [data-team-detail-roster] li": { marginBlock: "4px" },
+  "& [data-team-detail-roster] li": { marginBlock: space(0.5) },
   "& [data-team-bench]": {
     display: "flex",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: "3px",
+    gap: space(0.375),
     width: "100%",
     borderTop: "1px solid var(--lab-surface-edge)",
-    paddingTop: "8px",
+    paddingTop: space(1),
   },
   "& [data-team-results]": { width: "min(100%, 42rem)", minWidth: 0 },
   "& [data-team-side]": {
@@ -471,13 +482,13 @@ const styles = css({
     alignItems: "end",
     textAlign: "right",
     overflowWrap: "anywhere",
-    gap: "4px",
+    gap: space(0.5),
     fontWeight: 700,
   },
   "& [data-team-side]:last-child": { alignItems: "start", textAlign: "left" },
   "& [data-team-identity]": {
     display: "inline-flex",
-    gap: "8px",
+    gap: space(1),
     alignItems: "center",
   },
   "& [data-team-identity] [data-portrait], & [data-lineup-player] [data-portrait]":
@@ -485,10 +496,10 @@ const styles = css({
   "& [data-lineup-player]": {
     display: "inline-flex",
     alignItems: "center",
-    gap: "8px",
+    gap: space(1),
   },
   "& [data-result-label]": {
-    padding: "2px 6px",
+    padding: `${space(0.25)} ${space(0.75)}`,
     borderRadius: "4px",
     fontSize: "12px",
   },
@@ -503,7 +514,7 @@ const styles = css({
     display: "grid",
     gridTemplateColumns: "1fr auto 1fr",
     alignItems: "center",
-    gap: "3px",
+    gap: space(0.375),
     background: "var(--lab-inset-surface)",
     borderRadius: "4px",
     textDecoration: "none",
@@ -514,15 +525,15 @@ const styles = css({
     minWidth: "2ch",
     textAlign: "center",
     borderRadius: "3px",
-    padding: "2px 5px",
+    padding: `${space(0.25)} ${space(0.625)}`,
   },
   "& [data-match]": {
     display: "grid",
     gridTemplateColumns: "minmax(0,1fr) 104px minmax(0,1fr)",
-    gap: "12px",
+    gap: space(1.5),
     alignItems: "center",
     borderBottom: "1px solid var(--lab-surface-edge)",
-    padding: "16px 0",
+    padding: `${space(2)} 0`,
   },
   "& [data-score]": {
     fontFamily: "var(--hui-font-display)",
@@ -542,7 +553,7 @@ const styles = css({
     background: "var(--lab-card-surface)",
   },
   "& th, & td": {
-    padding: "10px",
+    padding: space(1.25),
     textAlign: "left",
     borderBottom: "1px solid var(--lab-surface-edge)",
     whiteSpace: "nowrap",
@@ -567,10 +578,10 @@ const styles = css({
   },
   "@media (max-width: 800px)": {
     "& [data-columns]": { gridTemplateColumns: "minmax(0,1fr)" },
-    "& [data-topbar], & main": { padding: "14px" },
+    "& [data-topbar], & main": { padding: space(1.75) },
     "& [data-match]": {
       gridTemplateColumns: "minmax(0,1fr) 96px minmax(0,1fr)",
-      gap: "6px",
+      gap: space(0.75),
     },
   },
 });

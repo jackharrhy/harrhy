@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { uiPrimaryActionStyles } from "@harrhy/ui";
@@ -22,22 +23,22 @@ type DirectoryContext = Omit<DocumentProps, "title" | "children">;
 const appGridStyles = css({
   display: "grid",
   gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-  gap: "16px",
-  "@media (min-width: 1440px)": { gap: "20px" },
+  gap: space(2),
+  "@media (min-width: 1440px)": { gap: space(2.5) },
   "@media (max-width: 1000px)": {
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
   },
   "@media (max-width: 450px)": {
     gridTemplateColumns: "1fr",
-    gap: "12px",
+    gap: space(1.5),
   },
 });
 
 const appEntryStyles = css({
   display: "grid",
   gridTemplateColumns: "36px minmax(0, 1fr)",
-  gap: "17px",
-  padding: "24px",
+  gap: space(2.125),
+  padding: space(3),
   background: "#fff",
   border: "1px solid var(--line)",
   borderRadius: "8px",
@@ -48,7 +49,7 @@ const appEntryStyles = css({
     color: "#566b7b",
     lineHeight: 1.4,
   },
-  "& h2": { fontSize: "17px", margin: "0 0 5px" },
+  "& h2": { fontSize: "17px", margin: `0 0 ${space(0.625)}` },
   "& .app-launch": { color: "var(--ink)", textDecoration: "none" },
   "& .app-launch:hover": {
     color: "var(--blue)",
@@ -56,20 +57,20 @@ const appEntryStyles = css({
   },
   "& p": { fontSize: "12px", color: "var(--muted)", margin: 0 },
   "& .app-status": {
-    marginTop: "6px",
+    marginTop: space(0.75),
     color: "#365f80",
     minHeight: "18px",
   },
   "& .access-link": {
     gridColumn: "2",
     fontSize: "12px",
-    marginTop: "5px",
+    marginTop: space(0.625),
     textDecoration: "none",
   },
   "& .access-link:hover": { textDecoration: "underline" },
-  "@media (min-width: 1440px)": { padding: "26px" },
+  "@media (min-width: 1440px)": { padding: space(3.25) },
   "@media (max-width: 450px)": {
-    padding: "20px",
+    padding: space(2.5),
     "& .app-status": { minHeight: 0 },
     "& .app-status:empty": { display: "none" },
   },

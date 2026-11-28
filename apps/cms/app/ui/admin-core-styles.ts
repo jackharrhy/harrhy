@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const adminCoreStyles = css({
@@ -27,7 +28,7 @@ export const adminCoreStyles = css({
   "& *": {
     "box-sizing": "border-box",
   },
-  "& body": { margin: "0px" },
+  "& body": { margin: space(0) },
   "& button, & a, & input, & textarea": {
     "-webkit-tap-highlight-color": "transparent",
   },
@@ -75,14 +76,14 @@ export const adminCoreStyles = css({
     "flex-direction": "column",
     "font-weight": "550",
     "margin-bottom": "14px",
-    gap: "5px",
+    gap: space(0.625),
   },
   "& label small": { "font-weight": "400", "line-height": "1.5" },
   "& details > summary": {
     cursor: "pointer",
     "font-weight": "550",
     "list-style": "none",
-    padding: "12px 0px",
+    padding: `${space(1.5)} ${space(0)}`,
   },
   "& details > summary::before": {
     content: '"+"',
@@ -100,37 +101,37 @@ export const adminCoreStyles = css({
     width: "100%",
     border: "0",
     "border-top": "1px solid var(--line)",
-    margin: "20px 0px",
+    margin: `${space(2.5)} ${space(0)}`,
   },
   "& .muted": {
     color: "var(--muted)",
   },
   "& .button.small": {
     "--hui-button-height": "2rem",
-    "--hui-button-padding": "0.3rem 0.55rem",
+    "--hui-button-padding": `${space(0.6)} ${space(1.1)}`,
     "--hui-button-text-size": "0.8125rem",
   },
   "& .check-label": {
     display: "flex",
     "flex-direction": "row",
     "align-items": "center",
-    gap: "8px",
-    margin: "0px",
+    gap: space(1),
+    margin: space(0),
     "font-size": "12px",
     "font-weight": "400",
   },
-  "& .notice": { margin: "12px 0px 20px" },
+  "& .notice": { margin: `${space(1.5)} ${space(0)} ${space(2.5)}` },
   "& .notice button": { "margin-left": "12px" },
   "& .panel": { "margin-bottom": "22px" },
   "& .section-heading": {
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    gap: "16px",
+    gap: space(2),
     "margin-bottom": "20px",
   },
   "& .section-heading h2, & .section-heading .eyebrow": {
-    margin: "0px",
+    margin: space(0),
   },
   "& .section-heading > a": {
     "font-size": "12px",
@@ -139,11 +140,11 @@ export const adminCoreStyles = css({
   "& .field-grid": {
     display: "grid",
     "grid-template-columns": "1fr 1fr",
-    gap: "0px 18px",
+    gap: `${space(0)} ${space(2.25)}`,
   },
   "& .form-actions": {
     display: "flex",
-    gap: "12px",
+    gap: space(1.5),
     "margin-top": "20px",
   },
   "& .break-word": {
@@ -155,7 +156,7 @@ export const adminCoreStyles = css({
     left: "20px",
     "z-index": "100",
     background: "var(--paper)",
-    padding: "14px",
+    padding: space(1.75),
   },
   "& .skip-link:focus": {
     top: "12px",
@@ -164,7 +165,7 @@ export const adminCoreStyles = css({
     width: "232px",
     position: "fixed",
     inset: "0px auto 0px 0px",
-    padding: "30px 20px",
+    padding: `${space(3.75)} ${space(2.5)}`,
     display: "flex",
     "flex-direction": "column",
     "z-index": "10",
@@ -174,7 +175,7 @@ export const adminCoreStyles = css({
   "& .brand": {
     display: "flex",
     "align-items": "center",
-    gap: "9px",
+    gap: space(1.125),
     "font-size": "20px",
     "letter-spacing": "-0.7px",
     "font-weight": "650",
@@ -200,15 +201,15 @@ export const adminCoreStyles = css({
   "& .cms-sidebar nav": {
     display: "flex",
     "flex-direction": "column",
-    gap: "5px",
+    gap: space(0.625),
     "margin-top": "32px",
   },
   "& .cms-sidebar nav > a": {
-    padding: "10px 12px",
+    padding: `${space(1.25)} ${space(1.5)}`,
     "border-radius": "var(--radius-control)",
     display: "flex",
     "align-items": "center",
-    gap: "12px",
+    gap: space(1.5),
     color: "var(--ink)",
     "font-weight": "450",
     "white-space": "nowrap",
@@ -226,10 +227,10 @@ export const adminCoreStyles = css({
   },
   "& .sidebar-footer": {
     "margin-top": "auto",
-    padding: "32px 12px 0px",
+    padding: `${space(4)} ${space(1.5)} ${space(0)}`,
     display: "flex",
     "flex-direction": "column",
-    gap: "18px",
+    gap: space(2.25),
   },
   "& .sidebar-footer > a": {
     display: "flex",
@@ -251,14 +252,14 @@ export const adminCoreStyles = css({
   "& .workspace-bar": {
     display: "flex",
     "align-items": "center",
-    padding: "0px 44px",
+    padding: `${space(0)} ${space(5.5)}`,
     "letter-spacing": "0.1px",
     background: "var(--canvas)",
     height: "56px",
     "min-height": "56px",
     "font-size": "13px",
     border: "0px",
-    gap: "16px",
+    gap: space(2),
     "justify-content": "flex-start",
   },
   "& .workspace-bar .muted": {
@@ -268,32 +269,32 @@ export const adminCoreStyles = css({
     color: "var(--muted)",
     display: "flex",
     "align-items": "center",
-    gap: "7px",
+    gap: space(0.875),
     "font-size": "12px",
   },
   "& .workspace": {
-    padding: "44px",
+    padding: space(5.5),
     "max-width": "1400px",
     width: "100%",
-    margin: "0px auto",
+    margin: `${space(0)} auto`,
     flex: "1 1 0%",
   },
   "& .page-heading": {
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    gap: "28px",
+    gap: space(3.5),
     "margin-bottom": "24px",
   },
   "& .page-heading p:last-child": {
-    margin: "0px",
+    margin: space(0),
   },
   "& .count": {
     display: "inline-block",
     "font-size": "12px",
     background: "var(--surface)",
     color: "var(--muted)",
-    padding: "4px 9px",
+    padding: `${space(0.5)} ${space(1.125)}`,
     "border-radius": "var(--radius-control)",
     "letter-spacing": "0px",
     "vertical-align": "middle",
@@ -307,8 +308,8 @@ export const adminCoreStyles = css({
     "grid-template-columns": "1fr 210px",
     background: "var(--paper)",
     border: "0px",
-    padding: "24px",
-    gap: "24px",
+    padding: space(3),
+    gap: space(3),
     "margin-bottom": "32px",
   },
   "& .overview-feature > div": {
@@ -321,7 +322,7 @@ export const adminCoreStyles = css({
     "letter-spacing": "-0.8px",
     "max-width": "300px",
     "font-size": "23px",
-    margin: "0px 0px 16px",
+    margin: `${space(0)} ${space(0)} ${space(2)}`,
   },
   "& .overview-feature p": {
     "font-size": "13px",
@@ -337,7 +338,7 @@ export const adminCoreStyles = css({
   },
   "& .inventory": {
     display: "flex",
-    gap: "22px",
+    gap: space(2.75),
     "border-top": "1px solid var(--line)",
     width: "100%",
     color: "var(--muted)",
@@ -356,13 +357,13 @@ export const adminCoreStyles = css({
   "& .overview-columns": {
     display: "grid",
     "grid-template-columns": "1.1fr 1fr",
-    gap: "44px",
+    gap: space(5.5),
   },
   "& .simple-row": {
     display: "flex",
     "align-items": "center",
     "justify-content": "space-between",
-    padding: "15px 0px",
+    padding: `${space(1.875)} ${space(0)}`,
     "border-bottom": "1px solid var(--line)",
     "font-size": "13px",
   },
@@ -375,7 +376,7 @@ export const adminCoreStyles = css({
   },
   "& .task-row": {
     display: "block",
-    padding: "18px 0px",
+    padding: `${space(2.25)} ${space(0)}`,
     "border-bottom": "1px solid var(--line)",
     "font-size": "12px",
   },
@@ -385,11 +386,11 @@ export const adminCoreStyles = css({
   },
   "& .task-row p": {
     color: "var(--muted)",
-    margin: "6px 0px 0px",
+    margin: `${space(0.75)} ${space(0)} ${space(0)}`,
   },
   "& .search-bar": {
     display: "flex",
-    gap: "12px",
+    gap: space(1.5),
     "margin-bottom": "24px",
     "max-width": "530px",
   },
@@ -399,18 +400,18 @@ export const adminCoreStyles = css({
   "& .list-heading, & .page-row": {
     display: "grid",
     "grid-template-columns": "minmax(220px, 1fr) 90px 150px 18px",
-    gap: "24px",
+    gap: space(3),
     "align-items": "center",
   },
   "& .list-heading": {
     "font-size": "12px",
     color: "var(--muted)",
     "letter-spacing": "1px",
-    padding: "14px 18px",
+    padding: `${space(1.75)} ${space(2.25)}`,
   },
   "& .page-row": {
     "border-top": "1px solid var(--line)",
-    padding: "15px 18px",
+    padding: `${space(1.875)} ${space(2.25)}`,
     "font-size": "12px",
     transition: "background 0.15s",
   },
@@ -420,7 +421,7 @@ export const adminCoreStyles = css({
   },
   "& .page-identity": {
     display: "flex",
-    gap: "16px",
+    gap: space(2),
     "align-items": "center",
     "min-width": "0px",
   },
@@ -459,12 +460,12 @@ export const adminCoreStyles = css({
     "padding-top": "10px",
   },
   "& .empty-state": {
-    padding: "50px 20px",
+    padding: `${space(6.25)} ${space(2.5)}`,
     "text-align": "center",
     color: "var(--muted)",
   },
   "& .wide .workspace": {
-    padding: "30px 24px",
+    padding: `${space(3.75)} ${space(3)}`,
     "max-width": "none",
   },
   "& .login-layout": {
@@ -474,13 +475,13 @@ export const adminCoreStyles = css({
     "justify-content": "center",
     width: "min(100%, 420px)",
     margin: "auto",
-    padding: "32px 24px",
+    padding: `${space(4)} ${space(3)}`,
   },
   "& .login-intro": {
-    padding: "0px 0px 24px",
+    padding: `${space(0)} ${space(0)} ${space(3)}`,
   },
   "& .login-intro > p": {
-    margin: "12px 0px 0px",
+    margin: `${space(1.5)} ${space(0)} ${space(0)}`,
     color: "var(--muted)",
   },
   "& .login-panel": {
@@ -496,7 +497,7 @@ export const adminCoreStyles = css({
   },
   "& .login-panel .button": {
     width: "100%",
-    margin: "4px 0px 20px",
+    margin: `${space(0.5)} ${space(0)} ${space(2.5)}`,
   },
   "& .login-panel form > a": {
     "font-size": "13px",
@@ -520,26 +521,26 @@ export const adminCoreStyles = css({
   "@media (max-width: 1200px)": {
     "& .cms-sidebar": {
       width: "200px",
-      padding: "25px 14px",
+      padding: `${space(3.125)} ${space(1.75)}`,
     },
     "& .cms-main": {
       "margin-left": "200px",
     },
     "& .workspace": {
-      padding: "30px",
+      padding: space(3.75),
     },
     "& .workspace-bar": {
-      padding: "0px 30px",
+      padding: `${space(0)} ${space(3.75)}`,
     },
     "& .overview-feature": {
-      gap: "20px",
-      padding: "24px",
+      gap: space(2.5),
+      padding: space(3),
     },
     "& .overview-feature > img": {
       height: "260px",
     },
     "& .list-heading, & .page-row": {
-      gap: "14px",
+      gap: space(1.75),
       "grid-template-columns": "minmax(180px, 1fr) 70px 135px 10px",
     },
   },
@@ -549,7 +550,7 @@ export const adminCoreStyles = css({
       width: "100%",
       "border-right": "0px",
       "border-bottom": "1px solid var(--line)",
-      padding: "16px 20px",
+      padding: `${space(2)} ${space(2.5)}`,
     },
     "& .brand": {
       "font-size": "19px",
@@ -562,26 +563,26 @@ export const adminCoreStyles = css({
     "& .cms-sidebar nav": {
       "flex-direction": "row",
       "overflow-x": "auto",
-      gap: "4px",
+      gap: space(0.5),
       "margin-top": "16px",
     },
     "& .cms-sidebar nav > a": {
-      padding: "8px 12px",
+      padding: `${space(1)} ${space(1.5)}`,
       "font-size": "13px",
     },
     "& .cms-main": {
-      margin: "0px",
+      margin: space(0),
     },
     "& .workspace-bar": {
       height: "48px",
       "min-height": "48px",
-      padding: "0px 20px",
+      padding: `${space(0)} ${space(2.5)}`,
     },
     "& .workspace-status": {
       display: "none",
     },
     "& .workspace, & .wide .workspace": {
-      padding: "26px 20px",
+      padding: `${space(3.25)} ${space(2.5)}`,
     },
     "& .page-heading": {
       "align-items": "flex-start",
@@ -592,7 +593,7 @@ export const adminCoreStyles = css({
     },
     "& .page-heading > .button": {
       "font-size": "12px",
-      padding: "8px 11px",
+      padding: `${space(1)} ${space(1.375)}`,
     },
     "& .overview-feature > img": {
       height: "180px",
@@ -601,12 +602,12 @@ export const adminCoreStyles = css({
       "font-size": "24px",
     },
     "& .overview-columns": {
-      gap: "28px",
+      gap: space(3.5),
     },
     "& .list-heading, & .page-row": {
       "grid-template-columns": "minmax(160px, 1fr) 60px 100px",
-      gap: "12px",
-      padding: "12px 6px",
+      gap: space(1.5),
+      padding: `${space(1.5)} ${space(0.75)}`,
     },
     "& .row-arrow": {
       display: "none",
@@ -615,7 +616,7 @@ export const adminCoreStyles = css({
       "font-size": "12px",
     },
     "& .page-identity": {
-      gap: "10px",
+      gap: space(1.25),
     },
     "& .page-identity img, & .page-monogram": {
       width: "38px",
@@ -631,7 +632,7 @@ export const adminCoreStyles = css({
       display: "flex",
       "flex-direction": "row",
       "margin-top": "12px",
-      padding: "8px 0px 0px",
+      padding: `${space(1)} ${space(0)} ${space(0)}`,
       "justify-content": "space-between",
     },
   },
@@ -641,11 +642,11 @@ export const adminCoreStyles = css({
       "letter-spacing": "-1px",
     },
     "& .page-heading": {
-      gap: "12px",
+      gap: space(1.5),
       "flex-wrap": "wrap",
     },
     "& .overview-feature": {
-      padding: "22px",
+      padding: space(2.75),
       "grid-template-columns": "1fr",
     },
     "& .overview-feature > img": {
@@ -671,18 +672,18 @@ export const adminCoreStyles = css({
       "grid-template-columns": "1fr",
     },
     "& .panel": {
-      padding: "18px",
+      padding: space(2.25),
     },
     "& .inventory": {
-      gap: "18px",
+      gap: space(2.25),
     },
     "& .wide .workspace": {
       "padding-left": "16px",
       "padding-right": "16px",
     },
     "& .workspace-bar": {
-      padding: "10px 16px",
-      gap: "10px",
+      padding: `${space(1.25)} ${space(2)}`,
+      gap: space(1.25),
       height: "auto",
     },
   },

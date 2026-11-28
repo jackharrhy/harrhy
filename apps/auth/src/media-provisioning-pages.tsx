@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import {
   isJellyfinCreation,
   type Creation,
@@ -8,7 +9,7 @@ import { renderToString } from "remix/component/server";
 import { Document, type DocumentProps } from "./document.tsx";
 
 const receiptDetailsStyles = css({
-  marginBlock: "24px",
+  marginBlock: space(3),
   maxWidth: "70ch",
 });
 

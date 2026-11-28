@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { Button } from "@harrhy/ui/native";
 import { displayStyles } from "@harrhy/ui/theme";
 import { css, type Handle } from "remix/component";
@@ -14,11 +15,11 @@ const headerStyle = css({
   borderBottom: `1px solid ${theme.color.borderLight}`,
   display: "flex",
   minHeight: "3rem",
-  gap: "0.75rem",
+  gap: space(1.5),
   flexWrap: "wrap",
-  paddingBlock: "0.5rem",
+  paddingBlock: space(1),
   justifyContent: "space-between",
-  paddingInline: "1rem",
+  paddingInline: space(2),
   position: "sticky",
   top: 0,
   zIndex: 100,
@@ -33,14 +34,14 @@ const navStyle = css({
   alignItems: "center",
   display: "flex",
   flexWrap: "wrap",
-  gap: "1rem",
-  "@media (max-width: 640px)": { gap: "0.5rem" },
+  gap: space(2),
+  "@media (max-width: 640px)": { gap: space(1) },
 });
 const adminLinkStyle = css({
   "&": {
     color: theme.color.background,
     textDecoration: "none",
-    padding: "0.35rem 0.5rem",
+    padding: `${space(0.7)} ${space(1)}`,
   },
   "&:hover": { color: theme.color.background, background: "#333" },
   "&:focus-visible": {
@@ -60,16 +61,16 @@ const supportBannerStyle = css({
   color: "#302000",
   display: "flex",
   flexWrap: "wrap",
-  gap: "0.75rem",
+  gap: space(1.5),
   justifyContent: "space-between",
-  padding: "0.65rem 1rem",
+  padding: `${space(1.3)} ${space(2)}`,
 });
 const supportExitStyle = css({
   backgroundColor: "#302000",
   border: 0,
   color: "#fff",
   cursor: "pointer",
-  padding: "0.35rem 0.7rem",
+  padding: `${space(0.7)} ${space(1.4)}`,
 });
 
 export interface HeaderProps {

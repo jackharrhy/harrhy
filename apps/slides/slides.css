@@ -104,10 +104,10 @@ pre:not(.garfield-code) span:first-child {
   position: fixed;
   inset-block-start: 0;
   inset-inline-end: 0;
-  padding: 0.75rem;
+  padding: calc(var(--hui-space-unit, 0.5rem) * 1.5);
   z-index: 3;
   display: flex;
-  gap: 0.5rem;
+  gap: calc(var(--hui-space-unit, 0.5rem) * 1);
 }
 #open-clicker {
   display: none;
@@ -136,7 +136,7 @@ pre:not(.garfield-code) span:first-child {
   width: min(calc(100% - 2rem), 32rem);
   border: 1px solid var(--hui-border);
   border-radius: 1rem;
-  padding: 1rem;
+  padding: calc(var(--hui-space-unit, 0.5rem) * 2);
   color: var(--hui-ink);
   background: var(--hui-surface);
 }
@@ -150,8 +150,8 @@ pre:not(.garfield-code) span:first-child {
 .clicker-arrows {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.75rem;
-  margin-block: 1rem;
+  gap: calc(var(--hui-space-unit, 0.5rem) * 1.5);
+  margin-block: calc(var(--hui-space-unit, 0.5rem) * 2);
 }
 #clicker .clicker-arrows button {
   min-height: max(6rem, 20svh);

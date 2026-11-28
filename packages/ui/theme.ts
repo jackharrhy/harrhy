@@ -1,6 +1,7 @@
 import { createTheme } from "@pitlane/theme";
 import * as s from "@pitlane/theme/schema";
 import { css } from "remix/component";
+import { defaultSpaceUnit, space } from "./spacing.ts";
 
 /** Semantic values and part recipes. Surfaces and images are deliberately separate. */
 export interface ThemeTokens {
@@ -60,6 +61,7 @@ export interface ThemeTokens {
   textSize: string;
   lineHeight: string;
   space: string;
+  spaceUnit?: string;
   controlHeight: string;
   controlPadding: string;
   controlRadius: string;
@@ -95,15 +97,15 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   tableStripe: "transparent",
   tableTextSize: "0.875rem",
   tableHeaderTextSize: "inherit",
-  tableCellPadding: "0.625rem 0.75rem",
+  tableCellPadding: `${space(1.25)} ${space(1.5)}`,
   tableColumnBorder: "0 solid transparent",
   tableHeader: "var(--hui-surface)",
   tableHeaderImage: "none",
   tableHeaderShadow: "none",
   popupRadius: "0.625rem",
-  popupPadding: "0.375rem",
+  popupPadding: space(0.75),
   optionRadius: "0.375rem",
-  optionGap: "0.125rem",
+  optionGap: space(0.25),
   buttonBorder: "var(--hui-control-border)",
   buttonPrimaryBorder: "var(--hui-button-border)",
   buttonHeight: "var(--hui-control-height)",
@@ -114,7 +116,7 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   labelWeight: "600",
   labelTransform: "none",
   labelTracking: "normal",
-  fieldGap: "0.5rem",
+  fieldGap: space(1),
   accent: "#243f4d",
   onAccent: "#ffffff",
   focus: "#006c9c",
@@ -131,13 +133,13 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   fontDisplayOpticalSizing: "auto",
   textSize: "1rem",
   lineHeight: "1.5",
-  space: "0.75rem",
+  space: space(1.5),
   controlHeight: "2.25rem",
-  controlPadding: "0.375rem 0.625rem",
+  controlPadding: `${space(0.75)} ${space(1.25)}`,
   controlRadius: "0.375rem",
   borderWidth: "1px",
   panelRadius: "0.5rem",
-  panelPadding: "1rem",
+  panelPadding: space(2),
   panelImage: "none",
   buttonImage: "none",
   buttonShadow: "none",
@@ -235,6 +237,7 @@ const contract = {
   textSize: ["textSize", s.dimension()],
   lineHeight: ["lineHeight", s.any()],
   space: ["space", s.dimension()],
+  spaceUnit: ["spaceUnit", s.dimension()],
   borderWidth: ["borderWidth", s.dimension()],
   panel: {
     radius: ["panelRadius", s.dimension()],
@@ -251,7 +254,9 @@ type Schema<C> = {
   [K in keyof C]: C[K] extends Leaf ? C[K][1] : Schema<C[K]>;
 };
 type Values<C> = {
-  [K in keyof C]: C[K] extends Leaf ? ThemeTokens[C[K][0]] : Values<C[K]>;
+  [K in keyof C]: C[K] extends Leaf
+    ? Required<ThemeTokens>[C[K][0]]
+    : Values<C[K]>;
 };
 type Patch<C> = {
   [K in keyof C]?: C[K] extends Leaf ? ThemeTokens[C[K][0]] : Patch<C[K]>;
@@ -275,7 +280,9 @@ const schema = mapContract(contract, ([, validator]) => validator) as Schema<
 >;
 
 function toValues(theme: Readonly<ThemeTokens>) {
-  return mapContract(contract, ([key]) => theme[key]) as Values<
+  const { spaceUnit = defaultSpaceUnit } = theme;
+  const values = { ...theme, spaceUnit };
+  return mapContract(contract, ([key]) => values[key]) as Values<
     typeof contract
   >;
 }
@@ -287,6 +294,8 @@ const base = createTheme({
 
 /** Nested references shared by all Harrhy presets. */
 export const tokens = base.token.hui;
+
+export { space };
 
 /** Extend a preset with a nested patch. References stay live in CSS. */
 export function extendTheme(
@@ -354,9 +363,9 @@ export const graphiteTheme = extendTheme(cleanTheme, {
 export const densityOverrides = {
   standard: {},
   compact: {
-    space: "0.5rem",
-    fieldGap: "0.375rem",
-    tableCellPadding: "0.375rem 0.625rem",
+    space: space(1),
+    fieldGap: space(0.75),
+    tableCellPadding: `${space(0.75)} ${space(1.25)}`,
   },
 } as const satisfies Record<string, Partial<ThemeTokens>>;
 
@@ -367,7 +376,7 @@ export const dialTheme = extendTheme(cleanTheme, {
     surface: "#f8fbfb",
     stripe: "#edf2f4",
     textSize: "0.8125rem",
-    cellPadding: "0.4375rem 0.625rem",
+    cellPadding: `${space(0.875)} ${space(1.25)}`,
     columnBorder: "1px solid #dce4e7",
     header: "#dce4e7",
     headerImage: "linear-gradient(#f8fbfb, #dce4e7)",
@@ -390,7 +399,7 @@ export const dialTheme = extendTheme(cleanTheme, {
   disabledSurface: "#e7efed",
   popup: {
     radius: "0.3125rem",
-    padding: "0.1875rem",
+    padding: space(0.375),
   },
   option: {
     radius: "0.125rem",
@@ -423,7 +432,7 @@ export const brutalistTheme = extendTheme(cleanTheme, {
   control: {
     border: "#888888",
     height: "2.125rem",
-    padding: "0.4375rem 0.625rem",
+    padding: `${space(0.875)} ${space(1.25)}`,
     textSize: "0.875rem",
     radius: "0",
   },
@@ -433,7 +442,7 @@ export const brutalistTheme = extendTheme(cleanTheme, {
   disabledSurface: "#f0f0f0",
   popup: {
     radius: "0",
-    padding: "0.25rem",
+    padding: space(0.5),
   },
   option: {
     radius: "0",
@@ -442,7 +451,7 @@ export const brutalistTheme = extendTheme(cleanTheme, {
     border: "#222222",
     primaryBorder: "#111111",
     height: "2rem",
-    padding: "0.375rem 0.75rem",
+    padding: `${space(0.75)} ${space(1.5)}`,
     textSize: "0.875rem",
     weight: "400",
     shadow: "none",
@@ -463,7 +472,7 @@ export const brutalistTheme = extendTheme(cleanTheme, {
     displayOpticalSizing: "auto",
   },
   lineHeight: "1.45",
-  space: "0.625rem",
+  space: space(1.25),
   label: {
     size: "0.75rem",
     weight: "500",
@@ -471,11 +480,11 @@ export const brutalistTheme = extendTheme(cleanTheme, {
     tracking: "0.025em",
   },
   field: {
-    gap: "0.375rem",
+    gap: space(0.75),
   },
   panel: {
     radius: "0",
-    padding: "1rem",
+    padding: space(2),
   },
   borderWidth: "1px",
   overlayShadow: "none",
@@ -538,14 +547,14 @@ export const sluggersTheme: Readonly<ThemeTokens> = extendTheme(cleanTheme, {
     radius: "0.75rem",
   },
   table: {
-    cellPadding: "0.625rem 0.75rem",
+    cellPadding: `${space(1.25)} ${space(1.5)}`,
     header: "#3b64a8",
     surface: "#3b64a8",
     containerSurface: "transparent",
     textSize: "0.875rem",
     headerTextSize: "0.75rem",
   },
-  space: "0.625rem",
+  space: space(1.25),
 });
 
 const displayTypography = {

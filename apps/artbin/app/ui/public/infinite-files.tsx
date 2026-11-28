@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { ButtonLink } from "@harrhy/ui/native";
 import { clientEntry, css, on, ref, type Handle } from "remix/component";
 import { FileCollection, type FileItem } from "../file-collection.tsx";
@@ -92,7 +93,7 @@ export const InfiniteFiles = clientEntry(
               key={`${nextHref}-${Boolean(request)}-${error}`}
               mix={[
                 css({
-                  padding: "2rem",
+                  padding: space(4),
                   textAlign: "center",
                   color: theme.color.muted,
                 }),

@@ -1,3 +1,4 @@
+import { space } from "./spacing.ts";
 import { css, type Handle, type Props } from "remix/component";
 import * as accordion from "@remix-run/ui/accordion";
 import * as menu from "@remix-run/ui/menu";
@@ -61,7 +62,7 @@ const accordionTriggerStyles = css({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "0.75rem",
+  gap: space(1.5),
   width: "100%",
   textAlign: "start",
   font: "inherit",
@@ -206,8 +207,8 @@ const menuItemStyles = css({
   display: "flex",
   alignItems: "center",
   justifyContent: "space-between",
-  gap: "0.75rem",
-  padding: "0.5rem 0.75rem",
+  gap: space(1.5),
+  padding: `${space(1)} ${space(1.5)}`,
   minHeight: "2.5rem",
   cursor: "default",
   borderRadius: "var(--hui-option-radius)",

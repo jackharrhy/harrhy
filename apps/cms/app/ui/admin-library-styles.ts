@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const adminLibraryStyles = css({
@@ -9,7 +10,7 @@ export const adminLibraryStyles = css({
   "& .picker-grid": {
     display: "grid",
     "grid-template-columns": "repeat(4, minmax(0px, 1fr))",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& .picker-image": {
     display: "flex",
@@ -17,7 +18,7 @@ export const adminLibraryStyles = css({
     "text-align": "left",
     border: "1px solid var(--line)",
     "border-radius": "var(--radius-control)",
-    padding: "8px",
+    padding: space(1),
     background: "var(--paper)",
     "min-width": "0px",
   },
@@ -39,11 +40,11 @@ export const adminLibraryStyles = css({
   },
   "& .media-dialog > p": {
     "font-size": "12px",
-    margin: "18px 0px 0px",
+    margin: `${space(2.25)} ${space(0)} ${space(0)}`,
   },
   "& .upload-button": {
     position: "relative",
-    margin: "0px",
+    margin: space(0),
     overflow: "hidden",
   },
   "& .upload-button input": {
@@ -54,7 +55,7 @@ export const adminLibraryStyles = css({
   },
   "& .media-tools": {
     display: "flex",
-    gap: "16px",
+    gap: space(2),
     "margin-bottom": "26px",
   },
   "& .media-tools input": {
@@ -66,18 +67,18 @@ export const adminLibraryStyles = css({
   "& .media-workspace": {
     display: "grid",
     "grid-template-columns": "minmax(0px, 1fr) 280px",
-    gap: "28px",
+    gap: space(3.5),
     "align-items": "start",
   },
   "& .media-grid": {
     display: "grid",
     "grid-template-columns": "repeat(3, minmax(0px, 1fr))",
-    gap: "16px",
+    gap: space(2),
     "min-height": "300px",
   },
   "& .media-tile": {
     "text-align": "left",
-    padding: "0px",
+    padding: space(0),
     background: "var(--paper)",
     border: "1px solid var(--line)",
     "border-radius": "var(--radius)",
@@ -98,11 +99,11 @@ export const adminLibraryStyles = css({
     width: "100%",
     background:
       "repeating-conic-gradient(\n      var(--surface) 0% 25%,\n      var(--paper) 0% 50%\n    )\n    50%/16px 16px",
-    padding: "12px",
+    padding: space(1.5),
   },
   "& .media-tile > span": {
     display: "block",
-    padding: "12px",
+    padding: space(1.5),
   },
   "& .media-tile strong": {
     display: "block",
@@ -129,22 +130,22 @@ export const adminLibraryStyles = css({
     top: "24px",
     display: "flex",
     "flex-direction": "column",
-    gap: "16px",
+    gap: space(2),
     border: "1px solid var(--line)",
     "border-radius": "var(--radius)",
     "font-size": "12px",
-    padding: "16px",
+    padding: space(2),
     background: "var(--paper)",
   },
   "& .media-inspector .section-heading, & .media-inspector label, & .media-inspector p":
     {
-      margin: "0px",
+      margin: space(0),
     },
   "& .media-inspector h2": {
     "font-size": "17px",
   },
   "& .media-inspector h3": {
-    margin: "10px 0px -8px",
+    margin: `${space(1.25)} ${space(0)} ${space(-1)}`,
   },
   "& .media-inspector > a": {
     "font-size": "12px",
@@ -157,11 +158,11 @@ export const adminLibraryStyles = css({
     "border-radius": "var(--radius-control)",
   },
   "& .inspector-empty": {
-    padding: "16px 0px",
+    padding: `${space(2)} ${space(0)}`,
   },
   "& .inspector-empty h2": {
     "font-size": "22px",
-    margin: "20px 0px 12px",
+    margin: `${space(2.5)} ${space(0)} ${space(1.5)}`,
   },
   "& .inspector-empty p": {
     "margin-bottom": "16px",
@@ -169,7 +170,7 @@ export const adminLibraryStyles = css({
   "& .settings-columns": {
     display: "grid",
     "grid-template-columns": "minmax(0px, 1fr) 260px",
-    gap: "36px",
+    gap: space(4.5),
     "align-items": "start",
   },
   "& .help-panel": {
@@ -198,22 +199,22 @@ export const adminLibraryStyles = css({
   "& .navigation-item": {
     display: "grid",
     "grid-template-columns": "1fr 1fr auto",
-    gap: "10px",
+    gap: space(1.25),
     "align-items": "center",
     "margin-bottom": "10px",
   },
   "& .navigation-item label": {
     "font-size": "12px",
-    margin: "0px",
+    margin: space(0),
   },
   "& .navigation-item input, & .navigation-item [aria-haspopup=listbox]": {
     "font-size": "12px",
   },
   "& .category-art": {
     display: "flex",
-    gap: "12px",
+    gap: space(1.5),
     "align-items": "center",
-    margin: "0px 0px 20px",
+    margin: `${space(0)} ${space(0)} ${space(2.5)}`,
   },
   "& .category-art img": {
     width: "70px",
@@ -229,14 +230,14 @@ export const adminLibraryStyles = css({
   "& .adornment-grid": {
     display: "grid",
     "grid-template-columns": "repeat(4, minmax(0px, 1fr))",
-    gap: "18px",
+    gap: space(2.25),
   },
   "& .adornment-tile": {
     border: "1px solid var(--line)",
     "border-radius": "var(--radius)",
     background: "var(--paper)",
     overflow: "hidden",
-    padding: "0px",
+    padding: space(0),
     "text-align": "left",
   },
   "& .adornment-tile > div": {
@@ -245,7 +246,7 @@ export const adminLibraryStyles = css({
     display: "flex",
     "align-items": "center",
     "justify-content": "center",
-    padding: "28px",
+    padding: space(3.5),
   },
   "& .adornment-tile img": {
     "max-height": "100px",
@@ -255,21 +256,21 @@ export const adminLibraryStyles = css({
     "font-weight": "550",
     "font-size": "12px",
     display: "block",
-    padding: "14px 16px",
+    padding: `${space(1.75)} ${space(2)}`,
   },
   "& .adornment-tile:hover:not(:disabled)": {
     "box-shadow": "inset 0 0 0 1px var(--accent)",
   },
   "& .color-field": {
     display: "flex",
-    gap: "12px",
+    gap: space(1.5),
   },
   '& .color-field input[type="color"]': {
     height: "44px",
     width: "60px",
     border: "1px solid var(--line)",
     background: "var(--paper)",
-    padding: "4px",
+    padding: space(0.5),
     "border-radius": "var(--radius-control)",
   },
   "& .color-preview": {
@@ -283,10 +284,10 @@ export const adminLibraryStyles = css({
   },
   "& .seo-list": {
     display: "grid",
-    gap: "12px",
+    gap: space(1.5),
   },
   "& .seo-row": {
-    padding: "20px",
+    padding: space(2.5),
     background: "var(--surface)",
     "border-radius": "8px",
     "min-width": "0",
@@ -295,7 +296,7 @@ export const adminLibraryStyles = css({
     display: "flex",
     "align-items": "center",
     "flex-wrap": "wrap",
-    gap: "10px",
+    gap: space(1.25),
     "margin-bottom": "16px",
   },
   "& .seo-row-heading h2": {
@@ -309,7 +310,7 @@ export const adminLibraryStyles = css({
   "& .seo-preview": {
     display: "grid",
     "grid-template-columns": "minmax(0, 1fr)",
-    gap: "20px",
+    gap: space(2.5),
   },
   "& .seo-preview:has(.seo-thumbnail)": {
     "grid-template-columns": "minmax(0, 1fr) 112px",
@@ -317,7 +318,7 @@ export const adminLibraryStyles = css({
   "& .seo-preview h3": {
     "font-size": "19px",
     color: "var(--accent)",
-    margin: "6px 0",
+    margin: `${space(0.75)} 0`,
     "overflow-wrap": "anywhere",
   },
   "& .seo-preview p": {
@@ -342,9 +343,9 @@ export const adminLibraryStyles = css({
   "& .seo-checks": {
     display: "flex",
     "flex-wrap": "wrap",
-    gap: "6px 18px",
+    gap: `${space(0.75)} ${space(2.25)}`,
     padding: "0",
-    margin: "12px 0 0",
+    margin: `${space(1.5)} 0 0`,
     "list-style": "none",
     "font-size": "12px",
   },
@@ -355,12 +356,12 @@ export const adminLibraryStyles = css({
     display: "flex",
     "justify-content": "space-between",
     "align-items": "start",
-    gap: "20px",
+    gap: space(2.5),
     "margin-bottom": "24px",
     "font-size": "13px",
   },
   "& .seo-defaults p": {
-    margin: "6px 0",
+    margin: `${space(0.75)} 0`,
     "overflow-wrap": "anywhere",
   },
   "& .seo-defaults small": {
@@ -372,10 +373,10 @@ export const adminLibraryStyles = css({
   "& .seo-filters": {
     display: "flex",
     "flex-wrap": "wrap",
-    gap: "8px",
+    gap: space(1),
   },
   "& .seo-filters a": {
-    padding: "8px 10px",
+    padding: `${space(1)} ${space(1.25)}`,
     "border-radius": "4px",
     "font-size": "12px",
   },
@@ -389,7 +390,7 @@ export const adminLibraryStyles = css({
   },
   "& .seo-help": {
     "font-size": "12px",
-    margin: "14px 0",
+    margin: `${space(1.75)} 0`,
   },
   "& .seo-draft": {
     "margin-top": "16px",
@@ -401,7 +402,7 @@ export const adminLibraryStyles = css({
   "& .seo-footer": {
     display: "flex",
     "flex-wrap": "wrap",
-    gap: "16px",
+    gap: space(2),
     "margin-top": "24px",
     "font-size": "12px",
     color: "var(--muted)",
@@ -413,18 +414,18 @@ export const adminLibraryStyles = css({
   "& .color-preview > span": {
     background: "var(--paper)",
     color: "var(--ink)",
-    padding: "4px 8px",
+    padding: `${space(0.5)} ${space(1)}`,
     "border-radius": "var(--radius-control)",
   },
   "& .adornment-suite": {
     width: "min(1100px, -32px + 100vw)",
     "max-height": "calc(100dvh - 32px)",
-    padding: "24px",
+    padding: space(3),
   },
   "& .suite-layout": {
     display: "grid",
     "grid-template-columns": "minmax(0px, 1.8fr) minmax(220px, 1fr)",
-    gap: "24px",
+    gap: space(3),
     "align-items": "start",
   },
   "& .suite-layout .field-grid": {
@@ -434,18 +435,18 @@ export const adminLibraryStyles = css({
     position: "sticky",
     bottom: "-24px",
     background: "var(--paper)",
-    padding: "12px 0px",
+    padding: `${space(1.5)} ${space(0)}`,
     "margin-bottom": "0px",
   },
   "& .advanced-placement": {
-    margin: "16px 0px",
+    margin: `${space(2)} ${space(0)}`,
   },
   "& .advanced-placement .field-grid": {
     "grid-template-columns": "1fr 1fr",
   },
   "& .media-workspace.with-folders": {
     "grid-template-columns": "175px minmax(0px, 1fr) 260px",
-    gap: "20px",
+    gap: space(2.5),
   },
   "& .media-content": {
     "min-width": "0px",
@@ -461,10 +462,10 @@ export const adminLibraryStyles = css({
     "margin-bottom": "10px",
   },
   "& .folder-nav h3": {
-    margin: "16px 0px 8px",
+    margin: `${space(2)} ${space(0)} ${space(1)}`,
   },
   "& .folder-nav .section-heading": {
-    gap: "4px",
+    gap: space(0.5),
     "flex-wrap": "wrap",
     "margin-bottom": "4px",
   },
@@ -479,7 +480,7 @@ export const adminLibraryStyles = css({
     background: "none",
     color: "var(--muted)",
     "border-radius": "4px",
-    padding: "7px 10px",
+    padding: `${space(0.875)} ${space(1.25)}`,
     "overflow-wrap": "anywhere",
   },
   "& .folder-link:hover, & .folder-link.active": {
@@ -498,7 +499,7 @@ export const adminLibraryStyles = css({
   "& .folder-children": {
     display: "flex",
     "flex-wrap": "wrap",
-    gap: "6px",
+    gap: space(0.75),
     "margin-bottom": "12px",
   },
   "& .navigation-toggle": {
@@ -552,7 +553,7 @@ export const adminLibraryStyles = css({
       "grid-template-columns": "1fr",
     },
     "& .adornment-suite": {
-      padding: "16px",
+      padding: space(2),
     },
     "& .media-workspace.with-folders": {
       "grid-template-columns": "1fr",
@@ -561,7 +562,7 @@ export const adminLibraryStyles = css({
       display: "flex",
       "flex-wrap": "wrap",
       "align-items": "center",
-      gap: "4px",
+      gap: space(0.5),
     },
     "& .folder-nav > h2": {
       display: "none",
@@ -576,27 +577,27 @@ export const adminLibraryStyles = css({
       width: "auto",
     },
     "& .folder-nav h3": {
-      margin: "0px",
+      margin: space(0),
     },
   },
   "@media (max-width: 540px)": {
     "& .media-tools": {
       "flex-direction": "column",
-      gap: "10px",
+      gap: space(1.25),
     },
     "& .media-tools [aria-haspopup=listbox]": {
       "max-width": "100%",
     },
     "& .media-grid": {
       "grid-template-columns": "repeat(2, minmax(0px, 1fr))",
-      gap: "12px",
+      gap: space(1.5),
     },
     "& .media-tile > img, & .file-preview": {
       height: "150px",
     },
     "& .adornment-grid": {
       "grid-template-columns": "repeat(2, minmax(0px, 1fr))",
-      gap: "12px",
+      gap: space(1.5),
     },
     "& .adornment-tile > div": {
       height: "120px",
@@ -606,11 +607,11 @@ export const adminLibraryStyles = css({
     },
     "& .seo-preview:has(.seo-thumbnail)": {
       "grid-template-columns": "1fr",
-      gap: "12px",
+      gap: space(1.5),
     },
     "& .seo-defaults": {
       "flex-direction": "column",
-      gap: "10px",
+      gap: space(1.25),
     },
     "& .seo-row-heading a": {
       "flex-basis": "100%",

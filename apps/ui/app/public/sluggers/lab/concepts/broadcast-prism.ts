@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
 import { originalBlue, originalSteel } from "../original.ts";
@@ -20,7 +21,7 @@ export const broadcastPrism: LabConcept = {
     fontDisplay: "SluggersRodin, Arial, sans-serif",
     panelRadius: "1rem",
     controlRadius: "0.625rem",
-    tableCellPadding: "0.5625rem 0.75rem",
+    tableCellPadding: `${space(1.125)} ${space(1.5)}`,
   }),
   parts: {
     ...dugoutFrost.parts,
@@ -35,17 +36,20 @@ export const broadcastPrism: LabConcept = {
   },
   recipe: css({
     "& [data-lab-panel]": glassEdges,
-    "& [data-panel-title]": { fontSize: "1.25rem", padding: "0.75rem 1rem" },
+    "& [data-panel-title]": {
+      fontSize: "1.25rem",
+      padding: `${space(1.5)} ${space(2)}`,
+    },
     "& [data-match]": {
-      padding: "0.75rem",
+      padding: space(1.5),
       background: `linear-gradient(135deg, ${originalBlue[600]}52, ${originalBlue[800]}66)`,
     },
-    "& [data-match-meta]": { marginBottom: "0.5rem" },
+    "& [data-match-meta]": { marginBottom: space(1) },
     "& [data-roster-card]": {
       background: `${originalBlue[700]}66`,
       borderRadius: "0.625rem",
-      padding: "0.625rem",
-      gap: "0.25rem",
+      padding: space(1.25),
+      gap: space(0.5),
     },
     "@media (min-width: 62.5625rem)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {

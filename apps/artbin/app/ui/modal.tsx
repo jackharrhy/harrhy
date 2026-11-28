@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, on, type Handle, type RemixNode } from "remix/component";
 import { Dialog } from "@harrhy/ui/interactive";
 
@@ -10,8 +11,8 @@ const closeStyle = css({
 });
 const footerStyle = css({
   borderTop: "1px solid var(--hui-border)",
-  marginTop: "1rem",
-  paddingTop: "1rem",
+  marginTop: space(2),
+  paddingTop: space(2),
 });
 
 export function ModalFrame(
@@ -44,7 +45,7 @@ export function ModalFrame(
         title={title}
         onClose={() => onDismiss?.()}
         mix={[
-          css({ position: "relative", "& > h2": { paddingRight: "2.5rem" } }),
+          css({ position: "relative", "& > h2": { paddingRight: space(5) } }),
           on("click", (event) => {
             if (event.target !== event.currentTarget) return;
             const bounds = event.currentTarget.getBoundingClientRect();

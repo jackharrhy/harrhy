@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, type Handle } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { uiPrimaryActionStyles } from "@harrhy/ui";
@@ -23,14 +24,14 @@ type Review = {
   };
 };
 const reviewFormStyles = css({
-  marginTop: "24px",
-  marginBottom: "32px",
+  marginTop: space(3),
+  marginBottom: space(4),
   "& label.confirmation": {
     display: "flex",
     alignItems: "flex-start",
-    gap: "12px",
+    gap: space(1.5),
   },
-  "& label.confirmation input": { flexShrink: 0, marginTop: "3px" },
+  "& label.confirmation input": { flexShrink: 0, marginTop: space(0.375) },
 });
 const states: Record<string, string> = {
   review: "Awaiting creation review",

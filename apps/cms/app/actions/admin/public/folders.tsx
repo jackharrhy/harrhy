@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { restoreDialogFocus } from "./dialog-focus.ts";
 import { Notice, Button, Input, Textarea } from "@harrhy/ui/native";
 import { CmsSelect } from "./cms-select.tsx";
@@ -107,7 +108,7 @@ export function Folders(
           initialFocus="input"
           mix={[
             focusReturn,
-            css({ width: "min(440px, calc(100vw - 24px))", padding: "24px" }),
+            css({ width: "min(440px, calc(100vw - 24px))", padding: space(3) }),
           ]}
           onClose={() => {
             if (!busy) {

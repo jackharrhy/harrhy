@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
 import { css } from "remix/component";
@@ -26,13 +27,13 @@ import { CliPage } from "./cli-page.tsx";
 const loginPageStyle = css({
   backgroundColor: theme.color.background,
   border: `1px solid ${theme.color.border}`,
-  margin: "4rem auto 0",
+  margin: `${space(8)} auto 0`,
   maxWidth: "360px",
-  padding: "2rem",
+  padding: space(4),
 });
 const loginTitleStyle = css({
   fontSize: "2.75rem",
-  margin: "0 0 2rem",
+  margin: `0 0 ${space(4)}`,
   textAlign: "center",
 });
 

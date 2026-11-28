@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { composeTheme } from "@harrhy/ui/theme";
 import { originalBlue, originalSteel } from "../original.ts";
@@ -17,7 +18,7 @@ export const frostRibbon: LabConcept = {
   tokens: composeTheme(broadcastPrism.tokens, {
     panelRadius: "1.25rem",
     controlRadius: "1rem",
-    tableCellPadding: "0.5rem 0.75rem",
+    tableCellPadding: `${space(1)} ${space(1.5)}`,
   }),
   parts: {
     ...broadcastPrism.parts,
@@ -30,22 +31,22 @@ export const frostRibbon: LabConcept = {
     contentColumns: "minmax(0,1fr)",
   },
   recipe: css({
-    "& [data-lab-main]": { maxWidth: "67.5rem", gap: "1rem" },
+    "& [data-lab-main]": { maxWidth: "67.5rem", gap: space(2) },
     "& [data-lab-panel]": glassEdges,
     "& [data-panel-title]": {
       fontSize: "1.25rem",
-      padding: "0.625rem 0.875rem",
+      padding: `${space(1.25)} ${space(1.75)}`,
     },
     "& [data-match]": {
-      padding: "0.625rem 0.75rem",
+      padding: `${space(1.25)} ${space(1.5)}`,
       background: `${originalBlue[700]}59`,
     },
-    "& [data-match-meta]": { marginBottom: "0.375rem" },
+    "& [data-match-meta]": { marginBottom: space(0.75) },
     "& [data-roster-card]": {
       background: `${originalBlue[700]}66`,
       borderRadius: "0.875rem",
-      padding: "0.625rem 0.5rem",
-      gap: "0.1875rem",
+      padding: `${space(1.25)} ${space(1)}`,
+      gap: space(0.375),
     },
     "@media (min-width: 62.5625rem)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {

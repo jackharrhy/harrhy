@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 import { renderToString } from "remix/component/server";
 import {
@@ -15,16 +16,16 @@ import { kinds, type DraftView } from "./deck.ts";
 const surface = css({
   maxWidth: "56rem",
   margin: "0 auto",
-  padding: "1.5rem",
+  padding: space(3),
   fontFamily: "var(--hui-font-ui)",
   "& form": {
     display: "flex",
     flexWrap: "wrap",
     alignItems: "end",
-    gap: ".75rem",
-    marginBlock: "1rem",
+    gap: space(1.5),
+    marginBlock: space(2),
   },
-  "& select": { padding: ".45rem", font: "inherit", maxWidth: "100%" },
+  "& select": { padding: space(0.9), font: "inherit", maxWidth: "100%" },
   "& [data-part=field]": { minWidth: 0, maxWidth: "100%" },
   "& textarea": { minHeight: "5rem" },
   "& img, & video": { maxWidth: "100%", maxHeight: "12rem" },

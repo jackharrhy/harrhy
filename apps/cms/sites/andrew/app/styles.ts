@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css } from "remix/component";
 
 export const siteStyles = css({
@@ -28,10 +29,10 @@ export const siteStyles = css({
   },
   "& .site-layout": {
     display: "flex",
-    gap: "2rem",
+    gap: space(4),
     "max-width": "100ch",
     margin: "auto",
-    padding: "2rem",
+    padding: space(4),
   },
   "& .site-sidebar": {
     width: "12rem",
@@ -42,7 +43,7 @@ export const siteStyles = css({
     width: "10rem",
     height: "10rem",
     "object-fit": "contain",
-    margin: "0 auto 1rem",
+    margin: `0 auto ${space(2)}`,
     "border-bottom": "2px solid black",
   },
   "& .site-menu summary": {
@@ -57,7 +58,7 @@ export const siteStyles = css({
     "background-size": "contain",
     "background-repeat": "no-repeat",
     filter: "brightness(1.4)",
-    margin: "0.5rem 0",
+    margin: `${space(1)} 0`,
   },
   "& .site-menu ul": {
     "list-style": "none",
@@ -65,7 +66,7 @@ export const siteStyles = css({
     margin: "0",
   },
   "& .site-menu li": {
-    margin: "0.4rem 0",
+    margin: `${space(0.8)} 0`,
   },
   '& .site-menu a[aria-current="page"]': {
     "text-decoration": "underline",
@@ -78,8 +79,8 @@ export const siteStyles = css({
     "text-align": "center",
     "font-style": "italic",
     "font-weight": "600",
-    padding: "0.5rem 1rem",
-    margin: "1.5rem 0",
+    padding: `${space(1)} ${space(2)}`,
+    margin: `${space(3)} 0`,
   },
   "& .contact-link:hover": {
     color: "white",
@@ -88,7 +89,7 @@ export const siteStyles = css({
   "& .social-links": {
     display: "flex",
     "flex-direction": "column",
-    gap: "0.5rem",
+    gap: space(1),
   },
   "& .site-content": {
     flex: "1",
@@ -97,12 +98,12 @@ export const siteStyles = css({
   "& .prose": {
     display: "flex",
     "flex-direction": "column",
-    gap: "1rem",
+    gap: space(2),
     "max-width": "65ch",
     "overflow-wrap": "anywhere",
   },
   "& .prose p": {
-    margin: "0.25rem 0",
+    margin: `${space(0.5)} 0`,
     "line-height": "1.8",
   },
   "& .prose h1": {
@@ -159,8 +160,8 @@ export const siteStyles = css({
     "& .site-layout": {
       "flex-direction": "column",
       "align-items": "center",
-      padding: "1.5rem",
-      gap: "1.5rem",
+      padding: space(3),
+      gap: space(3),
     },
     "& .site-sidebar": {
       width: "100%",
@@ -169,12 +170,12 @@ export const siteStyles = css({
       display: "block",
       background: "#494566",
       color: "white",
-      padding: "0.5rem 1rem",
+      padding: `${space(1)} ${space(2)}`,
       cursor: "pointer",
       "font-weight": "700",
     },
     "& .site-menu > div": {
-      padding: "1rem",
+      padding: space(2),
     },
     "& .site-content": {
       width: "100%",

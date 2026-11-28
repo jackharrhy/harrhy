@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { createController } from "remix/router";
 import { redirect } from "remix/response/redirect";
 import { css } from "remix/component";
@@ -20,13 +21,13 @@ import {
 } from "../../../ui/primitives.tsx";
 import { theme } from "../../../ui/styles.ts";
 
-const introStyle = css({ color: theme.color.muted, margin: "0 0 1.5rem" });
+const introStyle = css({ color: theme.color.muted, margin: `0 0 ${space(3)}` });
 const actionsStyle = css({
   display: "flex",
-  gap: "0.75rem",
-  marginBottom: "2rem",
+  gap: space(1.5),
+  marginBottom: space(4),
 });
-const fieldStyle = css({ marginBottom: "1.5rem" });
+const fieldStyle = css({ marginBottom: space(3) });
 
 export default createController(routes.admin.scanSettings, {
   middleware: [requireAdmin()],

@@ -1,3 +1,4 @@
+import { space } from "@harrhy/ui/styles";
 import { css, on, ref, type Handle } from "remix/component";
 
 import { Icon, type IconSet } from "@harrhy/ui/icons";
@@ -563,7 +564,9 @@ function TrackList(
     let { state } = handle.props;
     if (state.tracks.length === 0) {
       return (
-        <p mix={css({ margin: 0, padding: "1rem", color: desktopColor.muted })}>
+        <p
+          mix={css({ margin: 0, padding: space(2), color: desktopColor.muted })}
+        >
           No tracks yet. Add a synthetic track to begin.
         </p>
       );
