@@ -15,8 +15,9 @@ export const visuallyHiddenStyles = css({
 
 export const focusStyles = css({
   "&:focus-visible": {
-    outline: `2px solid ${tokens.focus}`,
-    outlineOffset: "3px",
+    outline: `1px solid ${tokens.focus}`,
+    outlineOffset: "2px",
+    "@media (forced-colors: active)": { outline: "2px solid CanvasText" },
   },
 });
 

@@ -68,7 +68,7 @@ it("keeps Sluggers keyboard focus and official popup semantics", async (t) => {
   await trigger.focus();
   assert.equal(
     await trigger.evaluate((node) => getComputedStyle(node).outlineWidth),
-    "2px",
+    "1px",
   );
   await page.keyboard.press("Enter");
   await preview.getByRole("menu").waitFor();

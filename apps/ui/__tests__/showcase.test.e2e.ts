@@ -46,7 +46,7 @@ it("keeps Artbin reference geometry and visible focus scoped at desktop and mobi
     await button.focus();
     assert.equal(
       await button.evaluate((node) => getComputedStyle(node).outlineWidth),
-      "2px",
+      "1px",
     );
     assert.equal(
       await specimen
