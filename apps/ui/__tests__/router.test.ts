@@ -100,7 +100,10 @@ it("redirects old scene links and retains theme and density in shared navigation
   assert.equal(clank.status, 200);
   const html = await clank.text();
   assert.match(html, /data-skin="graphite"/);
-  assert.match(html, /--hui-field-gap: 0.375rem/);
+  assert.match(
+    html,
+    /--hui-field-gap: calc\(var\(--hui-space-unit, 0\.5rem\) \* 0\.75\)/,
+  );
   assert.match(
     html,
     /href="\/explorer\/field\?theme=graphite&amp;density=compact/,
