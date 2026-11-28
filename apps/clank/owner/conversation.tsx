@@ -698,14 +698,6 @@ export function Conversation(handle: Handle<Props>) {
           mix={[
             css({
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
-              "& textarea": { border: 0 },
-              "& textarea:focus-visible": { outline: "none" },
-              "@media (forced-colors: active)": {
-                "& textarea:focus-visible": {
-                  outline: "1px solid Highlight",
-                  outlineOffset: "1px",
-                },
-              },
             }),
             on("submit", (event) => {
               event.preventDefault();
@@ -718,10 +710,20 @@ export function Conversation(handle: Handle<Props>) {
               measure,
               css({
                 paddingBlock: "8px 0",
-                "&:has(textarea:focus-visible)": {
-                  borderTopColor: "var(--hui-focus)",
-                },
                 borderBlock: "1px solid var(--hui-border)",
+                position: "relative",
+                // Mark the first line in the text gutter, not the transcript divider.
+                "&:has(textarea:focus-visible)::before": {
+                  content: "''",
+                  position: "absolute",
+                  insetInlineStart: "8px",
+                  blockSize: "24px",
+                  borderInlineStart: "3px solid var(--hui-focus)",
+                  pointerEvents: "none",
+                  "@media (forced-colors: active)": {
+                    borderInlineStartColor: "CanvasText",
+                  },
+                },
               }),
             ]}
           >
@@ -740,7 +742,9 @@ export function Conversation(handle: Handle<Props>) {
                   width: "100%",
                   boxSizing: "border-box",
                   resize: "none",
+                  border: 0,
                   borderRadius: 0,
+                  "&:focus-visible": { outline: "none" },
                   padding: 0,
                   fontSize: "16px",
                   lineHeight: "24px",

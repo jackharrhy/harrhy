@@ -1,7 +1,12 @@
 import { cacheHitRate } from "../../pi/src/runtime/conversation-stats.ts";
 import { startSnapshotBranding, type Branding } from "./branding.ts";
 import { ownerSessions } from "./session-wire.ts";
-import { sidebarActivity } from "./sidebar-activity.ts";
+import {
+  startSnapshotFeed,
+  readsFeed,
+  statusFeed,
+} from "./sidebar-activity.ts";
+import { projectSidebar } from "./sidebar-indicators.ts";
 import type { IncomingMessage } from "node:http";
 import WebSocket from "ws";
 import { webSocketLink, type WebSocketLike } from "@earendil-works/chord";
@@ -31,11 +36,19 @@ const metadata = [
 ] as const;
 let pending = 0;
 
-function boundedSnapshot(
+export function boundedSnapshot(
   snapshot: Snapshot,
   branding?: Branding,
 ): Snapshot | undefined {
-  const remaining = 512 * 1024 - Buffer.byteLength(JSON.stringify(snapshot));
+  const budget = 512 * 1024;
+  let remaining = budget - Buffer.byteLength(JSON.stringify(snapshot));
+  for (const key of ["indicators", "activeIds", "chat"] as const) {
+    if (remaining >= 0) break;
+    if (snapshot[key] === undefined) continue;
+    snapshot = { ...snapshot };
+    delete snapshot[key];
+    remaining = budget - Buffer.byteLength(JSON.stringify(snapshot));
+  }
   if (remaining < 0) return;
   if (!branding) return snapshot;
 
@@ -146,16 +159,14 @@ export async function readSnapshot(
         });
       }
       const brandingNow = startSnapshotBranding(scope);
+      const statusesNow = startSnapshotFeed(statusFeed(scope));
+      const marksNow = startSnapshotFeed(readsFeed(scope));
       const agents = await scope.get(Subagents, {});
       const children =
         agents.variant === "reader"
           ? (await agents.children.watch(scope)).value
           : {};
       const snapshot: Snapshot = { rows, children, selectedId: selected?.id };
-      snapshot.activeIds = await sidebarActivity(
-        scope,
-        sessions.operations,
-      ).catch(() => []);
       if (selected) {
         const chat = await scope.get(Chat, {
           session: selected.id,
@@ -185,7 +196,20 @@ export async function readSnapshot(
           };
         }
       }
-      if (authorized()) return boundedSnapshot(snapshot, brandingNow());
+      if (!authorized()) return;
+      let operations;
+      try {
+        operations = sessions.operations.value;
+      } catch {
+        // An unavailable optional member must not cost the catalog its seed.
+      }
+      return boundedSnapshot(
+        {
+          ...snapshot,
+          ...projectSidebar(rows, statusesNow(), operations, marksNow()),
+        },
+        brandingNow(),
+      );
     }, ctx);
   } catch {
     // For denied, timed-out or incompatible upstreams, render the public shell and let the browser connect.

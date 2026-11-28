@@ -1,4 +1,5 @@
 import { css, on, type Handle, type RemixNode } from "remix/component";
+import { AnswerDot, WorkingDots, WorkingFrame } from "./rail-mark.tsx";
 import { Icon } from "./icons.tsx";
 
 const reveal = {
@@ -53,10 +54,35 @@ const rowStyle = css({
   },
   "& .rail-marker": {
     flex: "none",
+    position: "relative",
     width: "16px",
+    height: "16px",
     display: "grid",
     placeItems: "center",
-    "& svg, & img": { width: "16px", height: "16px" },
+    "& > svg:not([data-rail-mark]), & > img": { width: "16px", height: "16px" },
+  },
+  "& .rail-label[data-unread]": { fontWeight: 600 },
+  "& .rail-label svg": {
+    width: "12px",
+    height: "12px",
+    marginInlineEnd: "4px",
+    verticalAlign: "-1px",
+    color: "var(--hui-muted)",
+  },
+  "& .rail-details": {
+    marginInlineStart: "auto",
+    display: "flex",
+    alignItems: "center",
+    flex: "none",
+    gap: "4px",
+  },
+  "& .rail-work-count": {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "2px",
+    fontSize: "12px",
+    fontWeight: 400,
+    color: "var(--hui-muted)",
   },
   "& .rail-control": {
     position: "relative",
@@ -70,7 +96,6 @@ const rowStyle = css({
   },
   "& .rail-control:is(:hover,:focus-visible)": { color: "var(--hui-ink)" },
   "& .rail-tail": {
-    marginInlineStart: "auto",
     display: "grid",
     placeItems: "center end",
     flex: "none",
@@ -102,7 +127,11 @@ export function RailRow(
   handle: Handle<{
     label: string;
     title?: string;
-    marker?: RemixNode;
+    familiarLogo?: RemixNode;
+    pinned?: boolean;
+    unread?: boolean;
+    failure?: string;
+    running?: number;
     child?: boolean;
     selected: boolean;
     age?: string;
@@ -119,7 +148,11 @@ export function RailRow(
     const {
       label,
       title,
-      marker,
+      familiarLogo,
+      pinned,
+      unread,
+      failure,
+      running = 0,
       child,
       selected,
       age,
@@ -127,50 +160,94 @@ export function RailRow(
       disclosure,
       archive,
     } = handle.props;
+    const working = running > 0;
+    const failed = failure !== undefined;
+    const backgroundWork = !familiarLogo && working && (failed || unread);
+    const workText =
+      running > 1
+        ? `${running} agents running`
+        : backgroundWork
+          ? "Running"
+          : "Working";
+    const reason = child && failed ? `Failed: ${failure}` : failure;
+    const status = [reason, unread && "New answer", working && workText]
+      .filter(Boolean)
+      .join(" · ");
+    const description = [title !== label && title, status]
+      .filter(Boolean)
+      .join(" · ");
     return (
       <div data-child={child ? "" : undefined} mix={rowStyle}>
         <button
           class="rail-open"
           type="button"
-          title={title ?? label}
+          aria-label={label}
+          aria-describedby={description ? handle.id : undefined}
+          title={[title ?? label, status].filter(Boolean).join("\n")}
           aria-pressed={selected}
           mix={on("click", (e) => open(e.currentTarget))}
         >
-          {!child && (
-            <span class="rail-marker" aria-hidden="true">
-              {marker}
-            </span>
-          )}
-          <span class="rail-label">{label}</span>
+          <span class="rail-marker" aria-hidden="true">
+            {familiarLogo ? (
+              <>
+                {familiarLogo}
+                {working && <WorkingFrame />}
+              </>
+            ) : failed || unread ? (
+              <AnswerDot failure={failure} />
+            ) : working ? (
+              <WorkingDots />
+            ) : null}
+          </span>
+          <span class="rail-label" data-unread={unread ? "" : undefined}>
+            {pinned && <Icon name="pin" />}
+            {label}
+          </span>
+          <span id={handle.id} hidden>
+            {description}
+          </span>
         </button>
-        {disclosure && (
-          <button
-            class="rail-control"
-            type="button"
-            aria-label={`Subagents for ${label}`}
-            aria-expanded={disclosure.expanded}
-            aria-controls={disclosure.controls}
-            mix={on("click", (e) => disclosure.toggle(e.currentTarget))}
-          >
-            <Icon name={disclosure.expanded ? "down" : "right"} />
-          </button>
-        )}
-        {(age || archive) && (
-          <span class="rail-tail">
-            <span class="rail-age" aria-hidden="true">
-              {age}
-            </span>
-            {archive && (
-              <button
-                class="rail-control rail-archive"
-                type="button"
-                title={`Archive ${label}`}
-                aria-label={`Archive ${label}`}
-                aria-haspopup="dialog"
-                mix={on("click", (e) => archive(e.currentTarget))}
-              >
-                <Icon name="archive" />
-              </button>
+        <span mix={css({ display: "contents" })}>
+          {disclosure && (
+            <button
+              class="rail-control"
+              type="button"
+              aria-label={`Subagents for ${label}`}
+              aria-expanded={disclosure.expanded}
+              aria-controls={disclosure.controls}
+              mix={on("click", (e) => disclosure.toggle(e.currentTarget))}
+            >
+              <Icon name={disclosure.expanded ? "down" : "right"} />
+            </button>
+          )}
+        </span>
+        {(age || archive || backgroundWork || (familiarLogo && unread)) && (
+          <span class="rail-details">
+            {familiarLogo && unread && <AnswerDot />}
+            {backgroundWork && (
+              <span class="rail-work-count" title={workText} aria-hidden="true">
+                <WorkingDots />
+                {running > 1 && running}
+              </span>
+            )}
+            {(age || archive) && (
+              <span class="rail-tail">
+                <span class="rail-age" aria-hidden="true">
+                  {age}
+                </span>
+                {archive && (
+                  <button
+                    class="rail-control rail-archive"
+                    type="button"
+                    title={`Archive ${label}`}
+                    aria-label={`Archive ${label}`}
+                    aria-haspopup="dialog"
+                    mix={on("click", (e) => archive(e.currentTarget))}
+                  >
+                    <Icon name="archive" />
+                  </button>
+                )}
+              </span>
             )}
           </span>
         )}

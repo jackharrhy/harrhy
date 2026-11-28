@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { createServer as tlsServer } from "node:tls";
 import { chromium, type Page } from "playwright";
 import { checkCanonicalSwipe } from "./rail-swipe-browser.ts";
+import { checkComposerFocus } from "./composer-focus-browser.ts";
 import { proveRailArchive } from "./rail-browser.ts";
 const OWNER_HOST = "clank.example.test";
 import { structuredAttribution } from "../owner/attribution.ts";
@@ -545,6 +546,7 @@ try {
   );
   const message = page.getByRole("textbox", { name: "Message" });
   const prompt = "slow disposable selection proof";
+  await checkComposerFocus(page);
   await message.fill(prompt);
   await message.press("Shift+Enter");
   assert.equal(await message.inputValue(), prompt + String.fromCharCode(10));
@@ -1816,25 +1818,33 @@ try {
     fixture.server.host.root(
       async (ctx) =>
         (await ctx.get(Catalog, {})).sessions.value.map(
-          ({ id, title, archivedAt }) => ({ id, title, archivedAt }),
+          ({ id, main, title, archivedAt }) => ({
+            id,
+            main,
+            title,
+            archivedAt,
+          }),
         ),
       TEST,
     );
   const before = await catalogState();
   const victim = before.find((s) => s.title === "Second session");
   assert(victim && victim.archivedAt === null);
-  let nativeRail: Page | undefined;
-  if (process.env.HARRHY_CLANK_RAIL_SCREENSHOT_DIR) {
-    const pi = new URL(`http://127.0.0.1:${fixture.server.port}`);
-    nativeRail = await context.newPage();
-    await nativeRail.setViewportSize(hydrated.viewportSize()!);
-    await nativeRail.goto((await mintOwnerLink(pi, fixture.dataDir, pi)).href);
-    await nativeRail.waitForURL(pi.href);
-    await nativeRail.goto(new URL(`/s/${session.id}`, pi).href);
-    await nativeRail.getByRole("textbox", { name: "Message" }).waitFor();
-  }
-  await proveRailArchive(hydrated, observer, nativeRail);
-  await nativeRail?.close();
+  const pi = new URL(`http://127.0.0.1:${fixture.server.port}`);
+  const nativeRail = await context.newPage();
+  nativeRail.setDefaultTimeout(8000);
+  await nativeRail.setViewportSize(hydrated.viewportSize()!);
+  await nativeRail.goto((await mintOwnerLink(pi, fixture.dataDir, pi)).href);
+  await nativeRail.waitForURL(pi.href);
+  await nativeRail.goto(new URL(`/s/${session.id}`, pi).href);
+  await nativeRail.getByRole("textbox", { name: "Message" }).waitFor();
+  await proveRailArchive(hydrated, observer, nativeRail, {
+    fixture,
+    piRoot,
+    id: victim.id,
+    main: victim.main,
+  });
+  await nativeRail.close();
   const after = await catalogState();
   assert.equal(
     typeof after.find((s) => s.id === victim.id)?.archivedAt,

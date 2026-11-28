@@ -13,7 +13,13 @@ import {
   type Work,
   type Feed,
 } from "./archive-availability.ts";
-import { activityIds, workFeed, unreadFeed } from "./sidebar-activity.ts";
+import {
+  mainReadMarker,
+  readsFeed,
+  statusFeed,
+  type LiveMarks,
+} from "./sidebar-activity.ts";
+import { projectSidebar, type Indicator } from "./sidebar-indicators.ts";
 import {
   SubagentControl,
   Subagents,
@@ -80,6 +86,9 @@ export type Catalog = {
   canCreateSlug: boolean;
   rows: Row[];
   activeIds?: string[];
+  /** Undefined during initial activity feed acquisition. */
+  indicators?: Record<string, Indicator>;
+  markMainRead(session: string): void;
   search(query: string, sessions: string[]): Promise<SearchResults>;
   childrenReady?: boolean;
   children: Readonly<Record<string, readonly Child[]>>;
@@ -90,7 +99,10 @@ export type Catalog = {
   rename(id: string, title: string): Promise<void>;
 };
 
-export type Snapshot = Pick<Catalog, "rows" | "children" | "activeIds"> & {
+export type Snapshot = Pick<
+  Catalog,
+  "rows" | "children" | "activeIds" | "indicators"
+> & {
   /** Initial owner document only; never copy branding into reconnect snapshots. */
   branding?: Branding;
   selectedId?: string;
@@ -314,19 +326,37 @@ export async function followCatalog(
       let brandingReady = false;
       let rows = activeRows(watch.value);
       let readChildren: (() => Catalog["children"] | undefined) | undefined;
-      let readWork: (() => Work | undefined) | undefined;
+      let readStatuses: (() => Work["statuses"] | undefined) | undefined;
+      let readOperations: (() => Work["operations"] | undefined) | undefined;
+      let readMarks: (() => LiveMarks | undefined) | undefined;
       let readFamiliar: (() => string | null | undefined) | undefined;
-      let unread: string[] | undefined;
-      let activeIds: string[] | undefined;
+      const markMainRead = mainReadMarker((id) => {
+        try {
+          if (
+            !authorized() ||
+            scope.abortSignal?.aborted ||
+            !sessions.sessions.value.some(
+              (row) => row.id === id && row.archivedAt === null,
+            )
+          )
+            return;
+          return readMarks?.();
+        } catch {
+          // A retired replica cannot authorize a read receipt.
+          return undefined;
+        }
+      });
       function canArchive({ session, conversation, name }: ArchiveTarget) {
         if (!authorized() || session === familiarId) return false;
         const familiar = readFamiliar?.();
-        const work = readWork?.();
+        const statuses = readStatuses?.();
+        const operations = readOperations?.();
         if (
           familiar === undefined ||
           familiar === session ||
-          !work ||
-          !workAllowsArchive(work, session, conversation)
+          !statuses ||
+          !operations ||
+          !workAllowsArchive({ statuses, operations }, session, conversation)
         )
           return false;
         let row;
@@ -377,6 +407,8 @@ export async function followCatalog(
           }, command);
         }
       };
+      let handoffExpired = false;
+      const activitySettled = () => readStatuses && readOperations && readMarks;
       const update = () => {
         const children = readChildren?.();
         return publish({
@@ -387,7 +419,17 @@ export async function followCatalog(
           rows,
           children: children ?? {},
           childrenReady: children !== undefined,
-          activeIds,
+          // Keep the initial display seed until all inputs have arrived or
+          // failed. Thereafter an ended feed removes only its contribution.
+          ...(handoffExpired || activitySettled()
+            ? projectSidebar(
+                rows,
+                readStatuses?.(),
+                readOperations?.(),
+                readMarks?.(),
+              )
+            : {}),
+          markMainRead,
           rename,
           chat,
           create,
@@ -409,20 +451,24 @@ export async function followCatalog(
       ) => {
         void host
           .root(async (feedScope) => {
-            const feed = await get(feedScope);
-            if (feed)
-              await followLive(feedScope, feed, async (read) => {
-                if (!authorized()) return;
-                receive(read);
-                await update();
-              });
+            const feed = await get(feedScope).catch(() => undefined);
+            const changed = async (read: () => T | undefined) => {
+              if (!authorized()) return;
+              receive(read);
+              await update();
+            };
+            if (feed) await followLive(feedScope, feed, changed);
+            else await changed(() => undefined);
           }, ctx)
           .catch(() => {});
       };
-      const refreshActivity = () => {
-        const work = readWork?.();
-        activeIds = work && unread ? activityIds(work, unread) : undefined;
-      };
+      // A reference can rebind between get and watch. Do not keep SSR marks
+      // indefinitely if acquiring the first field value then stalls.
+      const handoffDeadline = setTimeout(() => {
+        if (!authorized() || activitySettled()) return;
+        handoffExpired = true;
+        void update().catch(() => {});
+      }, 1500);
       try {
         if (!authorized() || binding.value.kind !== "live")
           throw Error("Owner Sessions ended");
@@ -473,16 +519,21 @@ export async function followCatalog(
             readFamiliar = read;
           },
         );
+        follow(statusFeed, (read) => {
+          readStatuses = read;
+        });
         follow(
-          (s) => workFeed(s, sessions.operations),
+          async () => ({
+            state: sessions.state,
+            fields: [sessions.operations],
+            read: () => sessions.operations.value,
+          }),
           (read) => {
-            readWork = read;
-            refreshActivity();
+            readOperations = read;
           },
         );
-        follow(unreadFeed, (read) => {
-          unread = read();
-          refreshActivity();
+        follow(readsFeed, (read) => {
+          readMarks = read;
         });
         watch.start(async (call) => {
           if (call.kind !== "value" || call.retired || !authorized()) close();
@@ -493,6 +544,7 @@ export async function followCatalog(
         });
         await Promise.race([binding.closed, watch.closed]);
       } finally {
+        clearTimeout(handoffDeadline);
         close();
         await Promise.all([binding.stop(), watch.stop()]);
       }

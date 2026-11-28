@@ -31,7 +31,14 @@ import {
 } from "./appearance.ts";
 import { Icon } from "./icons.tsx";
 import { Switcher, type PaletteItem } from "./switcher.tsx";
-import { byRecentActivity } from "../../pi/plugins/subagents/contract.ts";
+import {
+  failureWords,
+  runState,
+} from "../../pi/plugins/sessions/sidebar/run-state.ts";
+import {
+  byRecentActivity,
+  type Child,
+} from "../../pi/plugins/subagents/contract.ts";
 import { Conversation } from "./conversation.tsx";
 import { Button, Heading, Input, Text } from "@harrhy/ui/native";
 import { clientEntry, css, on, ref, type Handle } from "remix/component";
@@ -357,6 +364,18 @@ function SessionTitle(
   };
 }
 
+function childMarks(child: Child, busy: number[] | undefined) {
+  const run = runState(
+    child.failure,
+    busy?.includes(child.conversationId) ?? false,
+    undefined,
+  );
+  if (run.kind === "busy") return { running: 1 };
+  if (run.kind === "failed")
+    return { failure: run.detail ?? failureWords(run.reason) };
+  return {};
+}
+
 type View =
   | { kind: "loading" | "sign-in" | "offline" }
   | { kind: "ready"; catalog: Catalog };
@@ -651,10 +670,14 @@ export const OwnerSessions = clientEntry(
             catalog.children = cached.children;
           if (catalog.activeIds === undefined)
             catalog.activeIds = cached?.activeIds;
+          // Undefined is not yet hydrated. A published empty map clears all marks.
+          if (catalog.indicators === undefined)
+            catalog.indicators = cached?.indicators;
           cached = {
             rows: catalog.rows,
             children: catalog.children,
             activeIds: catalog.activeIds,
+            indicators: catalog.indicators,
           };
         }
         view = next;
@@ -732,6 +755,15 @@ export const OwnerSessions = clientEntry(
       }
     }
     const mount = ref<HTMLElement>((node, signal) => {
+      const updateVisibility = () => {
+        void handle.update();
+      };
+      document.addEventListener("visibilitychange", updateVisibility, {
+        signal,
+      });
+      matchMedia(phoneWidth).addEventListener("change", updateVisibility, {
+        signal,
+      });
       mountRailSwipe(node, signal, (open) => (open ? back() : showDetail()));
       const restored = hydratedTheme(handle.props.initialMode);
       if (restored !== mode) applyMode(restored);
@@ -885,6 +917,31 @@ export const OwnerSessions = clientEntry(
         (agentId === undefined
           ? (branch ?? selected.main)
           : selectedChild?.conversationId);
+      // Pi advances the owner read cursor only for the visible main conversation.
+      // A selected row behind the phone rail is not a visible conversation.
+      if (
+        live &&
+        selected &&
+        conversation === selected.main &&
+        agentId === undefined &&
+        !listPage &&
+        !newOpen
+      ) {
+        handle.queueTask(() => {
+          if (
+            view.kind === "ready" &&
+            view.catalog === live &&
+            selectedId === selected.id &&
+            !listPage &&
+            !newOpen &&
+            agentId === undefined &&
+            (branch ?? selected.main) === selected.main &&
+            document.visibilityState === "visible" &&
+            (!matchMedia(phoneWidth).matches || detailOpen)
+          )
+            live.markMainRead(selected.id);
+        });
+      }
       const destinations = (row: Row) => {
         const agents = children(row.id);
         return [
@@ -1112,6 +1169,7 @@ export const OwnerSessions = clientEntry(
                   {sidebarRows.flatMap((row) => {
                     if (row) {
                       const agents = children(row.id);
+                      const marks = catalog.indicators?.[row.id];
                       const isOpen = expanded.has(row.id);
                       const label =
                         row === familiar ? "Familiar" : sessionTitle(row);
@@ -1121,13 +1179,15 @@ export const OwnerSessions = clientEntry(
                           <RailRow
                             label={label}
                             title={sessionTitle(row)}
-                            marker={
+                            familiarLogo={
                               row === familiar ? (
                                 <BrandMark logo={branding?.logo} />
-                              ) : row.pinned ? (
-                                <Icon name="pin" />
-                              ) : null
+                              ) : undefined
                             }
+                            pinned={row !== familiar && row.pinned}
+                            unread={marks?.unread}
+                            failure={marks?.failure}
+                            running={marks?.busy?.length}
                             selected={
                               !newOpen &&
                               !listPage &&
@@ -1186,6 +1246,7 @@ export const OwnerSessions = clientEntry(
                                   <RailRow
                                     child
                                     label={child.name}
+                                    {...childMarks(child, marks?.busy)}
                                     selected={
                                       row.id === selectedId &&
                                       agentId === child.conversationId &&

@@ -1,13 +1,19 @@
 import assert from "node:assert/strict";
 import { join } from "node:path";
 import type { Page } from "playwright";
+import { proveRailStatus, type StatusFixture } from "./rail-status-browser.ts";
 
 const button = (page: Page, name: string) =>
   page.getByRole("button", { name, exact: true });
 
 /** Two live views of the disposable Pi. The actor keeps its Familiar draft;
  * the watcher has the archived session open and must follow the removal. */
-export async function proveRailArchive(actor: Page, watcher: Page, pi?: Page) {
+export async function proveRailArchive(
+  actor: Page,
+  watcher: Page,
+  pi: Page,
+  source: StatusFixture,
+) {
   const composer = actor.getByRole("textbox", { name: "Message" });
   const originalURL = actor.url();
   const draft = "Unsent rail fixture draft";
@@ -33,12 +39,7 @@ export async function proveRailArchive(actor: Page, watcher: Page, pi?: Page) {
   await archive.waitFor({ state: "attached" });
   assert.equal(await button(actor, "Archive Familiar").count(), 0);
 
-  // Force a real busy -> idle transition on an otherwise archivable session.
-  await message.fill("slow-tool");
-  await button(watcher, "Send").click();
-  await watcher.locator("[data-tool-activity][data-state=working]").waitFor();
-  await archive.waitFor({ state: "detached" });
-  await open.waitFor();
+  await proveRailStatus(actor, watcher, pi, title, source);
   await archive.waitFor({ state: "attached", timeout: 15000 });
 
   const row = open.locator("..");
@@ -79,7 +80,7 @@ export async function proveRailArchive(actor: Page, watcher: Page, pi?: Page) {
     assert.deepEqual(await appearance(), ["1", "auto"]);
     assert.equal(await age.isVisible(), false);
   }
-  if (shots && pi) {
+  if (shots) {
     await actor.screenshot({ path: join(shots, "clank-rail-hover.png") });
     const piArchive = button(pi, action);
     await pi.getByRole("link", { name: title, exact: true }).hover();
