@@ -1,10 +1,8 @@
 import { expect, it, vi } from "vitest";
 import {
   listHostedResources,
-  mountHostedAsset,
   removeHostedResource,
   resourceUploads,
-  searchHostedAssets,
   uploadHostedResource,
 } from "../editor-hosted-resources.ts";
 
@@ -41,44 +39,6 @@ it("keeps contained game asset paths and maps resource extensions to service kin
   expect(() => resourceUploads([new File(["x"], "brick.png")], false)).toThrow(
     /Unsupported/,
   );
-});
-
-it("searches Artbin and imports a selected asset through the project resource API", async () => {
-  const asset = {
-    id: "artbin-1",
-    name: "base.wad",
-    path: "base.wad",
-    kind: "wad",
-    mimeType: "application/octet-stream",
-    size: 4,
-    sha256: "a".repeat(64),
-    width: null,
-    height: null,
-    folder: null,
-    tags: [],
-  };
-  const fetcher = vi.fn<typeof fetch>(async (path, init) => {
-    expect(init?.credentials).toBe("same-origin");
-    if (init?.method === "POST") {
-      expect(path).toBe("/api/projects/project-1/resources");
-      expect(JSON.parse(String(init.body))).toEqual({ assetId: asset.id });
-      return Response.json(
-        { mount: { ...mount, provider: "artbin" } },
-        { status: 201 },
-      );
-    }
-    expect(path).toBe(
-      "/api/assets/search?q=base.wad&limit=20&cursor=next-page",
-    );
-    return Response.json({ assets: [asset], nextCursor: null });
-  });
-  expect(await searchHostedAssets(" base.wad ", "next-page", fetcher)).toEqual({
-    assets: [asset],
-    nextCursor: null,
-  });
-  expect(await mountHostedAsset("project-1", asset.id, fetcher)).toMatchObject({
-    provider: "artbin",
-  });
 });
 
 it("uses authenticated resource list, upload, and removal endpoints", async () => {

@@ -1,10 +1,8 @@
 import {
   HostedErrorResponseSchema,
-  HostedAssetSearchResponseSchema,
   HostedOkResponseSchema,
   HostedResourceMountedResponseSchema,
   HostedResourceMountsResponseSchema,
-  MountHostedAssetRequestSchema,
   isGameTreeAssetPath,
 } from "@harrhy/maps-protocol";
 
@@ -138,36 +136,4 @@ export async function removeHostedResource(
     { method: "DELETE", credentials: "same-origin" },
   );
   await hostedResponse(response, HostedOkResponseSchema);
-}
-
-export async function searchHostedAssets(
-  query: string,
-  cursor: string | null = null,
-  fetcher: typeof fetch = fetch,
-) {
-  const parameters = new URLSearchParams({ q: query.trim(), limit: "20" });
-  if (cursor) parameters.set("cursor", cursor);
-  const response = await fetcher(`/api/assets/search?${parameters}`, {
-    credentials: "same-origin",
-  });
-  return hostedResponse(response, HostedAssetSearchResponseSchema);
-}
-
-export async function mountHostedAsset(
-  projectId: string,
-  assetId: string,
-  fetcher: typeof fetch = fetch,
-) {
-  const request = MountHostedAssetRequestSchema.parse({ assetId });
-  const response = await fetcher(
-    `/api/projects/${encodeURIComponent(projectId)}/resources`,
-    {
-      method: "POST",
-      credentials: "same-origin",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(request),
-    },
-  );
-  return (await hostedResponse(response, HostedResourceMountedResponseSchema))
-    .mount;
 }

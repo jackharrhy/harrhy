@@ -1,20 +1,16 @@
 import {
-  type HostedAsset,
   type HostedProject,
   type HostedResourceMount,
 } from "@harrhy/maps-protocol";
 import { clientEntry, on, ref, type Handle } from "remix/component";
 import {
   listHostedResources,
-  mountHostedAsset,
   removeHostedResource,
   resourceUploads,
-  searchHostedAssets,
   uploadHostedResource,
 } from "./editor-hosted-resources.ts";
 import type { EditorHostedResourcesContext } from "./editor-hosted-resources-bridge.ts";
 
-const MAX_RESOURCE_BYTES = 512 * 1024 * 1024;
 
 function message(cause: unknown) {
   return cause instanceof Error ? cause.message : String(cause);
@@ -26,16 +22,11 @@ export const EditorHostedResources = clientEntry(
     let context: EditorHostedResourcesContext | null = null;
     let project: HostedProject | null = null;
     let mounts: readonly HostedResourceMount[] = [];
-    let assets: readonly HostedAsset[] = [];
     let loaded = false;
     let resourceStatus = "";
-    let artbinStatus = "";
-    let query = "";
     let nextCursor: string | null = null;
     let resourceBusy = false;
-    let artbinBusy = false;
     let generation = 0;
-    let searchGeneration = 0;
     let filesInput: HTMLInputElement | null = null;
     let folderInput: HTMLInputElement | null = null;
 
@@ -55,21 +46,16 @@ export const EditorHostedResources = clientEntry(
           if (project?.id === next.project?.id) {
             project = next.project;
             handle.update();
-            if (project && !resourceBusy && !artbinBusy)
+            if (project && !resourceBusy)
               void refresh(project, ++generation);
             return;
           }
           project = next.project;
           const request = ++generation;
-          searchGeneration++;
           mounts = [];
-          assets = [];
           loaded = false;
           resourceStatus = "";
-          artbinStatus = "";
-          nextCursor = null;
           resourceBusy = false;
-          artbinBusy = false;
           handle.update();
           if (project) void refresh(project, request);
         },
@@ -154,68 +140,6 @@ export const EditorHostedResources = clientEntry(
       } finally {
         if (request === generation && !handle.signal.aborted) {
           resourceBusy = false;
-          handle.update();
-        }
-      }
-    }
-
-    async function search(cursor: string | null) {
-      const selected = project;
-      const value = query.trim();
-      if (!selected || selected.role !== "owner" || artbinBusy) return;
-      if (!value) {
-        artbinStatus = "Enter a name to search Artbin";
-        handle.update();
-        return;
-      }
-      const request = ++searchGeneration;
-      artbinBusy = true;
-      artbinStatus = "Searching Artbin";
-      handle.update();
-      try {
-        const result = await searchHostedAssets(value, cursor);
-        if (
-          request !== searchGeneration ||
-          project?.id !== selected.id ||
-          handle.signal.aborted
-        )
-          return;
-        assets = cursor ? [...assets, ...result.assets] : result.assets;
-        nextCursor = result.nextCursor;
-        artbinStatus = result.assets.length
-          ? `Showing ${assets.length} Artbin assets`
-          : cursor
-            ? "No more Artbin assets"
-            : "No Artbin assets match this search";
-      } catch (cause) {
-        if (request === searchGeneration) artbinStatus = message(cause);
-      } finally {
-        if (request === searchGeneration && !handle.signal.aborted) {
-          artbinBusy = false;
-          handle.update();
-        }
-      }
-    }
-
-    async function importAsset(asset: HostedAsset) {
-      const selected = project;
-      if (!selected || selected.role !== "owner" || artbinBusy) return;
-      const request = generation;
-      artbinBusy = true;
-      artbinStatus = `Importing ${asset.name}`;
-      handle.update();
-      try {
-        await mountHostedAsset(selected.id, asset.id);
-        context?.resourcesChanged(selected.id);
-        if (request === generation) {
-          await refresh(selected, request);
-          artbinStatus = `Imported ${asset.name} into this project`;
-        }
-      } catch (cause) {
-        if (request === generation) artbinStatus = message(cause);
-      } finally {
-        if (request === generation && !handle.signal.aborted) {
-          artbinBusy = false;
           handle.update();
         }
       }
@@ -310,72 +234,6 @@ export const EditorHostedResources = clientEntry(
             <small>
               Up to 512 MiB per file. Files are copied into this project.
             </small>
-          </div>
-          <div
-            id="hosted-artbin-import"
-            hidden={currentProject?.role !== "owner"}
-          >
-            <form
-              id="hosted-artbin-search"
-              mix={on<HTMLFormElement>("submit", (event) => {
-                event.preventDefault();
-                void search(null);
-              })}
-            >
-              <label for="hosted-artbin-query">Import from Artbin</label>
-              <input
-                id="hosted-artbin-query"
-                type="search"
-                placeholder="WAD, palette, texture…"
-                value={query}
-                mix={on<HTMLInputElement>("input", (event) => {
-                  query = event.currentTarget.value;
-                })}
-              />
-              <button type="submit" disabled={artbinBusy}>
-                Search Artbin
-              </button>
-            </form>
-            <p id="hosted-artbin-status" role="status">
-              {artbinStatus}
-            </p>
-            <ul id="hosted-artbin-results">
-              {assets.map((asset) => (
-                <li key={asset.id}>
-                  <strong>{asset.name}</strong>
-                  <small>
-                    {asset.kind} · {Math.ceil(asset.size / 1024)} KiB
-                  </small>
-                  <button
-                    type="button"
-                    disabled={
-                      artbinBusy ||
-                      !asset.sha256 ||
-                      asset.size > MAX_RESOURCE_BYTES
-                    }
-                    title={
-                      !asset.sha256
-                        ? "Asset has no stable SHA-256"
-                        : asset.size > MAX_RESOURCE_BYTES
-                          ? "Asset exceeds the 512 MiB project resource limit"
-                          : undefined
-                    }
-                    mix={on("click", () => void importAsset(asset))}
-                  >
-                    Import copy
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              id="hosted-artbin-next"
-              type="button"
-              hidden={!nextCursor}
-              disabled={!nextCursor || artbinBusy}
-              mix={on("click", () => void search(nextCursor))}
-            >
-              More results
-            </button>
           </div>
         </details>
       );

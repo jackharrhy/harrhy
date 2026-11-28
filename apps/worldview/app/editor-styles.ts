@@ -534,17 +534,17 @@ export const editorStyles = css({
     border: "1px solid var(--editor-border)",
     "border-radius": "5px",
   },
-  "& #hosted-project-resources[hidden], & #hosted-project-access[hidden], & #hosted-resource-upload[hidden], & #hosted-artbin-import[hidden]":
+  "& #hosted-project-resources[hidden], & #hosted-project-access[hidden], & #hosted-resource-upload[hidden]":
     {
       display: "none",
     },
-  "& #hosted-resource-list, & #hosted-artbin-results, & #hosted-access-list": {
+  "& #hosted-resource-list, & #hosted-access-list": {
     display: "grid",
     gap: "0.4rem",
     padding: "0",
     "list-style": "none",
   },
-  "& #hosted-resource-list li, & #hosted-artbin-results li, & #hosted-access-list li":
+  "& #hosted-resource-list li, & #hosted-access-list li":
     {
       display: "flex",
       "align-items": "center",
@@ -557,14 +557,6 @@ export const editorStyles = css({
     "flex-wrap": "wrap",
     gap: "0.5rem",
   },
-  "& #hosted-artbin-import": { padding: "0.65rem 0" },
-  "& #hosted-artbin-search": {
-    display: "flex",
-    "align-items": "center",
-    gap: "0.5rem",
-    "flex-wrap": "wrap",
-  },
-  "& #hosted-artbin-query": { padding: "0.5rem" },
   "& #hosted-access-search": { padding: "0.5rem", margin: "0.5rem" },
   "& .hosted-access-actions": {
     display: "flex",
