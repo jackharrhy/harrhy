@@ -420,6 +420,31 @@ try {
     .locator("code")
     .filter({ hasText: "retained code fence" })
     .waitFor();
+  const jump = page.getByRole("button", { name: "Jump to latest" });
+  const atLatest = () =>
+    page.waitForFunction(() => {
+      const node = document.querySelector('[aria-label="Transcript"]');
+      return (
+        node && node.scrollHeight - node.clientHeight - node.scrollTop <= 2
+      );
+    });
+  await message.fill(
+    `slow transcript follow\n${"Reading older lines.\n".repeat(40)}`,
+  );
+  await message.press("Enter");
+  await transcript.locator("[data-streaming]").waitFor();
+  await atLatest();
+  await transcript.evaluate((node) => {
+    node.scrollTop = 0;
+  });
+  await jump.waitFor();
+  const historyTop = await transcript.evaluate((node) => node.scrollTop);
+  await transcript.locator("[data-streaming]").waitFor({ state: "hidden" });
+  assert.equal(await transcript.evaluate((node) => node.scrollTop), historyTop);
+  await jump.press("Enter");
+  await jump.waitFor({ state: "hidden" });
+  await atLatest();
+  assert(await transcript.evaluate((node) => node === document.activeElement));
   await message.fill(
     [`json ${quoted}`, "", "Ordinary text after the quote."].join(
       String.fromCharCode(10),
@@ -909,6 +934,34 @@ try {
     () => !document.querySelector<HTMLTextAreaElement>("textarea")?.disabled,
   );
   await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
+  await hydrated.waitForFunction(() => {
+    const node = document.querySelector('[aria-label="Transcript"]');
+    return node && node.scrollHeight - node.clientHeight - node.scrollTop <= 2;
+  });
+  const hydratedTranscript = hydrated.getByLabel("Transcript");
+  const hydratedJump = hydrated.getByRole("button", { name: "Jump to latest" });
+  await hydratedTranscript.evaluate((node) => {
+    node.scrollTop = 0;
+  });
+  await hydratedJump.waitFor();
+  const selectedLabel = await hydrated
+    .getByRole("complementary", { name: "Session list" })
+    .getByRole("button", { pressed: true })
+    .innerText();
+  await hydrated
+    .getByRole("button", { name: "Second session", exact: true })
+    .click();
+  await hydrated.getByText("No messages yet.").waitFor();
+  await hydratedJump.waitFor({ state: "hidden" });
+  await hydrated
+    .getByRole("button", { name: selectedLabel, exact: true })
+    .click();
+  await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
+  assert(
+    await hydratedTranscript.evaluate(
+      (node) => node.scrollHeight - node.scrollTop - node.clientHeight <= 2,
+    ),
+  );
   await hydrated.close();
   const startServer = (
     await import(new URL("src/hosts/server.ts", piRoot).href)
@@ -922,6 +975,11 @@ try {
   assert(
     await page.getByRole("button", { name: "Send", exact: true }).isDisabled(),
   );
+  await transcript.evaluate((node) => {
+    node.scrollTop = 0;
+  });
+  await jump.waitFor();
+  const restartTop = await transcript.evaluate((node) => node.scrollTop);
   const beforeRestart = page.url();
   restarted = await startServer({
     port: fixture.server.port,
@@ -937,6 +995,8 @@ try {
         ?.disabled,
   );
   assert.equal(page.url(), beforeRestart);
+  await jump.waitFor();
+  assert.equal(await transcript.evaluate((node) => node.scrollTop), restartTop);
   assert.equal(await message.inputValue(), draft);
   assert.equal(await transcript.getByText(draft, { exact: true }).count(), 0);
   assert.equal(
