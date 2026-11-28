@@ -1,3 +1,4 @@
+import { cacheHitRate } from "../../pi/src/runtime/conversation-stats.ts";
 import { ownerSessions } from "./session-wire.ts";
 import { sidebarActivity } from "./sidebar-activity.ts";
 import type { IncomingMessage } from "node:http";
@@ -151,6 +152,9 @@ export async function readSnapshot(
             },
             model: model.value,
             contextTokens: stats.value?.contextTokens,
+            cacheHit:
+              stats.value?.latestAssistantUsage &&
+              cacheHitRate(stats.value.latestAssistantUsage),
           };
         }
       }

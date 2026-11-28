@@ -218,13 +218,21 @@ export function Conversation(handle: Handle<Props>) {
     const model = data?.model;
     const limit =
       model && model.contextWindow > 0 ? model.contextWindow : undefined;
-    const number = new Intl.NumberFormat();
-    const context =
+    const used = data?.contextTokens;
+    const percent =
+      used !== undefined && limit
+        ? Math.round((used / limit) * 100)
+        : undefined;
+    const compactLimit =
       limit === undefined
         ? undefined
-        : data?.contextTokens === undefined
-          ? `${number.format(limit)} context`
-          : `${number.format(data.contextTokens)} / ${number.format(limit)} context`;
+        : limit < 1000
+          ? String(limit)
+          : limit < 1e6
+            ? `${(limit / 1000).toFixed(1).replace(/\.0$/, "")}k`
+            : `${(limit / 1e6).toFixed(2)}M`;
+    const cost = data?.sessionCost;
+    const hit = data?.cacheHit;
     const partial = live?.generation?.message;
     const slots = new Map(live?.tools?.map((slot) => [slot.callId, slot]));
     const results = new Map(
@@ -479,8 +487,7 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                paddingBlock: "12px 8px",
-                borderBlock: "1px solid var(--hui-border)",
+                paddingBlock: "0 8px",
               }),
             ]}
           >
@@ -494,11 +501,14 @@ export function Conversation(handle: Handle<Props>) {
               disabled={!view || (!feed && !handle.props.chat)}
               mix={[
                 css({
+                  display: "block",
                   width: "100%",
                   boxSizing: "border-box",
                   resize: "none",
                   border: 0,
-                  padding: "4px 0",
+                  borderBlock: "1px solid var(--hui-border)",
+                  borderRadius: 0,
+                  padding: "8px 0",
                   background: "transparent",
                   fieldSizing: "content",
                   maxHeight: "min(28dvh, 12rem)",
@@ -558,26 +568,146 @@ export function Conversation(handle: Handle<Props>) {
             {handle.props.showMetadata && (
               <div
                 aria-label={
-                  model || effort || context ? "Composer metadata" : undefined
+                  model || effort || percent !== undefined
+                    ? "Composer metadata"
+                    : undefined
                 }
-                aria-hidden={!model && !effort && !context}
                 mix={css({
                   display: "flex",
                   flexWrap: "wrap",
-                  gap: "4px 12px",
+                  alignItems: "center",
+                  gap: "0 12px",
                   borderTop: "1px solid var(--hui-border)",
-                  paddingBlock: "4px",
+                  paddingBlock: "4px 0",
                   color: "var(--hui-muted)",
                   fontSize: "12px",
                   lineHeight: "18px",
-                  minHeight: "18px",
+                  minHeight: "40px",
                   boxSizing: "content-box",
                   fontVariantNumeric: "tabular-nums",
                 })}
               >
-                {model && <span>{model.name}</span>}
-                {effort && <span>Effort: {effort}</span>}
-                {context && <span>{context}</span>}
+                <div
+                  mix={css({
+                    display: "flex",
+                    alignItems: "center",
+                    flex: 1,
+                    minWidth: 0,
+                    gap: "4px",
+                    whiteSpace: "nowrap",
+                    minHeight: "24px",
+                  })}
+                >
+                  {model && (
+                    <span
+                      title={model.name}
+                      mix={css({
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      })}
+                    >
+                      {model.name}
+                    </span>
+                  )}
+                  {model && effort && <span aria-hidden="true">·</span>}
+                  {effort && <span title="Thinking effort">{effort}</span>}
+                </div>
+                <div
+                  mix={css({
+                    display: "flex",
+                    gap: "4px",
+                    marginInlineStart: "auto",
+                    whiteSpace: "nowrap",
+                    fontFamily: "ui-monospace, monospace",
+                  })}
+                >
+                  {data?.viewers !== undefined && (
+                    <>
+                      <span
+                        title="Browsers viewing this session, including subagent views"
+                        aria-label={`${data.viewers} browsers viewing this session`}
+                        role="img"
+                      >
+                        <svg
+                          aria-hidden="true"
+                          width="13"
+                          height="13"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          stroke-width="2"
+                          mix={css({
+                            verticalAlign: "-2px",
+                            marginInlineEnd: "4px",
+                          })}
+                        >
+                          <circle cx="9" cy="7" r="3" />
+                          <path d="M3 20v-2a6 6 0 0 1 12 0v2m2-16a3 3 0 0 1 0 6m1 3a5 5 0 0 1 3 5v2" />
+                        </svg>
+                        {data.viewers}
+                      </span>
+                      <span aria-hidden="true">·</span>
+                    </>
+                  )}
+                  <span
+                    title="Cache hit rate of the latest assistant response"
+                    aria-label={`Cache hit rate: ${hit === undefined ? "unavailable" : Math.round(hit * 100) + " percent"}`}
+                    role="img"
+                  >
+                    chr {hit === undefined ? "—" : Math.round(hit * 100) + "%"}
+                  </span>
+                  {cost !== undefined && (
+                    <>
+                      <span aria-hidden="true">·</span>
+                      <span title="Session total cost: all conversations, subagents and tools">
+                        ${cost.toFixed(cost >= 1 ? 2 : cost >= 0.01 ? 3 : 4)}
+                      </span>
+                    </>
+                  )}
+                </div>
+                <div
+                  mix={css({
+                    display: "flex",
+                    alignItems: "center",
+                    flex: "1 0 100%",
+                    gap: "8px",
+                    minHeight: "16px",
+                    fontFamily: "ui-monospace, monospace",
+                    "& progress, & > span:first-child": {
+                      flex: 1,
+                      minWidth: 0,
+                      height: "2px",
+                      border: 0,
+                      appearance: "none",
+                      background: "var(--hui-border)",
+                    },
+                    "& progress::-webkit-progress-bar": {
+                      background: "var(--hui-border)",
+                    },
+                    "& progress::-webkit-progress-value": {
+                      background: "var(--hui-muted)",
+                    },
+                    "& progress::-moz-progress-bar": {
+                      background: "var(--hui-muted)",
+                    },
+                  })}
+                >
+                  {percent !== undefined ? (
+                    <>
+                      <progress
+                        aria-label="Estimated active context usage"
+                        aria-valuetext={`${percent}% of ${limit} tokens`}
+                        value={Math.min(100, Math.max(0, percent))}
+                        max={100}
+                      />
+                      <span>
+                        {percent}%/{compactLimit}
+                      </span>
+                    </>
+                  ) : (
+                    <span aria-hidden="true" />
+                  )}
+                </div>
               </div>
             )}
             {disconnected && handle.props.chat && (

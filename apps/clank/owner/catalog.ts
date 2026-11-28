@@ -7,6 +7,8 @@ import {
 import { sidebarActivity } from "./sidebar-activity.ts";
 import { Subagents, type Child } from "../../pi/plugins/subagents/contract.ts";
 import type { ConversationView } from "@earendil-works/pi-durable";
+import { SessionMetrics } from "../../pi/plugins/status/contract.ts";
+import { cacheHitRate } from "../../pi/src/runtime/conversation-stats.ts";
 import { Chat, type ModelMeta } from "../../pi/plugins/chat/contract.ts";
 import { webSocketLink } from "@earendil-works/chord";
 import {
@@ -35,6 +37,9 @@ export type ChatFeed = {
   view: ConversationView | null;
   model?: ModelMeta | null;
   contextTokens?: number;
+  cacheHit?: number;
+  viewers?: number;
+  sessionCost?: number;
   send(text: string, requestId: string): Promise<unknown>;
 };
 export type Catalog = {
@@ -103,6 +108,7 @@ export async function followCatalog(
   signal: AbortSignal,
   publish: (catalog: Catalog) => Promise<unknown>,
 ) {
+  const viewer = crypto.randomUUID();
   const url = new URL(clientLinkPath("script"), location.origin);
   url.protocol = location.protocol === "https:" ? "wss:" : "ws:";
   const socket = new WebSocket(url);
@@ -174,9 +180,54 @@ export async function followCatalog(
               const model = await ref.model.watch(chatScope);
               const stats = await ref.stats.watch(chatScope);
               let currentModel = model.value;
-              let contextTokens = stats.value?.contextTokens;
+              let activeStats = stats.value;
+              let viewers: number | undefined;
+              let sessionCost: number | undefined;
               const publishChat = () =>
-                receive({ view, send, model: currentModel, contextTokens });
+                receive({
+                  view,
+                  send,
+                  model: currentModel,
+                  viewers,
+                  sessionCost,
+                  contextTokens: activeStats?.contextTokens,
+                  cacheHit:
+                    activeStats?.latestAssistantUsage &&
+                    cacheHitRate(activeStats.latestAssistantUsage),
+                });
+              void host
+                .root(
+                  async (metricsScope) => {
+                    const metrics = await metricsScope.get(SessionMetrics, {
+                      session,
+                      viewer,
+                    });
+                    if (metrics.variant !== "reader") return;
+                    const [clients, usage] = await Promise.all([
+                      metrics.clients.watch(metricsScope),
+                      metrics.usage.watch(metricsScope),
+                    ]);
+                    if (!canSend()) return;
+                    viewers = clients.value;
+                    sessionCost = usage.value?.cost.total;
+                    await publishChat();
+                    clients.start(async (call) => {
+                      if (call.kind !== "value" || call.retired || !canSend())
+                        return;
+                      viewers = call.value;
+                      await publishChat();
+                    });
+                    usage.start(async (call) => {
+                      if (call.kind !== "value" || call.retired || !canSend())
+                        return;
+                      sessionCost = call.value?.cost.total;
+                      await publishChat();
+                    });
+                    await Promise.race([clients.closed, usage.closed]);
+                  },
+                  withAbortSignal(active, ctx),
+                )
+                .catch(() => {});
               model.start(async (call) => {
                 if (call.kind === "value" && !call.retired && canSend()) {
                   currentModel = call.value;
@@ -185,7 +236,7 @@ export async function followCatalog(
               });
               stats.start(async (call) => {
                 if (call.kind === "value" && !call.retired && canSend()) {
-                  contextTokens = call.value?.contextTokens;
+                  activeStats = call.value;
                   await publishChat();
                 }
               });

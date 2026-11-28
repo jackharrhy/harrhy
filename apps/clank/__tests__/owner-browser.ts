@@ -617,7 +617,35 @@ try {
   assert(settingsBox && settingsBox.x < 32 && settingsBox.y > 820);
   const metadata = observer.getByLabel("Composer metadata", { exact: true });
   await metadata.waitFor();
-  assert.match(await metadata.innerText(), /Faux Model/);
+  assert.match(await metadata.innerText(), /Faux Model.*off/s);
+  await metadata
+    .getByRole("img", { name: /browsers viewing this session/ })
+    .waitFor();
+  await page
+    .getByLabel("Composer metadata", { exact: true })
+    .getByRole("img", { name: /Cache hit rate: \d+ percent/ })
+    .waitFor();
+  await page
+    .getByLabel("Composer metadata", { exact: true })
+    .getByTitle(/Session total cost/)
+    .waitFor();
+  await metadata
+    .getByRole("progressbar", { name: "Estimated active context usage" })
+    .waitFor();
+  const rules = await observer
+    .getByRole("textbox", { name: "Message" })
+    .evaluate((node) => {
+      const style = getComputedStyle(node);
+      return [
+        style.borderTop,
+        style.borderBottom,
+        style.paddingTop,
+        style.paddingBottom,
+      ];
+    });
+  assert.equal(rules[0], rules[1]);
+  assert.notEqual(rules[0], "0px none rgb(0, 0, 0)");
+  assert.equal(rules[2], rules[3]);
   await settingsButton.click();
   const preference = observer.getByRole("checkbox", {
     name: "Show composer metadata",
@@ -797,6 +825,7 @@ try {
       ),
     });
     await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Familiar", exact: true }).click();
     await native.close();
   }
   await observer
