@@ -6,9 +6,9 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/auth/package.json apps/auth/package.json
 COPY packages/logger/package.json packages/logger/package.json
 COPY packages/ui/package.json packages/ui/package.json
-COPY packages/ui/styles.ts packages/ui/styles.ts
 RUN pnpm --filter @harrhy/auth... install --frozen-lockfile --config.enable-global-virtual-store=false
 COPY packages/logger ./packages/logger
+COPY packages/ui ./packages/ui
 
 FROM platformatic/node-caged:26-slim
 RUN groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home node
@@ -16,6 +16,7 @@ WORKDIR /app
 COPY --from=assets --chown=node:node /app/node_modules ./node_modules
 COPY --from=assets --chown=node:node /app/packages/ui ./packages/ui
 COPY --from=assets --chown=node:node /app/packages/logger ./packages/logger
+COPY --chown=node:node tsconfig.base.json ./tsconfig.base.json
 ARG HARRHY_AUTH_VERSION=development
 ENV HARRHY_AUTH_VERSION=${HARRHY_AUTH_VERSION}
 WORKDIR /app/apps/auth
