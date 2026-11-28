@@ -103,6 +103,10 @@ Recipes consume the nearest variables, so subtree overrides inherit naturally. A
 
 Native themes and recipes use `rem` for typography, spacing and control geometry so they follow the document font size. The package does not set the root size. Keep border hairlines and focus rings in CSS pixels, and leave intrinsic asset dimensions alone. The legacy styles entry points retain their fixed geometry. `popupOffset` supports `rem` and `px`: the official anchor API takes a CSS-pixel distance, so `rem` is resolved against the document root when positioning.
 
+### Spacing unit
+
+Use `space(multiplier)` from `@harrhy/ui/theme` for spacing that should scale together. The nearest theme supplies `--hui-space-unit` (default `0.5rem`): `space(0.5)` gives a quarter rem and `space(2)` gives one rem at that default. To tune an opted-in region, use `extendTheme(theme, { spaceUnit: "0.4375rem" })` before applying `themeStyles`, or override the CSS variable in a narrower scope. The Explorer preview padding is the first opt-in. Existing `--hui-space`, density presets, type, and control hit areas are independent.
+
 ### Graphite and density
 
 Picker names are Basic (cleanTheme), Dial (dialTheme), Newspaper (brutalistTheme), Scorebook (sluggersTheme) and Graphite. Existing theme exports are unchanged. Graphite is light token data; the importing app supplies Inter or uses system sans.

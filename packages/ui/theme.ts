@@ -1,4 +1,4 @@
-import { createTheme } from "@pitlane/theme";
+import { createTheme, scale } from "@pitlane/theme";
 import * as s from "@pitlane/theme/schema";
 import { css } from "remix/component";
 
@@ -60,6 +60,7 @@ export interface ThemeTokens {
   textSize: string;
   lineHeight: string;
   space: string;
+  spaceUnit?: string;
   controlHeight: string;
   controlPadding: string;
   controlRadius: string;
@@ -235,6 +236,7 @@ const contract = {
   textSize: ["textSize", s.dimension()],
   lineHeight: ["lineHeight", s.any()],
   space: ["space", s.dimension()],
+  spaceUnit: ["spaceUnit", s.dimension()],
   borderWidth: ["borderWidth", s.dimension()],
   panel: {
     radius: ["panelRadius", s.dimension()],
@@ -251,7 +253,9 @@ type Schema<C> = {
   [K in keyof C]: C[K] extends Leaf ? C[K][1] : Schema<C[K]>;
 };
 type Values<C> = {
-  [K in keyof C]: C[K] extends Leaf ? ThemeTokens[C[K][0]] : Values<C[K]>;
+  [K in keyof C]: C[K] extends Leaf
+    ? Required<ThemeTokens>[C[K][0]]
+    : Values<C[K]>;
 };
 type Patch<C> = {
   [K in keyof C]?: C[K] extends Leaf ? ThemeTokens[C[K][0]] : Patch<C[K]>;
@@ -275,7 +279,9 @@ const schema = mapContract(contract, ([, validator]) => validator) as Schema<
 >;
 
 function toValues(theme: Readonly<ThemeTokens>) {
-  return mapContract(contract, ([key]) => theme[key]) as Values<
+  const { spaceUnit = "0.5rem" } = theme;
+  const values = { ...theme, spaceUnit };
+  return mapContract(contract, ([key]) => values[key]) as Values<
     typeof contract
   >;
 }
@@ -287,6 +293,8 @@ const base = createTheme({
 
 /** Nested references shared by all Harrhy presets. */
 export const tokens = base.token.hui;
+
+export const space = scale(tokens.spaceUnit);
 
 /** Extend a preset with a nested patch. References stay live in CSS. */
 export function extendTheme(

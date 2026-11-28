@@ -13,6 +13,7 @@ const {
   cleanTheme,
   dialTheme,
   brutalistTheme,
+  space,
   themeStyles,
 } = await import("../theme.ts");
 
@@ -117,6 +118,19 @@ test("theme composition is immutable and emits scoped semantic and recipe variab
   assert.match(html, /--hui-control-height: 3rem/);
   assert.match(html, /--hui-button-image:/);
   assert.match(html, /--hui-font-ui:/);
+});
+
+test("spacing unit defaults independently of the semantic gap and accepts a scoped override", async () => {
+  const render = (theme) =>
+    renderToString(h("section", { mix: themeStyles(theme) }));
+  const defaultHtml = await render(cleanTheme);
+  const overrideHtml = await render(
+    extendTheme(cleanTheme, { spaceUnit: "0.4375rem" }),
+  );
+  assert.match(defaultHtml, /--hui-space-unit: 0.5rem/);
+  assert.match(overrideHtml, /--hui-space-unit: 0.4375rem/);
+  assert.match(overrideHtml, /--hui-space: 0.75rem/);
+  assert.equal(space(0.5), "calc(var(--hui-space-unit) * 0.5)");
 });
 
 test("nested extensions preserve live aliases and reject wrong-category references", async () => {

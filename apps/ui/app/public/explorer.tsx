@@ -23,7 +23,7 @@ import {
   Tab,
   TabPanel,
 } from "@harrhy/ui/interactive";
-import { themeRoot } from "@harrhy/ui/theme";
+import { space, themeRoot } from "@harrhy/ui/theme";
 import { CodeDiff } from "@harrhy/ui/code";
 import { checkboxLabelStyles } from "@harrhy/ui/recipes";
 import { HighlightedCode, prepareCode } from "./highlight.tsx";
@@ -99,14 +99,14 @@ const specimenLayout = css({
 });
 const stage = css({
   minHeight: "20rem",
-  padding: "2.5rem",
+  padding: space(5),
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   minWidth: 0,
   "& > div": { width: "100%", maxWidth: "23.75rem" },
   "@media (max-width: 37.5rem)": {
-    padding: "1.75rem 1.25rem",
+    padding: `${space(3.5)} ${space(2.5)}`,
     minHeight: "16.25rem",
   },
 });
