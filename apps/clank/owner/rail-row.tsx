@@ -2,7 +2,7 @@ import { css, on, type Handle, type RemixNode } from "remix/component";
 import { Icon } from "./icons.tsx";
 
 const reveal = {
-  "& .rail-archive": { opacity: 1, pointerEvents: "auto" },
+  "& .rail-control.rail-archive": { opacity: 1, pointerEvents: "auto" },
   "&:has(.rail-archive) .rail-age": { visibility: "hidden" },
 } as const;
 const rowStyle = css({
@@ -84,7 +84,13 @@ const rowStyle = css({
     fontWeight: 400,
     fontVariantNumeric: "tabular-nums",
   },
-  "& .rail-archive": { opacity: 0, pointerEvents: "none" },
+  "& .rail-control.rail-archive": {
+    justifyItems: "end",
+    paddingInlineEnd: "4px",
+    boxSizing: "border-box",
+    opacity: 0,
+    pointerEvents: "none",
+  },
   "@media (pointer: coarse), (hover: none)": { ...reveal },
   "@media (pointer: coarse), (max-width: 40rem)": {
     minHeight: "44px",
