@@ -936,21 +936,87 @@ try {
   await noJs.close();
   const hydrated = await context.newPage();
   await hydrated.setViewportSize({ width: 1280, height: 800 });
-  await hydrated.route("**/owner/check", async (route) => {
-    await hydrated
-      .getByText("Strong receipt", { exact: true })
-      .waitFor({ timeout: 3000 });
+  await hydrated.addInitScript(() => {
+    const shifts: number[] = [];
+    Object.assign(window, { clankShifts: shifts });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as (PerformanceEntry & {
+        value: number;
+        hadRecentInput: boolean;
+      })[]) {
+        if (!entry.hadRecentInput) shifts.push(entry.value);
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  const geometry = () =>
+    hydrated.evaluate(async () => {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      return {
+        boxes: [
+          "main",
+          ".session-detail",
+          '[aria-label="Transcript"]',
+          "textarea",
+          '[aria-label="Composer metadata"]',
+        ].map((selector) => {
+          const rect = document
+            .querySelector(selector)
+            ?.getBoundingClientRect();
+          return rect && [rect.x, rect.y, rect.width, rect.height];
+        }),
+        fonts: performance
+          .getEntriesByType("resource")
+          .filter((entry) => /\.(woff2?|ttf)(\?|$)/.test(entry.name)).length,
+        shifts: (window as Window & { clankShifts?: number[] }).clankShifts,
+      };
+    });
+  const script = Promise.withResolvers<void>();
+  const check = Promise.withResolvers<void>();
+  const checkStarted = Promise.withResolvers<void>();
+  await hydrated.route("**/owner-sessions.js", async (route) => {
+    await script.promise;
     await route.continue();
   });
-  await hydrated.goto(origin);
+  await hydrated.route("**/owner/check", async (route) => {
+    checkStarted.resolve();
+    await check.promise;
+    await route.continue();
+  });
+  await hydrated.goto(origin, { waitUntil: "commit" });
+  await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
+  const ssrGeometry = await geometry();
+  console.log("SSR geometry", JSON.stringify(ssrGeometry));
+  script.resolve();
+  await checkStarted.promise;
+  const hydratedGeometry = await geometry();
+  assert.deepEqual(hydratedGeometry.boxes, ssrGeometry.boxes);
+  check.resolve();
   await hydrated.waitForFunction(
-    () => !document.querySelector<HTMLTextAreaElement>("textarea")?.disabled,
+    () =>
+      document.querySelector<HTMLButtonElement>('button[aria-label="Send"]')
+        ?.disabled === true &&
+      !document.querySelector<HTMLTextAreaElement>("textarea")?.disabled,
   );
   await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
   await hydrated.waitForFunction(() => {
     const node = document.querySelector('[aria-label="Transcript"]');
     return node && node.scrollHeight - node.clientHeight - node.scrollTop <= 2;
   });
+  await hydrated.getByRole("button", { name: "Session tools" }).waitFor();
+  await hydrated.waitForFunction(
+    () =>
+      !document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Session tools"]',
+      )?.disabled,
+  );
+  const liveGeometry = await geometry();
+  assert.deepEqual(liveGeometry.boxes, ssrGeometry.boxes);
+  assert(
+    (liveGeometry.shifts ?? []).reduce((sum, shift) => sum + shift, 0) < 0.01,
+  );
+  console.log("Live geometry", JSON.stringify(liveGeometry));
   const hydratedTranscript = hydrated.getByLabel("Transcript");
   const hydratedJump = hydrated.getByRole("button", { name: "Jump to latest" });
   await hydratedTranscript.evaluate((node) => {
@@ -1003,6 +1069,27 @@ try {
   }, originalIndex);
   assert(await movingRow.evaluate((node) => node === document.activeElement));
   await hydrated.close();
+  // Omit the cookie on the document fetch only to exercise the SSR-miss shell.
+  const shellContext = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    viewport: { width: 375, height: 667 },
+  });
+  const shellPage = await shellContext.newPage();
+  const releaseCheck = Promise.withResolvers<void>();
+  await shellPage.route("**/owner/check", async (route) => {
+    await releaseCheck.promise;
+    await route.continue();
+  });
+  await shellPage.goto(origin);
+  const rail = shellPage.getByRole("complementary", { name: "Session list" });
+  await rail.getByText("Connecting to Pi…").waitFor();
+  const railBox = await rail.boundingBox();
+  assert.equal(await shellPage.getByLabel("Session detail").isVisible(), false);
+  await shellContext.addCookies(await context.cookies(origin));
+  releaseCheck.resolve();
+  await rail.getByRole("button", { name: "Familiar", exact: true }).waitFor();
+  assert.deepEqual(await rail.boundingBox(), railBox);
+  await shellContext.close();
   const startServer = (
     await import(new URL("src/hosts/server.ts", piRoot).href)
   ).startServer;

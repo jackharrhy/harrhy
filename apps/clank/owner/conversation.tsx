@@ -134,7 +134,8 @@ export function Conversation(handle: Handle<Props>) {
     if (!node || !mounted || mounted.aborted || binding === chat) return;
     binding = chat;
     chatAttempt?.abort();
-    disconnected = true;
+    // A seeded first load hasn't lost a live connection.
+    if (feed) disconnected = true;
     if (!chat) return;
     chatAttempt = new AbortController();
     const signal = AbortSignal.any([mounted, chatAttempt.signal]);
@@ -534,9 +535,12 @@ export function Conversation(handle: Handle<Props>) {
                 <Icon name="send" />
               </Button>
             </div>
-            {handle.props.showMetadata && (model || effort || context) && (
+            {handle.props.showMetadata && (
               <div
-                aria-label="Composer metadata"
+                aria-label={
+                  model || effort || context ? "Composer metadata" : undefined
+                }
+                aria-hidden={!model && !effort && !context}
                 mix={css({
                   display: "flex",
                   flexWrap: "wrap",
@@ -545,6 +549,9 @@ export function Conversation(handle: Handle<Props>) {
                   paddingBlock: "4px",
                   color: "var(--hui-muted)",
                   fontSize: "12px",
+                  lineHeight: "18px",
+                  minHeight: "18px",
+                  boxSizing: "content-box",
                   fontVariantNumeric: "tabular-nums",
                 })}
               >

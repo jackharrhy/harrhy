@@ -726,7 +726,7 @@ export const OwnerSessions = clientEntry(
           aria-label="Clank"
           data-sidebar={sidebar ? "shown" : "hidden"}
           data-pane={
-            !catalog ||
+            (!catalog && view.kind !== "loading") ||
             newOpen ||
             (detailOpen && (selected || listPage || target))
               ? "detail"
@@ -829,6 +829,11 @@ export const OwnerSessions = clientEntry(
               </div>
             </div>
             <div mix={scroll}>
+              {view.kind === "loading" && !catalog && !detailOpen && (
+                <Text tone="muted" role="status" mix={measure}>
+                  Connecting to Pi…
+                </Text>
+              )}
               {catalog?.rows.length === 0 && (
                 <Text tone="muted" mix={measure}>
                   No active sessions.
@@ -1354,7 +1359,7 @@ export const OwnerSessions = clientEntry(
                       </Button>
                     </>
                   )}
-                  {view.kind === "loading" && !catalog && (
+                  {view.kind === "loading" && !catalog && detailOpen && (
                     <Text tone="muted" role="status">
                       Connecting to Pi…
                     </Text>
