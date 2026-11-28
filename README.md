@@ -71,3 +71,10 @@ A monorepo for personal apps and packages: Remix 3 web apps and native tools.
 | [`@harrhy/result`](packages/result/) | Success and failure values and helpers | [README](packages/result/README.md) |
 | [`@harrhy/rich-text`](packages/rich-text/) | Inline document format and rich text editor | [README](packages/rich-text/README.md) |
 | [`@harrhy/ui`](packages/ui/) | Native Remix components, semantic themes and compatible Ref/Auth control styles | [README](packages/ui/README.md) |
+
+### Experiments
+
+<!-- prettier-ignore -->
+| Workspace | What it tests | Guide |
+| --- | --- | --- |
+| `experiments/shared-workspace` | Synthetic multiplayer authorization, wire faults, and a disposable guest lab | [Shared workspace](experiments/shared-workspace/README.md) |

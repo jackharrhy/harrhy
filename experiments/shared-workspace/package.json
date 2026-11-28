@@ -1,0 +1,25 @@
+{
+  "name": "@harrhy/shared-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test __tests__/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "check": "pnpm run typecheck && pnpm test",
+    "lab:kvm": "bash __tests__/kvm/run.sh"
+  },
+  "dependencies": {
+    "capnweb": "0.13.0",
+    "ws": "8.21.0"
+  },
+  "engines": {
+    "node": ">=26.13.0 <27"
+  },
+  "devDependencies": {
+    "@types/node": "26.6.6",
+    "@types/ws": "8.18.2",
+    "playwright-core": "1.65.0",
+    "typescript": "6.0.3"
+  }
+}
