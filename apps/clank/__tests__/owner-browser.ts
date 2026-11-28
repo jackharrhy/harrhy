@@ -11,7 +11,7 @@ import { checkCanonicalSwipe } from "./rail-swipe-browser.ts";
 import { checkComposerFocus } from "./composer-focus-browser.ts";
 import { proveRailArchive } from "./rail-browser.ts";
 const OWNER_HOST = "clank.example.test";
-import { structuredAttribution } from "../owner/attribution.ts";
+import { structuredAttribution } from "../app/conversation/attribution.ts";
 
 // Check the elements themselves, not just branding serialized in hydration props.
 function inspectBrand({
@@ -58,14 +58,14 @@ function inspectBrand({
   return state;
 }
 
-const conversationDialog = (target: Page) =>
-  target.getByRole("dialog", { name: "Switch conversation", exact: true });
-async function conversationMenu(target: Page) {
+const palette = (target: Page) =>
+  target.getByRole("dialog", { name: "Command palette", exact: true });
+async function headerPalette(target: Page) {
   await target.getByRole("button", { name: "Session tools" }).press("Enter");
   await target
     .getByRole("menuitem", { name: "Switch conversation…", exact: true })
     .press("Enter");
-  return conversationDialog(target);
+  return palette(target);
 }
 
 // In the response-body case inspect parsed elements, not matching strings in
@@ -131,12 +131,15 @@ for (const kind of [undefined, "external"]) {
 const piRoot = process.env.HARRHY_CLANK_TEST_PI_ROOT
   ? new URL(`file://${process.env.HARRHY_CLANK_TEST_PI_ROOT}/`)
   : new URL("../../pi/", import.meta.url);
-const { startFixture, TEST } = (await import(
+const { startFixture, holdIn, TEST } = (await import(
   new URL("__tests__/p2/helpers.ts", piRoot).href
 )) as typeof import("../../pi/__tests__/p2/helpers.ts");
 const { Catalog } = (await import(
   new URL("plugins/sessions/contract.ts", piRoot).href
 )) as typeof import("../../pi/plugins/sessions/contract.ts");
+const { SessionTree } = (await import(
+  new URL("plugins/tree/contract.ts", piRoot).href
+)) as typeof import("../../pi/plugins/tree/contract.ts");
 const { ThemeBranding } = (await import(
   new URL("plugins/settings/theme-contract.ts", piRoot).href
 )) as typeof import("../../pi/plugins/settings/theme-contract.ts");
@@ -393,6 +396,13 @@ try {
   await observer
     .locator('button[aria-label="Session tools"]:enabled')
     .waitFor();
+  const desktopMessage = observer.getByRole("textbox", { name: "Message" });
+  const desktopSearch = observer.getByRole("searchbox", {
+    name: "Search sessions and messages",
+  });
+  await observer.getByRole("link", { name: "2 older" }).press("Enter");
+  await desktopSearch.and(observer.locator(":focus")).waitFor();
+  await observer.goBack();
   const secondItem = observer.getByRole("listitem").filter({ has: secondRow });
   const secondBox = await secondItem.boundingBox();
   assert(secondBox);
@@ -402,6 +412,7 @@ try {
   await observer
     .getByRole("heading", { name: "Second session", exact: true })
     .waitFor();
+  await desktopMessage.and(observer.locator(":focus")).waitFor();
   const familiarRow = observer.getByRole("button", {
     name: "Familiar",
     exact: true,
@@ -550,10 +561,7 @@ try {
   }
   await tools.press("Enter");
   await page.getByRole("menuitem", { name: "Rename" }).waitFor();
-  assert.equal(
-    await page.getByRole("menuitem", { name: "Switch conversation…" }).count(),
-    0,
-  );
+  await page.getByRole("menuitem", { name: "Switch conversation…" }).waitFor();
   await page.getByRole("menuitem", { name: "Rename" }).press("Enter");
   const input = page.getByRole("textbox", { name: "Session title" });
   assert.equal(
@@ -600,9 +608,13 @@ try {
   assert(
     await page.getByRole("button", { name: "Send", exact: true }).isEnabled(),
   );
+  const observerTranscript = observer.getByLabel("Transcript");
+  await observerTranscript.focus();
   await message.dispatchEvent("compositionend");
   await message.press("Enter");
   await page.locator("[data-streaming]").filter({ hasText: "Echo:" }).waitFor();
+  await observerTranscript.getByText(prompt, { exact: true }).waitFor();
+  assert(await observerTranscript.evaluate((node) => node.matches(":focus")));
   await observer
     .getByRole("button", { name: "Second session", exact: true })
     .click();
@@ -650,25 +662,38 @@ try {
     .locator("[data-tool-activity][data-state=working]")
     .getByRole("button", { name: /Running printf/ });
   await running.waitFor({ timeout: 10000 });
-  assert.equal(
-    await running
-      .locator("span span")
-      .first()
-      .evaluate((node) => getComputedStyle(node).animationName),
-    "wheel-in",
+  const trigger = await running.elementHandle();
+  assert(trigger);
+  const receipt = page.getByRole("button", {
+    name: /ran a command.*Show the steps/i,
+  });
+  await receipt.waitFor({ timeout: 15000 });
+  assert(
+    await receipt.evaluate((node, original) => node === original, trigger),
   );
+  await receipt.press("ArrowUp");
+  await page.waitForFunction(
+    (node) =>
+      node
+        .querySelector("[data-slide=backward] [data-current]")
+        ?.getAnimations()
+        .some(
+          (motion) =>
+            motion instanceof CSSTransition &&
+            motion.transitionProperty === "transform",
+        ),
+    trigger,
+  );
+  assert(await trigger.evaluate((node) => node === document.activeElement));
   await page.emulateMedia({ reducedMotion: "reduce" });
+  await trigger.press("ArrowDown");
+  await receipt.waitFor();
   assert.equal(
-    await running
-      .locator("span")
-      .filter({ hasText: /Running printf/ })
-      .last()
-      .evaluate((node) => getComputedStyle(node).animationName),
-    "none",
+    await receipt.evaluate(
+      (node) => node.getAnimations({ subtree: true }).length,
+    ),
+    0,
   );
-  await page
-    .getByRole("button", { name: /ran a command.*Show the steps/i })
-    .waitFor({ timeout: 15000 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
   // Native faux `json <text>` streams the exact answer. Finish the formatted
   // blocks first, then keep emitting deltas so a settled render cannot pass.
@@ -854,7 +879,7 @@ try {
   await page.getByRole("button", { name: "Send", exact: true }).click();
   const agent = transcript.getByRole("article", { name: "Subagent message" });
   await agent.getByText("helper", { exact: true }).waitFor({ timeout: 15000 });
-  await agent.getByText("Answered", { exact: true }).waitFor();
+  await agent.getByText("answered", { exact: true }).waitFor();
   assert(!(await agent.innerText()).includes("<sender"));
   // Native worker reports populate the rail; nothing is inferred from the receipt text.
   await page.getByRole("button", { name: "Show sessions" }).click();
@@ -896,34 +921,240 @@ try {
   assert(await helper.evaluate((node) => node === document.activeElement));
   await helper.click();
   await transcript.getByText("hello helper", { exact: true }).waitFor();
-  const conversations = await conversationMenu(page);
-  await conversations
-    .getByRole("option", { name: /^helper Current$/ })
-    .waitFor();
-  await conversations
-    .getByRole("option", { name: /^Main conversation/ })
+  // Fork real fixture history, then restore Pi's main pointer. Clank should
+  // still offer the non-main branch when a different session is selected.
+  const treeOwner = fixture.browser();
+  try {
+    const tree = await holdIn(
+      treeOwner,
+      SessionTree,
+      { session: session.id },
+      "owner",
+    );
+    await tree.branch(
+      { conversation: session.main, label: "Witness branch" },
+      TEST,
+    );
+    await tree.select({ conversation: session.main }, TEST);
+    tree.release();
+  } finally {
+    await treeOwner.close(TEST);
+  }
+  const phonePalette = await headerPalette(page);
+  const search = phonePalette.getByRole("searchbox", {
+    name: "Find a command or conversation",
+  });
+  await phonePalette
+    .getByRole("button", { name: /^Second session\b/i })
     .click();
+  const secondHeading = page.getByRole("heading", {
+    name: "Second session",
+    exact: true,
+  });
+  await secondHeading.waitFor();
+  await headerPalette(page);
+  const options = phonePalette
+    .getByRole("list", { name: "Commands and conversations" })
+    .getByRole("button");
+  const olderOption = phonePalette.getByRole("button", { name: /^Older B\b/ });
+  const recentHelper = phonePalette.getByRole("button", {
+    name: /^helper\b/,
+  });
+  const family = phonePalette.getByRole("list", {
+    name: "Conversations in Familiar",
+    exact: true,
+  });
+  const parentButton = phonePalette.getByRole("button", {
+    name: /^Familiar\b/i,
+  });
+  const helperButton = family.getByRole("button", { name: /^helper\b/ });
+  const parentText = parentButton.locator("span").first();
+  const childText = helperButton.locator("span").first();
+  const rowBoxes = await Promise.all(
+    [
+      parentText,
+      childText,
+      parentButton.locator(":scope > span").last(),
+      helperButton.locator(":scope > span").last(),
+    ].map((el) => el.boundingBox()),
+  );
+  const [parentName, childName, parentSlot, childSlot] = rowBoxes;
+  assert(parentName && childName && parentSlot && childSlot);
+  assert(
+    childName.x > parentName.x &&
+      childSlot.x === parentSlot.x &&
+      childSlot.width === parentSlot.width &&
+      parentSlot.x > parentName.x + parentName.width,
+  );
+  // The prior visit was the helper, despite its parent being rendered first.
+  await search.press("Enter");
+  await transcript.getByText("hello helper", { exact: true }).waitFor();
+  await headerPalette(page);
+  await search.press("Enter");
+  await secondHeading.waitFor();
+  await headerPalette(page);
+  await search.fill("helper");
+  await helperButton.waitFor();
+  // Only the child matches. Enter chooses it; Tab can explicitly choose its parent.
+  assert.equal(await helperButton.getAttribute("data-default"), "");
+  assert.equal(await parentButton.getAttribute("data-default"), null);
+  await search.press("Enter");
+  await transcript.getByText("hello helper", { exact: true }).waitFor();
+  await headerPalette(page);
+  await search.fill("helper");
+  await search.press("Tab");
+  await parentButton.and(page.locator(":focus")).press("Tab");
+  await helperButton.and(page.locator(":focus")).press("Shift+Tab");
+  await parentButton.and(page.locator(":focus")).press("Enter");
   await transcript
     .locator("strong")
     .getByText("Strong receipt", { exact: true })
     .waitFor();
-  await observer.keyboard.press("Control+k");
-  const switcher = observer.getByRole("dialog", { name: "Command palette" });
+  await headerPalette(page);
+  await phonePalette
+    .getByRole("button", { name: /^Second session\b/i })
+    .click();
+  await secondHeading.waitFor();
+  await headerPalette(page);
+  for (const blank of ["", "   "]) {
+    await search.fill("Older B");
+    await olderOption.waitFor();
+    await search.fill(blank);
+    await recentHelper.waitFor();
+    await phonePalette
+      .getByRole("button", { name: /^Age minutes\b/ })
+      .waitFor();
+    assert.equal(
+      await phonePalette
+        .getByRole("list", { name: "Commands and conversations" })
+        .getByRole("button", {
+          name: /Older B|Age (hours|days)|\b(?:Branch|Command)\b/i,
+        })
+        .count(),
+      0,
+    );
+    // Arrows wrap within the displayed subset, not the searchable catalog.
+    const ids = await options.evaluateAll((nodes) => nodes.map((n) => n.id));
+    for (const [index, id] of [ids.at(-1), ...ids].entries()) {
+      await page.keyboard.press(index === 0 ? "ArrowUp" : "ArrowDown");
+      assert.equal(await page.evaluate(() => document.activeElement?.id), id);
+    }
+  }
+  const closeButton = phonePalette.getByRole("button", {
+    name: "Close command palette",
+  });
+  assert.equal(await closeButton.getAttribute("tabindex"), "-1");
+  for (const filter of ["", "Age", "No such palette target"]) {
+    await search.fill(filter);
+    const results = await options.all();
+    assert(
+      filter === "No such palette target"
+        ? !results.length
+        : results.length > 1,
+    );
+    for (const [key, order] of [
+      ["Tab", results],
+      ["Shift+Tab", results.toReversed()],
+    ] as const) {
+      for (const expected of [...order, search, ...order, search]) {
+        await page.keyboard.press(key);
+        assert(
+          await expected.evaluate(
+            (node) => node === document.activeElement && document.hasFocus(),
+          ),
+        );
+      }
+    }
+  }
+  await search.fill("Older B");
+  await search.press("Tab");
+  await olderOption.and(page.locator(":focus")).press("Enter");
+  await page.getByRole("heading", { name: "Older B", exact: true }).waitFor();
+  await headerPalette(page);
+  await search.press("Enter");
+  await secondHeading.waitFor();
+  await headerPalette(page);
+  await search.fill("Witness branch");
+  await phonePalette.getByRole("button", { name: /Witness branch/i }).click();
+  const branchHeading = page.getByText("Branch · Witness branch", {
+    exact: true,
+  });
+  await branchHeading.waitFor();
+  // Visiting the four-day-old session explicitly makes it eligible in this tab.
+  // Branches still need a query.
+  for (const [shortcut, destination] of [
+    ["Meta+k", secondHeading],
+    ["Control+k", page.getByRole("heading", { name: "Older B", exact: true })],
+  ] as const) {
+    await page.keyboard.press(shortcut);
+    await search.and(page.locator(":focus")).waitFor();
+    assert.equal(await search.inputValue(), "");
+    await page.keyboard.press("Enter");
+    await destination.waitFor();
+  }
+  await headerPalette(page);
+  await phonePalette.getByRole("button", { name: /^Familiar\b/i }).click();
+  await transcript
+    .locator("strong")
+    .getByText("Strong receipt", { exact: true })
+    .waitFor();
+
+  const switcher = await headerPalette(observer);
+  const query = switcher.getByRole("searchbox", {
+    name: "Find a command or conversation",
+  });
+  await query.fill("Search sessions and messages");
   await switcher
-    .getByRole("combobox", { name: "Find a command or conversation" })
-    .fill("Second");
-  await observer.keyboard.press("Enter");
-  await observer.getByRole("heading", { name: "Second session" }).waitFor();
-  await observer.keyboard.press("Meta+k");
-  await switcher.waitFor();
-  await observer.keyboard.press("Escape");
+    .getByRole("button", { name: /Search sessions and messages/ })
+    .click();
   await switcher.waitFor({ state: "hidden" });
+  await desktopSearch.and(observer.locator(":focus")).waitFor();
+  // This invoker survives selection, so dialog focus restoration alone cannot pass.
   const switchButton = observer.getByRole("button", {
     name: "Switch session",
     exact: true,
   });
+  await switchButton.press("Enter");
+  await query.and(observer.locator(":focus")).waitFor();
+  // Chromium sets isComposing on real keystrokes during a CDP IME session.
+  const ime = await context.newCDPSession(observer);
+  await ime.send("Input.imeSetComposition", {
+    text: "Second",
+    selectionStart: 6,
+    selectionEnd: 6,
+  });
+  await switcher.getByRole("button", { name: /^Second session\b/i }).waitFor();
+  await observer.keyboard.press("Enter");
+  assert(await query.isVisible(), "IME Enter must not activate a result");
+  await ime.send("Input.insertText", { text: "Second" });
+  await ime.detach();
+  await observer.keyboard.press("Enter");
+  await switcher.waitFor({ state: "hidden" });
+  await observer.getByRole("heading", { name: "Second session" }).waitFor();
+  await desktopMessage.and(observer.locator(":focus")).waitFor();
+  await observer.keyboard.press("Meta+k");
+  await switcher.waitFor();
+  await observer.keyboard.press("Escape");
+  await switcher.waitFor({ state: "hidden" });
   for (const dismiss of [
-    () => observer.keyboard.press("Escape"),
+    async () => {
+      await query.press("Tab");
+      await switcher
+        .getByRole("list", { name: "Commands and conversations" })
+        .getByRole("button")
+        .first()
+        .and(observer.locator(":focus"))
+        .waitFor();
+      await observer.keyboard.press("Escape");
+    },
+    () =>
+      switcher
+        .getByRole("button", { name: "Close command palette" })
+        .press("Enter"),
+    async () => {
+      await query.fill("no such palette target");
+      await query.press("Escape");
+    },
     () => observer.mouse.click(1, 1),
   ]) {
     await switchButton.click();
@@ -936,6 +1167,18 @@ try {
         box.x >= 0 &&
         box.x + box.width <= 1440,
     );
+    // A press crossing the border in either direction is not a backdrop click.
+    const inside = [box.x + 4, box.y + box.height / 2] as const;
+    for (const outward of [true, false]) {
+      const outside = [1, inside[1]] as const;
+      const start = outward ? inside : outside;
+      const end = outward ? outside : inside;
+      await observer.mouse.move(start[0], start[1]);
+      await observer.mouse.down();
+      await observer.mouse.move(end[0], end[1], { steps: 4 });
+      await observer.mouse.up();
+      assert(await switcher.isVisible());
+    }
     await dismiss();
     await switcher.waitFor({ state: "hidden" });
     await observer.waitForFunction(
@@ -948,12 +1191,10 @@ try {
   await page
     .getByRole("button", { name: "Switch session", exact: true })
     .click();
-  const phonePalette = page.getByRole("dialog", { name: "Command palette" });
-  const search = phonePalette.getByRole("combobox");
   await search.fill("session");
   // Select a pre-existing catalog result, not one of the leading commands.
   await search.press("ArrowUp");
-  const retained = await search.getAttribute("aria-activedescendant");
+  const retained = await page.evaluate(() => document.activeElement?.id);
   assert(retained);
   await fixture.server.host.root(async (ctx) => {
     const catalog = await ctx.get(Catalog, {});
@@ -969,40 +1210,63 @@ try {
       );
   }, TEST);
   await phonePalette
-    .getByRole("option", { name: /Palette session 11/ })
+    .getByRole("button", { name: /Palette session 11/ })
     .waitFor({ state: "attached" });
-  assert.equal(await search.getAttribute("aria-activedescendant"), retained);
-  const listbox = phonePalette.getByRole("listbox");
+  assert.equal(await page.evaluate(() => document.activeElement?.id), retained);
+  // Revealing a keyboard selection should scroll; a catalog publish need not.
+  await search.fill("Palette session");
+  await search.press("ArrowUp");
+  const listbox = phonePalette.getByRole("list", {
+    name: "Commands and conversations",
+  });
   assert(await listbox.evaluate((node) => node.scrollTop > 0));
   const phoneBox = await phonePalette.boundingBox();
   assert(phoneBox && phoneBox.x >= 0 && phoneBox.x + phoneBox.width <= 320);
+  // Remove the highlighted destination from another live browser. Enter
+  // with the same query must not dispatch that now-stale choice.
+  await search.fill("Palette session 11");
+  const victimOption = phonePalette.getByRole("button", {
+    name: /Palette session 11/,
+  });
+  await search.press("Tab");
+  await victimOption.and(page.locator(":focus")).waitFor();
+  await observer
+    .getByRole("button", { name: "Palette session 11", exact: true })
+    .hover();
+  await observer
+    .getByRole("button", { name: "Archive Palette session 11", exact: true })
+    .click();
+  const confirmation = observer.getByRole("dialog", {
+    name: "Archive session “Palette session 11”?",
+  });
+  await confirmation
+    .getByRole("button", { name: "Archive", exact: true })
+    .click();
+  await confirmation.waitFor({ state: "hidden" });
+  await options.waitFor({ state: "hidden" });
+  await search.and(page.locator(":focus")).waitFor();
+  await search.press("Enter");
+  assert(await search.isVisible());
+
+  await search.fill("Second session");
+  await search.press("Enter");
+  await secondHeading.waitFor();
+  await message.focus();
+  await page.keyboard.press("Control+k");
   await search.fill("familiar helper");
   await search.press("Enter");
   await transcript.getByText("hello helper", { exact: true }).waitFor();
   await page.getByRole("heading", { level: 1 }).dblclick();
-  await conversationDialog(page)
-    .getByRole("combobox", { name: "Find a conversation" })
-    .press("Escape");
+  await search.press("Escape");
   await tools.and(page.locator(":focus")).waitFor();
   await message.focus();
   await page.keyboard.press("Control+k");
-  await phonePalette.getByRole("combobox").fill("Switch conversation");
-  await phonePalette.getByRole("combobox").press("Enter");
-  await conversationDialog(page)
-    .getByRole("option", { name: /^helper Current$/ })
-    .waitFor();
-  assert.equal(
-    await conversationDialog(page)
-      .getByRole("option", { name: /Second session|New session/ })
-      .count(),
-    0,
-  );
-  await page.keyboard.press("Escape");
+  await search.press("Escape");
   await message.and(page.locator(":focus")).waitFor();
   await (
-    await conversationMenu(page)
+    await headerPalette(page)
   )
-    .getByRole("option", { name: /^Main conversation/ })
+    .getByRole("button", { name: /^Familiar\b/i })
     .click();
   const settingsButton = observer.getByRole("button", { name: "Settings" });
   const settingsBox = await settingsButton.boundingBox();
@@ -1163,7 +1427,7 @@ try {
     .getByRole("checkbox", { name: "Enter to send on desktop" })
     .uncheck();
   await preference.uncheck();
-  await observer.getByRole("button", { name: "Done" }).click();
+  await observer.getByRole("button", { name: "Close settings" }).click();
   await metadata.waitFor({ state: "hidden" });
   assert.equal(
     await observer.evaluate(() =>
@@ -1172,7 +1436,6 @@ try {
     "hidden",
   );
   await observer.getByRole("link", { name: "3 older", exact: true }).waitFor();
-  const desktopMessage = observer.getByRole("textbox", { name: "Message" });
   await desktopMessage.fill("Desktop draft");
   await desktopMessage.press("Enter");
   assert.equal(await desktopMessage.inputValue(), "Desktop draft\n");
@@ -1183,14 +1446,14 @@ try {
     .getByRole("checkbox", { name: "Enter to send on desktop" })
     .check();
   await preference.check();
-  await observer.getByRole("button", { name: "Done" }).click();
+  await observer.getByRole("button", { name: "Close settings" }).click();
   await metadata.waitFor();
   await observer
     .getByRole("button", { name: "Older A", exact: true })
     .waitFor();
   await settingsButton.click();
   await settings.getByRole("radio", { name: "3 days" }).check();
-  await settings.getByRole("button", { name: "Done" }).click();
+  await settings.getByRole("button", { name: "Close settings" }).click();
   await observer.getByRole("link", { name: "2 older", exact: true }).waitFor();
   const desktopToggle = observer.getByRole("button", {
     name: "Subagents for Familiar",
@@ -1215,22 +1478,55 @@ try {
   await touch.addCookies(await context.cookies(origin));
   const phone = await touch.newPage();
   phone.setDefaultTimeout(8000);
+  await phone.clock.install();
   await phone.goto(`${origin}/session/${session.id}`);
+  const touchTools = phone.getByRole("button", { name: "Session tools" });
+  await touchTools.tap();
+  await phone.getByRole("menuitem", { name: "Switch conversation…" }).tap();
+  const touchPalette = palette(phone);
+  await touchPalette.waitFor();
+  // First visit in a clean context: don't default to the current main.
+  assert.equal(
+    await touchPalette
+      .getByRole("button", { name: /^Familiar\b/i })
+      .getAttribute("data-default"),
+    null,
+  );
+  await phone.touchscreen.tap(1, 1);
+  await touchPalette.waitFor({ state: "hidden" });
+  await touchTools.and(phone.locator(":focus")).waitFor();
   async function tapConversation(name: RegExp) {
     await phone.getByRole("button", { name: "Session tools" }).tap();
     await phone.getByRole("menuitem", { name: "Switch conversation…" }).tap();
-    await conversationDialog(phone).getByRole("option", { name }).tap();
+    await touchPalette.getByRole("button", { name }).tap();
   }
   await tapConversation(/^helper/);
   await phone
     .getByLabel("Transcript")
     .getByText("hello helper", { exact: true })
     .waitFor();
-  await tapConversation(/^Main conversation/);
+  await tapConversation(/^Familiar\b/i);
   await phone
     .getByLabel("Transcript")
     .getByText("Strong receipt", { exact: true })
     .waitFor();
+  const editableFocus = phone.locator(
+    ":is(input, textarea, [contenteditable=true]):focus",
+  );
+  assert.equal(await editableFocus.count(), 0, "touch palette selection");
+  await phone.getByRole("button", { name: "Show sessions" }).tap();
+  await phone.getByRole("link", { name: "2 older" }).tap();
+  await phone
+    .getByRole("searchbox", { name: "Search sessions and messages" })
+    .waitFor();
+  assert.equal(await editableFocus.count(), 0, "touch Sessions search");
+  await phone.getByRole("button", { name: "Show sessions" }).tap();
+  await phone.getByRole("button", { name: "Familiar", exact: true }).tap();
+  await phone
+    .getByLabel("Transcript")
+    .getByText("Strong receipt", { exact: true })
+    .waitFor();
+  assert.equal(await editableFocus.count(), 0, "touch rail selection");
   const touchInput = phone.getByRole("textbox", { name: "Message" });
   await checkCanonicalSwipe(phone, "Second session");
   await touchInput.fill("Touch draft");
@@ -1242,6 +1538,18 @@ try {
   await transcript
     .getByText("Touch draft second line", { exact: true })
     .waitFor();
+  // Age the answered helper only in this browser. Its parent is still recent.
+  await phone.clock.fastForward("00:31:00");
+  await headerPalette(phone);
+  const touchQuery = touchPalette.getByRole("searchbox");
+  await touchQuery.fill("helper");
+  const agedHelper = touchPalette.getByRole("button", { name: /^helper\b/ });
+  await agedHelper.waitFor();
+  await touchQuery.fill("");
+  await touchPalette
+    .getByRole("button", { name: /^Second session\b/ })
+    .waitFor();
+  assert.equal(await agedHelper.count(), 0);
   await touch.close();
   if (process.env.HARRHY_CLANK_SCREENSHOT_DIR) {
     const piOrigin = new URL(`http://127.0.0.1:${fixture.server.port}`);
@@ -1289,9 +1597,9 @@ try {
     await nativeToggle.click();
     await native.getByText("helper", { exact: true }).first().waitFor();
     await (
-      await conversationMenu(observer)
+      await headerPalette(observer)
     )
-      .getByRole("option", { name: /^Main conversation/ })
+      .getByRole("button", { name: /^Familiar\b/i })
       .click();
     await observer
       .getByLabel("Transcript")
@@ -1424,7 +1732,7 @@ try {
   );
   await observer.getByRole("button", { name: "Show sidebar" }).click();
   await observer.keyboard.press("Control+k");
-  await switcher.getByRole("combobox").fill("New session");
+  await switcher.getByRole("searchbox").fill("New session");
   await observer.keyboard.press("Enter");
   await switcher.waitFor({ state: "hidden" });
   await observer.waitForFunction(
@@ -1508,6 +1816,7 @@ try {
         const rect = latest?.getBoundingClientRect();
         return {
           top: node.scrollTop,
+          readingFocus: node.matches(":focus"),
           gap: node.scrollHeight - node.clientHeight - node.scrollTop,
           latestVisible: Boolean(
             rect &&
@@ -1522,9 +1831,8 @@ try {
     });
     const summaryAnimation = () =>
       settled
-        .locator("span span")
         .first()
-        .evaluate((node) => getComputedStyle(node).animationName);
+        .evaluate((node) => node.getAnimations({ subtree: true }).length);
     const ssrAnimation = await summaryAnimation();
     const painted = await sample();
     const timestamp = cold.locator("time[data-message-time]").first();
@@ -1545,6 +1853,7 @@ try {
       1,
     );
     console.log("Named SSR before browser bundle", painted);
+    await cold.getByLabel("Transcript").focus();
     await cold.getByLabel("Transcript").evaluate((node) => {
       node.scrollTop = 100;
     });
@@ -1577,10 +1886,13 @@ try {
       "Settled summary animation across SSR/hydration/Chord",
       animations,
     );
-    assert.deepEqual(animations, ["none", "none", "none"]);
+    assert.deepEqual(animations, [0, 0, 0]);
     assert(painted.latestVisible && painted.gap <= 2);
     assert.equal(waiting.top, reading.top);
     assert.equal(connected.top, reading.top);
+    assert(
+      reading.readingFocus && waiting.readingFocus && connected.readingFocus,
+    );
     await cold.close();
     await observer.reload();
     await observer.waitForFunction(
@@ -1594,7 +1906,7 @@ try {
       .waitFor();
     await observer.keyboard.press("Control+k");
     await observer
-      .getByRole("combobox", { name: "Find a command or conversation" })
+      .getByRole("searchbox", { name: "Find a command or conversation" })
       .fill("New session");
     await observer.keyboard.press("Enter");
     await observer
@@ -1764,6 +2076,9 @@ try {
       )?.disabled,
   );
   const liveGeometry = await geometry();
+  assert(
+    await hydrated.evaluate(() => document.activeElement === document.body),
+  );
   assert.deepEqual(liveGeometry.boxes, ssrGeometry.boxes);
   assert(
     (liveGeometry.shifts ?? []).reduce((sum, shift) => sum + shift, 0) < 0.01,
@@ -1784,10 +2099,19 @@ try {
     node.scrollTop = 0;
   });
   await hydratedJump.waitFor();
+  // Explicitly reselecting the open conversation moves focus, not the reader.
+  const position = () =>
+    hydratedTranscript.evaluate((node) => [scrollX, scrollY, node.scrollTop]);
+  const readingPosition = await position();
   await hydrated
     .getByRole("complementary", { name: "Session list" })
     .getByRole("button", { pressed: true, name: "Familiar", exact: true })
+    .press("Enter");
+  await hydrated
+    .getByRole("textbox", { name: "Message" })
+    .and(hydrated.locator(":focus"))
     .waitFor();
+  assert.deepEqual(await position(), readingPosition);
   await hydrated
     .getByRole("button", { name: "Second session", exact: true })
     .click();
@@ -1912,6 +2236,32 @@ try {
   const startServer = (
     await import(new URL("src/hosts/server.ts", piRoot).href)
   ).startServer;
+  const restartName = "Disposable restart mark";
+  const restartOwner = fixture.client({ Cookie: fixture.owner.cookie });
+  try {
+    await restartOwner.host.root(async (ctx) => {
+      const brand = await ctx.get(ThemeBranding, {});
+      await brand.setName({ name: restartName }, ctx);
+      await brand.setTint({ tint: 217 }, ctx);
+      const svg =
+        '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8"/></svg>';
+      await brand.setLogo({ base64: Buffer.from(svg).toString("base64") }, ctx);
+    }, TEST);
+  } finally {
+    await restartOwner.host.close(TEST);
+  }
+  const restartIcon = page
+    .locator('#clank-sidebar img[src^="data:image/png;base64,"]')
+    .first();
+  const restartSrc = await restartIcon.getAttribute("src");
+  assert(restartSrc);
+  const continuity = await page.evaluateHandle(inspectBrand, {
+    name: restartName,
+    src: restartSrc,
+    liveName: restartName,
+  });
+  const heading = page.locator("#clank-detail h1");
+  const headingBox = await heading.boundingBox();
   const draft = "Disposable unsent restart draft";
   await message.fill(draft);
   await fixture.server.close();
@@ -1927,6 +2277,19 @@ try {
   await jump.waitFor();
   const restartTop = await transcript.evaluate((node) => node.scrollTop);
   const beforeRestart = page.url();
+  await page.waitForResponse(
+    (r) => r.url() === `${origin}/owner/check` && r.status() === 502,
+  );
+  assert.equal(
+    await continuity.evaluate((s) => s.missing),
+    null,
+    "owner branding through failed retry",
+  );
+  assert.deepEqual(await heading.boundingBox(), headingBox);
+  const toolsBox = await tools.boundingBox();
+  const badge = await page.getByText("Offline", { exact: true }).boundingBox();
+  assert(toolsBox && badge && badge.x >= toolsBox.x + toolsBox.width);
+
   restarted = await startServer({
     port: fixture.server.port,
     dataDir: fixture.dataDir,
@@ -1941,6 +2304,14 @@ try {
         ?.disabled,
   );
   assert.equal(page.url(), beforeRestart);
+  assert.equal(
+    await continuity.evaluate((s) => s.missing),
+    null,
+    "owner branding through rebind",
+  );
+  await continuity.dispose();
+  assert.deepEqual(await heading.boundingBox(), headingBox);
+
   await jump.waitFor();
   assert.equal(await transcript.evaluate((node) => node.scrollTop), restartTop);
   assert.equal(await message.inputValue(), draft);
@@ -1978,6 +2349,13 @@ try {
   await page.getByLabel("One-time token").waitFor();
   assert.equal(await page.getByLabel("Transcript").count(), 0);
   await observer.getByLabel("One-time token").waitFor();
+  assert.equal(await page.title(), "Clank");
+  assert.equal(
+    await page
+      .locator("html[data-pi-tint], link[rel~=icon], #clank-sidebar img")
+      .count(),
+    0,
+  );
   assert.deepEqual(errors, []);
   console.log(
     "Native HTTPS owner sign-in, Chord rename, create, stream, tool receipt, selection isolation, Markdown, subagent attribution and navigation, and logout passed",

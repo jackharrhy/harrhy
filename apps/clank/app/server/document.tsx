@@ -1,19 +1,19 @@
-import type { Snapshot } from "./catalog.ts";
+import type { Snapshot } from "../pi/catalog.ts";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { css, unsafeHTML } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { createRouter } from "remix/router";
-import { OwnerSessions } from "./sessions.tsx";
+import { OwnerSessions } from "../shell.tsx";
 import {
   SESSION_LIST_PATH,
   sessionKey,
   canonicalSessionRedirect,
-} from "./routes.ts";
-import { localizeMessageTime } from "./message-time.ts";
-import { ownerScheme, ownerTheme } from "./appearance.ts";
-import type { Mode } from "./theme-cookie.ts";
+} from "../routes.ts";
+import { localizeMessageTime } from "../conversation/message-time.ts";
+import { ownerScheme, ownerTheme } from "../settings/appearance.ts";
+import type { Mode, Tint } from "../settings/theme-cookie.ts";
 declare const OWNER_BROWSER_MODULE: string;
 // Run after the transcript markup, independently of the deferred browser bundle.
 const positionTranscript = `(()=>{document.querySelectorAll('time[data-message-time]').forEach(${localizeMessageTime.toString()});const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
@@ -41,6 +41,7 @@ async function document(
   listPage = false,
   target?: string,
   mode?: Mode,
+  tint?: Tint,
 ) {
   const location = canonicalSessionRedirect(
     target,
@@ -61,6 +62,7 @@ async function document(
           ? { "--pi-base-hue": String(brand.tint) }
           : undefined
       }
+      data-clank-tint={tint === "pi" ? undefined : tint}
       data-theme={mode === "system" ? undefined : mode}
       mix={[themeStyles(ownerTheme), ownerScheme]}
     >
@@ -82,6 +84,7 @@ async function document(
         ]}
       >
         <OwnerSessions
+          initialTint={tint}
           initialMode={mode}
           renderedAt={Date.now()}
           listPage={listPage}
@@ -113,7 +116,7 @@ export function createDocumentServer(ownerHost: string) {
         },
       }),
   );
-  return (request: Request, snapshot?: Snapshot, mode?: Mode) => {
+  return (request: Request, snapshot?: Snapshot, mode?: Mode, tint?: Tint) => {
     const path = new URL(request.url).pathname;
     return path === "/" || path === SESSION_LIST_PATH || sessionKey(path)
       ? document(
@@ -122,6 +125,7 @@ export function createDocumentServer(ownerHost: string) {
           path === SESSION_LIST_PATH,
           sessionKey(path),
           mode,
+          tint,
         )
       : router.fetch(request);
   };

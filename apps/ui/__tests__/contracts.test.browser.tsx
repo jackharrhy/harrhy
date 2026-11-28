@@ -81,6 +81,76 @@ it("keeps focus pending and aborts unmounted actions without stale errors", asyn
   assert.equal($("[aria-busy]"), null);
 });
 
+it("keeps a refused platform cancel controlled even when the browser closes", async (t) => {
+  const reasons: string[] = [];
+  const { $, act, cleanup } = render(
+    <Dialog open title="Pending" onClose={({ reason }) => reasons.push(reason)}>
+      <button>Wait</button>
+    </Dialog>,
+  );
+  t.after(cleanup);
+  const dialog = $("dialog") as HTMLDialogElement;
+  await act(async () => {
+    // A second Escape without fresh activation can produce this sequence.
+    const closed = new Promise<void>((resolve) =>
+      dialog.addEventListener("close", () => resolve(), { once: true }),
+    );
+    dialog.dispatchEvent(new Event("cancel"));
+    dialog.close();
+    await closed;
+  });
+  assert.deepEqual(reasons, ["cancel"]);
+  assert.equal(dialog.matches(":modal"), true);
+});
+
+it("requires both ends of the same backdrop press without native light dismiss", (t) => {
+  const prototype = HTMLDialogElement.prototype;
+  const support = Object.getOwnPropertyDescriptor(prototype, "closedBy");
+  if (support) {
+    Reflect.deleteProperty(prototype, "closedBy");
+    t.after(() => Object.defineProperty(prototype, "closedBy", support));
+  }
+  const reasons: string[] = [];
+  const { $, cleanup } = render(
+    <Dialog
+      open
+      title="Legacy browser"
+      onClose={({ reason }) => reasons.push(reason)}
+    >
+      <button>Inside</button>
+    </Dialog>,
+  );
+  t.after(cleanup);
+  const dialog = $("dialog") as HTMLDialogElement;
+  const bounds = dialog.getBoundingClientRect();
+  function pointer(type: string, outside: boolean) {
+    dialog.dispatchEvent(
+      new PointerEvent(type, {
+        isPrimary: true,
+        pointerId: 4,
+        clientX: outside ? bounds.left - 1 : bounds.left + 1,
+        clientY: bounds.top + 1,
+      }),
+    );
+  }
+  pointer("pointerdown", false);
+  pointer("pointerup", true);
+  pointer("pointerdown", true);
+  pointer("pointerup", false);
+  pointer("pointerdown", true);
+  pointer("pointercancel", true);
+  pointer("pointerup", true);
+  assert.deepEqual(reasons, []);
+  pointer("pointerdown", true);
+  pointer("pointerup", true);
+  assert.deepEqual(reasons, ["cancel"]);
+  assert.equal(dialog.open, true);
+  dialog.setAttribute("closedby", "closerequest");
+  pointer("pointerdown", true);
+  pointer("pointerup", true);
+  assert.deepEqual(reasons, ["cancel"]);
+});
+
 it("reports non-vetoable native method=dialog close to the controlled owner", async (t) => {
   const closes: { reason: string; value: string }[] = [];
   function Fixture(handle: Handle) {

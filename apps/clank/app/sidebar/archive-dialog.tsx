@@ -1,7 +1,9 @@
+import { space } from "@harrhy/ui/theme";
+import { DialogClose } from "../dialog-close.tsx";
 import { Dialog } from "@harrhy/ui/interactive";
 import { Button } from "@harrhy/ui/native";
 import { css, on, type Handle } from "remix/component";
-import type { ArchiveTarget, Catalog } from "./catalog.ts";
+import type { ArchiveTarget, Catalog } from "../pi/catalog.ts";
 
 export function ArchiveDialog(
   handle: Handle<{
@@ -65,24 +67,39 @@ export function ArchiveDialog(
     return (
       <Dialog
         open
+        closedby={pending ? "none" : "closerequest"}
         title={`Archive ${kind} “${target.name}”?`}
         description={`Pi stops the ${kind} and removes it from the active list. Its history is kept.`}
         initialFocus="[data-cancel]"
         onClose={() => {
           if (!pending) close();
         }}
-        mix={css({ overflowWrap: "anywhere" })}
+        mix={css({
+          overflowWrap: "anywhere",
+          "&:has([role=alert]) > h2": { paddingInlineEnd: space(5) },
+        })}
       >
         {error && <p role="alert">{error}</p>}
         {pending && <p role="status">Archiving…</p>}
-        <div mix={css({ display: "flex", justifyContent: "end", gap: "8px" })}>
-          <Button data-cancel="" disabled={pending} mix={on("click", close)}>
-            {error ? "Close" : "Cancel"}
-          </Button>
-          {!error && (
-            <Button disabled={pending} mix={on("click", confirm)}>
-              Archive
-            </Button>
+        <div
+          mix={css({ display: "flex", justifyContent: "end", gap: space(1) })}
+        >
+          {error ? (
+            <DialogClose label="Close archive notice" close={close} />
+          ) : (
+            <>
+              <Button
+                data-cancel=""
+                disabled={pending}
+                mix={on("click", close)}
+              >
+                Cancel
+              </Button>
+
+              <Button disabled={pending} mix={on("click", confirm)}>
+                Archive
+              </Button>
+            </>
           )}
         </div>
       </Dialog>

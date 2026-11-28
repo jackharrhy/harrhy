@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readThemeCookie, themeCookie } from "../owner/theme-cookie.ts";
+import { readThemeCookie, themeCookie } from "../app/settings/theme-cookie.ts";
 
 const name = "__Host-clank-theme";
 

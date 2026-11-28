@@ -27,7 +27,7 @@ export async function proveRailArchive(
   await button(watcher, "Send").click();
   await watcher
     .getByRole("article", { name: "Subagent message" })
-    .getByText("Answered", { exact: true })
+    .getByText("answered", { exact: true })
     .waitFor({ timeout: 15000 });
   // Pi names this new session from its first input.
   const title = "subagent";
@@ -109,6 +109,13 @@ export async function proveRailArchive(
   for (const key of ["Enter", "Escape"]) {
     await archive.press("Enter");
     await cancel.and(actor.locator(":focus")).waitFor();
+    if (key === "Escape") {
+      await actor.mouse.click(1, 1);
+      assert(
+        await dialog.isVisible(),
+        "archive confirmation requires an explicit choice",
+      );
+    }
     await actor.keyboard.press(key);
     await dialog.waitFor({ state: "detached" });
     await archive.and(actor.locator(":focus")).waitFor();

@@ -1,10 +1,12 @@
+import { permissionDenied } from "./session-wire.ts";
+import { isChordError } from "@earendil-works/chord";
 import {
   MAX_LOGO_BASE64_LENGTH,
   MAX_NAME_LENGTH,
   PNG_DATA_URL_PREFIX,
   ThemeBranding,
-} from "../../pi/plugins/settings/theme-contract.ts";
-import type { Ctx, Ref } from "../../pi/src/runtime/chord.ts";
+} from "../../../pi/plugins/settings/theme-contract.ts";
+import type { Ctx, Ref } from "../../../pi/src/runtime/chord.ts";
 
 export type Branding = {
   name: string | null;
@@ -61,10 +63,25 @@ export function startSnapshotBranding(scope: Ctx): () => Branding | undefined {
 
 export async function followBranding(
   scope: Ctx,
-  publish: (value: Branding) => Promise<unknown>,
+  publish: (value: Branding | null) => Promise<unknown>,
+) {
+  try {
+    await watchOwnerBranding(scope, publish);
+  } catch (error) {
+    if (isChordError(error, "forbidden")) await publish(null);
+    else throw error;
+  }
+}
+async function watchOwnerBranding(
+  scope: Ctx,
+  publish: (value: Branding | null) => Promise<unknown>,
 ) {
   const ref = await getBranding(scope);
-  if (ref.variant !== "owner") return;
+  if (ref.variant !== "owner") {
+    if (ref.state.value.kind === "live" || permissionDenied(ref.state.value))
+      await publish(null);
+    return;
+  }
   const [binding, name, logo, tint] = await Promise.all([
     ref.state.watch(scope),
     ref.name.watch(scope),
@@ -99,6 +116,12 @@ export async function followBranding(
     await Promise.race(watches.map((watch) => watch.closed));
   } finally {
     ended = true;
+    const state = ref.state.value;
+    if (
+      permissionDenied(state) ||
+      (state.kind === "live" && ref.variant !== "owner")
+    )
+      await publish(null);
     await Promise.all(watches.map((watch) => watch.stop()));
   }
 }

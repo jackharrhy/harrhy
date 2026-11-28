@@ -1,9 +1,12 @@
-import { highlightCode, highlightTokenStyle } from "@harrhy/ui/highlight";
-import {
-  createHtmlRenderer,
-  escapeHtml,
-  type HtmlOptions,
-} from "@pierre/words/html";
+import pierreDark from "@pierre/highlights/themes/pierre-dark";
+import pierreLight from "@pierre/highlights/themes/pierre-light";
+import { createHighlightsPlugin } from "@pierre/words/highlights";
+import { createHtmlRenderer, type HtmlOptions } from "@pierre/words/html";
+
+const pierre = createHighlightsPlugin({
+  themes: { light: pierreLight, dark: pierreDark },
+  defaultColor: false,
+});
 
 // Used by both the server formatter and the persistent browser renderer.
 export const markdownOptions: HtmlOptions = {
@@ -53,22 +56,18 @@ export const markdownOptions: HtmlOptions = {
   controls: { code: { copy: true, download: false } },
   plugins: {
     code: {
-      highlight({ code, language, isIncomplete }) {
-        // Let Words display an open fence; tokenize once it closes, within
-        // the shared highlighter's source/line limits.
-        if (isIncomplete) return null;
-        return highlightCode(code, { language, theme: "github-dark" })
-          .map((token) => {
-            // Lift GitHub Dark's muted comment color on the fixed code surface.
-            const style = highlightTokenStyle(
-              token.color === "#6a737d"
-                ? { ...token, color: "#9ca5ae" }
-                : token,
-            );
-            const text = escapeHtml(token.text);
-            return style ? `<span style="${style}">${text}</span>` : text;
-          })
-          .join("");
+      highlight(options) {
+        const { code, isIncomplete, language } = options;
+        // Only use the stateless hook: never tokenize open or oversized fences.
+        // ANSI interprets escape sequences instead of displaying literal source.
+        if (
+          isIncomplete ||
+          code.length > 20_000 ||
+          /[^\r\n]{2001}/.test(code) ||
+          language.toLowerCase() === "ansi"
+        )
+          return null;
+        return pierre.highlight(options);
       },
     },
   },

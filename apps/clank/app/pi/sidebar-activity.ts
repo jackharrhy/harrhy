@@ -1,8 +1,8 @@
-import { SessionReads } from "../../pi/plugins/search/contract.ts";
-import { SessionStatus } from "../../pi/plugins/status/contract.ts";
-import type { Ctx } from "../../pi/src/runtime/chord.ts";
+import { SessionReads } from "../../../pi/plugins/search/contract.ts";
+import { SessionStatus } from "../../../pi/plugins/status/contract.ts";
+import type { Ctx } from "../../../pi/src/runtime/chord.ts";
 import type { Feed } from "./archive-availability.ts";
-import type { ReadMarks } from "./sidebar-indicators.ts";
+import type { ReadMarks } from "../sidebar/sidebar-indicators.ts";
 
 export async function statusFeed(scope: Ctx) {
   const status = await scope.get(SessionStatus, {}, { readyTimeout: 1000 });

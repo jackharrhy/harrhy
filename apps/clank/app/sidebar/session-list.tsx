@@ -1,8 +1,9 @@
+import { space } from "@harrhy/ui/theme";
 import { Button, Input, Text } from "@harrhy/ui/native";
 import { css, on, ref, type Handle } from "remix/component";
-import type { SearchResults } from "../../pi/plugins/search/contract.ts";
-import type { Catalog, Row } from "./catalog.ts";
-import { Icon } from "./icons.tsx";
+import type { SearchResults } from "../../../pi/plugins/search/contract.ts";
+import type { Catalog, Row } from "../pi/catalog.ts";
+import { Icon } from "../icons.tsx";
 import { age } from "./sidebar-time.ts";
 
 const line = "1px solid var(--hui-border)";
@@ -10,11 +11,11 @@ const rowStyle = css({
   width: "100%",
   display: "flex",
   justifyContent: "space-between",
-  gap: "8px",
+  gap: space(1),
   textAlign: "start",
   overflowWrap: "anywhere",
   "&[data-aged]": { color: "var(--hui-muted)" },
-  "@media (max-width: 40rem)": { minHeight: "44px" },
+  "@media (max-width: 40rem)": { minHeight: "2.75rem" },
 });
 export function SessionList(
   handle: Handle<{
@@ -89,7 +90,7 @@ export function SessionList(
         <div
           mix={css({
             maxWidth: "50rem",
-            padding: "20px 16px",
+            padding: `${space(2.5)} ${space(2)}`,
             marginInline: "auto",
           })}
         >
@@ -97,10 +98,10 @@ export function SessionList(
             mix={css({
               display: "flex",
               alignItems: "center",
-              gap: "8px",
-              paddingInline: "4px",
+              gap: space(1),
+              paddingInline: space(0.5),
               borderBottom: line,
-              marginBottom: "8px",
+              marginBottom: space(1),
             })}
           >
             <Icon name="search" />
@@ -138,7 +139,7 @@ export function SessionList(
                   <span
                     aria-hidden="true"
                     mix={css({
-                      fontSize: "12px",
+                      fontSize: "0.75rem",
                       color: "var(--hui-muted)",
                       flexShrink: 0,
                     })}

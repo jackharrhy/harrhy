@@ -1089,6 +1089,9 @@ export function SluggersScene(handle: Handle<{ theme: ThemeName }>) {
                 </Button>
                 <Dialog
                   open={confirming}
+                  closedby={
+                    publishState === "publishing" ? "none" : "closerequest"
+                  }
                   title={
                     duplicate
                       ? "Confirm simulated replacement"

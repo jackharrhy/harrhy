@@ -103,6 +103,7 @@ export function Folders(
       {editing && (
         <Dialog
           open
+          closedby={busy ? "none" : "closerequest"}
           title={editing.id ? "Edit folder" : "New folder"}
           className="folder-dialog"
           initialFocus="input"

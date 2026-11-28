@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createHtmlRenderer } from "@pierre/words/html";
-import { markdownHtml, markdownOptions } from "../owner/markdown-renderer.ts";
+import {
+  markdownHtml,
+  markdownOptions,
+} from "../app/conversation/markdown-renderer.ts";
 
 test("only absolute HTTP(S) and mailto links get destinations", () => {
   for (const url of [
@@ -44,6 +47,20 @@ test("fences over either highlighting limit keep their complete escaped source a
   }
 });
 
+test("highlighted and plain code keep literal source for display and copy", () => {
+  const source = "  // 🧪 <tag>&amp;\t\n\n  \x1b[31mred\x1b[0m \n";
+  for (const lang of ["js", "ANSI", "unknown"]) {
+    const html = markdownHtml("```" + lang + "\n" + source + "```", false);
+    const body = html.match(/<code\b[^>]*>([\s\S]*?)<\/code>/)?.[1];
+    assert.ok(body);
+    assert.equal(
+      body.replace(/<\/?span\b[^>]*>/g, ""),
+      source.replace("<tag>&", "&lt;tag&gt;&amp;"),
+    );
+    if (lang !== "js") assert.doesNotMatch(body, /<span style=/);
+  }
+});
+
 test("a delta ending on a strong opener waits for the label, not settlement", () => {
   for (const opening of ["**", "Read **"]) {
     assert.doesNotMatch(markdownHtml(opening, true), /\*\*/);
@@ -72,7 +89,8 @@ test("streamed HTML matches a persistent formatter through append and settlement
 
   const appended = openFence + "\n```\n\nStill **typing";
   const streaming = render(appended, true);
-  assert.match(streaming, /<span style="color:/);
+  assert.match(streaming, /--hls-light:#[0-9a-f]{6}/);
+  assert.match(streaming, /--hls-dark:#[0-9a-f]{6}/);
   assert.match(streaming, /&lt;tag&gt;&amp;/);
   assert.doesNotMatch(streaming, /<tag>|data-incomplete=/);
   assert.match(streaming, /<strong\b[^>]*>typing<\/strong>/);
