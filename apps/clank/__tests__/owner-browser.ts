@@ -7,6 +7,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer as tlsServer } from "node:tls";
 import { chromium, type Page } from "playwright";
+import { checkCanonicalSwipe } from "./rail-swipe-browser.ts";
+import { proveRailArchive } from "./rail-browser.ts";
 const OWNER_HOST = "clank.example.test";
 import { structuredAttribution } from "../owner/attribution.ts";
 
@@ -288,7 +290,17 @@ try {
     name: "Second session",
     exact: true,
   });
-  await secondRow.getByText("now", { exact: true }).click();
+  // The age is now a sibling of the primary button. Its stretched hit area
+  // must still select the row well beyond the label, short of the end control.
+  await observer
+    .locator('button[aria-label="Session tools"]:enabled')
+    .waitFor();
+  const secondItem = observer.getByRole("listitem").filter({ has: secondRow });
+  const secondBox = await secondItem.boundingBox();
+  assert(secondBox);
+  await secondItem.click({
+    position: { x: secondBox.width - 40, y: secondBox.height / 2 },
+  });
   await observer
     .getByRole("heading", { name: "Second session", exact: true })
     .waitFor();
@@ -296,9 +308,12 @@ try {
     name: "Familiar",
     exact: true,
   });
-  const familiarBox = await familiarRow.boundingBox();
+  const familiarItem = observer
+    .getByRole("listitem")
+    .filter({ has: familiarRow });
+  const familiarBox = await familiarItem.boundingBox();
   assert(familiarBox);
-  await familiarRow.click({
+  await familiarItem.click({
     position: { x: familiarBox.width - 4, y: familiarBox.height / 2 },
   });
   await observer
@@ -834,6 +849,12 @@ try {
   assert.equal(await helper.isVisible(), false);
   await toggle.press("Enter");
   assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Archive helper", exact: true })
+      .count(),
+    0,
+  );
   await page.keyboard.press("Tab");
   assert(await helper.evaluate((node) => node === document.activeElement));
   await page.keyboard.press("Escape");
@@ -1196,6 +1217,7 @@ try {
     .getByText("Strong receipt", { exact: true })
     .waitFor();
   const touchInput = phone.getByRole("textbox", { name: "Message" });
+  await checkCanonicalSwipe(phone, "Second session");
   await touchInput.fill("Touch draft");
   await touchInput.press("Enter");
   assert.equal(await touchInput.inputValue(), "Touch draft\n");
@@ -1605,6 +1627,12 @@ try {
       .count(),
     0,
   );
+  const archiveControls = '#clank-sidebar button[aria-label^="Archive "]';
+  assert.equal(
+    await staticPage.locator(archiveControls).count(),
+    0,
+    "SSR is not a live owner binding",
+  );
   const html = await signedIn.text();
   assert.equal(
     await staticPage.getByLabel("Transcript").evaluate(receiptProblem, html),
@@ -1694,6 +1722,11 @@ try {
     null,
     "hydrated, owner check held",
   );
+  assert.equal(
+    await hydrated.locator(archiveControls).count(),
+    0,
+    "owner check held",
+  );
   const hydratedGeometry = await geometry();
   assert.deepEqual(hydratedGeometry.boxes, ssrGeometry.boxes);
   check.resolve();
@@ -1779,6 +1812,43 @@ try {
     );
   }, originalIndex);
   assert(await movingRow.evaluate((node) => node === document.activeElement));
+  const catalogState = () =>
+    fixture.server.host.root(
+      async (ctx) =>
+        (await ctx.get(Catalog, {})).sessions.value.map(
+          ({ id, title, archivedAt }) => ({ id, title, archivedAt }),
+        ),
+      TEST,
+    );
+  const before = await catalogState();
+  const victim = before.find((s) => s.title === "Second session");
+  assert(victim && victim.archivedAt === null);
+  let nativeRail: Page | undefined;
+  if (process.env.HARRHY_CLANK_RAIL_SCREENSHOT_DIR) {
+    const pi = new URL(`http://127.0.0.1:${fixture.server.port}`);
+    nativeRail = await context.newPage();
+    await nativeRail.setViewportSize(hydrated.viewportSize()!);
+    await nativeRail.goto((await mintOwnerLink(pi, fixture.dataDir, pi)).href);
+    await nativeRail.waitForURL(pi.href);
+    await nativeRail.goto(new URL(`/s/${session.id}`, pi).href);
+    await nativeRail.getByRole("textbox", { name: "Message" }).waitFor();
+  }
+  await proveRailArchive(hydrated, observer, nativeRail);
+  await nativeRail?.close();
+  const after = await catalogState();
+  assert.equal(
+    typeof after.find((s) => s.id === victim.id)?.archivedAt,
+    "number",
+  );
+  const active = (rows: typeof before) =>
+    rows
+      .filter((s) => s.archivedAt === null)
+      .map((s) => s.id)
+      .sort();
+  assert.deepEqual(
+    active(after),
+    active(before).filter((id) => id !== victim.id),
+  );
   await hydrated.close();
   // Omit the cookie on the document fetch only to exercise the SSR-miss shell.
   const shellContext = await browser.newContext({
