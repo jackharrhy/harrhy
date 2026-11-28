@@ -80,12 +80,12 @@ const optionFonts = Object.fromEntries(
       css({
         display: "inline-flex",
         alignItems: "center",
-        gap: "8px",
+        gap: "0.5rem",
         "&::before": {
           content: '""',
-          width: "9px",
-          height: "9px",
-          borderRadius: "2px",
+          width: "0.5625rem",
+          height: "0.5625rem",
+          borderRadius: "0.125rem",
           background: theme.accent,
         },
         fontFamily:
@@ -105,27 +105,27 @@ const headerStyles = css({
   gridTemplateColumns: "var(--workbench-rail-width) minmax(0, 1fr) auto",
   alignItems: "center",
   zIndex: 5,
-  "--workbench-picker-height": "32px",
+  "--workbench-picker-height": "2rem",
   fontSize: "var(--hui-text-size)",
   lineHeight: "var(--hui-line-height)",
-  paddingRight: "16px",
+  paddingRight: "1rem",
   borderBottom: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
-  "@media (max-width: 760px), (pointer: coarse)": {
-    "--workbench-picker-height": "44px",
+  "@media (max-width: 47.5rem), (pointer: coarse)": {
+    "--workbench-picker-height": "2.75rem",
   },
-  "@media (max-width: 760px)": {
+  "@media (max-width: 47.5rem)": {
     gridTemplateColumns: "minmax(0, 1fr) auto",
-    padding: "0 12px",
+    padding: "0 0.75rem",
   },
 });
 const brandCell = css({
-  padding: "4px 16px",
+  padding: "0.25rem 1rem",
   alignSelf: "stretch",
   display: "flex",
   alignItems: "center",
   borderRight: "1px solid var(--hui-border)",
-  "@media (max-width: 760px)": { borderRight: 0, padding: "4px 0" },
+  "@media (max-width: 47.5rem)": { borderRight: 0, padding: "0.25rem 0" },
 });
 const brandStyles = css({
   fontFamily: "var(--hui-font-mono)",
@@ -136,9 +136,9 @@ const brandStyles = css({
 const contextStyles = css({
   display: "flex",
   alignItems: "baseline",
-  gap: "8px",
+  gap: "0.5rem",
   minWidth: 0,
-  paddingInline: "16px",
+  paddingInline: "1rem",
   fontSize: "0.875rem",
   color: "var(--hui-muted)",
   "& strong": {
@@ -148,35 +148,35 @@ const contextStyles = css({
     overflow: "hidden",
     textOverflow: "ellipsis",
   },
-  "@media (max-width: 760px)": { display: "none" },
+  "@media (max-width: 47.5rem)": { display: "none" },
 });
 const pickerStyles = css({
   flexWrap: "nowrap",
-  paddingBlock: "4px",
-  gap: "8px",
+  paddingBlock: "0.25rem",
+  gap: "0.5rem",
   justifyContent: "flex-end",
   "& > div": { flexShrink: 0 },
   "& #workbench-density, & #workbench-theme": {
     width: "auto",
     height: "var(--workbench-picker-height)",
-    paddingBlock: "4px",
+    paddingBlock: "0.25rem",
     fontSize: "0.875rem",
   },
   "& #workbench-theme": {
     width: "auto",
-    minWidth: "100px",
+    minWidth: "6.25rem",
     "&::before": {
       content: '""',
-      width: "9px",
-      height: "9px",
+      width: "0.5625rem",
+      height: "0.5625rem",
       flex: "none",
-      borderRadius: "2px",
+      borderRadius: "0.125rem",
       background: "var(--hui-accent)",
     },
     "& > span": { marginRight: "auto" },
   },
-  "@media (max-width: 760px)": {
-    gap: "4px",
-    "& button": { paddingInline: "6px" },
+  "@media (max-width: 47.5rem)": {
+    gap: "0.25rem",
+    "& button": { paddingInline: "0.375rem" },
   },
 });

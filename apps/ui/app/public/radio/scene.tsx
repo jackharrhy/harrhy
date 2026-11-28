@@ -24,7 +24,7 @@ export function RadioScene(
   return () => (
     <section
       aria-label="Radio fixture"
-      mix={css({ display: "grid", gap: "20px", minWidth: 0 })}
+      mix={css({ display: "grid", gap: "1.25rem", minWidth: 0 })}
     >
       <Inline>
         <label htmlFor="radio-scenario">Scenario</label>
@@ -47,7 +47,7 @@ export function RadioScene(
         <Button mix={on("click", () => demo.reset(scenario))}>
           Reset scene
         </Button>
-        <span mix={css({ color: "var(--hui-muted)", fontSize: "13px" })}>
+        <span mix={css({ color: "var(--hui-muted)", fontSize: "0.8125rem" })}>
           Synthetic room · no audio, files or network
         </span>
       </Inline>
@@ -86,8 +86,8 @@ export function RadioScene(
         role="status"
         mix={css({
           color: "var(--hui-muted)",
-          fontSize: "13px",
-          minHeight: "20px",
+          fontSize: "0.8125rem",
+          minHeight: "1.25rem",
         })}
       >
         {demo.announcement ||

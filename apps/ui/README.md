@@ -60,6 +60,8 @@ Navigation consolidates route links and in-page Tabs into one Explorer entry wit
 
 [Sluggers research](../../docs/ui/sluggers-research.md)
 
+The workbench, shared specimens and app-owned scene layouts use root-relative sizing. The Radio replica retains the fixed-pixel shell and queue metrics used by its Pretext fitter; its outer showcase chrome can scale independently. Decorative raster, texture and SVG geometry are not part of the typography scale.
+
 ## Clank comparison
 
 Open Scenes → Clank cook-off (`/scenes/clank`). Basic, Newspaper and Graphite share one in-memory transcript. Replay or Step, then switch between the literal-tail and Pierre Words renderers without resetting progress. [Design and renderer findings](../../docs/ui/clank-cookoff.md). No real agent, storage, tool execution or connection to Clank.

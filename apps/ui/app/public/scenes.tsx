@@ -29,27 +29,31 @@ const shell = css({
   "& *": { boxSizing: "border-box" },
 });
 const main = css({
-  maxWidth: "1280px",
+  maxWidth: "80rem",
   margin: "0 auto",
-  padding: "32px 24px 64px",
+  padding: "2rem 1.5rem 4rem",
   display: "grid",
-  gap: "28px",
-  "@media (max-width: 600px)": { padding: "24px 16px" },
+  gap: "1.75rem",
+  "@media (max-width: 37.5rem)": { padding: "1.5rem 1rem" },
 });
 const grid = css({
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "24px",
+  gap: "1.5rem",
   alignItems: "start",
-  "@media (max-width: 760px)": { gridTemplateColumns: "1fr" },
+  "@media (max-width: 47.5rem)": { gridTemplateColumns: "1fr" },
 });
 const comparison = css({
   display: "grid",
   gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-  gap: "16px",
-  "@media (max-width: 1000px)": { gridTemplateColumns: "1fr" },
+  gap: "1rem",
+  "@media (max-width: 62.5rem)": { gridTemplateColumns: "1fr" },
 });
-const muted = css({ margin: 0, color: "var(--hui-muted)", fontSize: "14px" });
+const muted = css({
+  margin: 0,
+  color: "var(--hui-muted)",
+  fontSize: "0.875rem",
+});
 
 export const Scenes = clientEntry(
   import.meta.url,
@@ -87,8 +91,8 @@ export const Scenes = clientEntry(
             <div>
               <h1
                 mix={css({
-                  margin: "0 0 8px",
-                  fontSize: "28px",
+                  margin: "0 0 0.5rem",
+                  fontSize: "1.75rem",
                   lineHeight: "1.2",
                 })}
               >
@@ -107,7 +111,7 @@ export const Scenes = clientEntry(
                     <Stack>
                       <div>
                         <h2
-                          mix={css({ margin: 0, fontSize: "18px" })}
+                          mix={css({ margin: 0, fontSize: "1.125rem" })}
                           id="auth-title"
                         >
                           App consent
@@ -173,7 +177,7 @@ export const Scenes = clientEntry(
                     <Stack>
                       <div>
                         <h2
-                          mix={css({ margin: 0, fontSize: "18px" })}
+                          mix={css({ margin: 0, fontSize: "1.125rem" })}
                           id="ref-title"
                         >
                           Create a board
@@ -182,7 +186,7 @@ export const Scenes = clientEntry(
                       </div>
                       <form
                         mix={[
-                          css({ display: "grid", gap: "16px" }),
+                          css({ display: "grid", gap: "1rem" }),
                           on("submit", (event) => {
                             event.preventDefault();
                             board = String(
@@ -246,7 +250,7 @@ export const Scenes = clientEntry(
               <section aria-labelledby="themes-title">
                 <Stack>
                   <h2
-                    mix={css({ margin: 0, fontSize: "18px" })}
+                    mix={css({ margin: 0, fontSize: "1.125rem" })}
                     id="themes-title"
                   >
                     Theme comparison
@@ -258,12 +262,12 @@ export const Scenes = clientEntry(
                         mix={[
                           workbenchTheme(name, density),
                           themeRoot,
-                          css({ padding: "12px" }),
+                          css({ padding: "0.75rem" }),
                         ]}
                       >
                         <Panel>
                           <Stack>
-                            <h3 mix={css({ margin: 0, fontSize: "16px" })}>
+                            <h3 mix={css({ margin: 0, fontSize: "1rem" })}>
                               {themeLabels[name]}
                             </h3>
                             <Field id={`${name}-name`} label="Collection name">

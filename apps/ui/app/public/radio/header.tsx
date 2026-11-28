@@ -96,7 +96,7 @@ export function RadioStatus(
 const radioHeaderStyle = {
   header: css({
     justifyContent: "space-between",
-    gap: "12px",
+    gap: "0.75rem",
   }),
   breadcrumbs: css({
     "--hui-muted": "var(--radio-title-ink, var(--hui-ink))",
@@ -104,10 +104,10 @@ const radioHeaderStyle = {
     display: "flex",
     flexWrap: "nowrap",
     alignItems: "center",
-    gap: "4px",
-    fontSize: "13px",
+    gap: "0.25rem",
+    fontSize: "0.8125rem",
     fontWeight: 400,
-    lineHeight: "20px",
+    lineHeight: "1.25rem",
     whiteSpace: "nowrap",
   }),
   brandLink: css({
@@ -121,12 +121,12 @@ const radioHeaderStyle = {
   }),
   roomsLink: css({
     minWidth: 0,
-    height: "22px",
+    height: "1.375rem",
     display: "inline-flex",
     alignItems: "center",
-    gap: "3px",
+    gap: "0.1875rem",
     color: "inherit",
-    borderRadius: "2px",
+    borderRadius: "0.125rem",
     textDecoration: "none",
     textShadow: "var(--radio-title-shadow, none)",
     "&:hover": {
@@ -150,8 +150,8 @@ const radioHeaderStyle = {
     textOverflow: "ellipsis",
   }),
   status: css({
-    width: "12px",
-    flex: "0 0 12px",
+    width: "0.75rem",
+    flex: "0 0 0.75rem",
     height: "100%",
     marginLeft: "auto",
     display: "flex",
@@ -159,14 +159,14 @@ const radioHeaderStyle = {
     position: "relative",
     color: "inherit",
     font: "inherit",
-    fontSize: "12px",
+    fontSize: "0.75rem",
     textShadow: "var(--radio-title-shadow, none)",
     "&::before": {
       content: '""',
       boxSizing: "border-box",
-      flex: "0 0 12px",
-      width: "12px",
-      height: "12px",
+      flex: "0 0 0.75rem",
+      width: "0.75rem",
+      height: "0.75rem",
       border: "1px solid rgba(31, 42, 49, 0.72)",
       borderRadius: "50%",
       boxShadow:
@@ -187,9 +187,9 @@ const radioHeaderStyle = {
     "& > span": {
       position: "absolute",
       top: "50%",
-      right: "20px",
+      right: "1.25rem",
       opacity: 0,
-      transform: "translate(4px, -50%)",
+      transform: "translate(0.25rem, -50%)",
       transition: "opacity 120ms ease, transform 120ms ease",
       whiteSpace: "nowrap",
       pointerEvents: "none",
@@ -197,7 +197,7 @@ const radioHeaderStyle = {
       alignItems: "center",
     },
     "& > span > i": {
-      padding: "0 4px",
+      padding: "0 0.25rem",
       opacity: 0.42,
       fontStyle: "normal",
     },

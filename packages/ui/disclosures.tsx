@@ -145,12 +145,12 @@ const menuSurfaceStyles = css({
   color: "var(--hui-ink)",
   border: "1px solid var(--hui-border)",
   borderRadius: "var(--hui-popup-radius)",
-  maxWidth: "calc(100vw - 16px)",
+  maxWidth: "calc(100vw - 1rem)",
   maxHeight: "min(24rem, 80dvh)",
   overflowY: "auto",
 });
 const menuListStyles = css({
-  minWidth: "min(12rem, calc(100vw - 32px))",
+  minWidth: "min(12rem, calc(100vw - 2rem))",
   outlineOffset: "2px",
   "&:focus-visible": { outline: "2px solid var(--hui-focus)" },
 });

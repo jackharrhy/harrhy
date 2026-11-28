@@ -16,10 +16,10 @@ export const dugoutFrost: LabConcept = {
     "Small-radius utility panes use stronger 6px frosting over the source circles. One-column match records and shallow portrait rows keep the density of Dugout; narrow heading strips and a wider standings column prioritize scanning.",
   tokens: composeTheme(archiveTokens, {
     fontDisplay: "SluggersCezanne, Arial, sans-serif",
-    controlRadius: "5px",
+    controlRadius: "0.3125rem",
     tableSurface: "transparent",
-    panelRadius: "8px",
-    tableCellPadding: "7px 9px",
+    panelRadius: "0.5rem",
+    tableCellPadding: "0.4375rem 0.5625rem",
   }),
   parts: {
     headingInk: "#ffffff",
@@ -27,25 +27,25 @@ export const dugoutFrost: LabConcept = {
     matchColumns: "minmax(0,1fr)",
     panelImage: `linear-gradient(${originalBlue[700]}2e,${originalBlue[700]}2e)`,
     panelSurface: `${originalSteel}66`,
-    panelFilter: "blur(6px)",
-    panelEdge: "1px solid #92b8dc",
-    cardRadius: "5px",
-    contentColumns: "minmax(300px,0.8fr) minmax(0,1.5fr)",
+    panelFilter: "blur(0.375rem)",
+    panelEdge: "0.0625rem solid #92b8dc",
+    cardRadius: "0.3125rem",
+    contentColumns: "minmax(18.75rem,0.8fr) minmax(0,1.5fr)",
   },
   recipe: css({
-    "& [data-panel-title]": { padding: "9px 12px", fontSize: "16px" },
+    "& [data-panel-title]": { padding: "0.5625rem 0.75rem", fontSize: "1rem" },
     "& [data-match]": {
-      padding: "10px 12px",
+      padding: "0.625rem 0.75rem",
       background: `${originalBlue[700]}59`,
     },
-    "& [data-match-meta]": { marginBottom: "6px" },
+    "& [data-match-meta]": { marginBottom: "0.375rem" },
     "& [data-roster-card]": {
       background: `${originalBlue[700]}66`,
-      borderRadius: "5px",
-      padding: "9px 8px",
-      gap: "3px",
+      borderRadius: "0.3125rem",
+      padding: "0.5625rem 0.5rem",
+      gap: "0.1875rem",
     },
-    "@media (min-width: 1001px)": {
+    "@media (min-width: 62.5625rem)": {
       "& [data-roster-grid]:not([data-catalogue-grid])": {
         gridTemplateColumns: "repeat(4,minmax(0,1fr))",
       },

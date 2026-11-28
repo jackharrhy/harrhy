@@ -88,7 +88,7 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   selectedSurface: "#dfe9ed",
   selectedInk: "#243f4d",
   disabledSurface: "#edf0f2",
-  popupOffset: "6px",
+  popupOffset: "0.375rem",
   tableBorder: "var(--hui-border)",
   tableSurface: "var(--hui-surface)",
   tableContainerSurface: "var(--hui-table-surface)",
@@ -100,10 +100,10 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   tableHeader: "var(--hui-surface)",
   tableHeaderImage: "none",
   tableHeaderShadow: "none",
-  popupRadius: "10px",
-  popupPadding: "6px",
-  optionRadius: "6px",
-  optionGap: "2px",
+  popupRadius: "0.625rem",
+  popupPadding: "0.375rem",
+  optionRadius: "0.375rem",
+  optionGap: "0.125rem",
   buttonBorder: "var(--hui-control-border)",
   buttonPrimaryBorder: "var(--hui-button-border)",
   buttonHeight: "var(--hui-control-height)",
@@ -143,7 +143,7 @@ export const cleanTheme: Readonly<ThemeTokens> = {
   buttonShadow: "none",
   buttonWeight: "600",
   controlShadow: "none",
-  overlayShadow: "0 8px 24px rgb(25 33 38 / 0.14)",
+  overlayShadow: "0 0.5rem 1.5rem rgb(25 33 38 / 0.14)",
   motion: "120ms",
 };
 
@@ -342,12 +342,12 @@ export const graphiteTheme = extendTheme(cleanTheme, {
   success: "#1f754d",
   control: {
     border: "#77716a",
-    radius: "4px",
+    radius: "0.25rem",
   },
   panel: {
-    radius: "4px",
+    radius: "0.25rem",
   },
-  textSize: "15px",
+  textSize: "0.9375rem",
 });
 
 /** Standard preserves the base theme. Compact changes spacing, not typography or hit targets. */
@@ -366,7 +366,7 @@ export const dialTheme = extendTheme(cleanTheme, {
     border: "#7b878c",
     surface: "#f8fbfb",
     stripe: "#edf2f4",
-    textSize: "13px",
+    textSize: "0.8125rem",
     cellPadding: "0.4375rem 0.625rem",
     columnBorder: "1px solid #dce4e7",
     header: "#dce4e7",
@@ -381,7 +381,7 @@ export const dialTheme = extendTheme(cleanTheme, {
   border: "#98b6b7",
   control: {
     border: "#587c81",
-    radius: "3px",
+    radius: "0.1875rem",
     shadow: "inset 0 1px 2px rgb(0 45 58 / 0.15)",
   },
   hoverSurface: "#e2f1ee",
@@ -389,17 +389,17 @@ export const dialTheme = extendTheme(cleanTheme, {
   selectedInk: "#173c42",
   disabledSurface: "#e7efed",
   popup: {
-    radius: "5px",
-    padding: "3px",
+    radius: "0.3125rem",
+    padding: "0.1875rem",
   },
   option: {
-    radius: "2px",
+    radius: "0.125rem",
   },
   accent: "#b5eff2",
   onAccent: "#173c42",
   focus: "#006579",
   panel: {
-    radius: "5px",
+    radius: "0.3125rem",
     image:
       "repeating-linear-gradient(0deg, transparent 0 3px, rgb(35 94 99 / 0.045) 3px 4px)",
   },
@@ -433,7 +433,7 @@ export const brutalistTheme = extendTheme(cleanTheme, {
   disabledSurface: "#f0f0f0",
   popup: {
     radius: "0",
-    padding: "4px",
+    padding: "0.25rem",
   },
   option: {
     radius: "0",
@@ -507,9 +507,9 @@ export const sluggersTheme: Readonly<ThemeTokens> = extendTheme(cleanTheme, {
   border: "rgb(155 181 225 / 0.55)",
   control: {
     border: "#bacfed",
-    height: "36px",
-    textSize: "16px",
-    radius: "6px",
+    height: "2.25rem",
+    textSize: "1rem",
+    radius: "0.375rem",
   },
   hoverSurface: "rgb(142 170 215 / 0.2)",
   selectedSurface: "#486fb0",
@@ -528,24 +528,24 @@ export const sluggersTheme: Readonly<ThemeTokens> = extendTheme(cleanTheme, {
     display: '"SluggersRodin", Arial, sans-serif',
     detail: '"SluggersCezanne", Arial, sans-serif',
   },
-  textSize: "14px",
+  textSize: "0.875rem",
   lineHeight: "1.45",
   button: {
-    height: "36px",
-    textSize: "14px",
+    height: "2.25rem",
+    textSize: "0.875rem",
   },
   panel: {
-    radius: "12px",
+    radius: "0.75rem",
   },
   table: {
-    cellPadding: "10px 12px",
+    cellPadding: "0.625rem 0.75rem",
     header: "#3b64a8",
     surface: "#3b64a8",
     containerSurface: "transparent",
-    textSize: "14px",
-    headerTextSize: "12px",
+    textSize: "0.875rem",
+    headerTextSize: "0.75rem",
   },
-  space: "10px",
+  space: "0.625rem",
 });
 
 const displayTypography = {

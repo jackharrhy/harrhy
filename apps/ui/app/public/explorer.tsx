@@ -41,10 +41,10 @@ const chrome = css({
   color: "var(--hui-ink)",
   background: "var(--hui-canvas)",
   fontFamily: "var(--hui-font-ui)",
-  fontSize: "14px",
+  fontSize: "0.875rem",
   lineHeight: "1.5",
   "& *": { boxSizing: "border-box" },
-  "& a": { color: "inherit", textUnderlineOffset: "3px" },
+  "& a": { color: "inherit", textUnderlineOffset: "0.1875rem" },
   "& aside input, & aside button, & [data-workbench-controls] input, & [data-source] button":
     {
       font: "inherit",
@@ -56,24 +56,24 @@ const chrome = css({
     color: "var(--hui-selected-ink)",
   },
   "& h1": {
-    fontSize: "28px",
+    fontSize: "1.75rem",
     lineHeight: "1.2",
     letterSpacing: "-0.025em",
-    margin: "0 0 8px",
+    margin: "0 0 0.5rem",
     fontWeight: 650,
   },
-  "& h2": { fontSize: "14px", margin: 0, fontWeight: 600 },
+  "& h2": { fontSize: "0.875rem", margin: 0, fontWeight: 600 },
   "& p": { margin: 0 },
   "& code, & pre": {
     fontFamily: "var(--hui-font-mono)",
   },
 });
 const contentStyle = css({
-  padding: "36px 40px 60px",
+  padding: "2.25rem 2.5rem 3.75rem",
   minWidth: 0,
-  maxWidth: "1500px",
-  "@media (max-width: 1000px)": { padding: "28px 24px" },
-  "@media (max-width: 600px)": { padding: "24px 16px" },
+  maxWidth: "93.75rem",
+  "@media (max-width: 62.5rem)": { padding: "1.75rem 1.5rem" },
+  "@media (max-width: 37.5rem)": { padding: "1.5rem 1rem" },
 });
 const introStyle = css({ color: "var(--hui-muted)", maxWidth: "70ch" });
 const toolbar = css({
@@ -81,8 +81,8 @@ const toolbar = css({
   flexWrap: "wrap",
   justifyContent: "space-between",
   alignItems: "center",
-  gap: "12px",
-  padding: "12px 16px",
+  gap: "0.75rem",
+  padding: "0.75rem 1rem",
   borderBottom: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
 });
@@ -90,45 +90,48 @@ const bench = css({
   border: "1px solid var(--hui-border)",
   borderRadius: "var(--hui-panel-radius)",
   overflow: "hidden",
-  marginTop: "28px",
+  marginTop: "1.75rem",
 });
 const specimenLayout = css({
   display: "grid",
-  gridTemplateColumns: "minmax(0, 1fr) 260px",
-  "@media (max-width: 1100px)": { gridTemplateColumns: "1fr" },
+  gridTemplateColumns: "minmax(0, 1fr) 16.25rem",
+  "@media (max-width: 68.75rem)": { gridTemplateColumns: "1fr" },
 });
 const stage = css({
-  minHeight: "320px",
-  padding: "40px",
+  minHeight: "20rem",
+  padding: "2.5rem",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
   minWidth: 0,
-  "& > div": { width: "100%", maxWidth: "380px" },
-  "@media (max-width: 600px)": { padding: "28px 20px", minHeight: "260px" },
+  "& > div": { width: "100%", maxWidth: "23.75rem" },
+  "@media (max-width: 37.5rem)": {
+    padding: "1.75rem 1.25rem",
+    minHeight: "16.25rem",
+  },
 });
 const controls = css({
   borderLeft: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
-  padding: "20px",
+  padding: "1.25rem",
   display: "grid",
   alignContent: "start",
-  gap: "16px",
-  "& label": { display: "grid", gap: "6px", fontSize: "13px" },
+  gap: "1rem",
+  "& label": { display: "grid", gap: "0.375rem", fontSize: "0.8125rem" },
   "& label:has(input[type=checkbox])": {
     display: "flex",
     alignItems: "center",
-    gap: "10px",
-    minHeight: "24px",
+    gap: "0.625rem",
+    minHeight: "1.5rem",
     cursor: "pointer",
   },
-  "@media (max-width: 1100px)": {
+  "@media (max-width: 68.75rem)": {
     borderLeft: 0,
     borderTop: "1px solid var(--hui-border)",
     gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
     "& h2": { gridColumn: "1 / -1" },
   },
-  "@media (max-width: 450px)": { gridTemplateColumns: "1fr" },
+  "@media (max-width: 28.125rem)": { gridTemplateColumns: "1fr" },
 });
 const source = css({ borderTop: "1px solid var(--hui-border)" });
 
@@ -162,11 +165,11 @@ export const Explorer = clientEntry(
               position: "absolute",
               left: "-10000px",
               "&:focus": {
-                left: "16px",
-                top: "12px",
+                left: "1rem",
+                top: "0.75rem",
                 background: "var(--hui-surface)",
                 zIndex: 10,
-                padding: "8px",
+                padding: "0.5rem",
               },
             })}
           >
@@ -416,7 +419,9 @@ function Story(
           >
             <div
               style={{
-                maxWidth: ["code", "diff"].includes(story) ? "100%" : "380px",
+                maxWidth: ["code", "diff"].includes(story)
+                  ? "100%"
+                  : "23.75rem",
               }}
             >
               {story === "code" && (
@@ -518,7 +523,7 @@ function Story(
                 </Field>
               )}
               {story === "range" && (
-                <label mix={css({ display: "grid", gap: "8px" })}>
+                <label mix={css({ display: "grid", gap: "0.5rem" })}>
                   <span>Volume</span>
                   <Range
                     name="volume"
@@ -713,7 +718,11 @@ function Story(
                   />
                 </label>
                 <div
-                  mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}
+                  mix={css({
+                    display: "grid",
+                    gap: "0.375rem",
+                    fontSize: "0.8125rem",
+                  })}
                 >
                   <label htmlFor="code-language">Language</label>
                   <Select
@@ -781,7 +790,13 @@ function Story(
               </label>
             )}
             {story === "button" && (
-              <div mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}>
+              <div
+                mix={css({
+                  display: "grid",
+                  gap: "0.375rem",
+                  fontSize: "0.8125rem",
+                })}
+              >
                 <label htmlFor="button-variant">Variant</label>
                 <Select
                   id="button-variant"
@@ -802,7 +817,13 @@ function Story(
               </div>
             )}
             {story === "notice" && (
-              <div mix={css({ display: "grid", gap: "6px", fontSize: "13px" })}>
+              <div
+                mix={css({
+                  display: "grid",
+                  gap: "0.375rem",
+                  fontSize: "0.8125rem",
+                })}
+              >
                 <label htmlFor="notice-tone">Tone</label>
                 <Select
                   id="notice-tone"
@@ -916,7 +937,7 @@ function Story(
         {(story === "select" || story === "tabs") && (
           <details
             mix={css({
-              padding: "16px",
+              padding: "1rem",
               borderTop: "1px solid var(--hui-border)",
               minWidth: 0,
             })}
@@ -958,7 +979,7 @@ function Story(
               Copy code
             </Button>
           </div>
-          <div mix={css({ padding: "20px", minWidth: 0 })}>
+          <div mix={css({ padding: "1.25rem", minWidth: 0 })}>
             <HighlightedCode
               colorScheme={themes[theme].colorScheme}
               label="Code example"
@@ -973,7 +994,7 @@ function Story(
   };
 }
 const descriptionCss = css({
-  fontSize: "12px",
+  fontSize: "0.75rem",
   color: "var(--hui-muted)",
   maxWidth: "35ch",
 });

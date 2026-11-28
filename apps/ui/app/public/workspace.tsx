@@ -5,7 +5,7 @@ import type { Density, ThemeName } from "./themes.ts";
 
 export const workbenchShell = css({
   height: "100dvh",
-  "--workbench-rail-width": "220px",
+  "--workbench-rail-width": "13.75rem",
   display: "grid",
   gridTemplateRows: "auto minmax(0, 1fr)",
   overflow: "clip",
@@ -14,7 +14,7 @@ const split = css({
   display: "grid",
   gridTemplateColumns: "var(--workbench-rail-width) minmax(0, 1fr)",
   gridTemplateRows: "minmax(0, 1fr)",
-  "@media (max-width: 760px)": {
+  "@media (max-width: 47.5rem)": {
     gridTemplateColumns: "minmax(0, 1fr)",
     gridTemplateRows: "auto minmax(0, 1fr)",
   },
@@ -30,28 +30,28 @@ const scrollPane = css({
   },
 });
 const rail = css({
-  fontSize: "14px",
+  fontSize: "0.875rem",
   lineHeight: "1.5",
   borderRight: "1px solid var(--hui-border)",
   background: "var(--hui-surface)",
-  scrollPaddingTop: "64px",
-  "& nav": { padding: "8px 10px" },
+  scrollPaddingTop: "4rem",
+  "& nav": { padding: "0.5rem 0.625rem" },
   "& nav + nav": { borderTop: "1px solid var(--hui-border)" },
   "& h2": {
-    fontSize: "11px",
+    fontSize: "0.6875rem",
     fontWeight: 650,
     letterSpacing: "0.055em",
     textTransform: "uppercase",
     color: "var(--hui-muted)",
-    margin: "8px 8px 4px",
+    margin: "0.5rem 0.5rem 0.25rem",
   },
-  "& nav div + div": { marginTop: "12px" },
+  "& nav div + div": { marginTop: "0.75rem" },
   "& a[data-example-link]": {
     display: "flex",
     justifyContent: "flex-start",
     width: "100%",
-    minHeight: "32px",
-    padding: "4px 8px",
+    minHeight: "2rem",
+    padding: "0.25rem 0.5rem",
     borderColor: "transparent",
     fontSize: "inherit",
     fontWeight: 500,
@@ -66,17 +66,17 @@ const rail = css({
   "& a[data-example-link][aria-current=page]::after": {
     content: '""',
     marginLeft: "auto",
-    width: "5px",
-    height: "5px",
+    width: "0.3125rem",
+    height: "0.3125rem",
     borderRadius: "50%",
     background: "currentColor",
   },
-  "@media (max-width: 760px)": {
+  "@media (max-width: 47.5rem)": {
     maxHeight: "38dvh",
     borderRight: 0,
     borderBottom: "1px solid var(--hui-border)",
-    "& a[data-example-link]": { minHeight: "40px" },
-    "& details[open]": { paddingBottom: "12px" },
+    "& a[data-example-link]": { minHeight: "2.5rem" },
+    "& details[open]": { paddingBottom: "0.75rem" },
   },
 });
 const search = css({
@@ -86,42 +86,42 @@ const search = css({
   display: "grid",
   gridTemplateColumns: "minmax(0, 1fr) auto",
   alignItems: "center",
-  padding: "10px",
+  padding: "0.625rem",
   background: "var(--hui-surface)",
   borderBottom: "1px solid var(--hui-border)",
   "& input": {
     gridArea: "1 / 1 / 2 / 3",
     width: "100%",
     minWidth: 0,
-    paddingInlineEnd: "40px",
+    paddingInlineEnd: "2.5rem",
     fontSize: "inherit",
   },
   "& button": {
     gridArea: "1 / 2",
     zIndex: 1,
-    marginInlineEnd: "2px",
-    minHeight: "28px",
-    minWidth: "32px",
-    padding: "4px",
+    marginInlineEnd: "0.125rem",
+    minHeight: "1.75rem",
+    minWidth: "2rem",
+    padding: "0.25rem",
     color: "var(--hui-muted)",
   },
 });
 const empty = css({
-  padding: "0 18px 16px",
+  padding: "0 1.125rem 1rem",
   color: "var(--hui-muted)",
   "& a": { color: "inherit" },
 });
 
 const mobile = css({
   display: "none",
-  "@media (max-width: 760px)": {
+  "@media (max-width: 47.5rem)": {
     display: "block",
-    "& summary": { cursor: "pointer", padding: "8px 16px" },
+    "& summary": { cursor: "pointer", padding: "0.5rem 1rem" },
   },
 });
 
 const desktop = css({
-  "@media (max-width: 760px)": { display: "none" },
+  "@media (max-width: 47.5rem)": { display: "none" },
 });
 const scenes = [
   ["forms", "Forms", "/scenes"],

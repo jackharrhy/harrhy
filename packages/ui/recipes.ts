@@ -180,7 +180,7 @@ export const badgeStyles = css({
 export const rangeStyles = css({
   boxSizing: "border-box",
   minWidth: 0,
-  minHeight: "24px",
+  minHeight: "1.5rem",
   margin: 0,
   accentColor: "var(--hui-accent)",
   cursor: "pointer",
@@ -192,10 +192,10 @@ export const checkboxLabelStyles = css({
   display: "flex",
   alignItems: "flex-start",
   gap: "0.625rem",
-  minHeight: "24px",
-  lineHeight: "24px",
+  minHeight: "1.5rem",
+  lineHeight: "1.5rem",
   cursor: "pointer",
-  "& input[type=checkbox]": { marginBlockStart: "4px" },
+  "& input[type=checkbox]": { marginBlockStart: "0.25rem" },
 });
 
 /** Shared route/tab presentation; callers retain their own link or widget semantics. */
@@ -227,10 +227,17 @@ export const navigationItemStyles = css({
   "&:disabled": { color: "var(--hui-muted)", cursor: "not-allowed" },
 });
 
-/** Pixel distance consumed by upstream anchor positioning, including collision flipping. */
+/** Upstream anchor positioning consumes CSS pixels, not CSS lengths. */
 export function popupOffset(floating: HTMLElement): number {
-  const value = Number.parseFloat(
-    getComputedStyle(floating).getPropertyValue("--hui-popup-offset"),
+  const length = getComputedStyle(floating)
+    .getPropertyValue("--hui-popup-offset")
+    .trim();
+  const value = Number.parseFloat(length);
+  const valid = Number.isFinite(value) && value >= 0;
+  if (valid && !length.endsWith("rem")) return value;
+
+  const rootSize = Number.parseFloat(
+    getComputedStyle(floating.ownerDocument.documentElement).fontSize,
   );
-  return Number.isFinite(value) && value >= 0 ? value : 6;
+  return (valid ? value : 0.375) * rootSize;
 }

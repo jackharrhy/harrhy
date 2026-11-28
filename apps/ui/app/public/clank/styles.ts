@@ -1,8 +1,8 @@
 import { css } from "remix/component";
-const line = "1px solid var(--hui-border)",
+const line = "0.0625rem solid var(--hui-border)",
   muted = "var(--hui-muted)",
   mono = "var(--hui-font-mono)";
-const row = { display: "flex", alignItems: "center", gap: "8px" } as const;
+const row = { display: "flex", alignItems: "center", gap: "0.5rem" } as const;
 export const shell = css({
   height: "100%",
   display: "flex",
@@ -20,9 +20,9 @@ export const shell = css({
     outline: "2px solid var(--hui-focus)",
     outlineOffset: "-2px",
   },
-  "& a": { color: "inherit", textUnderlineOffset: "3px" },
+  "& a": { color: "inherit", textUnderlineOffset: "0.1875rem" },
   "& h1,& h2": {
-    fontSize: "15px",
+    fontSize: "0.9375rem",
     fontWeight: 600,
     lineHeight: 1.3,
     margin: 0,
@@ -30,7 +30,7 @@ export const shell = css({
   "& .columns": {
     display: "grid",
     gridTemplateColumns:
-      "clamp(220px,20vw,300px) minmax(0,1fr) clamp(198px,18vw,280px)",
+      "clamp(13.75rem,20vw,18.75rem) minmax(0,1fr) clamp(12.375rem,18vw,17.5rem)",
     flex: 1,
     minHeight: 0,
   },
@@ -43,8 +43,8 @@ export const shell = css({
   "& .overview": { borderLeft: line },
   "& .railhead,& .heading": {
     ...row,
-    padding: "0 16px",
-    minHeight: "52px",
+    padding: "0 1rem",
+    minHeight: "3.25rem",
     borderBottom: line,
   },
   "& .heading": { justifyContent: "space-between" },
@@ -54,14 +54,14 @@ export const shell = css({
     borderRadius: "var(--hui-control-radius)",
   },
   "& .session": {
-    margin: "2px 6px",
-    padding: "4px 10px",
-    minHeight: "calc(12px + 2 * var(--hui-space))",
+    margin: "0.125rem 0.375rem",
+    padding: "0.25rem 0.625rem",
+    minHeight: "calc(0.75rem + 2 * var(--hui-space))",
     textAlign: "left",
-    fontSize: "14px",
+    fontSize: "0.875rem",
     lineHeight: 1.4,
   },
-  "& .railhead+.session": { marginTop: "8px" },
+  "& .railhead+.session": { marginTop: "0.5rem" },
   "& button:hover,& summary:hover": {
     backgroundColor: "var(--hui-hover-surface)",
   },
@@ -71,9 +71,9 @@ export const shell = css({
     fontWeight: 600,
   },
   "& .engines button,& .step": {
-    fontSize: "13px",
-    minHeight: "32px",
-    padding: "4px 8px",
+    fontSize: "0.8125rem",
+    minHeight: "2rem",
+    padding: "0.25rem 0.5rem",
   },
   "& .transcript": {
     display: "grid",
@@ -81,7 +81,7 @@ export const shell = css({
     minHeight: 0,
     minWidth: 0,
   },
-  "& .state": { ...row, gap: 4, fontSize: "13px", color: muted },
+  "& .state": { ...row, gap: 4, fontSize: "0.8125rem", color: muted },
   "& .state[data-complete=true] svg": { color: "var(--hui-success)" },
   "& .scroll": {
     overflow: "auto",
@@ -92,7 +92,7 @@ export const shell = css({
     width: "100%",
     maxWidth: "72ch",
     marginInline: "auto",
-    padding: "24px 16px",
+    padding: "1.5rem 1rem",
     lineHeight: 1.5,
   },
   "& .user": {
@@ -101,43 +101,47 @@ export const shell = css({
     flexDirection: "column",
     gap: 4,
     paddingLeft: "12%",
-    marginBottom: "16px",
+    marginBottom: "1rem",
   },
   "& .user p": {
     background: "var(--hui-selected-surface)",
     color: "var(--hui-selected-ink)",
     borderRadius: "var(--hui-control-radius)",
-    padding: "8px 12px",
+    padding: "0.5rem 0.75rem",
     margin: 0,
   },
   "& time,& summary small,& [data-markdown=code-header]": {
-    fontSize: "12px",
+    fontSize: "0.75rem",
     color: muted,
   },
-  "& .measure [data-engine] p": { margin: "12px 0" },
-  "& details": { marginBlock: "8px", fontSize: "13px" },
+  "& .measure [data-engine] p": { margin: "0.75rem 0" },
+  "& details": { marginBlock: "0.5rem", fontSize: "0.8125rem" },
   "& summary": {
     ...row,
-    minHeight: "32px",
+    minHeight: "2rem",
     cursor: "pointer",
     color: muted,
     width: "fit-content",
-    padding: "2px 4px",
+    padding: "0.125rem 0.25rem",
     borderRadius: "var(--hui-control-radius)",
   },
   "& summary::before": { content: '"▸"' },
   "& details[open]>summary::before": { content: '"▾"' },
-  "& details p": { margin: "4px 0 12px 16px" },
+  "& details p": { margin: "0.25rem 0 0.75rem 1rem" },
   "& pre,& .tail": {
-    font: "12px/1.6 var(--hui-font-mono)",
-    padding: "8px 12px",
+    font: "0.75rem/1.6 var(--hui-font-mono)",
+    padding: "0.5rem 0.75rem",
     background: "var(--hui-canvas)",
     borderRadius: "var(--hui-control-radius)",
     overflowX: "auto",
   },
   "& .tail": { whiteSpace: "pre-wrap", overflowWrap: "anywhere" },
   "& code": { fontFamily: mono },
-  "& table": { borderCollapse: "collapse", width: "100%", fontSize: "13px" },
+  "& table": {
+    borderCollapse: "collapse",
+    width: "100%",
+    fontSize: "0.8125rem",
+  },
   "& td,& th": {
     textAlign: "left",
     padding: "var(--hui-table-cell-padding)",
@@ -147,26 +151,26 @@ export const shell = css({
   "& .transport": {
     ...row,
     borderTop: line,
-    minHeight: "52px",
-    padding: "4px 16px",
+    minHeight: "3.25rem",
+    padding: "0.25rem 1rem",
   },
   "& .transport button": { ...row, justifyContent: "center" },
-  "& .engines": { ...row, gap: "2px", marginLeft: "auto" },
+  "& .engines": { ...row, gap: "0.125rem", marginLeft: "auto" },
   "& dl": {
     display: "grid",
     gridTemplateColumns: "auto minmax(0,1fr)",
-    gap: "8px 12px",
-    padding: "0 16px",
-    margin: "16px 0",
-    fontSize: "13px",
+    gap: "0.5rem 0.75rem",
+    padding: "0 1rem",
+    margin: "1rem 0",
+    fontSize: "0.8125rem",
   },
   "& dt": { color: muted },
   "& dd": { margin: 0, overflowWrap: "anywhere" },
   "& .phone-title,& .mobile": { display: "none" },
-  "@media(max-width:899px)": {
+  "@media(max-width:56.1875rem)": {
     "& .columns": { display: "flex" },
     "& .columns>*": { width: "100%" },
-    "& .mobile": { ...row, gap: 0, padding: "0 6px", borderBottom: line },
+    "& .mobile": { ...row, gap: 0, padding: "0 0.375rem", borderBottom: line },
     "& .mobile button": { flex: 1, marginBlock: 2 },
     "&:not([data-pane=Sessions]) .sessions,&:not([data-pane=Transcript]) .transcript,&:not([data-pane=Overview]) .overview":
       { display: "none" },
@@ -174,8 +178,10 @@ export const shell = css({
     "& .phone-title": { display: "block" },
     "& .sessions,& .overview": { border: 0 },
     "& .columns button,& .session,& summary,& .engines button,& .transport button,& .mobile button":
-      { minWidth: "44px", minHeight: "44px" },
-    "& .measure": { paddingBlock: "16px" },
-    "& .transport": { paddingBottom: "max(4px,env(safe-area-inset-bottom))" },
+      { minWidth: "2.75rem", minHeight: "2.75rem" },
+    "& .measure": { paddingBlock: "1rem" },
+    "& .transport": {
+      paddingBottom: "max(0.25rem,env(safe-area-inset-bottom))",
+    },
   },
 });
