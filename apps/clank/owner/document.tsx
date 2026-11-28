@@ -1,7 +1,8 @@
 import type { Snapshot } from "./catalog.ts";
 import { readFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { graphiteTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
-import { css } from "remix/component";
+import { css, unsafeHTML } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { createRouter } from "remix/router";
 import { OwnerSessions } from "./sessions.tsx";
@@ -11,11 +12,16 @@ import {
   canonicalSessionRedirect,
 } from "./routes.ts";
 declare const OWNER_BROWSER_MODULE: string;
+// Run after the transcript markup, independently of the deferred browser bundle.
+const positionTranscript = `(()=>{const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
+const positionHash = createHash("sha256")
+  .update(positionTranscript)
+  .digest("base64");
 const headersFor = (ownerHost: string) => ({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
-  "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+  "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'sha256-${positionHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
 });
 const localFamiliarId = (() => {
   try {
@@ -67,6 +73,9 @@ async function document(
           familiarId={familiarId}
           snapshot={snapshot ? JSON.stringify(snapshot) : undefined}
         />
+        {!listPage && snapshot?.chat?.view && (
+          <script innerHTML={unsafeHTML(positionTranscript)} />
+        )}
       </body>
     </html>,
   );

@@ -1361,7 +1361,7 @@ export const OwnerSessions = clientEntry(
                   )}
                   {view.kind === "loading" && !catalog && detailOpen && (
                     <Text tone="muted" role="status">
-                      Connecting to Pi…
+                      {target ? "Opening conversation…" : "Connecting to Pi…"}
                     </Text>
                   )}
                   {view.kind === "sign-in" && (

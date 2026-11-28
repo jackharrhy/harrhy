@@ -860,6 +860,76 @@ try {
     assert.match(response.headers()["cache-control"], /no-store/);
     assert.equal(new URL(observer.url()).pathname, namedPath);
     assert.equal(new URL(observer.url()).hash, "#selection");
+    const namedMessage = observer.getByRole("textbox", { name: "Message" });
+    await namedMessage.fill(
+      `${"Historical fixture line\n".repeat(65)}Latest named receipt`,
+    );
+    await namedMessage.press("Enter");
+    await observer.getByText(/^Echo: Historical fixture line/).waitFor();
+    await observer.locator("[data-streaming]").waitFor({ state: "hidden" });
+    const cold = await context.newPage();
+    await cold.setViewportSize({ width: 960, height: 640 });
+    const bundle = Promise.withResolvers<void>();
+    const chord = Promise.withResolvers<void>();
+    const socketStarted = Promise.withResolvers<void>();
+    await cold.route("**/owner-sessions.js", async (route) => {
+      await bundle.promise;
+      await route.continue();
+    });
+    await cold.routeWebSocket(/.*/, async (route) => {
+      socketStarted.resolve();
+      await chord.promise;
+      route.connectToServer();
+    });
+    await cold.goto(`${origin}${namedPath}`, { waitUntil: "commit" });
+    const sample = () =>
+      cold.getByLabel("Transcript").evaluate(async (node) => {
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        );
+        const viewport = node.getBoundingClientRect();
+        const latest = [...node.querySelectorAll("p")]
+          .filter((p) => p.textContent.includes("Latest named receipt"))
+          .at(-1);
+        const rect = latest?.getBoundingClientRect();
+        return {
+          top: node.scrollTop,
+          gap: node.scrollHeight - node.clientHeight - node.scrollTop,
+          latestVisible: Boolean(
+            rect &&
+            rect.bottom > viewport.top &&
+            rect.bottom <= viewport.bottom,
+          ),
+        };
+      });
+    await cold.getByText(/^Echo: Historical fixture line/).waitFor();
+    const painted = await sample();
+    console.log("Named SSR before browser bundle", painted);
+    await cold.getByLabel("Transcript").evaluate((node) => {
+      node.scrollTop = 100;
+    });
+    const reading = await sample();
+    bundle.resolve();
+    await socketStarted.promise;
+    const waiting = await sample();
+    chord.resolve();
+    await cold.getByRole("button", { name: "Session tools" }).waitFor();
+    await cold.waitForFunction(
+      () =>
+        !document.querySelector<HTMLButtonElement>(
+          'button[aria-label="Session tools"]',
+        )?.disabled,
+    );
+    const connected = await sample();
+    console.log("Named history position across hydration/Chord", [
+      reading.top,
+      waiting.top,
+      connected.top,
+    ]);
+    assert(painted.latestVisible && painted.gap <= 2);
+    assert.equal(waiting.top, reading.top);
+    assert.equal(connected.top, reading.top);
+    await cold.close();
     await observer.reload();
     await observer.waitForFunction(
       () => document.querySelector("textarea")?.disabled === false,
@@ -1089,6 +1159,25 @@ try {
   releaseCheck.resolve();
   await rail.getByRole("button", { name: "Familiar", exact: true }).waitFor();
   assert.deepEqual(await rail.boundingBox(), railBox);
+  if (namedPath) {
+    await shellContext.clearCookies();
+    const authenticate = Promise.withResolvers<void>();
+    await shellPage.unroute("**/owner/check");
+    await shellPage.route("**/owner/check", async (route) => {
+      await authenticate.promise;
+      await route.continue();
+    });
+    await shellPage.goto(`${origin}${namedPath}`);
+    const detail = shellPage.getByLabel("Session detail");
+    await detail.getByText("Opening conversation…").waitFor();
+    assert.equal(await detail.getByLabel("Transcript").count(), 0);
+    await shellContext.addCookies(await context.cookies(origin));
+    authenticate.resolve();
+    await detail.getByText(/^Echo: Historical fixture line/).waitFor();
+    await detail
+      .getByText("Opening conversation…")
+      .waitFor({ state: "hidden" });
+  }
   await shellContext.close();
   const startServer = (
     await import(new URL("src/hosts/server.ts", piRoot).href)

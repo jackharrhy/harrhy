@@ -159,7 +159,13 @@ export function Conversation(handle: Handle<Props>) {
   const mount = ref<HTMLDivElement>((node, signal) => {
     viewport = node;
     mounted = signal;
-    followLatest();
+    if (node.dataset.ssrPositioned) {
+      previousTop = node.scrollTop;
+      following = node.scrollHeight - node.clientHeight - previousTop <= 64;
+      if (!following) void handle.update();
+    } else {
+      followLatest();
+    }
     const observer = new ResizeObserver(followLatest);
     observer.observe(node);
     if (node.firstElementChild) observer.observe(node.firstElementChild);
