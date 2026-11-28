@@ -228,13 +228,14 @@ export async function runAcp(options: {
 		}
 		stdin.end();
 		try {
-			if (!(await waitForExit(exited))) {
+			let stopped = await waitForExit(exited);
+			if (!stopped) {
 				signalAgent(child, "SIGTERM");
-				await waitForExit(exited);
+				stopped = await waitForExit(exited);
 			}
-			// A subprocess in the POSIX process group can outlive the agent itself.
-			signalAgent(child, "SIGKILL");
-			if (!(await waitForExit(exited))) child.unref();
+			// The leased guard kills its own group on exit. Do not signal a reaped guard's old group again.
+			if (!stopped || !parentLease) signalAgent(child, "SIGKILL");
+			if (!stopped && !(await waitForExit(exited))) child.unref();
 		} finally {
 			stdout.destroy();
 			stdin.destroy();
