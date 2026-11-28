@@ -146,7 +146,7 @@ export async function startFixture(
 		/** settings.json written into the data directory before the server starts (keys read at the start: `telemetry`). */
 		readonly settings?: Readonly<Record<string, unknown>>;
 		/** Install the checked-in integration directories into this fixture's actual user plugin root. */
-		readonly integrations?: readonly ("atlas-feedback" | "cursor" | "github-checks" | "ingress" | "peers")[];
+		readonly integrations?: readonly ("acp" | "atlas-feedback" | "cursor" | "github-checks" | "ingress" | "peers")[];
 		/** Runs after the integrations are installed and before the server starts (a plugin's node_modules, say). */
 		readonly prepare?: (dataDir: string) => void | Promise<void>;
 	} = {},

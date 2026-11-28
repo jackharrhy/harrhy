@@ -16,11 +16,6 @@ export type Outcome = {
 	git?: { branch?: string; prUrl?: string };
 };
 
-/** What a running agent does, as the SDK streams it. */
-export type RunEvent =
-	| { type: "text"; text: string }
-	| { type: "tool"; name: string; status: string; path?: string };
-
 /** One run Pi started or found again. */
 export type RunHandle = {
 	agentId: string;
@@ -29,47 +24,26 @@ export type RunHandle = {
 	/** Resolves when the run ends. Rejects on a lost connection: ask again with `attach` (cloud runs only). */
 	wait(): Promise<Outcome>;
 	cancel(): Promise<void>;
-	/** Reports what the agent does while it runs (text, tools). Best effort: the stream may end or fail without the run doing so. */
-	watch?(onEvent: (event: RunEvent) => void): void;
-	/** Frees what the handle holds (a local agent's resources); the run itself is not stopped. */
 	dispose(): void;
 };
 
 /** What a run is allowed to do, decided by policy.ts before the client sees it. */
-export type StartSpec =
-	| {
-			runtime: "local";
-			prompt: string;
-			model: string;
-			modelParams?: { id: string; value: string }[];
-			/** Ask the SDK for its shell sandbox (agent mode only; the SDK says if it cannot). */
-			sandbox: boolean;
-			/** A directory that exists and lies inside the session's. */
-			cwd: string;
-			/** `ask`: read-only tools. `plan`: read-only tools, plan mode. `agent`: every tool, in the SDK's sandbox. */
-			mode: "ask" | "plan" | "agent";
-			/** Go on with an interrupted agent: its id, and the message to send it. */
-			resume?: { agentId: string; message: string };
-	  }
-	| {
-			runtime: "cloud";
-			prompt: string;
-			model?: string;
-			modelParams?: { id: string; value: string }[];
-			/** `owner/name`, on the owner's list. */
-			repo: string;
-			branch?: string;
-			/** `plan` reads and drafts; `agent` may change the repository on a branch of its own. */
-			mode: "plan" | "agent";
-			resume?: { agentId: string; message: string };
-	  };
+export type StartSpec = {
+	prompt: string;
+	model?: string;
+	modelParams?: { id: string; value: string }[];
+	/** `owner/name`, on the owner's list. */
+	repo: string;
+	branch?: string;
+	/** `plan` reads and drafts; `agent` may change the repository on a branch of its own. */
+	mode: "plan" | "agent";
+	resume?: { agentId: string; message: string };
+};
 
 export type CursorClient = {
 	/** Who the key is (its name): proves it works. */
 	whoAmI(): Promise<string>;
 	models(): Promise<ModelInfo[]>;
-	/** Whether the SDK can sandbox a local agent on this machine: one tiny request in an empty directory. */
-	probeSandbox(model: string): Promise<"supported" | "unsupported">;
 	start(spec: StartSpec): Promise<RunHandle>;
 	/** A cloud run again after the server restarted or the connection dropped. */
 	attach(ref: { agentId: string; runId: string }): Promise<RunHandle>;
@@ -77,12 +51,6 @@ export type CursorClient = {
 
 /** Makes a client for one API key; throws why when the SDK is not there. */
 export type ClientFactory = (apiKey: string) => Promise<CursorClient>;
-
-/** The SDK refused to start a local agent with its sandbox, because this machine cannot give one. */
-export class SandboxUnsupportedError extends Error {}
-
-/** The SDK's own words for it: "Local SDK sandboxing was requested, but sandboxing is not supported in this environment." */
-export const isSandboxUnsupported = (message: string) => /sandbox\w*\b[^.]{0,80}\b(?:not|isn't|is not|cannot|can't|unable)\b[^.]{0,40}\b(?:supported|available|enabled|possible)/i.test(message);
 
 const KEY_LIKE = /\b(?:crsr|cursor|key|sk)[_-][A-Za-z0-9_-]{16,}\b/gi;
 

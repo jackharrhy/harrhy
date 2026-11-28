@@ -1,4 +1,3 @@
-import assert from "node:assert/strict";
 import { test } from "node:test";
 import { Browser, browserTests } from "./browser.ts";
 import { startFixture } from "./helpers.ts";
@@ -34,8 +33,7 @@ test("the owner allows and removes repositories in Settings › GitHub", { skip:
 	await browser.wait(`document.querySelector('[role=alert]')?.textContent.includes('owner/name')`);
 	await type("acme/site");
 	await clickText("Allow");
-	await browser.wait(`[...document.querySelectorAll('.guest-row span')].some((span) => span.textContent === 'acme/site')`);
-	assert.equal(await browser.evaluate(`${input}.value`), "");
+	await browser.wait(`[...document.querySelectorAll('.guest-row span')].some((span) => span.textContent === 'acme/site') && ${input}?.value === ''`);
 	await clickText("Remove");
 	await browser.wait(`document.body.textContent.includes('None yet')`);
 });

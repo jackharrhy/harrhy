@@ -9,6 +9,7 @@ Base Pi does not discover this directory. Each integration is a separately insta
 | `atlas-feedback` | Server | [Atlas feedback](atlas-feedback/README.md) |
 | `cursor` | Server, worker, web | [Cursor](cursor/README.md) |
 | `github-checks` | Server, worker, web | [GitHub checks](github-checks/README.md) |
+| `acp` | Server, worker | [Foreground ACP delegation](acp/README.md) |
 | `host-health` | Server, worker | [Host health](host-health/README.md) |
 | `peers` | Server, worker, web | [Peers](peers/README.md) |
 

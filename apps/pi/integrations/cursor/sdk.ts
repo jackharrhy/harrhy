@@ -1,18 +1,12 @@
 // The real `@cursor/sdk` behind CursorClient. The package is not bundled: package.json lists it under `chord.external`, so
 // it loads from this plugin's own `node_modules` (README: `npm install` in the plugin directory) the first time a client is
 // made, and a missing package is an error message, not a failed plugin.
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
 import {
 	type ClientFactory,
 	type CursorClient,
-	isSandboxUnsupported,
 	type ModelInfo,
 	type Outcome,
-	type RunEvent,
 	type RunHandle,
-	SandboxUnsupportedError,
 	type StartSpec,
 	type Usage,
 } from "./client.ts";
@@ -30,11 +24,10 @@ type SdkRun = {
 		git?: { branches: { branch?: string; prUrl?: string }[] };
 	}>;
 	cancel(): Promise<void>;
-	stream(): AsyncGenerator<unknown, void>;
 };
 type SdkAgent = {
 	agentId: string;
-	send(message: string, options?: { mode?: "agent" | "plan"; local?: { force?: boolean } }): Promise<SdkRun>;
+	send(message: string, options?: { mode?: "agent" | "plan" }): Promise<SdkRun>;
 	close(): void;
 	getUsage(options?: { runId?: string }): Promise<{ cost?: { chargedCents: number } }>;
 };
@@ -53,9 +46,6 @@ type Sdk = {
 		};
 	};
 };
-
-/** What `ask` and `plan` runs may use: look at files, never change or run anything, no MCP, no subagents. */
-export const READ_ONLY_TOOLS = ["read", "grep", "glob", "ls"];
 
 let loaded: Sdk | undefined;
 async function loadSdk(): Promise<Sdk> {
@@ -77,18 +67,6 @@ const usageOf = (usage: { inputTokens: number; outputTokens: number; totalTokens
 	usage === undefined
 		? undefined
 		: { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, totalTokens: usage.totalTokens };
-
-/** The SDK's stream messages that tell what the agent says and does. */
-function eventsOf(message: unknown): RunEvent[] {
-	const value = message as { type?: string; message?: { content?: { type?: string; text?: string }[] }; name?: string; status?: string; args?: Record<string, unknown> };
-	if (value.type === "assistant")
-		return (value.message?.content ?? []).flatMap((block) => (block.type === "text" && typeof block.text === "string" ? [{ type: "text" as const, text: block.text }] : []));
-	if (value.type === "tool_call" && typeof value.name === "string") {
-		const path = [value.args?.path, value.args?.file_path, value.args?.target_file, value.args?.filePath].find((entry) => typeof entry === "string");
-		return [{ type: "tool", name: value.name, status: String(value.status ?? ""), ...(typeof path === "string" ? { path } : {}) }];
-	}
-	return [];
-}
 
 function handle(run: SdkRun, agent: SdkAgent | undefined): RunHandle {
 	let closed = false;
@@ -133,25 +111,9 @@ function handle(run: SdkRun, agent: SdkAgent | undefined): RunHandle {
 			return outcome;
 		},
 		cancel: () => run.cancel(),
-		watch(onEvent) {
-			void (async () => {
-				try {
-					for await (const message of run.stream()) for (const event of eventsOf(message)) onEvent(event);
-				} catch {
-					// The stream is only for progress: the run's end is wait()'s.
-				}
-			})();
-		},
 		dispose,
 	};
 }
-
-/** What the probe asks: nothing that needs a tool, and nothing worth keeping. */
-export const PROBE_PROMPT = "Reply with the single word ok.";
-
-/** The SDK's sandbox refusal as its own error; anything else unchanged. */
-const sandboxAware = (error: unknown): unknown =>
-	error instanceof Error && isSandboxUnsupported(error.message) ? new SandboxUnsupportedError(error.message) : error;
 
 const modelOf = (spec: { model?: string; modelParams?: { id: string; value: string }[] }) => ({
 	id: spec.model ?? "",
@@ -172,80 +134,27 @@ export const sdkClient: ClientFactory = async (apiKey): Promise<CursorClient> =>
 				params: (model.parameters ?? []).map((param) => ({ id: param.id, values: param.values.map((entry) => entry.value) })),
 			}));
 		},
-		async probeSandbox(model) {
-			const directory = await mkdtemp(join(tmpdir(), "pi-cursor-probe-"));
-			let agent: SdkAgent | undefined;
-			try {
-				agent = await sdk.Agent.create({
-					apiKey,
-					name: "pi-sandbox-probe",
-					model: { id: model },
-					mode: "plan",
-					tools: [],
-					local: { cwd: directory, settingSources: [], sandboxOptions: { enabled: true } },
-				});
-				await (await agent.send(PROBE_PROMPT, { mode: "plan" })).wait();
-				return "supported";
-			} catch (error) {
-				if (sandboxAware(error) instanceof SandboxUnsupportedError) return "unsupported";
-				throw error;
-			} finally {
-				agent?.close();
-				await rm(directory, { recursive: true, force: true }).catch(() => {});
-			}
-		},
 		async start(spec: StartSpec) {
-			let agent: SdkAgent;
+			const options = {
+				apiKey,
+				...(spec.model === undefined ? {} : { model: modelOf(spec) }),
+				cloud: {
+					repos: [{ url: `https://github.com/${spec.repo}`, ...(spec.branch === undefined ? {} : { startingRef: spec.branch }) }],
+					autoCreatePR: false,
+					skipReviewerRequest: true,
+				},
+				...(spec.mode === "plan" ? { mode: "plan" } : {}),
+			};
+			const agent = spec.resume ? await sdk.Agent.resume(spec.resume.agentId, options) : await sdk.Agent.create(options);
 			try {
-				agent = await create(spec);
-			} catch (error) {
-				throw sandboxAware(error);
-			}
-			try {
-				// A resumed local agent still has the run its dead worker left active: `force` expires it (verified against the SDK).
-				const options = {
-					...(spec.mode === "plan" ? { mode: "plan" as const } : {}),
-					...(spec.resume !== undefined && spec.runtime === "local" ? { local: { force: true } } : {}),
-				};
-				return handle(await agent.send(spec.resume?.message ?? spec.prompt, Object.keys(options).length ? options : undefined), agent);
+				return handle(await agent.send(spec.resume?.message ?? spec.prompt, spec.mode === "plan" ? { mode: "plan" } : undefined), agent);
 			} catch (error) {
 				agent.close();
-				throw sandboxAware(error);
+				throw error;
 			}
 		},
 		async attach({ agentId, runId }) {
 			return handle(await sdk.Agent.getRun(runId, { runtime: "cloud", agentId, apiKey }), undefined);
 		},
 	};
-	async function create(spec: StartSpec): Promise<SdkAgent> {
-		const make = (options: Record<string, unknown>) =>
-			spec.resume === undefined ? sdk.Agent.create(options) : sdk.Agent.resume(spec.resume.agentId, options);
-		{
-			let agent: SdkAgent;
-			if (spec.runtime === "local") {
-				const readOnly = spec.mode !== "agent";
-				// What an agent does is not stored with it: a resume says it all again (tools, sandbox, directory, mode).
-				agent = await make({
-					apiKey,
-					model: modelOf(spec),
-					// No ambient hooks, rules or MCP servers from the machine's Cursor settings.
-					local: { cwd: spec.cwd, settingSources: [], ...(!readOnly && spec.sandbox ? { sandboxOptions: { enabled: true } } : {}) },
-					...(readOnly ? { tools: READ_ONLY_TOOLS } : {}),
-					...(spec.mode === "plan" ? { mode: "plan" } : {}),
-				});
-			} else {
-				agent = await make({
-					apiKey,
-					...(spec.model === undefined ? {} : { model: modelOf(spec) }),
-					cloud: {
-						repos: [{ url: `https://github.com/${spec.repo}`, ...(spec.branch === undefined ? {} : { startingRef: spec.branch }) }],
-						autoCreatePR: false,
-						skipReviewerRequest: true,
-					},
-					...(spec.mode === "plan" ? { mode: "plan" } : {}),
-				});
-			}
-			return agent;
-		}
-	}
 };

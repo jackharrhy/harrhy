@@ -1,16 +1,14 @@
 // Cursor as a tool (README.md): the owner's settings, the agent's side of the runs and the watcher that publishes a stimulus
 // to the session when a run ends. The API key lives in cursor-secrets.json and never leaves this file's side of the wire.
-import { join } from "node:path";
-import { pluginFile } from "@earendil-works/chord/plugins";
 import { type Ctx, contribute, defineFacet, deriveTyped, forbidden, invalid, isOwner, isWorker } from "@p2/app/v1";
 import { Server, StimulusSources, sourceKey } from "@p2/app/v1/server";
 import { CursorRun } from "./contract.server.ts";
 import { CursorRuns, CursorSettings } from "./contract.ts";
-import { HEARTBEAT_MS, RUN_CAPS } from "./limits.ts";
+import { RUN_CAPS } from "./limits.ts";
 import { type Deps, createManager, type Manager } from "./runs.ts";
 import { openSecrets, type CursorSecrets } from "./secrets.ts";
 import { sdkClient } from "./sdk.ts";
-import { ConfigState, CursorStore, MAX_REPOS, RunsState, SandboxState, SurvivalState } from "./store.ts";
+import { ConfigState, CursorStore, MAX_REPOS, RunsState } from "./store.ts";
 
 const ALLOW = /^(?!\.{1,2}\/)[A-Za-z0-9._-]+\/(?:\*|(?!\.{1,2}$)[A-Za-z0-9._-]+)$/;
 const KEY = /^\S{8,512}$/;
@@ -29,11 +27,6 @@ export default defineFacet((host) => {
 				env: process.env,
 				minuteMs: Number(process.env.P2_CURSOR_MINUTE_MS) || 60_000,
 				graceMs: Number(process.env.P2_CURSOR_GRACE_MS) || 15_000,
-				runsDir: join(server.info.value.dataDir, "cursor-runs"),
-				agentScript: pluginFile("agent-process.ts"),
-				node: process.execPath,
-				heartbeatMs: Number(process.env.P2_CURSOR_HEARTBEAT_MS) || HEARTBEAT_MS,
-				pollMs: Number(process.env.P2_CURSOR_POLL_MS) || 1_000,
 				log: (message) => console.error(`p2 cursor: ${message}`),
 			};
 			return { manager: createManager(deps), secrets };
@@ -44,36 +37,14 @@ export default defineFacet((host) => {
 	host.serve(CursorStore, (_params, self) => {
 		const config = self.state(ConfigState);
 		const runs = self.state(RunsState);
-		const sandbox = self.state(SandboxState);
-		const survival = self.state(SurvivalState);
 		return {
 			config: deriveTyped(self, [config], ([value]) => value),
 			runs: deriveTyped(self, [runs], ([value]) => value.runs),
-			sandboxStatus: deriveTyped(self, [sandbox], ([value]) => value),
-			survival: deriveTyped(self, [survival], ([value]) => value),
-			setSurvival: async (next, ctx) => {
-				await survival.change((draft) => {
-					draft.status = next.status;
-					draft.detail = next.detail;
-				}, ctx);
-				return null;
-			},
-			setSandboxStatus: async (status, ctx) => {
-				await sandbox.change((draft) => {
-					draft.status = status.status;
-					draft.detail = status.detail;
-				}, ctx);
-				return null;
-			},
 			patchConfig: async (patch, ctx) => {
 				await config.change((draft) => {
 					if (patch.keyStored !== undefined) draft.keyStored = patch.keyStored;
 					if (patch.model !== undefined) draft.model = patch.model;
-					if (patch.runtime !== undefined) draft.runtime = patch.runtime;
-					if (patch.allowLocalEdits !== undefined) draft.allowLocalEdits = patch.allowLocalEdits;
 					if (patch.allowCloudEdits !== undefined) draft.allowCloudEdits = patch.allowCloudEdits;
-					if (patch.sandbox !== undefined) draft.sandbox = patch.sandbox;
-					if (patch.autoResume !== undefined) draft.autoResume = patch.autoResume;
 					if (patch.maxRuns !== undefined) draft.maxRuns = patch.maxRuns;
 					if (patch.maxPerSession !== undefined) draft.maxPerSession = patch.maxPerSession;
 					const allow = patch.allowRepo;
@@ -117,16 +88,10 @@ export default defineFacet((host) => {
 				keyStored: deriveTyped(self, [store.config], ([value]) => value.keyStored),
 				keyFromEnv: deriveTyped(self, [store.config], () => Boolean(process.env.CURSOR_API_KEY?.trim())),
 				model: deriveTyped(self, [store.config], ([value]) => value.model),
-				runtime: deriveTyped(self, [store.config], ([value]) => value.runtime),
 				repos: deriveTyped(self, [store.config], ([value]) => value.repos),
-				allowLocalEdits: deriveTyped(self, [store.config], ([value]) => value.allowLocalEdits),
 				allowCloudEdits: deriveTyped(self, [store.config], ([value]) => value.allowCloudEdits),
-				sandbox: deriveTyped(self, [store.config], ([value]) => value.sandbox ?? "when-possible"),
-				autoResume: deriveTyped(self, [store.config], ([value]) => value.autoResume ?? false),
 				maxRuns: deriveTyped(self, [store.config], ([value]) => value.maxRuns ?? RUN_CAPS.total),
 				maxPerSession: deriveTyped(self, [store.config], ([value]) => Math.min(value.maxPerSession ?? RUN_CAPS.perSession, value.maxRuns ?? RUN_CAPS.total)),
-				sandboxStatus: deriveTyped(self, [store.sandboxStatus], ([value]) => value),
-				workerSurvival: deriveTyped(self, [store.survival], ([value]) => value),
 				setKey: async ({ key }, ctx) => {
 					const trimmed = key.trim();
 					// The message never repeats the key.
@@ -164,9 +129,9 @@ export default defineFacet((host) => {
 						return { ok: false, message: manager.safe(error, key), models: [] };
 					}
 				},
-				setDefaults: async ({ model, runtime }, ctx) => {
+				setDefaults: async ({ model }, ctx) => {
 					if (!MODEL.test(model)) throw invalid("args", "That is not a model id");
-					await patch({ model, runtime }, ctx);
+					await patch({ model }, ctx);
 					return null;
 				},
 				allow: async ({ repo }, ctx) => {
@@ -179,10 +144,6 @@ export default defineFacet((host) => {
 					await patch({ removeRepo: repo }, ctx);
 					return null;
 				},
-				setAllowLocalEdits: async ({ allow }, ctx) => {
-					await patch({ allowLocalEdits: allow }, ctx);
-					return null;
-				},
 				setAllowCloudEdits: async ({ allow }, ctx) => {
 					await patch({ allowCloudEdits: allow }, ctx);
 					return null;
@@ -192,15 +153,6 @@ export default defineFacet((host) => {
 					await patch({ maxRuns, maxPerSession }, ctx);
 					return null;
 				},
-				setAutoResume: async ({ allow }, ctx) => {
-					await patch({ autoResume: allow }, ctx);
-					return null;
-				},
-				setSandbox: async ({ mode }, ctx) => {
-					await patch({ sandbox: mode }, ctx);
-					return null;
-				},
-				checkSandbox: async (_args, ctx) => (await open(ctx)).manager.checkSandbox(),
 			},
 		};
 	});
