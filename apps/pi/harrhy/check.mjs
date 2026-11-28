@@ -35,6 +35,7 @@ sandbox([
   "__tests__/p2/goal.test.ts",
   "__tests__/p2/guest-upgrades.test.ts",
   "__tests__/p2/session-admission.test.ts",
+  "__tests__/p2/session-slug.test.ts",
   "__tests__/p2/session-admission-restart.test.ts",
   "__tests__/p2/message-citations.test.ts",
   "__tests__/p2/ingress.test.ts",

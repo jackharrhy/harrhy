@@ -52,6 +52,13 @@ export const SessionRows = evolveTable(SessionRowsV1, (t) =>
 		jsonColumn(arr(BranchSchema), { version: 2, migrate: (old) => old as Branch[] }),
 	),
 );
+// A separate table keeps the session catalog readable by pre-slug Pi builds.
+export const SessionSlugs = defineTable("session_slugs", {
+	version: 1,
+	columns: { session: hostColumn(SessionHost), slug: columnStr() },
+	key: ["session"],
+	indexes: { by_slug: ["slug"] },
+});
 export type SessionTable = TableOf<typeof SessionRows>;
 export type SessionRow = SessionTable extends Table<infer C, readonly string[]> ? RowOf<C> : never;
 

@@ -96,6 +96,7 @@ async function withCatalog(serverDir: string, rows: readonly SessionRow[]): Prom
 				sessions: constant([]),
 				get: refused,
 				openIds: refused,
+				assignSlug: refused,
 				create: refused,
 				activity: refused,
 				update: refused,
