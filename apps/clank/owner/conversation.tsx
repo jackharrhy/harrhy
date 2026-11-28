@@ -96,6 +96,23 @@ function TranscriptInput(
   };
 }
 
+const messageAction = css({
+  display: "inline-flex",
+  alignItems: "center",
+  minHeight: "32px",
+  padding: "0 8px",
+  border: 0,
+  background: "transparent",
+  color: "inherit",
+  cursor: "pointer",
+  "&:hover:not(:disabled)": { color: "var(--hui-ink)" },
+  "&:focus-visible": {
+    outline: "2px solid currentColor",
+    outlineOffset: "-2px",
+  },
+  "&:disabled": { opacity: 0.5, cursor: "default" },
+});
+
 function MessageActions(
   handle: Handle<{
     text: string;
@@ -113,7 +130,14 @@ function MessageActions(
         <time
           data-message-time
           datetime={new Date(at).toISOString()}
-          mix={ref<HTMLTimeElement>(localizeMessageTime)}
+          mix={[
+            ref<HTMLTimeElement>(localizeMessageTime),
+            css({
+              paddingInline: "8px",
+              fontVariantNumeric: "tabular-nums",
+              whiteSpace: "nowrap",
+            }),
+          ]}
         />
       );
     return (
@@ -122,42 +146,43 @@ function MessageActions(
           display: "flex",
           alignItems: "center",
           justifyContent: alignEnd ? "flex-end" : "flex-start",
-          minHeight: "28px",
-          gap: "6px",
+          minHeight: "32px",
+          marginInline: alignEnd ? "0 -8px" : "-8px 0",
           color: "var(--hui-muted)",
-          fontSize: "12px",
+          fontSize: "11px",
         })}
       >
         {alignEnd && time}
         {edit && (
-          <Button
+          <button
             type="button"
-            variant="quiet"
             aria-label="Edit message"
             title="Continue before this message with its text in the composer"
             disabled={editDisabled}
-            mix={on("click", edit)}
+            mix={[messageAction, on("click", edit)]}
           >
             <Icon name="edit" />
-          </Button>
+          </button>
         )}
         {text && (
-          <Button
+          <button
             type="button"
-            variant="quiet"
             aria-label="Copy message"
-            mix={on("click", async () => {
-              try {
-                await navigator.clipboard.writeText(text);
-                announcement = "Copied";
-              } catch {
-                announcement = "Could not copy";
-              }
-              void handle.update();
-            })}
+            mix={[
+              messageAction,
+              on("click", async () => {
+                try {
+                  await navigator.clipboard.writeText(text);
+                  announcement = "Copied";
+                } catch {
+                  announcement = "Could not copy";
+                }
+                void handle.update();
+              }),
+            ]}
           >
             <Icon name="copy" />
-          </Button>
+          </button>
         )}
         {!alignEnd && time}
         <span
