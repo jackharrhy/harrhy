@@ -215,6 +215,7 @@ type Props = {
   session: string;
   conversation: number;
   showMetadata: boolean;
+  enterToSend: boolean;
   initialDraft?: string;
   consumeDraft(): void;
   canEdit: boolean;
@@ -645,6 +646,7 @@ export function Conversation(handle: Handle<Props>) {
           mix={[
             css({
               paddingBottom: "env(safe-area-inset-bottom, 0px)",
+              "& textarea": { border: 0 },
               "& textarea:focus-visible": { outline: "none" },
               "@media (forced-colors: active)": {
                 "& textarea:focus-visible": {
@@ -663,7 +665,8 @@ export function Conversation(handle: Handle<Props>) {
             mix={[
               measure,
               css({
-                paddingBlock: "0 8px",
+                paddingBlock: 0,
+                borderBlock: "1px solid var(--hui-border)",
               }),
             ]}
           >
@@ -682,8 +685,6 @@ export function Conversation(handle: Handle<Props>) {
                   width: "100%",
                   boxSizing: "border-box",
                   resize: "none",
-                  border: 0,
-                  borderBlock: "1px solid var(--hui-border)",
                   borderRadius: 0,
                   padding: "8px 0",
                   background: "transparent",
@@ -699,7 +700,11 @@ export function Conversation(handle: Handle<Props>) {
                 on("keydown", (event) => {
                   if (
                     event.key !== "Enter" ||
+                    event.defaultPrevented ||
                     event.shiftKey ||
+                    !handle.props.enterToSend ||
+                    navigator.maxTouchPoints > 0 ||
+                    !window.matchMedia("(pointer: fine)").matches ||
                     event.isComposing ||
                     event.keyCode === 229 ||
                     composing
@@ -742,6 +747,8 @@ export function Conversation(handle: Handle<Props>) {
                 <Icon name="send" />
               </Button>
             </div>
+          </div>
+          <div mix={[measure, css({ paddingBlock: "0 8px" })]}>
             {handle.props.showMetadata && (
               <div
                 aria-label={
@@ -754,7 +761,6 @@ export function Conversation(handle: Handle<Props>) {
                   flexWrap: "wrap",
                   alignItems: "center",
                   gap: "0 12px",
-                  borderTop: "1px solid var(--hui-border)",
                   paddingBlock: "4px 0",
                   color: "var(--hui-muted)",
                   fontSize: "12px",
@@ -850,7 +856,7 @@ export function Conversation(handle: Handle<Props>) {
                     gap: "8px",
                     minHeight: "16px",
                     fontFamily: "ui-monospace, monospace",
-                    "& progress, & > span:first-child": {
+                    "& progress": {
                       flex: 1,
                       minWidth: 0,
                       height: "2px",
@@ -869,7 +875,7 @@ export function Conversation(handle: Handle<Props>) {
                     },
                   })}
                 >
-                  {percent !== undefined ? (
+                  {percent !== undefined && (
                     <>
                       <progress
                         aria-label="Estimated active context usage"
@@ -881,8 +887,6 @@ export function Conversation(handle: Handle<Props>) {
                         {percent}%/{compactLimit}
                       </span>
                     </>
-                  ) : (
-                    <span aria-hidden="true" />
                   )}
                 </div>
               </div>

@@ -7,7 +7,12 @@ import {
 } from "./routes.ts";
 import { SessionList } from "./session-list.tsx";
 import { age, isRecent } from "./sidebar-time.ts";
-import { Dialog } from "@harrhy/ui/interactive";
+import {
+  Settings,
+  defaultPreferences,
+  readPreferences,
+  savePreference,
+} from "./settings.tsx";
 import {
   Menu,
   MenuTrigger,
@@ -20,7 +25,7 @@ import { Icon } from "./icons.tsx";
 import { Switcher, type PaletteItem } from "./switcher.tsx";
 import { byRecentActivity } from "../../pi/plugins/subagents/contract.ts";
 import { Conversation } from "./conversation.tsx";
-import { Button, Checkbox, Heading, Input, Text } from "@harrhy/ui/native";
+import { Button, Heading, Input, Text } from "@harrhy/ui/native";
 import {
   clientEntry,
   css,
@@ -332,7 +337,7 @@ export const OwnerSessions = clientEntry(
       } catch {}
       void handle.update();
     }
-    let showMetadata = true;
+    let preferences = defaultPreferences;
     let sidebarButton: HTMLButtonElement | undefined;
     const sidebarRef = ref<HTMLButtonElement>((node) => {
       sidebarButton = node;
@@ -630,10 +635,8 @@ export const OwnerSessions = clientEntry(
       signal.addEventListener("abort", () => clearInterval(clock), {
         once: true,
       });
-      try {
-        showMetadata =
-          localStorage.getItem("clank:composer-metadata") !== "hidden";
-      } catch {}
+      preferences = readPreferences();
+      void handle.update();
       void connect();
       window.addEventListener(
         "keydown",
@@ -716,7 +719,7 @@ export const OwnerSessions = clientEntry(
           row &&
           row !== familiar &&
           !activeIds.has(row.id) &&
-          !isRecent(row, selectedId, now),
+          !isRecent(row, selectedId, now, preferences.recency),
         ),
       );
       const olderIds = new Set(older.map((row) => row.id));
@@ -784,97 +787,21 @@ export const OwnerSessions = clientEntry(
             />
           )}
           {catalog && (
-            <Dialog
+            <Settings
               open={settings}
-              title="Settings"
-              description="Preferences for Clank on this browser."
-              mix={css({
-                width: "min(28rem, calc(100% - 2rem))",
-                boxSizing: "border-box",
-              })}
-              onClose={() => {
+              mode={mode}
+              setMode={setMode}
+              preferences={preferences}
+              change={(change) => {
+                preferences = { ...preferences, ...change };
+                savePreference(change);
+                void handle.update();
+              }}
+              close={() => {
                 settings = false;
                 void handle.update();
               }}
-            >
-              <fieldset
-                mix={css({ margin: "0 0 1.25rem", padding: 0, border: 0 })}
-              >
-                <legend mix={css({ fontWeight: 600, marginBottom: "8px" })}>
-                  Appearance
-                </legend>
-                <div
-                  mix={css({
-                    display: "flex",
-                    flexWrap: "wrap",
-                    gap: "8px 16px",
-                  })}
-                >
-                  {modes.map((choice) => (
-                    <label
-                      key={choice}
-                      mix={css({
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "5px",
-                        minHeight: "32px",
-                      })}
-                    >
-                      <input
-                        type="radio"
-                        name="clank-theme"
-                        checked={mode === choice}
-                        mix={on("change", () => setMode(choice))}
-                      />
-                      {choice[0].toUpperCase() + choice.slice(1)}
-                    </label>
-                  ))}
-                </div>
-              </fieldset>
-              <fieldset
-                mix={css({
-                  margin: "0 0 1rem",
-                  padding: "12px 0 0",
-                  border: 0,
-                  borderTop: line,
-                })}
-              >
-                <legend mix={css({ fontWeight: 600, paddingInlineEnd: "8px" })}>
-                  Display
-                </legend>
-                <label
-                  mix={css({
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                  })}
-                >
-                  <Checkbox
-                    checked={showMetadata}
-                    mix={on("change", (event) => {
-                      showMetadata = event.currentTarget.checked;
-                      try {
-                        localStorage.setItem(
-                          "clank:composer-metadata",
-                          showMetadata ? "shown" : "hidden",
-                        );
-                      } catch {}
-                      void handle.update();
-                    })}
-                  />{" "}
-                  Show composer metadata
-                </label>
-              </fieldset>
-              <Button
-                variant="quiet"
-                mix={on("click", () => {
-                  settings = false;
-                  void handle.update();
-                })}
-              >
-                Done
-              </Button>
-            </Dialog>
+            />
           )}
           <aside
             id="clank-sidebar"
@@ -1246,8 +1173,9 @@ export const OwnerSessions = clientEntry(
                     Sessions
                   </Heading>
                   <Text tone="muted" mix={css({ margin: 0, fontSize: "12px" })}>
-                    Sessions without activity in the last 3 days are dimmed; the
-                    sidebar shows the others.
+                    {preferences.recency === "forever"
+                      ? "The sidebar shows all sessions."
+                      : `Dimmed sessions are outside the ${preferences.recency}-day window and hidden from the sidebar.`}
                   </Text>
                 </div>
               ) : newOpen ? (
@@ -1484,7 +1412,8 @@ export const OwnerSessions = clientEntry(
                     ? seed?.chat
                     : undefined
                 }
-                showMetadata={showMetadata}
+                showMetadata={preferences.showMetadata}
+                enterToSend={preferences.enterToSend}
               />
             ) : (
               <div mix={scroll}>
