@@ -14,7 +14,8 @@ import {
   MenuContent,
   MenuItem,
 } from "@harrhy/ui/interactive";
-import { modes, themeKey, type Mode } from "./appearance.ts";
+import { BrandMark } from "./brand-mark.tsx";
+import { documentBranding, modes, themeKey, type Mode } from "./appearance.ts";
 import { Icon } from "./icons.tsx";
 import { Switcher, type PaletteItem } from "./switcher.tsx";
 import { byRecentActivity } from "../../pi/plugins/subagents/contract.ts";
@@ -500,8 +501,23 @@ export const OwnerSessions = clientEntry(
       const current = new AbortController();
       attempt = current;
       const signal = current.signal;
+      const applyBranding = documentBranding(document);
+      signal.addEventListener(
+        "abort",
+        () => {
+          applyBranding();
+          if (view.kind === "ready" && view.catalog.branding) {
+            view.catalog.branding = undefined;
+            if (!handle.signal.aborted) void handle.update();
+          }
+        },
+        { once: true },
+      );
       async function show(next: View) {
         if (signal.aborted) return;
+        applyBranding(
+          next.kind === "ready" ? next.catalog.branding : undefined,
+        );
         if (next.kind === "sign-in") {
           cached = seed = undefined;
           switching = settings = newOpen = false;
@@ -874,64 +890,7 @@ export const OwnerSessions = clientEntry(
             ]}
           >
             <div mix={bar}>
-              <div
-                mix={css({
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "8px",
-                  "& .pi-logo": {
-                    width: "20px",
-                    height: "20px",
-                    shapeRendering: "crispEdges",
-                  },
-                })}
-              >
-                <svg
-                  class="pi-logo"
-                  aria-hidden="true"
-                  viewBox="0 0 4 4"
-                  shape-rendering="crispEdges"
-                >
-                  <rect
-                    x="0"
-                    y="0"
-                    width="3"
-                    height="1"
-                    fill="rgb(228 138 122)"
-                  />
-                  <rect
-                    x="2"
-                    y="1"
-                    width="1"
-                    height="1"
-                    fill="rgb(228 138 122)"
-                  />
-                  <rect
-                    x="0"
-                    y="1"
-                    width="1"
-                    height="3"
-                    fill="rgb(79 142 179)"
-                  />
-                  <rect
-                    x="1"
-                    y="2"
-                    width="1"
-                    height="1"
-                    fill="rgb(79 142 179)"
-                  />
-                  <rect
-                    x="3"
-                    y="2"
-                    width="1"
-                    height="2"
-                    fill="rgb(234 182 93)"
-                  />
-                </svg>
-                <Heading level={1} mix={titleStyle}>
-                  Clank
-                </Heading>
-              </div>
+              <BrandMark logo={live?.branding?.logo} />
               <div mix={css({ display: "flex", gap: "2px" })}>
                 {catalog && (
                   <Button

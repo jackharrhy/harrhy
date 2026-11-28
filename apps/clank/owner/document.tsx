@@ -24,7 +24,7 @@ const headersFor = (ownerHost: string) => ({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
-  "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'sha256-${positionHash}' 'sha256-${themeHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+  "Content-Security-Policy": `default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'self' 'sha256-${positionHash}' 'sha256-${themeHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
 });
 const localFamiliarId = (() => {
   try {

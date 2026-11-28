@@ -1,3 +1,4 @@
+import { followBranding, type Branding } from "./branding.ts";
 import { SessionTree } from "../../pi/plugins/tree/contract.ts";
 import { ownerSessions } from "./session-wire.ts";
 import { validSlug } from "./routes.ts";
@@ -55,6 +56,7 @@ export type Catalog = {
     title: string,
     slug?: string,
   ): Promise<Session & { slug?: string }>;
+  branding?: Branding;
   canCreateSlug: boolean;
   rows: Row[];
   activeIds?: string[];
@@ -285,12 +287,14 @@ export async function followCatalog(
             searchScope,
           );
         }, ctx);
+      let branding: Branding | undefined;
       let rows = activeRows(watch.value);
       let children: Catalog["children"] = {};
       let childrenReady = false;
       let activeIds: string[] | undefined;
       const update = () =>
         publish({
+          branding,
           rows,
           children,
           childrenReady,
@@ -342,6 +346,18 @@ export async function followCatalog(
           if (call.kind !== "value" || call.value.kind !== "live") close();
         });
         await update();
+        // Branding is optional: an older Pi must still get a working catalog.
+        void host
+          .root(
+            (brandScope) =>
+              followBranding(brandScope, async (value) => {
+                if (!authorized()) return;
+                branding = value;
+                await update();
+              }),
+            ctx,
+          )
+          .catch(() => {});
         void followChildren().catch(() => {});
         void host
           .root(

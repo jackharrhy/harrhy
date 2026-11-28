@@ -1,3 +1,4 @@
+import type { Branding } from "./branding.ts";
 import { extendTheme, graphiteTheme } from "@harrhy/ui/theme";
 import { css } from "remix/component";
 
@@ -25,8 +26,55 @@ export const ownerTheme = extendTheme(graphiteTheme, {
   control: { border: "light-dark(#77716a, #77716a)" },
 });
 
+// P2's custom base, hover, message, code and line ramps, in the current scheme.
+const tintPair = (light: string, dark: string) =>
+  `light-dark(oklch(${light} var(--pi-base-hue)), oklch(${dark} var(--pi-base-hue)))`;
+
 export const ownerScheme = css({
   colorScheme: "light dark",
+  "&:is([data-pi-tint=custom] *)": {
+    "--hui-surface": tintPair("0.985 0.012", "0.19 0.022"),
+    "--hui-canvas": tintPair("0.96 0.017", "0.21 0.022"),
+    "--hui-elevated": tintPair("0.985 0.012", "0.19 0.022"),
+    "--hui-hover-surface": tintPair("0.95 0.022", "0.24 0.028"),
+    "--hui-selected-surface": tintPair("0.94 0.025", "0.26 0.03"),
+    "--hui-border": tintPair("0.91 0.018", "0.29 0.024"),
+  },
   "&:is([data-theme=light] *)": { colorScheme: "light" },
   "&:is([data-theme=dark] *)": { colorScheme: "dark" },
 });
+
+// One owner connection owns these document effects; never persist them as preferences.
+export function documentBranding(doc: Document) {
+  const root = doc.documentElement;
+  const defaultTitle = doc.title;
+  let icon: HTMLLinkElement | undefined;
+  let previous: Branding | undefined;
+  return (next?: Branding) => {
+    if (previous?.name !== next?.name) doc.title = next?.name ?? defaultTitle;
+    if (previous?.tint !== next?.tint) {
+      if (next?.tint != null) {
+        root.style.setProperty("--pi-base-hue", String(next.tint));
+        root.dataset.piTint = "custom";
+      } else {
+        root.style.removeProperty("--pi-base-hue");
+        delete root.dataset.piTint;
+      }
+    }
+    if (previous?.logo !== next?.logo) {
+      if (next?.logo) {
+        if (!icon) {
+          icon = doc.createElement("link");
+          icon.rel = "icon";
+          icon.type = "image/png";
+        }
+        icon.href = next.logo;
+        if (!icon.isConnected) doc.head.appendChild(icon);
+      } else {
+        icon?.remove();
+        icon = undefined;
+      }
+    }
+    previous = next;
+  };
+}
