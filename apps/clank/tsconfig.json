@@ -7,11 +7,5 @@
     "declaration": false,
     "declarationMap": false
   },
-  "include": [
-    "*.ts",
-    "*.tsx",
-    "app",
-    "read-only",
-    "__tests__/*.test.ts"
-  ]
+  "include": ["*.ts", "*.tsx", "app", "read-only", "__tests__/*.test.ts"]
 }
