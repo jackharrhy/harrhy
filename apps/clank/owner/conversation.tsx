@@ -111,6 +111,7 @@ type Props = {
 };
 export function Conversation(handle: Handle<Props>) {
   let feed: ChatFeed | undefined;
+  let animateActivity = false;
   let disconnected = false;
   let draft = "";
   let pending: { text: string; id: string } | undefined;
@@ -139,10 +140,13 @@ export function Conversation(handle: Handle<Props>) {
     if (!chat) return;
     chatAttempt = new AbortController();
     const signal = AbortSignal.any([mounted, chatAttempt.signal]);
+    let receivedBaseline = false;
     void (async () => {
       try {
         await chat(session, conversation, signal, async (next) => {
           if (signal.aborted) return;
+          animateActivity = receivedBaseline;
+          receivedBaseline = true;
           feed = next;
           disconnected = false;
           await handle.update();
@@ -413,6 +417,7 @@ export function Conversation(handle: Handle<Props>) {
                   key={part.key}
                   steps={part.steps}
                   endedAt={part.endedAt}
+                  animateChanges={animateActivity}
                   working={Boolean(live?.run && i === parts.length - 1)}
                 />
               ) : (

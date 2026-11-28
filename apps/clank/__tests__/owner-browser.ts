@@ -372,13 +372,21 @@ try {
     .filter({ hasText: /^Read fixture.txt · (Done|Failed)$/ })
     .first()
     .waitFor();
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await message.fill("slow-tool");
   await message.press("Enter");
   const running = page
     .locator("[data-tool-activity][data-state=working]")
     .getByRole("button", { name: /Running printf/ });
   await running.waitFor({ timeout: 10000 });
+  assert.equal(
+    await running
+      .locator("span span")
+      .first()
+      .evaluate((node) => getComputedStyle(node).animationName),
+    "wheel-in",
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
   assert.equal(
     await running
       .locator("span")
@@ -861,6 +869,10 @@ try {
     assert.equal(new URL(observer.url()).pathname, namedPath);
     assert.equal(new URL(observer.url()).hash, "#selection");
     const namedMessage = observer.getByRole("textbox", { name: "Message" });
+    await namedMessage.fill("steps");
+    await namedMessage.press("Enter");
+    await observer.getByText(/^Echo: steps/).waitFor();
+    await observer.locator("[data-streaming]").waitFor({ state: "hidden" });
     await namedMessage.fill(
       `${"Historical fixture line\n".repeat(65)}Latest named receipt`,
     );
@@ -903,6 +915,15 @@ try {
         };
       });
     await cold.getByText(/^Echo: Historical fixture line/).waitFor();
+    const settled = cold.getByRole("button", {
+      name: /Read a file.*Show the steps/i,
+    });
+    const summaryAnimation = () =>
+      settled
+        .locator("span span")
+        .first()
+        .evaluate((node) => getComputedStyle(node).animationName);
+    const ssrAnimation = await summaryAnimation();
     const painted = await sample();
     console.log("Named SSR before browser bundle", painted);
     await cold.getByLabel("Transcript").evaluate((node) => {
@@ -912,6 +933,7 @@ try {
     bundle.resolve();
     await socketStarted.promise;
     const waiting = await sample();
+    const hydrationAnimation = await summaryAnimation();
     chord.resolve();
     await cold.getByRole("button", { name: "Session tools" }).waitFor();
     await cold.waitForFunction(
@@ -926,6 +948,16 @@ try {
       waiting.top,
       connected.top,
     ]);
+    const animations = [
+      ssrAnimation,
+      hydrationAnimation,
+      await summaryAnimation(),
+    ];
+    console.log(
+      "Settled summary animation across SSR/hydration/Chord",
+      animations,
+    );
+    assert.deepEqual(animations, ["none", "none", "none"]);
     assert(painted.latestVisible && painted.gap <= 2);
     assert.equal(waiting.top, reading.top);
     assert.equal(connected.top, reading.top);
