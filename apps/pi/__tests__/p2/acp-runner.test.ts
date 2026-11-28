@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { setTimeout as delay } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
+import { cursorAcpSession } from "../../integrations/acp/cursor.ts";
 import { runAcp } from "../../integrations/acp/runner.ts";
 
 const fixture = fileURLToPath(new URL("./fixtures/acp-agent.ts", import.meta.url));
@@ -23,8 +24,34 @@ test("ACP collects only its session's assistant text, denies permissions, and do
 	assert.equal(await run(), "hello from ACP");
 });
 
+function runCursor(scenario: string, onText?: (chunk: string) => void) {
+	return runAcp({
+		...options,
+		args: [fixture, "cursor", scenario],
+		signal: new AbortController().signal,
+		adapter: cursorAcpSession(scenario === "plan" ? "plan" : "ask"),
+		onText,
+	});
+}
+
+test("Cursor ACP negotiates advertised read-only modes and rejects tool and interactive approvals over the common transport", async () => {
+	for (const mode of ["ask", "plan"]) {
+		const chunks: string[] = [];
+		assert.equal(await runCursor(mode, (chunk) => chunks.push(chunk)), "hello from Cursor ACP");
+		assert.deepEqual(chunks, ["hello ", "from Cursor ACP"]);
+	}
+});
+
+test("Cursor ACP fails closed on missing authentication, an unconfirmed read-only mode, a mode change or ambiguous permissions", async () => {
+	await assert.rejects(runCursor("auth-error"), /requires authentication; sign in separately/);
+	await assert.rejects(runCursor("missing-mode"), /did not advertise the requested read-only mode/);
+	await assert.rejects(runCursor("bad-mode-ack"), /did not confirm the requested read-only mode/);
+	await assert.rejects(runCursor("mode-change"), /left the requested read-only mode/);
+	await assert.rejects(runCursor("ambiguous-permission"), /did not offer an unambiguous one-time permission rejection/);
+});
+
 test("ACP starts with literal argv and no inherited host credentials or overrides", async (t) => {
-	const keys = ["P2_DATA_DIR", "GOOGLE_API_KEY", "ANTIGRAVITY_API_KEY", "GEMINI_API_KEY", "HARRHY_PI_HTTP_PROXY", "NODE_OPTIONS"];
+	const keys = ["P2_DATA_DIR", "GOOGLE_API_KEY", "ANTIGRAVITY_API_KEY", "GEMINI_API_KEY", "CURSOR_API_KEY", "CURSOR_AUTH_TOKEN", "HARRHY_PI_HTTP_PROXY", "NODE_OPTIONS"];
 	const previous = keys.map((key) => process.env[key]);
 	t.after(() => {
 		for (const [index, key] of keys.entries()) {

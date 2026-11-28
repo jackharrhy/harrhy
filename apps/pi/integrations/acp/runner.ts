@@ -10,7 +10,13 @@ const MAX_STREAM_BYTES = 8 * 1024 * 1024;
 
 type JsonObject = Record<string, unknown>;
 
-function object(value: unknown): JsonObject | undefined {
+export type AcpSessionAdapter = {
+	prepareSession: (sessionId: string, session: JsonObject, request: (method: string, params: JsonObject) => Promise<JsonObject>) => Promise<void>;
+	checkUpdate: (update: JsonObject) => void;
+	cancelRequests: readonly string[];
+};
+
+export function object(value: unknown): JsonObject | undefined {
 	return value && typeof value === "object" && !Array.isArray(value) ? (value as JsonObject) : undefined;
 }
 
@@ -72,8 +78,10 @@ export async function runAcp(options: {
 	cwd: string;
 	prompt: string;
 	signal: AbortSignal;
+	adapter?: AcpSessionAdapter;
+	onText?: (chunk: string) => void;
 }): Promise<string> {
-	const { command, args, cwd, prompt, signal } = options;
+	const { command, args, cwd, prompt, signal, adapter, onText } = options;
 	const aborted = () => new DOMException("ACP run was cancelled.", "AbortError");
 	if (signal.aborted) throw aborted();
 	if (!isAbsolute(cwd)) throw new Error("ACP working directory must be absolute.");
@@ -97,7 +105,12 @@ export async function runAcp(options: {
 		child.once("exit", () => resolve());
 		child.once("error", () => { if (!child.pid) resolve(); });
 	});
-	const { promise: interrupted, reject: interrupt } = Promise.withResolvers<never>();
+	const { promise: interrupted, reject } = Promise.withResolvers<never>();
+	let interruption: Error | undefined;
+	const interrupt = (error: Error) => {
+		interruption ??= error;
+		reject(interruption);
+	};
 	const onAbort = () => interrupt(aborted());
 	signal.addEventListener("abort", onAbort, { once: true });
 	const deadline = setTimeout(() => interrupt(new Error("ACP run timed out.")), TURN_TIMEOUT_MS);
@@ -121,6 +134,7 @@ export async function runAcp(options: {
 	}
 
 	async function request(method: string, params: JsonObject): Promise<JsonObject> {
+		if (interruption) throw interruption;
 		const id = ++nextId;
 		await send({ id, method, params });
 		while (true) {
@@ -128,27 +142,34 @@ export async function runAcp(options: {
 				if (error instanceof Error && error.message.startsWith("ACP agent ")) throw error;
 				throw new Error(`Could not read ACP agent response to ${method}.`);
 			});
+			if (interruption) throw interruption;
 			if (frame.done) throw new Error(`ACP agent closed stdout before replying to ${method}.`);
 			const message = frame.value;
 			if (typeof message.method === "string") {
 				const params = object(message.params);
 				if (typeof message.id === "number" || typeof message.id === "string") {
 					if (message.method === "session/request_permission") {
-						const options = Array.isArray(params?.options) ? params.options : [];
-						const deny = options.map(object).find((option) => option?.kind === "reject_once" && typeof option.optionId === "string");
-						const outcome = deny ? { outcome: "selected", optionId: deny.optionId } : { outcome: "cancelled" };
+						const options = Array.isArray(params?.options) ? params.options.map(object) : [];
+						const rejectId = options.find((option) => option?.kind === "reject_once" && typeof option.optionId === "string")?.optionId;
+						const deny = typeof rejectId === "string" && rejectId !== "" && options.filter((option) => option?.optionId === rejectId).length === 1;
+						const outcome = deny ? { outcome: "selected", optionId: rejectId } : { outcome: "cancelled" };
 						await send({ id: message.id, result: { outcome } });
-						if (!deny) throw new Error("ACP agent did not offer a one-time permission rejection; cancelled the run.");
+						if (!deny) throw new Error("ACP agent did not offer an unambiguous one-time permission rejection; cancelled the run.");
+					} else if (adapter?.cancelRequests.includes(message.method)) {
+						await send({ id: message.id, result: { outcome: { outcome: "cancelled" } } });
 					} else {
 						await send({ id: message.id, error: { code: -32601, message: "Method not supported" } });
 					}
-				} else if (promptPending && message.method === "session/update" && params?.sessionId === sessionId) {
-					const update = object(params?.update);
-					const content = object(update?.content);
-					if (update?.sessionUpdate === "agent_message_chunk" && content?.type === "text" && typeof content.text === "string") {
+				} else if (sessionId !== undefined && message.method === "session/update" && params?.sessionId === sessionId) {
+					const update = object(params.update);
+					if (!update) continue;
+					adapter?.checkUpdate(update);
+					const content = object(update.content);
+					if (promptPending && update.sessionUpdate === "agent_message_chunk" && content?.type === "text" && typeof content.text === "string") {
 						textBytes += Buffer.byteLength(content.text);
 						if (textBytes > MAX_TEXT_BYTES) throw new Error("ACP assistant text exceeded the output limit.");
 						text += content.text;
+						onText?.(content.text);
 					}
 				}
 				continue;
@@ -173,6 +194,8 @@ export async function runAcp(options: {
 		const session = await request("session/new", { cwd, mcpServers: [] });
 		if (typeof session.sessionId !== "string" || !session.sessionId) throw new Error("ACP agent did not return a session ID.");
 		sessionId = session.sessionId;
+		await adapter?.prepareSession(sessionId, session, request);
+		if (interruption) throw interruption;
 		promptPending = true;
 		const { stopReason } = await request("session/prompt", { sessionId, prompt: [{ type: "text", text: prompt }] });
 		promptPending = false;
