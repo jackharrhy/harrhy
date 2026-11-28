@@ -615,7 +615,7 @@ try {
     .selectOption({ label: "Main" });
   const settingsButton = observer.getByRole("button", { name: "Settings" });
   const settingsBox = await settingsButton.boundingBox();
-  assert(settingsBox && settingsBox.x < 32 && settingsBox.y > 820);
+  assert(settingsBox && settingsBox.x < 300 && settingsBox.y > 820);
   const metadata = observer.getByLabel("Composer metadata", { exact: true });
   await metadata.waitFor();
   assert.match(await metadata.innerText(), /Faux Model.*off/s);
@@ -647,7 +647,48 @@ try {
   assert.equal(rules[0], rules[1]);
   assert.notEqual(rules[0], "0px none rgb(0, 0, 0)");
   assert.equal(rules[2], rules[3]);
+  const themeBackground = () =>
+    observer
+      .locator("body")
+      .evaluate((node) => getComputedStyle(node).backgroundColor);
+  await observer.emulateMedia({ colorScheme: "light" });
+  assert.equal(await themeBackground(), "rgb(251, 250, 248)");
+  await observer.emulateMedia({ colorScheme: "dark" });
+  assert.equal(await themeBackground(), "rgb(21, 20, 19)");
+  await observer.emulateMedia({ colorScheme: "light" });
+  await observer.getByRole("button", { name: "Cycle color theme" }).click();
   await settingsButton.click();
+  const settings = observer.getByRole("dialog", { name: "Settings" });
+  assert(await settings.getByRole("radio", { name: "Light" }).isChecked());
+  await settings.getByRole("radio", { name: "Dark" }).check();
+  assert.equal(await themeBackground(), "rgb(21, 20, 19)");
+  const firstPaint = await context.newPage();
+  await firstPaint.emulateMedia({ colorScheme: "light" });
+  await firstPaint.route("**/owner-sessions.js", (route) => route.abort());
+  await firstPaint.goto(origin);
+  assert.equal(
+    await firstPaint
+      .locator("body")
+      .evaluate((node) => getComputedStyle(node).backgroundColor),
+    "rgb(21, 20, 19)",
+  );
+  await firstPaint.close();
+  await observer.setViewportSize({ width: 320, height: 640 });
+  const settingsBounds = await settings.boundingBox();
+  assert(
+    settingsBounds &&
+      settingsBounds.x >= 0 &&
+      settingsBounds.x + settingsBounds.width <= 320,
+  );
+  if (process.env.HARRHY_CLANK_SCREENSHOT_DIR)
+    await settings.screenshot({
+      path: join(
+        process.env.HARRHY_CLANK_SCREENSHOT_DIR,
+        "clank-dark-settings-phone.png",
+      ),
+    });
+  await observer.setViewportSize({ width: 1440, height: 900 });
+  await settings.getByRole("radio", { name: "System" }).check();
   const preference = observer.getByRole("checkbox", {
     name: "Show composer metadata",
   });
@@ -761,6 +802,14 @@ try {
       });
     };
     await pair("desktop");
+    await native.emulateMedia({ colorScheme: "dark" });
+    await observer.emulateMedia({ colorScheme: "dark" });
+    await native.waitForFunction(
+      () => document.documentElement.dataset.theme === "dark",
+    );
+    await pair("desktop-dark");
+    await native.emulateMedia({ colorScheme: "light" });
+    await observer.emulateMedia({ colorScheme: "light" });
     await native.getByRole("button", { name: "Collapse sidebar" }).click();
     await observer.getByRole("button", { name: "Hide sidebar" }).click();
     await pair("desktop-collapsed");

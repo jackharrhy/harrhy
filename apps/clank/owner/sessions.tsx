@@ -14,6 +14,7 @@ import {
   MenuContent,
   MenuItem,
 } from "@harrhy/ui/interactive";
+import { modes, themeKey, type Mode } from "./appearance.ts";
 import { Icon } from "./icons.tsx";
 import { Switcher, type PaletteItem } from "./switcher.tsx";
 import { byRecentActivity } from "../../pi/plugins/subagents/contract.ts";
@@ -320,6 +321,16 @@ export const OwnerSessions = clientEntry(
     let switching = false;
     let switchFrom: HTMLElement | undefined;
     let settings = false;
+    let mode: Mode = "system";
+    function setMode(next: Mode) {
+      mode = next;
+      if (next === "system") delete document.documentElement.dataset.theme;
+      else document.documentElement.dataset.theme = next;
+      try {
+        localStorage.setItem(themeKey, next);
+      } catch {}
+      void handle.update();
+    }
     let showMetadata = true;
     let sidebarButton: HTMLButtonElement | undefined;
     const sidebarRef = ref<HTMLButtonElement>((node) => {
@@ -555,6 +566,11 @@ export const OwnerSessions = clientEntry(
       }
     }
     const mount = ref((_node, signal) => {
+      const initial = document.documentElement.dataset.theme;
+      if (initial === "light" || initial === "dark") {
+        mode = initial;
+        void handle.update();
+      }
       try {
         listQuery = sessionStorage.getItem("clank:session-list-query") ?? "";
       } catch {}
@@ -755,30 +771,84 @@ export const OwnerSessions = clientEntry(
             <Dialog
               open={settings}
               title="Settings"
+              description="Preferences for Clank on this browser."
+              mix={css({
+                width: "min(28rem, calc(100% - 2rem))",
+                boxSizing: "border-box",
+              })}
               onClose={() => {
                 settings = false;
                 void handle.update();
               }}
             >
-              <label
-                mix={css({ display: "flex", alignItems: "center", gap: "8px" })}
+              <fieldset
+                mix={css({ margin: "0 0 1.25rem", padding: 0, border: 0 })}
               >
-                <Checkbox
-                  checked={showMetadata}
-                  mix={on("change", (event) => {
-                    showMetadata = event.currentTarget.checked;
-                    try {
-                      localStorage.setItem(
-                        "clank:composer-metadata",
-                        showMetadata ? "shown" : "hidden",
-                      );
-                    } catch {}
-                    void handle.update();
+                <legend mix={css({ fontWeight: 600, marginBottom: "8px" })}>
+                  Appearance
+                </legend>
+                <div
+                  mix={css({
+                    display: "flex",
+                    flexWrap: "wrap",
+                    gap: "8px 16px",
                   })}
-                />{" "}
-                Show composer metadata
-              </label>
-              <Text tone="muted">Applies only to this browser.</Text>
+                >
+                  {modes.map((choice) => (
+                    <label
+                      key={choice}
+                      mix={css({
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "5px",
+                        minHeight: "32px",
+                      })}
+                    >
+                      <input
+                        type="radio"
+                        name="clank-theme"
+                        checked={mode === choice}
+                        mix={on("change", () => setMode(choice))}
+                      />
+                      {choice[0].toUpperCase() + choice.slice(1)}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset
+                mix={css({
+                  margin: "0 0 1rem",
+                  padding: "12px 0 0",
+                  border: 0,
+                  borderTop: line,
+                })}
+              >
+                <legend mix={css({ fontWeight: 600, paddingInlineEnd: "8px" })}>
+                  Display
+                </legend>
+                <label
+                  mix={css({
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                  })}
+                >
+                  <Checkbox
+                    checked={showMetadata}
+                    mix={on("change", (event) => {
+                      showMetadata = event.currentTarget.checked;
+                      try {
+                        localStorage.setItem(
+                          "clank:composer-metadata",
+                          showMetadata ? "shown" : "hidden",
+                        );
+                      } catch {}
+                      void handle.update();
+                    })}
+                  />{" "}
+                  Show composer metadata
+                </label>
+              </fieldset>
               <Button
                 variant="quiet"
                 mix={on("click", () => {
@@ -804,9 +874,64 @@ export const OwnerSessions = clientEntry(
             ]}
           >
             <div mix={bar}>
-              <Heading level={1} mix={titleStyle}>
-                Clank
-              </Heading>
+              <div
+                mix={css({
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "8px",
+                  "& .pi-logo": {
+                    width: "20px",
+                    height: "20px",
+                    shapeRendering: "crispEdges",
+                  },
+                })}
+              >
+                <svg
+                  class="pi-logo"
+                  aria-hidden="true"
+                  viewBox="0 0 4 4"
+                  shape-rendering="crispEdges"
+                >
+                  <rect
+                    x="0"
+                    y="0"
+                    width="3"
+                    height="1"
+                    fill="rgb(228 138 122)"
+                  />
+                  <rect
+                    x="2"
+                    y="1"
+                    width="1"
+                    height="1"
+                    fill="rgb(228 138 122)"
+                  />
+                  <rect
+                    x="0"
+                    y="1"
+                    width="1"
+                    height="3"
+                    fill="rgb(79 142 179)"
+                  />
+                  <rect
+                    x="1"
+                    y="2"
+                    width="1"
+                    height="1"
+                    fill="rgb(79 142 179)"
+                  />
+                  <rect
+                    x="3"
+                    y="2"
+                    width="1"
+                    height="2"
+                    fill="rgb(234 182 93)"
+                  />
+                </svg>
+                <Heading level={1} mix={titleStyle}>
+                  Clank
+                </Heading>
+              </div>
               <div mix={css({ display: "flex", gap: "2px" })}>
                 {catalog && (
                   <Button
@@ -1049,18 +1174,49 @@ export const OwnerSessions = clientEntry(
               )}
             </div>
             {catalog && (
-              <footer mix={css({ borderTop: line, padding: "4px 8px" })}>
+              <footer
+                mix={css({
+                  borderTop: line,
+                  padding: "4px 8px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "4px",
+                })}
+              >
                 <Button
                   variant="quiet"
+                  aria-label="Settings"
+                  title="Settings"
                   mix={[
-                    action,
+                    iconAction,
                     on("click", () => {
                       settings = true;
                       void handle.update();
                     }),
                   ]}
                 >
-                  <Icon name="settings" /> Settings
+                  <Icon name="settings" />
+                </Button>
+                <Button
+                  variant="quiet"
+                  aria-label="Cycle color theme"
+                  title={`Theme: ${mode}`}
+                  mix={[
+                    iconAction,
+                    on("click", () =>
+                      setMode(modes[(modes.indexOf(mode) + 1) % modes.length]),
+                    ),
+                  ]}
+                >
+                  <Icon
+                    name={
+                      mode === "system"
+                        ? "theme"
+                        : mode === "light"
+                          ? "sun"
+                          : "moon"
+                    }
+                  />
                 </Button>
               </footer>
             )}

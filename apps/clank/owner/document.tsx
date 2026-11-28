@@ -1,7 +1,7 @@
 import type { Snapshot } from "./catalog.ts";
 import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
-import { graphiteTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { themeRoot, themeStyles } from "@harrhy/ui/theme";
 import { css, unsafeHTML } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { createRouter } from "remix/router";
@@ -12,17 +12,19 @@ import {
   canonicalSessionRedirect,
 } from "./routes.ts";
 import { localizeMessageTime } from "./message-time.ts";
+import { ownerScheme, ownerTheme, themeBootstrap } from "./appearance.ts";
 declare const OWNER_BROWSER_MODULE: string;
 // Run after the transcript markup, independently of the deferred browser bundle.
 const positionTranscript = `(()=>{document.querySelectorAll('time[data-message-time]').forEach(${localizeMessageTime.toString()});const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
 const positionHash = createHash("sha256")
   .update(positionTranscript)
   .digest("base64");
+const themeHash = createHash("sha256").update(themeBootstrap).digest("base64");
 const headersFor = (ownerHost: string) => ({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
-  "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'sha256-${positionHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+  "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self' 'sha256-${positionHash}' 'sha256-${themeHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
 });
 const localFamiliarId = (() => {
   try {
@@ -54,12 +56,14 @@ async function document(
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Clank</title>
+        <script innerHTML={unsafeHTML(themeBootstrap)} />
         <script type="module" src="/owner-sessions.js" />
       </head>
       <body
         mix={[
-          themeStyles(graphiteTheme),
+          themeStyles(ownerTheme),
           themeRoot,
+          ownerScheme,
           css({
             margin: 0,
             minHeight: "100dvh",

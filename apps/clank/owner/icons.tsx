@@ -12,6 +12,9 @@ const paths = {
   plus: "M12 5v14M5 12h14",
   edit: "M4 20h4L19 9l-4-4L4 16z",
   copy: "M5 15V6a2 2 0 0 1 2-2h8",
+  theme: "M12 3a9 9 0 1 0 0 18V3zM12 3a9 9 0 0 1 0 18",
+  sun: "M12 2v2m0 16v2M2 12h2m16 0h2M5 5l1.5 1.5m11 11L19 19M5 19l1.5-1.5m11-11L19 5M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z",
+  moon: "M20.9 13A9 9 0 1 1 11 3.1a7 7 0 0 0 9.9 9.9z",
   more: "M5 12h.01M12 12h.01M19 12h.01",
 };
 export function Icon(handle: Handle<{ name: keyof typeof paths }>) {
