@@ -1,0 +1,7 @@
+{
+  "name": "@harrhy/private-hosting",
+  "private": true,
+  "scripts": {
+    "check": "cargo test --locked"
+  }
+}
