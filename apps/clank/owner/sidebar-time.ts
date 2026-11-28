@@ -1,11 +1,20 @@
 const day = 86_400_000;
 
+export const recencyWindows = [1, 3, 7, "forever"] as const;
+export type Recency = (typeof recencyWindows)[number];
+
 export function isRecent(
   row: { id: string; updatedAt: number; pinned: boolean },
   selected: string | undefined,
   now: number,
+  days: Recency,
 ) {
-  return row.pinned || row.id === selected || now - row.updatedAt < 3 * day;
+  return (
+    days === "forever" ||
+    row.pinned ||
+    row.id === selected ||
+    now - row.updatedAt < days * day
+  );
 }
 
 export function age(time: number, now: number) {

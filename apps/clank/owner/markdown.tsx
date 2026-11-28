@@ -1,100 +1,102 @@
-import { CodeBlock } from "@harrhy/ui/code";
-import { Lexer, type Token, type Tokens } from "marked";
-import { css, type Handle, type RemixNode } from "remix/component";
+import { createDomRenderer } from "@pierre/words/html";
+import { css, ref, unsafeHTML, type Handle } from "remix/component";
+import {
+  markdownHtml,
+  markdownOptions,
+  wordsSource,
+} from "./markdown-renderer.ts";
 
 const prose = css({
   overflowWrap: "anywhere",
-  "& p": { margin: "6px 0" },
+  "& p": { margin: "0 0 1em" },
+  "& > :last-child": { marginBlockEnd: 0 },
   "& a": { color: "inherit", textUnderlineOffset: "3px" },
   "& blockquote": {
     marginInline: 0,
     paddingInlineStart: "12px",
     borderInlineStart: "2px solid var(--hui-border)",
   },
+  '& [data-markdown="code-block"]': {
+    backgroundColor: "#0d1117",
+    color: "#e1e4e8",
+    borderRadius: "4px",
+    padding: "10px 12px",
+    marginBlock: "0 1em",
+  },
+  '& [data-markdown="code-header"]': {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "baseline",
+    fontSize: "12px",
+    marginBlockEnd: "6px",
+  },
+  "& [data-code-action='copy']": {
+    color: "inherit",
+    font: "inherit",
+    border: "1px solid #58616b",
+    borderRadius: "4px",
+    backgroundColor: "transparent",
+    padding: "2px 8px",
+    minHeight: "24px",
+    cursor: "pointer",
+  },
+  "& pre": {
+    margin: 0,
+    maxHeight: "28rem",
+    overflow: "auto",
+    tabSize: 2,
+    fontSize: "0.875em",
+  },
+  "& table": {
+    display: "block",
+    overflowX: "auto",
+    borderCollapse: "collapse",
+  },
+  "& th, & td": { padding: "4px 8px", border: "1px solid var(--hui-border)" },
 });
 
-function link(href: string) {
-  try {
-    const url = new URL(href);
-    if (["https:", "http:", "mailto:"].includes(url.protocol)) return url.href;
-  } catch {
-    // Conversation text has no document-relative base URL.
-  }
-}
-
-function render(tokens: Token[] = [], inLink = false): RemixNode {
-  return tokens.map((token, key) => {
-    switch (token.type) {
-      case "space":
-        return null;
-      case "paragraph":
-        return <p key={key}>{render(token.tokens, inLink)}</p>;
-      case "strong":
-        return <strong key={key}>{render(token.tokens, inLink)}</strong>;
-      case "em":
-        return <em key={key}>{render(token.tokens, inLink)}</em>;
-      case "del":
-        return <del key={key}>{render(token.tokens, inLink)}</del>;
-      case "codespan":
-        return <code key={key}>{token.text}</code>;
-      case "br":
-        return <br key={key} />;
-      case "hr":
-        return <hr key={key} />;
-      case "heading":
-        return <h3 key={key}>{render(token.tokens, inLink)}</h3>;
-      case "blockquote":
-        return (
-          <blockquote key={key}>{render(token.tokens, inLink)}</blockquote>
-        );
-      case "code":
-        return (
-          <CodeBlock
-            key={key}
-            label={token.lang || "Code"}
-            source={token.text}
-          />
-        );
-      case "list": {
-        const items = (token as Tokens.List).items.map((item, i) => (
-          <li key={i}>{render(item.tokens, inLink)}</li>
-        ));
-        return token.ordered ? (
-          <ol key={key} start={Number(token.start)}>
-            {items}
-          </ol>
-        ) : (
-          <ul key={key}>{items}</ul>
-        );
-      }
-      case "link": {
-        const href = !inLink && link(token.href);
-        const label = render(token.tokens, true);
-        return href ? (
-          <a key={key} href={href} target="_blank" rel="noopener noreferrer">
-            {label}
-          </a>
-        ) : (
-          <span key={key}>{label}</span>
-        );
-      }
-      case "text":
-        return token.tokens ? render(token.tokens, inLink) : token.text;
-      default:
-        return token.raw;
-    }
+export function Markdown(
+  handle: Handle<{ text: string; streaming?: boolean }>,
+) {
+  let renderer: ReturnType<typeof createDomRenderer> | undefined;
+  const update = () => {
+    const { text, streaming = false } = handle.props;
+    renderer?.update(wordsSource(text, streaming), streaming, streaming);
+  };
+  const host = ref((node: HTMLDivElement, signal) => {
+    renderer = createDomRenderer(node, markdownOptions);
+    renderer.connect();
+    update();
+    signal.addEventListener(
+      "abort",
+      () => {
+        renderer?.disconnect();
+        renderer = undefined;
+      },
+      { once: true },
+    );
   });
-}
-
-export function Markdown(handle: Handle<{ text: string }>) {
-  let previous: string | undefined;
-  let body: RemixNode;
+  let previousText: string | undefined;
+  let previousStreaming: boolean | undefined;
   return () => {
-    const { text } = handle.props;
-    if (text !== previous) {
-      body = render(Lexer.lex(text, { gfm: true, breaks: true }));
-      previous = text;
-    }
-    return <div mix={prose}>{body}</div>;
+    const { text, streaming = false } = handle.props;
+    if (renderer && (text !== previousText || streaming !== previousStreaming))
+      handle.queueTask(update);
+    previousText = text;
+    previousStreaming = streaming;
+    // Remix assigns innerHTML even while hydrating. Only supply it on the
+    // server; Words adopts those children and owns them until unmount.
+    return (
+      <div
+        data-markdown="root"
+        data-streaming={streaming ? "" : undefined}
+        mix={[prose, host]}
+        innerHTML={
+          typeof document === "undefined"
+            ? unsafeHTML(markdownHtml(text, streaming))
+            : undefined
+        }
+      />
+    );
   };
 }

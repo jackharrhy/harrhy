@@ -5,37 +5,54 @@ import {
   findSession,
   sessionPath,
 } from "./routes.ts";
+import { ArchiveDialog } from "./archive-dialog.tsx";
+import { RailRow } from "./rail-row.tsx";
 import { SessionList } from "./session-list.tsx";
 import { age, isRecent } from "./sidebar-time.ts";
-import { Dialog } from "@harrhy/ui/interactive";
+import {
+  Settings,
+  defaultPreferences,
+  readPreferences,
+  savePreference,
+} from "./settings.tsx";
 import {
   Menu,
   MenuTrigger,
   MenuContent,
   MenuItem,
 } from "@harrhy/ui/interactive";
+import { BrandMark } from "./brand-mark.tsx";
+import {
+  documentBranding,
+  hydratedTheme,
+  modes,
+  saveTheme,
+  type Mode,
+} from "./appearance.ts";
 import { Icon } from "./icons.tsx";
 import { Switcher, type PaletteItem } from "./switcher.tsx";
-import { byRecentActivity } from "../../pi/plugins/subagents/contract.ts";
-import { Conversation } from "./conversation.tsx";
-import { Button, Checkbox, Heading, Input, Text } from "@harrhy/ui/native";
 import {
-  clientEntry,
-  css,
-  on,
-  ref,
-  type Handle,
-  type RemixNode,
-} from "remix/component";
+  failureWords,
+  runState,
+} from "../../pi/plugins/sessions/sidebar/run-state.ts";
+import {
+  byRecentActivity,
+  type Child,
+} from "../../pi/plugins/subagents/contract.ts";
+import { Conversation } from "./conversation.tsx";
+import { Button, Heading, Input, Text } from "@harrhy/ui/native";
+import { clientEntry, css, on, ref, type Handle } from "remix/component";
 import {
   followCatalog,
   MAX_TITLE,
+  type ArchiveTarget,
   type Catalog,
   type Row,
   type Snapshot,
 } from "./catalog.ts";
+import { mountRailSwipe, phoneWidth } from "./swipe.ts";
 
-const phone = "@media (max-width: 40rem)";
+const phone = `@media ${phoneWidth}`;
 const line = "1px solid var(--hui-border)";
 const shell = css({
   height: "100dvh",
@@ -54,9 +71,24 @@ const shell = css({
     "& .sessions-back": { display: "inline-flex" },
     "& .desktop-sidebar": { display: "none" },
     gridTemplateColumns: "minmax(0, 1fr)",
-    "&[data-pane=list] .session-detail, &[data-pane=detail] .session-list": {
-      display: "none",
+    "& .session-list, & .session-detail": {
+      gridArea: "1 / 1",
+      touchAction: "pan-y pinch-zoom",
     },
+    "& [aria-label=Transcript]": { touchAction: "pan-y pinch-zoom" },
+    "&[data-sliding] .session-list, &[data-sliding] .session-detail": {
+      pointerEvents: "none",
+    },
+    // Keep floating transcript controls behind the moving drawer.
+    "&[data-sliding] .session-detail": { zIndex: 0 },
+    "&[data-sliding] .session-list": {
+      zIndex: 1,
+      backgroundColor: "var(--hui-surface)",
+    },
+    "&:not([data-sliding])[data-pane=list] .session-detail, &:not([data-sliding])[data-pane=detail] .session-list":
+      {
+        display: "none",
+      },
   },
 });
 const pane = css({
@@ -75,7 +107,11 @@ const bar = css({
   paddingInline: "16px",
   borderBottom: line,
 });
-const scroll = css({ overflow: "auto", overscrollBehavior: "contain" });
+const scroll = css({
+  overflow: "auto",
+  overscrollBehavior: "contain",
+  [phone]: { touchAction: "pan-y pinch-zoom" },
+});
 const measure = css({
   maxWidth: "72ch",
   marginInline: "auto",
@@ -92,30 +128,23 @@ const titleStyle = css({
   fontWeight: 600,
   overflowWrap: "anywhere",
 });
-const ageStyle = css({
-  flexShrink: 0,
-  marginInlineStart: "auto",
-  paddingInlineEnd: "8px",
-  color: "var(--hui-muted)",
-  fontSize: "12px",
-  fontWeight: 400,
-  textAlign: "end",
-  fontVariantNumeric: "tabular-nums",
-});
 const sessionButton = css({
-  width: "var(--clank-session-row-width, 100%)",
+  width: "100%",
+  fontWeight: 400,
+  "&[data-variant=quiet]:hover": { background: "var(--hui-hover-surface)" },
   minHeight: "28px",
   justifyContent: "flex-start",
   fontSize: "14px",
   textAlign: "left",
   padding: "4px 10px",
+  "& > svg": { flex: "none", color: "var(--hui-muted)" },
   "& span": {
     minWidth: 0,
     overflow: "hidden",
     textOverflow: "ellipsis",
     whiteSpace: "nowrap",
   },
-  "&[aria-pressed=true]": {
+  "&[data-variant=quiet][aria-pressed=true]": {
     backgroundColor: "var(--hui-selected-surface)",
     color: "var(--hui-selected-ink)",
     fontWeight: 600,
@@ -132,7 +161,12 @@ const iconAction = css({
 const sessionTitle = (row: Row) => row.title || "Untitled session";
 
 function SessionTitle(
-  handle: Handle<{ row: Row; rename?: Catalog["rename"]; controls: RemixNode }>,
+  handle: Handle<{
+    row: Row;
+    rename?: Catalog["rename"];
+    subtitle: string;
+    switchConversation?: (from?: HTMLElement) => void;
+  }>,
 ) {
   let edit: { draft: string; saving: boolean; error?: string } | undefined;
   let editButton: HTMLButtonElement | undefined;
@@ -235,9 +269,45 @@ function SessionTitle(
           </form>
         ) : (
           <>
-            <Heading level={2} mix={titleStyle}>
-              {title}
-            </Heading>
+            <div
+              mix={[
+                css({
+                  minWidth: 0,
+                  flex: 1,
+                }),
+                on("dblclick", () =>
+                  handle.props.switchConversation?.(editButton),
+                ),
+              ]}
+            >
+              <Heading level={1} mix={titleStyle}>
+                <span
+                  title={title}
+                  mix={css({
+                    display: "block",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    lineHeight: 1.3,
+                  })}
+                >
+                  {title}
+                </span>
+              </Heading>
+              <div
+                title={handle.props.subtitle}
+                mix={css({
+                  fontSize: "11px",
+                  lineHeight: 1.4,
+                  color: "var(--hui-muted)",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                })}
+              >
+                {handle.props.subtitle}
+              </div>
+            </div>
             <div
               mix={css({
                 display: "flex",
@@ -247,21 +317,42 @@ function SessionTitle(
                 flex: "none",
               })}
             >
-              {handle.props.controls}
               <Menu label="Session tools">
                 <MenuTrigger
                   aria-label="Session tools"
                   disabled={!handle.props.rename}
-                  mix={[iconAction, focusButton]}
+                  mix={[
+                    iconAction,
+                    focusButton,
+                    css({
+                      "&[aria-haspopup]": {
+                        background: "transparent",
+                        borderColor: "transparent",
+                        color: "var(--hui-muted)",
+                      },
+                      "&[aria-haspopup]:hover": {
+                        background: "var(--hui-hover-surface)",
+                      },
+                    }),
+                  ]}
                 >
                   <Icon name="more" />
                 </MenuTrigger>
                 <MenuContent
-                  onSelect={() => {
+                  onSelect={(item) => {
+                    if (item.name === "conversations") {
+                      handle.props.switchConversation?.(editButton);
+                      return;
+                    }
                     edit = { draft: row.title, saving: false };
                     void handle.update();
                   }}
                 >
+                  {handle.props.switchConversation && (
+                    <MenuItem name="conversations">
+                      Switch conversation…
+                    </MenuItem>
+                  )}
                   <MenuItem name="rename">Rename</MenuItem>
                 </MenuContent>
               </Menu>
@@ -271,6 +362,18 @@ function SessionTitle(
       </>
     );
   };
+}
+
+function childMarks(child: Child, busy: number[] | undefined) {
+  const run = runState(
+    child.failure,
+    busy?.includes(child.conversationId) ?? false,
+    undefined,
+  );
+  if (run.kind === "busy") return { running: 1 };
+  if (run.kind === "failed")
+    return { failure: run.detail ?? failureWords(run.reason) };
+  return {};
 }
 
 type View =
@@ -283,6 +386,7 @@ export const OwnerSessions = clientEntry(
     handle: Handle<{
       familiarId?: string;
       snapshot?: string;
+      initialMode?: Mode;
       renderedAt: number;
       listPage?: boolean;
       target?: string;
@@ -291,6 +395,9 @@ export const OwnerSessions = clientEntry(
     let seed = handle.props.snapshot
       ? (JSON.parse(handle.props.snapshot) as Snapshot)
       : undefined;
+    // Seed this presentation once; reconnects must never replay old branding.
+    let branding = seed?.branding;
+    if (seed) delete seed.branding;
     let now = handle.props.renderedAt;
     let listPage = Boolean(handle.props.listPage);
     let target = handle.props.target;
@@ -318,9 +425,21 @@ export const OwnerSessions = clientEntry(
     }
     let sidebar = true;
     let switching = false;
+    let scopedSwitch = false;
     let switchFrom: HTMLElement | undefined;
     let settings = false;
-    let showMetadata = true;
+    let mode = handle.props.initialMode ?? "system";
+    function applyMode(next: Mode) {
+      mode = next;
+      if (next === "system") delete document.documentElement.dataset.theme;
+      else document.documentElement.dataset.theme = next;
+      void handle.update();
+    }
+    function setMode(next: Mode) {
+      applyMode(next);
+      saveTheme(next);
+    }
+    let preferences = defaultPreferences;
     let sidebarButton: HTMLButtonElement | undefined;
     const sidebarRef = ref<HTMLButtonElement>((node) => {
       sidebarButton = node;
@@ -330,7 +449,14 @@ export const OwnerSessions = clientEntry(
       await handle.update();
       sidebarButton?.focus();
     }
+    function startConversationSwitch(from?: HTMLElement) {
+      if (from) switchFrom = from;
+      scopedSwitch = true;
+      switching = true;
+      void handle.update();
+    }
     function startSwitch() {
+      scopedSwitch = false;
       switchFrom =
         document.activeElement instanceof HTMLElement
           ? document.activeElement
@@ -346,89 +472,83 @@ export const OwnerSessions = clientEntry(
       });
     }
     let branch: number | undefined;
+    let editDraft:
+      | { session: string; conversation: number; text: string }
+      | undefined;
     let agentId: number | undefined;
     const expanded = new Set<string>();
-    async function open(id: string, child?: number, from?: HTMLButtonElement) {
-      const row = (
-        view.kind === "ready" ? view.catalog.rows : cached?.rows
-      )?.find((item) => item.id === id);
+    let sidebarList: HTMLUListElement | undefined;
+    const sidebarListRef = ref<HTMLUListElement>((node) => {
+      sidebarList = node;
+    });
+    function toggleSubagents(id: string, button: HTMLButtonElement) {
+      if (expanded.delete(id)) {
+        const list = button.ownerDocument.getElementById(`agents-${id}`);
+        if (list?.contains(button.ownerDocument.activeElement)) button.focus();
+      } else {
+        expanded.add(id);
+      }
+      void handle.update();
+    }
+    async function open(
+      id: string,
+      destination?: number,
+      from?: HTMLButtonElement,
+    ) {
+      const catalog = view.kind === "ready" ? view.catalog : cached;
+      const row = catalog?.rows.find((item) => item.id === id);
+      const child = catalog?.children[id]?.some(
+        (agent) =>
+          agent.conversationId === destination &&
+          !agent.archived &&
+          agent.kind !== "agent",
+      )
+        ? destination
+        : undefined;
+      const nextBranch =
+        !child && destination !== row?.main ? destination : undefined;
       if (!row) return;
       const path = sessionPath(row);
-      if (location.pathname !== path || history.state?.agentId !== child) {
+      if (
+        location.pathname !== path ||
+        agentId !== child ||
+        branch !== nextBranch
+      ) {
         history.replaceState(
           { clankSession: selectedId, branch, agentId, detailOpen },
           "",
         );
         history.pushState(
-          { clankSession: id, agentId: child, detailOpen: true },
+          {
+            clankSession: id,
+            agentId: child,
+            branch: nextBranch,
+            detailOpen: true,
+          },
           "",
           path,
         );
       }
       listPage = false;
       target = sessionKey(path);
-      if (id !== seed?.selectedId || child !== undefined) seed = undefined;
+      if (
+        id !== seed?.selectedId ||
+        child !== undefined ||
+        nextBranch !== undefined
+      )
+        seed = undefined;
       trigger = from;
       switchFrom = undefined;
       if (child !== undefined) expanded.add(id);
       switching = false;
       selectedId = id;
-      branch = undefined;
+      branch = nextBranch;
       agentId = child;
       newOpen = false;
       detailOpen = true;
       await handle.update();
-      if (!from || matchMedia("(max-width: 40rem)").matches)
-        detailHeader?.focus();
+      if (!from || matchMedia(phoneWidth).matches) detailHeader?.focus();
     }
-    const conversationSelect = [
-      css({
-        minWidth: 0,
-        "& select": {
-          maxWidth: "min(36vw, 13rem)",
-          minHeight: "2rem",
-          font: "inherit",
-          color: "inherit",
-          background: "var(--hui-surface)",
-          border: line,
-          borderRadius: "4px",
-          paddingInline: "6px",
-        },
-      }),
-      ref<HTMLLabelElement>((node, signal) => {
-        node.addEventListener(
-          "change",
-          (event) => {
-            if (
-              !(event.target instanceof HTMLSelectElement) ||
-              view.kind !== "ready"
-            )
-              return;
-            const id = Number(event.target.value);
-            const row = view.catalog.rows.find(
-              (item) => item.id === selectedId,
-            );
-            if (!row) return;
-            const child = view.catalog.children[row.id]?.find(
-              (candidate) =>
-                candidate.conversationId === id &&
-                !candidate.archived &&
-                candidate.kind !== "agent",
-            );
-            agentId = child?.conversationId;
-            branch =
-              !child &&
-              row.branches.some((item) => item.conversation === id) &&
-              id !== row.main
-                ? id
-                : undefined;
-            if (child) expanded.add(row.id);
-            void handle.update();
-          },
-          { signal },
-        );
-      }),
-    ];
     let creating = false;
     let newOpen = false;
     let createError = "";
@@ -450,15 +570,59 @@ export const OwnerSessions = clientEntry(
     let selectedId = seed?.selectedId;
     let detailOpen = listPage || Boolean(target);
     let detailHeader: HTMLDivElement | undefined;
-    let trigger: HTMLButtonElement | undefined;
+    let trigger: HTMLElement | undefined;
     const captureDetail = ref<HTMLDivElement>((node) => {
       detailHeader = node;
     });
+    let rail: HTMLElement | undefined;
+    const captureRail = ref<HTMLElement>((node) => {
+      rail = node;
+    });
+    async function showDetail() {
+      detailOpen = true;
+      await handle.update();
+      detailHeader?.focus({ preventScroll: true });
+    }
     async function back() {
       detailOpen = false;
       newOpen = false;
+      if (!trigger?.isConnected || !rail?.contains(trigger)) trigger = rail;
       await handle.update();
       trigger?.focus();
+    }
+    let archiving:
+      | {
+          target: ArchiveTarget;
+          archive: Catalog["archive"];
+          from: HTMLButtonElement;
+        }
+      | undefined;
+    function archiveAction(item: ArchiveTarget) {
+      if (view.kind !== "ready" || !view.catalog.canArchive(item)) return;
+      return (from: HTMLButtonElement) => {
+        if (
+          archiving ||
+          view.kind !== "ready" ||
+          !view.catalog.canArchive(item)
+        )
+          return;
+        archiving = { target: item, archive: view.catalog.archive, from };
+        void handle.update();
+      };
+    }
+    async function closeArchive() {
+      if (!archiving) return;
+      const { from } = archiving;
+      archiving = undefined;
+      await handle.update();
+      const next = from.isConnected
+        ? from
+        : (sidebarList?.querySelector<HTMLButtonElement>(
+            "button[aria-pressed=true]",
+          ) ??
+          sidebarList?.querySelector<HTMLButtonElement>("[data-new-session]"));
+      if (next?.getClientRects().length) next.focus();
+      else detailHeader?.focus();
     }
     let cached: Snapshot | undefined = seed;
     let retry: ReturnType<typeof setTimeout> | undefined;
@@ -473,13 +637,32 @@ export const OwnerSessions = clientEntry(
       const current = new AbortController();
       attempt = current;
       const signal = current.signal;
+      const applyBranding = documentBranding(document, branding);
+      signal.addEventListener(
+        "abort",
+        () => {
+          applyBranding();
+          if (branding) {
+            branding = undefined;
+            if (!handle.signal.aborted) void handle.update();
+          }
+        },
+        { once: true },
+      );
       async function show(next: View) {
         if (signal.aborted) return;
+        if (next.kind === "ready" && next.catalog.brandingReady)
+          branding = next.catalog.branding;
+        else if (next.kind === "offline" || next.kind === "sign-in")
+          branding = undefined;
+        applyBranding(branding);
         if (next.kind === "sign-in") {
+          archiving = undefined;
           cached = seed = undefined;
           switching = settings = newOpen = false;
           createSlug = "";
         }
+        const previous = cached;
         if (next.kind === "ready") {
           retryDelay = 500;
           const catalog = next.catalog;
@@ -487,19 +670,38 @@ export const OwnerSessions = clientEntry(
             catalog.children = cached.children;
           if (catalog.activeIds === undefined)
             catalog.activeIds = cached?.activeIds;
+          // Undefined is not yet hydrated. A published empty map clears all marks.
+          if (catalog.indicators === undefined)
+            catalog.indicators = cached?.indicators;
           cached = {
             rows: catalog.rows,
             children: catalog.children,
             activeIds: catalog.activeIds,
+            indicators: catalog.indicators,
           };
         }
         view = next;
-        if (next.kind === "ready" && target) {
+        // A resolved selection disappearing is different from an unknown deep link.
+        if (
+          next.kind === "ready" &&
+          selectedId &&
+          previous?.rows.some((row) => row.id === selectedId) &&
+          !next.catalog.rows.some((row) => row.id === selectedId)
+        ) {
+          selectedId = target = undefined;
+          branch = agentId = undefined;
+          trigger = undefined;
+          if (!listPage) {
+            newOpen = detailOpen = true;
+            history.replaceState({ detailOpen }, "", "/");
+          }
+        } else if (next.kind === "ready" && target) {
           const row = findSession(next.catalog.rows, target);
           selectedId = row?.id;
           canonicalize(row);
         } else if (
           next.kind === "ready" &&
+          !newOpen &&
           !next.catalog.rows.some((row) => row.id === selectedId)
         ) {
           selectedId =
@@ -509,6 +711,18 @@ export const OwnerSessions = clientEntry(
           agentId = undefined;
           detailOpen = listPage;
           trigger = undefined;
+        }
+        if (
+          next.kind === "ready" &&
+          next.catalog.childrenReady &&
+          selectedId &&
+          agentId !== undefined &&
+          !next.catalog.children[selectedId]?.some(
+            (child) => child.conversationId === agentId && !child.archived,
+          )
+        ) {
+          agentId = branch = undefined;
+          history.replaceState({ clankSession: selectedId, detailOpen }, "");
         }
         await handle.update();
       }
@@ -526,8 +740,10 @@ export const OwnerSessions = clientEntry(
         const status = (await response.json()) as { owner?: unknown } | null;
         if (status?.owner !== true) throw Error("Pi owner check failed");
         if (signal.aborted) return;
-        await followCatalog(signal, (catalog) =>
-          show({ kind: "ready", catalog }),
+        await followCatalog(
+          signal,
+          (catalog) => show({ kind: "ready", catalog }),
+          handle.props.familiarId,
         );
       } catch {
         // A failed upgrade and an unreachable Pi look the same to the browser.
@@ -538,7 +754,19 @@ export const OwnerSessions = clientEntry(
         retryDelay = Math.min(8000, retryDelay * 2);
       }
     }
-    const mount = ref((_node, signal) => {
+    const mount = ref<HTMLElement>((node, signal) => {
+      const updateVisibility = () => {
+        void handle.update();
+      };
+      document.addEventListener("visibilitychange", updateVisibility, {
+        signal,
+      });
+      matchMedia(phoneWidth).addEventListener("change", updateVisibility, {
+        signal,
+      });
+      mountRailSwipe(node, signal, (list) => (list ? back() : showDetail()));
+      const restored = hydratedTheme(handle.props.initialMode);
+      if (restored !== mode) applyMode(restored);
       try {
         listQuery = sessionStorage.getItem("clank:session-list-query") ?? "";
       } catch {}
@@ -565,7 +793,12 @@ export const OwnerSessions = clientEntry(
               ? state.branch
               : undefined;
           agentId =
-            selectedId && selectedId === state?.clankSession
+            selectedId &&
+            selectedId === state?.clankSession &&
+            catalog?.children[selectedId]?.some(
+              (child) =>
+                child.conversationId === state.agentId && !child.archived,
+            )
               ? state.agentId
               : undefined;
           detailOpen =
@@ -582,10 +815,8 @@ export const OwnerSessions = clientEntry(
       signal.addEventListener("abort", () => clearInterval(clock), {
         once: true,
       });
-      try {
-        showMetadata =
-          localStorage.getItem("clank:composer-metadata") !== "hidden";
-      } catch {}
+      preferences = readPreferences();
+      void handle.update();
       void connect();
       window.addEventListener(
         "keydown",
@@ -602,7 +833,7 @@ export const OwnerSessions = clientEntry(
           )
             return;
           event.preventDefault();
-          if (settings) return;
+          if (settings || archiving) return;
           if (switching) closeSwitch();
           else startSwitch();
         },
@@ -633,6 +864,25 @@ export const OwnerSessions = clientEntry(
       );
     });
     return () => {
+      const doc = sidebarList?.ownerDocument;
+      const focused = doc?.activeElement;
+      if (
+        doc &&
+        focused instanceof HTMLElement &&
+        sidebarList?.contains(focused)
+      ) {
+        // A keyed row survives a move, but moving it can drop DOM focus.
+        handle.queueTask(() => {
+          if (doc.activeElement !== doc.body) return;
+          const next = focused.isConnected
+            ? focused
+            : sidebarList?.querySelector<HTMLButtonElement>(
+                "button[aria-pressed=true], [data-new-session]",
+              );
+          if (next?.getClientRects().length)
+            next.focus({ preventScroll: true });
+        });
+      }
       const live = view.kind === "ready" ? view.catalog : undefined;
       const catalog = live ?? cached;
       const selected = catalog?.rows.find((item) => item.id === selectedId);
@@ -650,7 +900,7 @@ export const OwnerSessions = clientEntry(
           row &&
           row !== familiar &&
           !activeIds.has(row.id) &&
-          !isRecent(row, selectedId, now),
+          !isRecent(row, selectedId, now, preferences.recency),
         ),
       );
       const olderIds = new Set(older.map((row) => row.id));
@@ -659,29 +909,6 @@ export const OwnerSessions = clientEntry(
         (catalog?.children[id] ?? [])
           .filter((child) => child.kind !== "agent" && !child.archived)
           .toSorted(byRecentActivity);
-      const choices: (PaletteItem & {
-        target?: { session: string; conversation?: number };
-      })[] = [
-        { id: "new", label: "New session", detail: "Command" },
-        ...rows.flatMap((row) => {
-          if (!row) return [];
-          const label = row === familiar ? "Familiar" : sessionTitle(row);
-          return [
-            {
-              id: `session:${row.id}`,
-              label,
-              detail: "Session",
-              target: { session: row.id },
-            },
-            ...children(row.id).map((child) => ({
-              id: `subagent:${row.id}:${child.conversationId}`,
-              label: child.name,
-              detail: `${label} · Subagent`,
-              target: { session: row.id, conversation: child.conversationId },
-            })),
-          ];
-        }),
-      ];
       const selectedChild =
         selected &&
         children(selected.id).find((child) => child.conversationId === agentId);
@@ -690,12 +917,123 @@ export const OwnerSessions = clientEntry(
         (agentId === undefined
           ? (branch ?? selected.main)
           : selectedChild?.conversationId);
+      // Pi advances the owner read cursor only for the visible main conversation.
+      // A selected row behind the phone rail is not a visible conversation.
+      if (
+        live &&
+        selected &&
+        conversation === selected.main &&
+        agentId === undefined &&
+        !listPage &&
+        !newOpen
+      ) {
+        handle.queueTask(() => {
+          if (
+            view.kind === "ready" &&
+            view.catalog === live &&
+            selectedId === selected.id &&
+            !listPage &&
+            !newOpen &&
+            agentId === undefined &&
+            (branch ?? selected.main) === selected.main &&
+            document.visibilityState === "visible" &&
+            (!matchMedia(phoneWidth).matches || detailOpen)
+          )
+            live.markMainRead(selected.id);
+        });
+      }
+      const destinations = (row: Row) => {
+        const agents = children(row.id);
+        return [
+          { id: row.main, label: "Main conversation", kind: "Main" },
+          ...row.branches
+            .filter(
+              (item) =>
+                item.conversation !== row.main &&
+                !agents.some(
+                  (child) => child.conversationId === item.conversation,
+                ),
+            )
+            .map((item) => ({
+              id: item.conversation,
+              label: item.label || `Conversation ${item.conversation}`,
+              kind: "Branch",
+            })),
+          ...agents.map((child) => ({
+            id: child.conversationId,
+            label: child.name,
+            kind: "Subagent",
+          })),
+        ];
+      };
+      const currentDestinations = selected ? destinations(selected) : [];
+      const canSwitch = Boolean(
+        live && !newOpen && !listPage && currentDestinations.length > 1,
+      );
+      const current = currentDestinations.find((d) => d.id === conversation);
+      type Choice = PaletteItem & {
+        target?: { session: string; conversation?: number };
+      };
+      const choices: Choice[] =
+        scopedSwitch && switching && selected
+          ? currentDestinations.map((d) => ({
+              id: `conversation:${selected.id}:${d.id}`,
+              label: d.label,
+              detail: d.id === conversation ? "Current" : d.kind,
+              target: { session: selected.id, conversation: d.id },
+            }))
+          : [
+              { id: "new", label: "New session", detail: "Command" },
+              {
+                id: "list",
+                label: "Search sessions and messages",
+                detail: "Command",
+              },
+              ...(canSwitch
+                ? [
+                    {
+                      id: "conversations",
+                      label: "Switch conversation…",
+                      detail: "This session",
+                    },
+                  ]
+                : []),
+              ...rows.flatMap((row) => {
+                if (!row) return [];
+                const label = row === familiar ? "Familiar" : sessionTitle(row);
+                return [
+                  {
+                    id: `session:${row.id}`,
+                    label,
+                    detail: "Session",
+                    target: { session: row.id },
+                  },
+                  ...destinations(row)
+                    .slice(1)
+                    .map((d) => ({
+                      id: `conversation:${row.id}:${d.id}`,
+                      label: d.label,
+                      detail: `${label} · ${d.kind}`,
+                      target: { session: row.id, conversation: d.id },
+                    })),
+                ];
+              }),
+            ];
       return (
         <main
           aria-label="Clank"
+          data-can-slide={
+            catalog &&
+            !newOpen &&
+            !settings &&
+            !switching &&
+            (selected || target || listPage)
+              ? ""
+              : undefined
+          }
           data-sidebar={sidebar ? "shown" : "hidden"}
           data-pane={
-            !catalog ||
+            (!catalog && view.kind !== "loading") ||
             newOpen ||
             (detailOpen && (selected || listPage || target))
               ? "detail"
@@ -703,8 +1041,18 @@ export const OwnerSessions = clientEntry(
           }
           mix={[mount, shell]}
         >
+          {archiving && (
+            <ArchiveDialog
+              live={live}
+              target={archiving.target}
+              archive={archiving.archive}
+              close={closeArchive}
+            />
+          )}
           {catalog && (
             <Switcher
+              key={scopedSwitch ? "conversations" : "commands"}
+              scoped={scopedSwitch}
               open={switching}
               items={choices}
               close={closeSwitch}
@@ -713,54 +1061,41 @@ export const OwnerSessions = clientEntry(
                 if (!choice || !live) return;
                 if (choice.target)
                   void open(choice.target.session, choice.target.conversation);
-                else void startNew();
+                else if (choice.id === "conversations")
+                  startConversationSwitch();
+                else if (choice.id === "list") {
+                  switching = false;
+                  switchFrom = undefined;
+                  showList();
+                  void handle.update().then(() => detailHeader?.focus());
+                } else void startNew();
               }}
             />
           )}
           {catalog && (
-            <Dialog
+            <Settings
               open={settings}
-              title="Settings"
-              onClose={() => {
+              mode={mode}
+              setMode={setMode}
+              preferences={preferences}
+              change={(change) => {
+                preferences = { ...preferences, ...change };
+                savePreference(change);
+                void handle.update();
+              }}
+              close={() => {
                 settings = false;
                 void handle.update();
               }}
-            >
-              <label
-                mix={css({ display: "flex", alignItems: "center", gap: "8px" })}
-              >
-                <Checkbox
-                  checked={showMetadata}
-                  mix={on("change", (event) => {
-                    showMetadata = event.currentTarget.checked;
-                    try {
-                      localStorage.setItem(
-                        "clank:composer-metadata",
-                        showMetadata ? "shown" : "hidden",
-                      );
-                    } catch {}
-                    void handle.update();
-                  })}
-                />{" "}
-                Show composer metadata
-              </label>
-              <Text tone="muted">Applies only to this browser.</Text>
-              <Button
-                variant="quiet"
-                mix={on("click", () => {
-                  settings = false;
-                  void handle.update();
-                })}
-              >
-                Done
-              </Button>
-            </Dialog>
+            />
           )}
           <aside
             id="clank-sidebar"
+            tabindex={-1}
             class="session-list"
             aria-label="Session list"
             mix={[
+              captureRail,
               pane,
               css({
                 borderRight: line,
@@ -770,9 +1105,7 @@ export const OwnerSessions = clientEntry(
             ]}
           >
             <div mix={bar}>
-              <Heading level={1} mix={titleStyle}>
-                Clank
-              </Heading>
+              <BrandMark logo={branding?.logo} />
               <div mix={css({ display: "flex", gap: "2px" })}>
                 {catalog && (
                   <Button
@@ -783,6 +1116,18 @@ export const OwnerSessions = clientEntry(
                   >
                     <Icon name="search" />
                   </Button>
+                )}
+                {catalog && (selected || listPage || target) && (
+                  <span class="sessions-back">
+                    <Button
+                      variant="quiet"
+                      aria-label="Show detail"
+                      aria-controls="clank-detail"
+                      mix={[iconAction, on("click", showDetail)]}
+                    >
+                      <Icon name="sidebar" />
+                    </Button>
+                  </span>
                 )}
                 <span class="desktop-sidebar">
                   <Button
@@ -798,6 +1143,11 @@ export const OwnerSessions = clientEntry(
               </div>
             </div>
             <div mix={scroll}>
+              {view.kind === "loading" && !catalog && !detailOpen && (
+                <Text tone="muted" role="status" mix={measure}>
+                  Connecting to Pi…
+                </Text>
+              )}
               {catalog?.rows.length === 0 && (
                 <Text tone="muted" mix={measure}>
                   No active sessions.
@@ -805,119 +1155,118 @@ export const OwnerSessions = clientEntry(
               )}
               {catalog && (
                 <ul
-                  mix={css({
-                    listStyle: "none",
-                    margin: 0,
-                    padding: "6px 6px",
-                    display: "grid",
-                    gap: "2px",
-                  })}
+                  mix={[
+                    sidebarListRef,
+                    css({
+                      listStyle: "none",
+                      margin: 0,
+                      padding: "8px",
+                      display: "grid",
+                      gap: "4px",
+                    }),
+                  ]}
                 >
                   {sidebarRows.flatMap((row) => {
                     if (row) {
                       const agents = children(row.id);
+                      const marks = catalog.indicators?.[row.id];
                       const isOpen = expanded.has(row.id);
                       const label =
                         row === familiar ? "Familiar" : sessionTitle(row);
                       const listId = `agents-${row.id}`;
                       return [
                         <li key={row.id}>
-                          <div
-                            mix={css({
-                              display: "flex",
-                              alignItems: "center",
-                              borderRadius: "var(--hui-control-radius)",
-                              "&:has(> button[aria-pressed=true])": {
-                                background: "var(--hui-selected-surface)",
-                              },
-                              "& > button[aria-pressed]": {
-                                "--clank-session-row-width": "auto",
-                                minWidth: 0,
-                                paddingInlineEnd: "4px",
-                              },
+                          <RailRow
+                            label={label}
+                            title={sessionTitle(row)}
+                            familiarLogo={
+                              row === familiar ? (
+                                <BrandMark logo={branding?.logo} />
+                              ) : undefined
+                            }
+                            pinned={row !== familiar && row.pinned}
+                            unread={marks?.unread}
+                            failure={marks?.failure}
+                            running={marks?.busy?.length}
+                            selected={
+                              !newOpen &&
+                              !listPage &&
+                              row.id === selectedId &&
+                              agentId === undefined
+                            }
+                            age={
+                              row === familiar
+                                ? undefined
+                                : age(row.updatedAt, now)
+                            }
+                            open={(from) => open(row.id, undefined, from)}
+                            disclosure={
+                              agents.length
+                                ? {
+                                    controls: listId,
+                                    expanded: isOpen,
+                                    toggle: (from) =>
+                                      toggleSubagents(row.id, from),
+                                  }
+                                : undefined
+                            }
+                            archive={archiveAction({
+                              session: row.id,
+                              name: sessionTitle(row),
                             })}
-                          >
-                            <Button
-                              variant="quiet"
-                              aria-pressed={
-                                row.id === selectedId && agentId === undefined
-                              }
-                              title={sessionTitle(row)}
-                              mix={[
-                                sessionButton,
-                                on("click", (event) =>
-                                  open(row.id, undefined, event.currentTarget),
-                                ),
-                              ]}
-                            >
-                              <span>{label}</span>
-                            </Button>
-                            {agents.length > 0 && (
-                              <Button
-                                variant="quiet"
-                                aria-label={`Subagents for ${label}`}
-                                aria-expanded={isOpen}
-                                aria-controls={listId}
-                                mix={[
-                                  iconAction,
-                                  css({ color: "var(--hui-muted)" }),
-                                  on("click", () => {
-                                    if (isOpen) expanded.delete(row.id);
-                                    else expanded.add(row.id);
-                                    void handle.update();
-                                  }),
-                                ]}
-                              >
-                                <Icon name={isOpen ? "down" : "right"} />
-                              </Button>
-                            )}
-                            <span aria-hidden="true" mix={ageStyle}>
-                              {age(row.updatedAt, now)}
-                            </span>
-                          </div>
+                          />
                           {agents.length > 0 && (
                             <ul
                               id={listId}
                               hidden={!isOpen}
-                              mix={css({
-                                listStyle: "none",
-                                margin: "4px 0",
-                                paddingInlineStart: "24px",
-                              })}
+                              mix={[
+                                css({
+                                  listStyle: "none",
+                                  margin: "4px 0",
+                                  paddingInlineStart: "24px",
+                                }),
+                                on("keydown", (event) => {
+                                  if (
+                                    event.key !== "Escape" ||
+                                    event.defaultPrevented
+                                  )
+                                    return;
+                                  const button =
+                                    event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(
+                                      "button[aria-controls]",
+                                    );
+                                  if (!button) return;
+                                  event.preventDefault();
+                                  toggleSubagents(row.id, button);
+                                }),
+                              ]}
                             >
                               {agents.map((child) => (
                                 <li key={child.conversationId}>
-                                  <Button
-                                    variant="quiet"
-                                    aria-pressed={
+                                  <RailRow
+                                    child
+                                    label={child.name}
+                                    {...childMarks(child, marks?.busy)}
+                                    selected={
                                       row.id === selectedId &&
-                                      agentId === child.conversationId
+                                      agentId === child.conversationId &&
+                                      !listPage &&
+                                      !newOpen
                                     }
-                                    mix={[
-                                      sessionButton,
-                                      css({
-                                        color: "var(--hui-muted)",
-                                        fontSize: "13px",
-                                      }),
-                                      on("click", (event) =>
-                                        open(
-                                          row.id,
-                                          child.conversationId,
-                                          event.currentTarget,
-                                        ),
-                                      ),
-                                    ]}
-                                  >
-                                    <span>
-                                      {child.name}
-                                      {child.archived ? " · Archived" : ""}
-                                    </span>
-                                    {child.updatedAt !== undefined && (
-                                      <span aria-hidden="true" mix={ageStyle}>
-                                        {age(child.updatedAt, now)}
-                                      </span>
-                                    )}
-                                  </Button>
+                                    age={
+                                      child.updatedAt === undefined
+                                        ? undefined
+                                        : age(child.updatedAt, now)
+                                    }
+                                    open={(from) =>
+                                      open(row.id, child.conversationId, from)
+                                    }
+                                    archive={archiveAction({
+                                      session: row.id,
+                                      conversation: child.conversationId,
+                                      name: child.name,
+                                    })}
+                                  />
                                 </li>
                               ))}
                             </ul>
@@ -929,13 +1278,13 @@ export const OwnerSessions = clientEntry(
                       <li
                         key="new"
                         mix={css({
-                          marginBlockEnd: "6px",
-                          paddingBlockEnd: "4px",
-                          borderBottom: line,
+                          marginBlockEnd: "10px",
                         })}
                       >
                         <Button
                           variant="quiet"
+                          data-new-session=""
+                          aria-pressed={newOpen}
                           mix={[
                             sessionButton,
                             on("click", (event) =>
@@ -956,7 +1305,7 @@ export const OwnerSessions = clientEntry(
                         mix={[
                           css({
                             display: "block",
-                            padding: "6px 10px",
+                            padding: "6px 34px",
                             color: "var(--hui-muted)",
                             textDecoration: "none",
                             borderRadius: "4px",
@@ -990,24 +1339,56 @@ export const OwnerSessions = clientEntry(
               )}
             </div>
             {catalog && (
-              <footer mix={css({ borderTop: line, padding: "4px 8px" })}>
+              <footer
+                mix={css({
+                  borderTop: line,
+                  padding: "4px 8px",
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: "4px",
+                })}
+              >
                 <Button
                   variant="quiet"
+                  aria-label="Settings"
+                  title="Settings"
                   mix={[
-                    action,
+                    iconAction,
                     on("click", () => {
                       settings = true;
                       void handle.update();
                     }),
                   ]}
                 >
-                  <Icon name="settings" /> Settings
+                  <Icon name="settings" />
+                </Button>
+                <Button
+                  variant="quiet"
+                  aria-label="Cycle color theme"
+                  title={`Theme: ${mode}`}
+                  mix={[
+                    iconAction,
+                    on("click", () =>
+                      setMode(modes[(modes.indexOf(mode) + 1) % modes.length]),
+                    ),
+                  ]}
+                >
+                  <Icon
+                    name={
+                      mode === "system"
+                        ? "theme"
+                        : mode === "light"
+                          ? "sun"
+                          : "moon"
+                    }
+                  />
                 </Button>
               </footer>
             )}
           </aside>
           <section
             class="session-detail"
+            id="clank-detail"
             aria-label="Session detail"
             mix={pane}
           >
@@ -1019,13 +1400,14 @@ export const OwnerSessions = clientEntry(
                 css({
                   justifyContent: "flex-start",
                   gap: "4px",
-                  "& h2": {
+                  "& h1, & h2": {
                     minWidth: 0,
                     overflow: "hidden",
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   },
                   paddingBlock: "4px",
+                  [phone]: { paddingInline: "6px" },
                   "&:focus-visible": { outlineOffset: "-2px" },
                 }),
               ]}
@@ -1072,8 +1454,9 @@ export const OwnerSessions = clientEntry(
                     Sessions
                   </Heading>
                   <Text tone="muted" mix={css({ margin: 0, fontSize: "12px" })}>
-                    Sessions without activity in the last 3 days are dimmed; the
-                    sidebar shows the others.
+                    {preferences.recency === "forever"
+                      ? "The sidebar shows all sessions."
+                      : `Dimmed sessions are outside the ${preferences.recency}-day window and hidden from the sidebar.`}
                   </Text>
                 </div>
               ) : newOpen ? (
@@ -1085,42 +1468,13 @@ export const OwnerSessions = clientEntry(
                   key={selected.id}
                   row={selected}
                   rename={live?.rename}
-                  controls={
-                    conversation && (
-                      <label mix={conversationSelect}>
-                        <select aria-label="Conversation">
-                          <option
-                            value={String(selected.main)}
-                            selected={conversation === selected.main}
-                          >
-                            Main
-                          </option>
-                          {selected.branches
-                            .filter(
-                              (item) => item.conversation !== selected.main,
-                            )
-                            .map((item) => (
-                              <option
-                                key={item.conversation}
-                                value={String(item.conversation)}
-                                selected={conversation === item.conversation}
-                              >
-                                {item.label ??
-                                  `Conversation ${item.conversation}`}
-                              </option>
-                            ))}
-                          {children(selected.id).map((child) => (
-                            <option
-                              key={child.conversationId}
-                              value={String(child.conversationId)}
-                              selected={conversation === child.conversationId}
-                            >
-                              {child.name}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    )
+                  subtitle={
+                    conversation && conversation !== selected.main
+                      ? `${current?.kind ?? "Branch"} · ${current?.label ?? `Conversation ${conversation}`}`
+                      : selected.cwd
+                  }
+                  switchConversation={
+                    canSwitch ? startConversationSwitch : undefined
                   }
                 />
               ) : (
@@ -1250,22 +1604,7 @@ export const OwnerSessions = clientEntry(
                     sessionStorage.setItem("clank:session-list-query", query);
                   } catch {}
                 }}
-                open={(id, child) => {
-                  const row = catalog.rows.find((item) => item.id === id);
-                  if (child === undefined || child === row?.main) {
-                    void open(id);
-                    return;
-                  }
-                  if (
-                    children(id).some((agent) => agent.conversationId === child)
-                  ) {
-                    void open(id, child);
-                    return;
-                  }
-                  void open(id);
-                  branch = child;
-                  void handle.update();
-                }}
+                open={open}
               />
             ) : selected && catalog && conversation ? (
               <Conversation
@@ -1273,6 +1612,36 @@ export const OwnerSessions = clientEntry(
                 session={selected.id}
                 conversation={conversation}
                 chat={live?.chat}
+                initialDraft={
+                  editDraft?.session === selected.id &&
+                  editDraft.conversation === conversation
+                    ? editDraft.text
+                    : undefined
+                }
+                consumeDraft={() => {
+                  editDraft = undefined;
+                }}
+                canEdit={!selectedChild && conversation === selected.main}
+                editMessage={
+                  live && !selectedChild && conversation === selected.main
+                    ? async (entry) => {
+                        const result = await live.editMessage(
+                          selected.id,
+                          entry,
+                        );
+                        if (selectedId !== selected.id || agentId !== undefined)
+                          return;
+                        if (result.text !== null)
+                          editDraft = {
+                            session: selected.id,
+                            conversation: result.conversation,
+                            text: result.text,
+                          };
+                        branch = result.conversation;
+                        await handle.update();
+                      }
+                    : undefined
+                }
                 seed={
                   selected.id === seed?.selectedId &&
                   conversation ===
@@ -1280,7 +1649,8 @@ export const OwnerSessions = clientEntry(
                     ? seed?.chat
                     : undefined
                 }
-                showMetadata={showMetadata}
+                showMetadata={preferences.showMetadata}
+                enterToSend={preferences.enterToSend}
               />
             ) : (
               <div mix={scroll}>
@@ -1303,9 +1673,9 @@ export const OwnerSessions = clientEntry(
                       </Button>
                     </>
                   )}
-                  {view.kind === "loading" && !catalog && (
+                  {view.kind === "loading" && !catalog && detailOpen && (
                     <Text tone="muted" role="status">
-                      Connecting to Pi…
+                      {target ? "Opening conversation…" : "Connecting to Pi…"}
                     </Text>
                   )}
                   {view.kind === "sign-in" && (

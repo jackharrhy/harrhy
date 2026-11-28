@@ -1,6 +1,6 @@
 # Clank
 
-Clank v0 is the [Pi owner preview](../../docs/clank/owner-preview.md): a Graphite session list with inline rename over native Pi Chord. Build with `npm run build:owner`; its single loopback Node listener serves the UI and the fixed native Pi routes without a fixture or separate identity.
+The [Pi owner preview](../../docs/clank/owner-preview.md) is a Remix client for native Pi sessions, branches, subagents and chat. It uses Harrhy UI controls, reads declarative Pi instance branding, and keeps its display and composer preferences local to the browser. Build with `npm run build:owner`; its single loopback Node listener serves the UI and the fixed native Pi routes without a fixture or separate identity.
 
 ## Earlier fixture and read-only modes
 

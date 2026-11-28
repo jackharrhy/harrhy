@@ -14,8 +14,8 @@
   "dependencies": {
     "@harrhy/board": "workspace:*",
     "@harrhy/ui": "workspace:*",
+    "@pierre/words": "0.3.0",
     "capnweb": "0.13.0",
-    "marked": "18.2.0",
     "remix": "3.2.0",
     "ws": "8.21.0"
   },

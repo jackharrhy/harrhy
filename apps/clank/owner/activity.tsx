@@ -67,9 +67,17 @@ const output = css({
   overflow: "auto",
 });
 export function Activity(
-  handle: Handle<{ steps: Step[]; working: boolean; endedAt?: number }>,
+  handle: Handle<{
+    steps: Step[];
+    working: boolean;
+    endedAt?: number;
+    animateChanges: boolean;
+  }>,
 ) {
   let selected: string | undefined;
+  let previousFace: string | undefined;
+  let previousSelection: string | undefined;
+  let animateFace = false;
   let shown = false;
   let openStep: string | undefined;
   let now: number | undefined;
@@ -133,6 +141,15 @@ export function Activity(
       steps.find((step) => step.id === selected) ??
       (working ? steps.at(-1) : undefined);
     const label = active ? face(active) : working ? "Working…" : summary(steps);
+    const faceKey = JSON.stringify([active?.id, working, label]);
+    if (faceKey !== previousFace) {
+      animateFace =
+        previousSelection !== selected ||
+        (handle.props.animateChanges &&
+          (working || previousFace !== undefined));
+      previousFace = faceKey;
+    }
+    previousSelection = selected;
     const started = steps.find((step) => step.at !== undefined)?.at;
     const end = working
       ? now
@@ -164,6 +181,9 @@ export function Activity(
             wheel,
             css({
               width: "100%",
+              fontWeight: 400,
+              fontSize: "13px",
+              color: "var(--hui-muted)",
               justifyContent: "space-between",
               textAlign: "start",
               overflow: "hidden",
@@ -190,14 +210,14 @@ export function Activity(
             })}
           >
             <span
-              key={active?.id ?? (working ? "waiting" : "done")}
+              key={faceKey}
               mix={css({
                 display: "inline-block",
                 "@keyframes wheel-in": {
                   from: { opacity: 0, transform: "translateY(6px)" },
                   to: { opacity: 1, transform: "translateY(0)" },
                 },
-                animation: "wheel-in 140ms ease-out",
+                animation: animateFace ? "wheel-in 140ms ease-out" : "none",
                 "@media (prefers-reduced-motion: reduce)": {
                   animation: "none",
                 },

@@ -1,7 +1,8 @@
 import type { Snapshot } from "./catalog.ts";
 import { readFileSync } from "node:fs";
-import { graphiteTheme, themeRoot, themeStyles } from "@harrhy/ui/theme";
-import { css } from "remix/component";
+import { createHash } from "node:crypto";
+import { themeRoot, themeStyles } from "@harrhy/ui/theme";
+import { css, unsafeHTML } from "remix/component";
 import { renderToString } from "remix/component/server";
 import { createRouter } from "remix/router";
 import { OwnerSessions } from "./sessions.tsx";
@@ -10,12 +11,20 @@ import {
   sessionKey,
   canonicalSessionRedirect,
 } from "./routes.ts";
+import { localizeMessageTime } from "./message-time.ts";
+import { ownerScheme, ownerTheme } from "./appearance.ts";
+import type { Mode } from "./theme-cookie.ts";
 declare const OWNER_BROWSER_MODULE: string;
+// Run after the transcript markup, independently of the deferred browser bundle.
+const positionTranscript = `(()=>{document.querySelectorAll('time[data-message-time]').forEach(${localizeMessageTime.toString()});const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
+const positionHash = createHash("sha256")
+  .update(positionTranscript)
+  .digest("base64");
 const headersFor = (ownerHost: string) => ({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
-  "Content-Security-Policy": `default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+  "Content-Security-Policy": `default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'self' 'wasm-unsafe-eval' 'sha256-${positionHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
 });
 const localFamiliarId = (() => {
   try {
@@ -31,6 +40,7 @@ async function document(
   snapshot?: Snapshot,
   listPage = false,
   target?: string,
+  mode?: Mode,
 ) {
   const location = canonicalSessionRedirect(
     target,
@@ -41,17 +51,28 @@ async function document(
       status: 302,
       headers: { ...headers, Location: location },
     });
+  const brand = snapshot?.branding;
   const html = await renderToString(
-    <html lang="en">
+    <html
+      lang="en"
+      data-pi-tint={brand?.tint != null ? "custom" : undefined}
+      style={
+        brand?.tint != null
+          ? { "--pi-base-hue": String(brand.tint) }
+          : undefined
+      }
+      data-theme={mode === "system" ? undefined : mode}
+      mix={[themeStyles(ownerTheme), ownerScheme]}
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
-        <title>Clank</title>
+        <title>{brand?.name ?? "Clank"}</title>
+        {brand?.logo && <link rel="icon" type="image/png" href={brand.logo} />}
         <script type="module" src="/owner-sessions.js" />
       </head>
       <body
         mix={[
-          themeStyles(graphiteTheme),
           themeRoot,
           css({
             margin: 0,
@@ -61,12 +82,16 @@ async function document(
         ]}
       >
         <OwnerSessions
+          initialMode={mode}
           renderedAt={Date.now()}
           listPage={listPage}
           target={target}
           familiarId={familiarId}
           snapshot={snapshot ? JSON.stringify(snapshot) : undefined}
         />
+        {!listPage && snapshot?.chat?.view && (
+          <script innerHTML={unsafeHTML(positionTranscript)} />
+        )}
       </body>
     </html>,
   );
@@ -88,7 +113,7 @@ export function createDocumentServer(ownerHost: string) {
         },
       }),
   );
-  return (request: Request, snapshot?: Snapshot) => {
+  return (request: Request, snapshot?: Snapshot, mode?: Mode) => {
     const path = new URL(request.url).pathname;
     return path === "/" || path === SESSION_LIST_PATH || sessionKey(path)
       ? document(
@@ -96,6 +121,7 @@ export function createDocumentServer(ownerHost: string) {
           snapshot,
           path === SESSION_LIST_PATH,
           sessionKey(path),
+          mode,
         )
       : router.fetch(request);
   };

@@ -6,9 +6,104 @@ import { connect, createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createServer as tlsServer } from "node:tls";
-import { chromium } from "playwright";
+import { chromium, type Page } from "playwright";
+import { checkCanonicalSwipe } from "./rail-swipe-browser.ts";
+import { checkComposerFocus } from "./composer-focus-browser.ts";
+import { proveRailArchive } from "./rail-browser.ts";
 const OWNER_HOST = "clank.example.test";
 import { structuredAttribution } from "../owner/attribution.ts";
+
+// Check the elements themselves, not just branding serialized in hydration props.
+function inspectBrand({
+  name,
+  src,
+  html,
+  liveName,
+}: {
+  name: string;
+  src: string;
+  html?: string;
+  liveName?: string;
+}) {
+  const doc =
+    html === undefined
+      ? document
+      : new DOMParser().parseFromString(html, "text/html");
+  function missing() {
+    if (doc.title !== name && doc.title !== liveName) return "title";
+    if (!doc.head.querySelector(`link[rel~=icon][href="${src}"]`))
+      return "favicon";
+    if (!doc.querySelector(`#clank-sidebar img[src="${src}"]`))
+      return "rail mark";
+    const root = doc.documentElement;
+    if (
+      root.dataset.piTint !== "custom" ||
+      root.style.getPropertyValue("--pi-base-hue").trim() !== "217"
+    )
+      return "tint";
+    return null;
+  }
+  const state = { missing: missing() };
+  if (liveName) {
+    // Remember a transient reset even if the branding subscription repairs it.
+    new MutationObserver(() => {
+      state.missing ??= missing();
+    }).observe(doc, {
+      attributes: true,
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
+  }
+  return state;
+}
+
+const conversationDialog = (target: Page) =>
+  target.getByRole("dialog", { name: "Switch conversation", exact: true });
+async function conversationMenu(target: Page) {
+  await target.getByRole("button", { name: "Session tools" }).press("Enter");
+  await target
+    .getByRole("menuitem", { name: "Switch conversation…", exact: true })
+    .press("Enter");
+  return conversationDialog(target);
+}
+
+// In the response-body case inspect parsed elements, not matching strings in
+// the serialized session seed. Return only diagnostic labels, never the HTML.
+function receiptProblem(scope: Element, html?: string) {
+  const root =
+    html === undefined
+      ? scope
+      : new DOMParser()
+          .parseFromString(html, "text/html")
+          .querySelector('[aria-label="Transcript"]');
+  if (!root) return "missing transcript";
+  const has = (selector: string, label: string) =>
+    [...root.querySelectorAll(selector)].some(
+      (node) => node.textContent.trim() === label,
+    );
+  if (!has("strong", "Strong receipt")) return "missing strong";
+  if (!has('a[href="https://example.com/pi"]', "Pi docs"))
+    return "missing safe link";
+  if (
+    !has("pre code", "const answer = 42;") ||
+    !has("pre code span[style]", "42")
+  )
+    return "missing highlighted code block";
+  if (
+    root.querySelector('a[href^="javascript:" i]') ||
+    has("a[href]", "Unsafe destination")
+  )
+    return "active unsafe link";
+  if (root.querySelector("img") || has("button", "Raw fixture control"))
+    return "active media or raw HTML";
+  return null;
+}
+
+const rowIndex = (node: Element) => {
+  const row = node.closest("li")!;
+  return Array.from(row.parentElement!.children).indexOf(row);
+};
 
 const quoted = `> <sender kind="external" id="synthetic" name="Quoted example"/>`;
 assert.equal(structuredAttribution("legacy", quoted), undefined);
@@ -42,6 +137,9 @@ const { startFixture, TEST } = (await import(
 const { Catalog } = (await import(
   new URL("plugins/sessions/contract.ts", piRoot).href
 )) as typeof import("../../pi/plugins/sessions/contract.ts");
+const { ThemeBranding } = (await import(
+  new URL("plugins/settings/theme-contract.ts", piRoot).href
+)) as typeof import("../../pi/plugins/settings/theme-contract.ts");
 const { mintOwnerLink } = (await import(
   new URL("src/runtime/owner-link.ts", piRoot).href
 )) as typeof import("../../pi/src/runtime/owner-link.ts");
@@ -169,6 +267,7 @@ try {
     ],
   });
   const context = await browser.newContext({
+    timezoneId: "America/Los_Angeles",
     ignoreHTTPSErrors: true,
     viewport: { width: 320, height: 640 },
   });
@@ -184,7 +283,10 @@ try {
   );
   await page.getByLabel("One-time token").fill(invite.hash.slice(1));
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
-  const row = page.getByRole("button", { name: "Familiar", exact: true });
+  const familiarButton = page.getByRole("button", {
+    name: "Familiar",
+    exact: true,
+  });
   const olderButton = page.getByRole("link", {
     name: "2 older",
     exact: true,
@@ -238,12 +340,12 @@ try {
   await searchOlder.waitFor();
   assert.equal(await searchOlder.inputValue(), "Older A");
   await page.goBack();
-  await row.waitFor();
+  await familiarButton.waitFor();
   assert.equal(
     await page.getByRole("region", { name: "Session detail" }).isVisible(),
     false,
   );
-  await row.press("Enter");
+  await familiarButton.press("Enter");
   await page
     .getByRole("heading", { name: session.title, exact: true })
     .waitFor();
@@ -252,8 +354,10 @@ try {
     false,
   );
   await page.getByRole("button", { name: "Show sessions" }).click();
-  assert(await row.evaluate((node) => node === document.activeElement));
-  await row.click();
+  assert(
+    await familiarButton.evaluate((node) => node === document.activeElement),
+  );
+  await familiarButton.click();
   const cookies = await context.cookies(origin);
   assert(
     cookies.some(
@@ -261,17 +365,55 @@ try {
         cookie.httpOnly && cookie.secure && cookie.domain === OWNER_HOST,
     ),
   );
+  function assertNoCredentials(html: string) {
+    const secrets = [
+      invite.hash.slice(1),
+      ...cookies
+        .filter((cookie) => cookie.httpOnly)
+        .map((cookie) => cookie.value),
+      ...fixture.owner.cookie
+        .split("; ")
+        .map((pair) => pair.slice(pair.indexOf("=") + 1)),
+    ];
+    assert(
+      !secrets.some((value) => html.includes(value)),
+      "credential in document",
+    );
+  }
   const observer = await context.newPage();
   observer.setDefaultTimeout(8000);
   await observer.setViewportSize({ width: 1440, height: 900 });
   await observer.goto(origin);
+  const secondRow = observer.getByRole("button", {
+    name: "Second session",
+    exact: true,
+  });
+  // The age is now a sibling of the primary button. Its stretched hit area
+  // must still select the row well beyond the label, short of the end control.
   await observer
-    .getByRole("button", { name: "Second session", exact: true })
-    .click();
+    .locator('button[aria-label="Session tools"]:enabled')
+    .waitFor();
+  const secondItem = observer.getByRole("listitem").filter({ has: secondRow });
+  const secondBox = await secondItem.boundingBox();
+  assert(secondBox);
+  await secondItem.click({
+    position: { x: secondBox.width - 40, y: secondBox.height / 2 },
+  });
   await observer
     .getByRole("heading", { name: "Second session", exact: true })
     .waitFor();
-  await observer.getByRole("button", { name: "Familiar", exact: true }).click();
+  const familiarRow = observer.getByRole("button", {
+    name: "Familiar",
+    exact: true,
+  });
+  const familiarItem = observer
+    .getByRole("listitem")
+    .filter({ has: familiarRow });
+  const familiarBox = await familiarItem.boundingBox();
+  assert(familiarBox);
+  await familiarItem.click({
+    position: { x: familiarBox.width - 4, y: familiarBox.height / 2 },
+  });
   await observer
     .getByRole("heading", { name: session.title, exact: true })
     .waitFor();
@@ -279,12 +421,140 @@ try {
     await observer.getByRole("button", { name: "Show sessions" }).isVisible(),
     false,
   );
+  // Mutate Pi over a separate native owner connection, not the Clank document.
+  const brandOwner = fixture.client({ Cookie: fixture.owner.cookie });
+  await brandOwner.host.root(async (ctx) => {
+    const brand = await ctx.get(ThemeBranding, {});
+    assert.equal(brand.variant, "owner");
+    const defaultTitle = await observer.title();
+    const name = "Disposable brand";
+    await brand.setName({ name }, ctx);
+    await brand.setTint({ tint: 217 }, ctx);
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="blue"/></svg>';
+    await brand.setLogo({ base64: Buffer.from(svg).toString("base64") }, ctx);
+    const logo = familiarRow.locator('img[src^="data:image/png;base64,"]');
+    await logo.waitFor();
+    const src = await logo.getAttribute("src");
+    assert(src);
+    await observer.waitForFunction(
+      ({ name: expectedName, src: expectedSrc }) =>
+        document.title === expectedName &&
+        getComputedStyle(document.body).backgroundColor.startsWith("oklch(") &&
+        (document.querySelector<HTMLImageElement>("#clank-sidebar img")
+          ?.naturalWidth ?? 0) > 0 &&
+        document.documentElement.dataset.piTint === "custom" &&
+        document.documentElement.style.getPropertyValue("--pi-base-hue") ===
+          "217" &&
+        [
+          ...document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'),
+        ].some((icon) => icon.href === expectedSrc),
+      { name, src },
+    );
+    const noScript = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      javaScriptEnabled: false,
+    });
+    const staticBrand = await noScript.newPage();
+    const publicResponse = await staticBrand.goto(origin);
+    assert.equal(publicResponse?.status(), 200);
+    const publicHtml = await publicResponse!.text();
+    assertNoCredentials(publicHtml);
+    assert(!publicHtml.includes(name) && !publicHtml.includes(src));
+    assert(!/--pi-base-hue\s*:\s*217\b/.test(publicHtml));
+    await noScript.addCookies(cookies);
+    const response = await staticBrand.goto(origin);
+    assert.equal(response?.status(), 200);
+    const html = await response!.text();
+    assertNoCredentials(html);
+    assert(html.includes("Disposable Clank session"));
+    assert.equal(
+      (await staticBrand.evaluate(inspectBrand, { name, src, html })).missing,
+      null,
+      "raw owner HTML",
+    );
+    assert.equal(
+      (await staticBrand.evaluate(inspectBrand, { name, src })).missing,
+      null,
+      "no-script document",
+    );
+    assert(
+      await staticBrand
+        .locator(`#clank-sidebar img[src="${src}"]:visible`)
+        .first()
+        .evaluate((img: HTMLImageElement) => img.naturalWidth > 0),
+    );
+    assert.match(
+      await staticBrand
+        .locator("body")
+        .evaluate((body) => getComputedStyle(body).backgroundColor),
+      /^oklch\(/,
+    );
+    await noScript.close();
+
+    const paint = await context.newPage();
+    await paint.setViewportSize({ width: 1280, height: 800 });
+    const bundle = Promise.withResolvers<void>();
+    const check = Promise.withResolvers<void>();
+    await paint.route("**/owner-sessions.js", async (route) => {
+      await bundle.promise;
+      await route.continue();
+    });
+    await paint.route("**/owner/check", async (route) => {
+      await check.promise;
+      await route.continue();
+    });
+    await paint.goto(origin, { waitUntil: "commit" });
+    await paint
+      .getByRole("button", { name: "Familiar", exact: true })
+      .waitFor();
+    const liveName = "Updated disposable brand";
+    const continuity = await paint.evaluateHandle(inspectBrand, {
+      name,
+      src,
+      liveName,
+    });
+    const missingBrand = () => continuity.evaluate((state) => state.missing);
+    assert.equal(await missingBrand(), null, "waiting for bundle");
+    const checking = paint.waitForRequest("**/owner/check", { timeout: 8000 });
+    bundle.resolve();
+    await checking;
+    assert.equal(await missingBrand(), null, "waiting for owner check");
+    check.resolve();
+    await paint.locator('button[aria-label="Session tools"]:enabled').waitFor();
+    assert.equal(await missingBrand(), null, "initial live catalog");
+    await brand.setName({ name: liveName }, ctx);
+    await paint.waitForFunction((next) => document.title === next, liveName);
+    assert.equal(await missingBrand(), null, "handoff to live branding");
+    await paint.close();
+    await brand.setName({ name: null }, ctx);
+    await brand.setTint({ tint: null }, ctx);
+    await brand.clearLogo(ctx);
+    await familiarRow.locator("svg").waitFor();
+    await observer.waitForFunction(
+      ({ defaultTitle: expectedTitle, src: expectedSrc }) =>
+        document.title === expectedTitle &&
+        !document.documentElement.dataset.piTint &&
+        !document.documentElement.style.getPropertyValue("--pi-base-hue") &&
+        ![
+          ...document.querySelectorAll<HTMLLinkElement>('link[rel="icon"]'),
+        ].some((icon) => icon.href === expectedSrc),
+      { defaultTitle, src },
+    );
+  }, TEST);
+  await brandOwner.host.close(TEST);
   const tools = page.getByRole("button", { name: "Session tools" });
   async function rename() {
     await tools.press("Enter");
     await page.getByRole("menuitem", { name: "Rename" }).press("Enter");
   }
-  await rename();
+  await tools.press("Enter");
+  await page.getByRole("menuitem", { name: "Rename" }).waitFor();
+  assert.equal(
+    await page.getByRole("menuitem", { name: "Switch conversation…" }).count(),
+    0,
+  );
+  await page.getByRole("menuitem", { name: "Rename" }).press("Enter");
   const input = page.getByRole("textbox", { name: "Session title" });
   assert.equal(
     await input.evaluate((node) => node === document.activeElement),
@@ -320,6 +590,7 @@ try {
   );
   const message = page.getByRole("textbox", { name: "Message" });
   const prompt = "slow disposable selection proof";
+  await checkComposerFocus(page);
   await message.fill(prompt);
   await message.press("Shift+Enter");
   assert.equal(await message.inputValue(), prompt + String.fromCharCode(10));
@@ -372,13 +643,21 @@ try {
     .filter({ hasText: /^Read fixture.txt · (Done|Failed)$/ })
     .first()
     .waitFor();
-  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   await message.fill("slow-tool");
   await message.press("Enter");
   const running = page
     .locator("[data-tool-activity][data-state=working]")
     .getByRole("button", { name: /Running printf/ });
   await running.waitFor({ timeout: 10000 });
+  assert.equal(
+    await running
+      .locator("span span")
+      .first()
+      .evaluate((node) => getComputedStyle(node).animationName),
+    "wheel-in",
+  );
+  await page.emulateMedia({ reducedMotion: "reduce" });
   assert.equal(
     await running
       .locator("span")
@@ -391,35 +670,107 @@ try {
     .getByRole("button", { name: /ran a command.*Show the steps/i })
     .waitFor({ timeout: 15000 });
   await page.emulateMedia({ reducedMotion: "no-preference" });
+  // Native faux `json <text>` streams the exact answer. Finish the formatted
+  // blocks first, then keep emitting deltas so a settled render cannot pass.
   const markdown = [
     "**Strong receipt** and [Pi docs](https://example.com/pi).",
-    "[Unsafe destination](javascript:alert%281%29) and <img src=x onerror=alert(1)>.",
-    "```text",
-    "retained code fence",
-    "```",
+    "[Unsafe destination](javascript:void%200)",
+    `![Fixture media](${origin}/fixture-media.png) <button>Raw fixture control</button>`,
+    "```js\nconst answer = 42;\n```",
+    "Still writing. ".repeat(250) + "End of fixture answer.",
   ].join("\n\n");
   const transcript = page.getByLabel("Transcript");
+  const liveText = transcript.locator("[data-streaming]");
+  const settledStrong = transcript
+    .locator("strong")
+    .filter({ hasText: /^Strong receipt$/ });
+  const markerWatch = await transcript.evaluateHandle((node) => {
+    let sawMarkers = false;
+    const watch = new MutationObserver(() => {
+      const live = node.querySelector<HTMLElement>("[data-streaming]");
+      if (live?.innerText.includes("**")) sawMarkers = true;
+    });
+    watch.observe(node, {
+      subtree: true,
+      childList: true,
+      characterData: true,
+      attributes: true,
+      attributeFilter: ["data-streaming"],
+    });
+    return () => {
+      watch.disconnect();
+      return sawMarkers;
+    };
+  });
   await message.fill(`json ${markdown}`);
   await page.getByRole("button", { name: "Send", exact: true }).click();
-  await transcript
+  const liveStrong = liveText
     .locator("strong")
-    .getByText("Strong receipt", { exact: true })
+    .filter({ hasText: /^Strong receipt$/ });
+  await liveText.getByRole("link", { name: "Pi docs", exact: true }).waitFor();
+  await liveText
+    .locator("pre code")
+    .filter({ hasText: "const answer = 42;" })
     .waitFor();
+  await liveStrong.waitFor();
+  assert.equal(await liveText.evaluate(receiptProblem), null);
+  const prefix = await liveStrong.evaluateHandle((node) => ({
+    host: node.closest("[data-streaming]")!,
+    strong: node,
+  }));
+  assert(
+    await prefix.evaluate(
+      ({ host }) =>
+        host.isConnected &&
+        !host.textContent.includes("End of fixture answer."),
+    ),
+    "sample must precede the final delta",
+  );
+  const shots = process.env.HARRHY_CLANK_WORDS_SCREENSHOT_DIR;
+  if (shots) {
+    await liveStrong.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: join(shots, "words-streaming.png") });
+    assert(
+      await prefix.evaluate(({ host }) => host.hasAttribute("data-streaming")),
+    );
+  }
+  await liveText.waitFor({ state: "detached", timeout: 15000 });
   assert.equal(
-    await transcript
-      .getByRole("link", { name: "Pi docs" })
-      .getAttribute("href"),
-    "https://example.com/pi",
+    await markerWatch.evaluate((stop) => stop()),
+    false,
+    "visible ** while streaming",
+  );
+  await markerWatch.dispose();
+  assert(
+    await settledStrong.evaluate(
+      (node, { host, strong }) =>
+        node === strong &&
+        host.contains(node) &&
+        host.textContent.includes("End of fixture answer."),
+      prefix,
+    ),
+    "settling replaced the live host or formatted prefix",
   );
   assert.equal(
-    await transcript.getByRole("link", { name: "Unsafe destination" }).count(),
-    0,
+    await prefix.evaluate(({ host }) => host.textContent.includes("**")),
+    false,
   );
-  assert.equal(await transcript.locator("img").count(), 0);
+  await prefix.dispose();
+  assert.equal(await transcript.evaluate(receiptProblem), null);
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin,
+  });
   await transcript
-    .locator("code")
-    .filter({ hasText: "retained code fence" })
-    .waitFor();
+    .getByRole("button", { name: "Copy code", exact: true })
+    .click();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    "const answer = 42;\n",
+  );
+  if (shots) {
+    await settledStrong.scrollIntoViewIfNeeded();
+    await page.screenshot({ path: join(shots, "words-settled.png") });
+  }
   const jump = page.getByRole("button", { name: "Jump to latest" });
   const atLatest = () =>
     page.waitForFunction(() => {
@@ -433,7 +784,20 @@ try {
   );
   await message.press("Enter");
   await transcript.locator("[data-streaming]").waitFor();
-  await atLatest();
+  try {
+    await atLatest();
+  } catch (error) {
+    console.error(
+      "Streaming transcript did not follow",
+      await transcript.evaluate((node) => ({
+        top: node.scrollTop,
+        height: node.clientHeight,
+        content: node.scrollHeight,
+      })),
+      { jumpVisible: await jump.isVisible() },
+    );
+    throw error;
+  }
   await transcript.evaluate((node) => {
     node.scrollTop = 0;
   });
@@ -446,14 +810,18 @@ try {
   await atLatest();
   assert(await transcript.evaluate((node) => node === document.activeElement));
   await message.fill(
-    [`json ${quoted}`, "", "Ordinary text after the quote."].join(
-      String.fromCharCode(10),
-    ),
+    [
+      `json ${quoted}`,
+      ">",
+      "> Quoted fixture line.",
+      "",
+      "Ordinary text after the quote.",
+    ].join(String.fromCharCode(10)),
   );
   await message.press("Enter");
   await transcript
     .locator("blockquote")
-    .getByText(/sender kind="external"/)
+    .filter({ hasText: "Quoted fixture line." })
     .waitFor();
   await transcript
     .getByText("Ordinary text after the quote.", { exact: true })
@@ -496,6 +864,25 @@ try {
   assert.equal(await helper.isVisible(), false);
   await toggle.press("Enter");
   assert.equal(await toggle.getAttribute("aria-expanded"), "true");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Archive helper", exact: true })
+      .count(),
+    0,
+  );
+  await page.keyboard.press("Tab");
+  assert(await helper.evaluate((node) => node === document.activeElement));
+  await page.keyboard.press("Escape");
+  await helper.waitFor({ state: "hidden" });
+  assert.equal(await toggle.getAttribute("aria-expanded"), "false");
+  assert(await toggle.evaluate((node) => node === document.activeElement));
+  await page.keyboard.press("Tab");
+  assert(
+    await page
+      .getByRole("button", { name: "New session", exact: true })
+      .evaluate((node) => node === document.activeElement),
+  );
+  await toggle.press("Enter");
   await helper.press("Enter");
   await transcript.getByText("hello helper", { exact: true }).waitFor();
   assert.equal(
@@ -509,9 +896,13 @@ try {
   assert(await helper.evaluate((node) => node === document.activeElement));
   await helper.click();
   await transcript.getByText("hello helper", { exact: true }).waitFor();
-  await page
-    .getByRole("combobox", { name: "Conversation" })
-    .selectOption({ label: "Main" });
+  const conversations = await conversationMenu(page);
+  await conversations
+    .getByRole("option", { name: /^helper Current$/ })
+    .waitFor();
+  await conversations
+    .getByRole("option", { name: /^Main conversation/ })
+    .click();
   await transcript
     .locator("strong")
     .getByText("Strong receipt", { exact: true })
@@ -560,8 +951,8 @@ try {
   const phonePalette = page.getByRole("dialog", { name: "Command palette" });
   const search = phonePalette.getByRole("combobox");
   await search.fill("session");
-  await search.press("ArrowDown");
-  await search.press("ArrowDown");
+  // Select a pre-existing catalog result, not one of the leading commands.
+  await search.press("ArrowUp");
   const retained = await search.getAttribute("aria-activedescendant");
   assert(retained);
   await fixture.server.host.root(async (ctx) => {
@@ -588,19 +979,189 @@ try {
   await search.fill("familiar helper");
   await search.press("Enter");
   await transcript.getByText("hello helper", { exact: true }).waitFor();
-  await page
-    .getByRole("combobox", { name: "Conversation" })
-    .selectOption({ label: "Main" });
+  await page.getByRole("heading", { level: 1 }).dblclick();
+  await conversationDialog(page)
+    .getByRole("combobox", { name: "Find a conversation" })
+    .press("Escape");
+  await tools.and(page.locator(":focus")).waitFor();
+  await message.focus();
+  await page.keyboard.press("Control+k");
+  await phonePalette.getByRole("combobox").fill("Switch conversation");
+  await phonePalette.getByRole("combobox").press("Enter");
+  await conversationDialog(page)
+    .getByRole("option", { name: /^helper Current$/ })
+    .waitFor();
+  assert.equal(
+    await conversationDialog(page)
+      .getByRole("option", { name: /Second session|New session/ })
+      .count(),
+    0,
+  );
+  await page.keyboard.press("Escape");
+  await message.and(page.locator(":focus")).waitFor();
+  await (
+    await conversationMenu(page)
+  )
+    .getByRole("option", { name: /^Main conversation/ })
+    .click();
   const settingsButton = observer.getByRole("button", { name: "Settings" });
   const settingsBox = await settingsButton.boundingBox();
-  assert(settingsBox && settingsBox.x < 32 && settingsBox.y > 820);
+  assert(settingsBox && settingsBox.x < 300 && settingsBox.y > 820);
   const metadata = observer.getByLabel("Composer metadata", { exact: true });
   await metadata.waitFor();
-  assert.match(await metadata.innerText(), /Faux Model/);
+  assert.match(await metadata.innerText(), /Faux Model.*off/s);
+  await metadata
+    .getByRole("img", { name: /browsers viewing this session/ })
+    .waitFor();
+  await page
+    .getByLabel("Composer metadata", { exact: true })
+    .getByRole("img", { name: /Cache hit rate: \d+ percent/ })
+    .waitFor();
+  await page
+    .getByLabel("Composer metadata", { exact: true })
+    .getByTitle(/Session total cost/)
+    .waitFor();
+  await metadata
+    .getByRole("progressbar", { name: "Estimated active context usage" })
+    .waitFor();
+  const rules = await observer
+    .getByRole("textbox", { name: "Message" })
+    .evaluate((node) => {
+      const style = getComputedStyle(node);
+      const box = getComputedStyle(node.parentElement!);
+      return {
+        input: style.borderBlockWidth,
+        padding: [style.paddingTop, style.paddingBottom],
+        top: box.borderTop,
+        bottom: box.borderBottom,
+        width: box.borderTopWidth,
+      };
+    });
+  assert.equal(rules.input, "0px");
+  assert.equal(rules.top, rules.bottom);
+  assert.equal(rules.width, "1px");
+  assert.equal(rules.padding[0], rules.padding[1]);
+  const themeBackground = (target = observer) =>
+    target
+      .locator("body")
+      .evaluate((node) => getComputedStyle(node).backgroundColor);
+  await observer.emulateMedia({ colorScheme: "light" });
+  assert.equal(await themeBackground(), "rgb(251, 250, 248)");
+  await observer.emulateMedia({ colorScheme: "dark" });
+  assert.equal(await themeBackground(), "rgb(21, 20, 19)");
+  await observer.emulateMedia({ colorScheme: "light" });
+  await observer.getByRole("button", { name: "Cycle color theme" }).click();
   await settingsButton.click();
+  const settings = observer.getByRole("dialog", { name: "Settings" });
+  assert(await settings.getByRole("radio", { name: "Light" }).isChecked());
+  await settings.getByRole("radio", { name: "Dark" }).check();
+  assert.equal(await themeBackground(), "rgb(21, 20, 19)");
+  const themeCookie = "__Host-clank-theme";
+  const darkCookie = (await context.cookies(origin)).find(
+    (cookie) => cookie.name === themeCookie,
+  );
+  assert.equal(darkCookie?.value, "dark", "Settings persists the theme cookie");
+  const noScriptTheme = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    javaScriptEnabled: false,
+  });
+  await noScriptTheme.addCookies(await context.cookies(origin));
+  const firstPaint = await noScriptTheme.newPage();
+  const backgrounds = { light: "rgb(251, 250, 248)", dark: "rgb(21, 20, 19)" };
+  for (const mode of ["dark", "light"] as const) {
+    await noScriptTheme.addCookies([
+      { name: themeCookie, value: mode, url: origin, secure: true },
+    ]);
+    await firstPaint.emulateMedia({
+      colorScheme: mode === "dark" ? "light" : "dark",
+    });
+    const response = await firstPaint.goto(origin);
+    const html = await response!.text();
+    assert(new RegExp(`<html\\b[^>]* data-theme="${mode}"`).test(html));
+    assertNoCredentials(html);
+    assert.equal(
+      await themeBackground(firstPaint),
+      backgrounds[mode],
+      `no-script ${mode} preference`,
+    );
+  }
+  await noScriptTheme.clearCookies({ name: themeCookie });
+  await firstPaint.goto(origin);
+  assert.equal(
+    await firstPaint.locator("html").getAttribute("data-theme"),
+    null,
+  );
+  for (const colorScheme of ["light", "dark"] as const) {
+    await firstPaint.emulateMedia({ colorScheme });
+    assert.equal(
+      await themeBackground(firstPaint),
+      backgrounds[colorScheme],
+      `no-script system ${colorScheme}`,
+    );
+  }
+  await noScriptTheme.close();
+
+  // Simulate an existing installation. Hydration migrates the legacy value only
+  // if there isn't already an authoritative cookie.
+  for (const hasCookie of [false, true]) {
+    const legacy = await browser.newContext({
+      ignoreHTTPSErrors: true,
+      colorScheme: hasCookie ? "dark" : "light",
+      storageState: {
+        cookies: cookies.filter((cookie) => cookie.name !== themeCookie),
+        origins: [
+          { origin, localStorage: [{ name: "clank:theme", value: "dark" }] },
+        ],
+      },
+    });
+    if (hasCookie)
+      await legacy.addCookies([
+        { name: themeCookie, value: "light", url: origin, secure: true },
+      ]);
+    const migrated = await legacy.newPage();
+    await migrated.goto(origin);
+    await migrated
+      .locator('button[aria-label="Session tools"]:enabled')
+      .waitFor();
+    await migrated.getByRole("button", { name: "Settings" }).click();
+    const expected = hasCookie ? "light" : "dark";
+    assert(
+      await migrated
+        .getByRole("radio", { name: hasCookie ? "Light" : "Dark", exact: true })
+        .isChecked(),
+    );
+    assert.equal(await themeBackground(migrated), backgrounds[expected]);
+    assert.equal(
+      (await legacy.cookies(origin)).find(
+        (cookie) => cookie.name === themeCookie,
+      )?.value,
+      expected,
+    );
+    await legacy.close();
+  }
+  await observer.setViewportSize({ width: 320, height: 640 });
+  const settingsBounds = await settings.boundingBox();
+  assert(
+    settingsBounds &&
+      settingsBounds.x >= 0 &&
+      settingsBounds.x + settingsBounds.width <= 320,
+  );
+  if (process.env.HARRHY_CLANK_SCREENSHOT_DIR)
+    await settings.screenshot({
+      path: join(
+        process.env.HARRHY_CLANK_SCREENSHOT_DIR,
+        "clank-dark-settings-phone.png",
+      ),
+    });
+  await observer.setViewportSize({ width: 1440, height: 900 });
+  await settings.getByRole("radio", { name: "System" }).check();
   const preference = observer.getByRole("checkbox", {
     name: "Show composer metadata",
   });
+  await settings.getByRole("radio", { name: "1 day", exact: true }).check();
+  await settings
+    .getByRole("checkbox", { name: "Enter to send on desktop" })
+    .uncheck();
   await preference.uncheck();
   await observer.getByRole("button", { name: "Done" }).click();
   await metadata.waitFor({ state: "hidden" });
@@ -610,10 +1171,27 @@ try {
     ),
     "hidden",
   );
+  await observer.getByRole("link", { name: "3 older", exact: true }).waitFor();
+  const desktopMessage = observer.getByRole("textbox", { name: "Message" });
+  await desktopMessage.fill("Desktop draft");
+  await desktopMessage.press("Enter");
+  assert.equal(await desktopMessage.inputValue(), "Desktop draft\n");
+  await desktopMessage.fill("");
   await settingsButton.click();
+  await settings.getByRole("radio", { name: "Forever" }).check();
+  await settings
+    .getByRole("checkbox", { name: "Enter to send on desktop" })
+    .check();
   await preference.check();
   await observer.getByRole("button", { name: "Done" }).click();
   await metadata.waitFor();
+  await observer
+    .getByRole("button", { name: "Older A", exact: true })
+    .waitFor();
+  await settingsButton.click();
+  await settings.getByRole("radio", { name: "3 days" }).check();
+  await settings.getByRole("button", { name: "Done" }).click();
+  await observer.getByRole("link", { name: "2 older", exact: true }).waitFor();
   const desktopToggle = observer.getByRole("button", {
     name: "Subagents for Familiar",
   });
@@ -623,13 +1201,48 @@ try {
     .getByLabel("Transcript")
     .getByText("hello helper", { exact: true })
     .waitFor();
-  assert.equal(
-    await observer
-      .getByRole("combobox", { name: "Conversation" })
-      .locator("option:checked")
-      .textContent(),
-    "helper",
-  );
+  await observer
+    .getByRole("button", { name: "helper", pressed: true, exact: true })
+    .waitFor();
+  assert.equal(await familiarRow.getAttribute("aria-pressed"), "false");
+
+  const touch = await browser.newContext({
+    hasTouch: true,
+    isMobile: true,
+    viewport: { width: 375, height: 667 },
+    ignoreHTTPSErrors: true,
+  });
+  await touch.addCookies(await context.cookies(origin));
+  const phone = await touch.newPage();
+  phone.setDefaultTimeout(8000);
+  await phone.goto(`${origin}/session/${session.id}`);
+  async function tapConversation(name: RegExp) {
+    await phone.getByRole("button", { name: "Session tools" }).tap();
+    await phone.getByRole("menuitem", { name: "Switch conversation…" }).tap();
+    await conversationDialog(phone).getByRole("option", { name }).tap();
+  }
+  await tapConversation(/^helper/);
+  await phone
+    .getByLabel("Transcript")
+    .getByText("hello helper", { exact: true })
+    .waitFor();
+  await tapConversation(/^Main conversation/);
+  await phone
+    .getByLabel("Transcript")
+    .getByText("Strong receipt", { exact: true })
+    .waitFor();
+  const touchInput = phone.getByRole("textbox", { name: "Message" });
+  await checkCanonicalSwipe(phone, "Second session");
+  await touchInput.fill("Touch draft");
+  await touchInput.press("Enter");
+  assert.equal(await touchInput.inputValue(), "Touch draft\n");
+  await touchInput.pressSequentially("second line");
+  assert.equal(await touchInput.inputValue(), "Touch draft\nsecond line");
+  await phone.getByRole("button", { name: "Send", exact: true }).tap();
+  await transcript
+    .getByText("Touch draft second line", { exact: true })
+    .waitFor();
+  await touch.close();
   if (process.env.HARRHY_CLANK_SCREENSHOT_DIR) {
     const piOrigin = new URL(`http://127.0.0.1:${fixture.server.port}`);
     const native = await context.newPage();
@@ -675,14 +1288,15 @@ try {
       .first();
     await nativeToggle.click();
     await native.getByText("helper", { exact: true }).first().waitFor();
-    await observer
-      .getByRole("combobox", { name: "Conversation" })
-      .selectOption({ label: "Main" });
+    await (
+      await conversationMenu(observer)
+    )
+      .getByRole("option", { name: /^Main conversation/ })
+      .click();
     await observer
       .getByLabel("Transcript")
       .getByText("Strong receipt", { exact: true })
       .waitFor();
-    await observer.getByRole("combobox", { name: "Conversation" }).press("Tab");
     await observer.getByRole("button", { name: "Session tools" }).press("Tab");
     await observer.keyboard.press("Tab");
     for (const [target, focusInput] of [
@@ -711,6 +1325,14 @@ try {
       });
     };
     await pair("desktop");
+    await native.emulateMedia({ colorScheme: "dark" });
+    await observer.emulateMedia({ colorScheme: "dark" });
+    await native.waitForFunction(
+      () => document.documentElement.dataset.theme === "dark",
+    );
+    await pair("desktop-dark");
+    await native.emulateMedia({ colorScheme: "light" });
+    await observer.emulateMedia({ colorScheme: "light" });
     await native.getByRole("button", { name: "Collapse sidebar" }).click();
     await observer.getByRole("button", { name: "Hide sidebar" }).click();
     await pair("desktop-collapsed");
@@ -776,6 +1398,7 @@ try {
       ),
     });
     await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Familiar", exact: true }).click();
     await native.close();
   }
   await observer
@@ -847,6 +1470,118 @@ try {
     assert.match(response.headers()["cache-control"], /no-store/);
     assert.equal(new URL(observer.url()).pathname, namedPath);
     assert.equal(new URL(observer.url()).hash, "#selection");
+    const namedMessage = observer.getByRole("textbox", { name: "Message" });
+    await namedMessage.fill("steps");
+    await namedMessage.press("Enter");
+    await observer.getByText(/^Echo: steps/).waitFor();
+    await observer.locator("[data-streaming]").waitFor({ state: "hidden" });
+    await namedMessage.fill(
+      `${"Historical fixture line\n".repeat(65)}Latest named receipt`,
+    );
+    await namedMessage.press("Enter");
+    await observer.getByText(/^Echo: Historical fixture line/).waitFor();
+    await observer.locator("[data-streaming]").waitFor({ state: "hidden" });
+    const cold = await context.newPage();
+    await cold.setViewportSize({ width: 960, height: 640 });
+    const bundle = Promise.withResolvers<void>();
+    const chord = Promise.withResolvers<void>();
+    const socketStarted = Promise.withResolvers<void>();
+    await cold.route("**/owner-sessions.js", async (route) => {
+      await bundle.promise;
+      await route.continue();
+    });
+    await cold.routeWebSocket(/.*/, async (route) => {
+      socketStarted.resolve();
+      await chord.promise;
+      route.connectToServer();
+    });
+    await cold.goto(`${origin}${namedPath}`, { waitUntil: "commit" });
+    const sample = () =>
+      cold.getByLabel("Transcript").evaluate(async (node) => {
+        await new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        );
+        const viewport = node.getBoundingClientRect();
+        const latest = [...node.querySelectorAll("p")]
+          .filter((p) => p.textContent.includes("Latest named receipt"))
+          .at(-1);
+        const rect = latest?.getBoundingClientRect();
+        return {
+          top: node.scrollTop,
+          gap: node.scrollHeight - node.clientHeight - node.scrollTop,
+          latestVisible: Boolean(
+            rect &&
+            rect.bottom > viewport.top &&
+            rect.bottom <= viewport.bottom,
+          ),
+        };
+      });
+    await cold.getByText(/^Echo: Historical fixture line/).waitFor();
+    const settled = cold.getByRole("button", {
+      name: /Read a file.*Show the steps/i,
+    });
+    const summaryAnimation = () =>
+      settled
+        .locator("span span")
+        .first()
+        .evaluate((node) => getComputedStyle(node).animationName);
+    const ssrAnimation = await summaryAnimation();
+    const painted = await sample();
+    const timestamp = cold.locator("time[data-message-time]").first();
+    const localTime = await timestamp.evaluate((node: HTMLTimeElement) => {
+      const date = new Date(node.dateTime);
+      return date.toLocaleTimeString([], {
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    });
+    assert((await timestamp.innerText()).endsWith(localTime));
+    assert.equal(
+      await cold
+        .getByRole("button", { name: "Copy message", exact: true })
+        .first()
+        .locator("svg rect")
+        .count(),
+      1,
+    );
+    console.log("Named SSR before browser bundle", painted);
+    await cold.getByLabel("Transcript").evaluate((node) => {
+      node.scrollTop = 100;
+    });
+    const reading = await sample();
+    bundle.resolve();
+    await socketStarted.promise;
+    const waiting = await sample();
+    const hydrationAnimation = await summaryAnimation();
+    assert((await timestamp.innerText()).endsWith(localTime));
+    chord.resolve();
+    await cold.getByRole("button", { name: "Session tools" }).waitFor();
+    await cold.waitForFunction(
+      () =>
+        !document.querySelector<HTMLButtonElement>(
+          'button[aria-label="Session tools"]',
+        )?.disabled,
+    );
+    const connected = await sample();
+    console.log("Named history position across hydration/Chord", [
+      reading.top,
+      waiting.top,
+      connected.top,
+    ]);
+    const animations = [
+      ssrAnimation,
+      hydrationAnimation,
+      await summaryAnimation(),
+    ];
+    console.log(
+      "Settled summary animation across SSR/hydration/Chord",
+      animations,
+    );
+    assert.deepEqual(animations, ["none", "none", "none"]);
+    assert(painted.latestVisible && painted.gap <= 2);
+    assert.equal(waiting.top, reading.top);
+    assert.equal(connected.top, reading.top);
+    await cold.close();
     await observer.reload();
     await observer.waitForFunction(
       () => document.querySelector("textarea")?.disabled === false,
@@ -907,7 +1642,18 @@ try {
       .count(),
     0,
   );
+  const archiveControls = '#clank-sidebar button[aria-label^="Archive "]';
+  assert.equal(
+    await staticPage.locator(archiveControls).count(),
+    0,
+    "SSR is not a live owner binding",
+  );
   const html = await signedIn.text();
+  assert.equal(
+    await staticPage.getByLabel("Transcript").evaluate(receiptProblem, html),
+    null,
+    "raw response markup",
+  );
   const direct = await staticPage.goto(`${origin}/session/${session.id}`);
   assert.equal(direct?.status(), 200);
   await staticPage.getByText("Strong receipt", { exact: true }).waitFor();
@@ -918,51 +1664,251 @@ try {
     await staticPage.getByText("Strong receipt", { exact: true }).count(),
     0,
   );
-  for (const cookie of await context.cookies(origin))
-    assert(!html.includes(cookie.value));
+  assertNoCredentials(html);
   await noJs.close();
   const hydrated = await context.newPage();
   await hydrated.setViewportSize({ width: 1280, height: 800 });
-  await hydrated.route("**/owner/check", async (route) => {
-    await hydrated
-      .getByText("Strong receipt", { exact: true })
-      .waitFor({ timeout: 3000 });
+  await hydrated.addInitScript(() => {
+    const shifts: number[] = [];
+    Object.assign(window, { clankShifts: shifts });
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries() as (PerformanceEntry & {
+        value: number;
+        hadRecentInput: boolean;
+      })[]) {
+        if (!entry.hadRecentInput) shifts.push(entry.value);
+      }
+    }).observe({ type: "layout-shift", buffered: true });
+  });
+  const geometry = () =>
+    hydrated.evaluate(async () => {
+      await new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      );
+      return {
+        boxes: [
+          "main",
+          ".session-detail",
+          '[aria-label="Transcript"]',
+          "textarea",
+          '[aria-label="Composer metadata"]',
+        ].map((selector) => {
+          const rect = document
+            .querySelector(selector)
+            ?.getBoundingClientRect();
+          return rect && [rect.x, rect.y, rect.width, rect.height];
+        }),
+        fonts: performance
+          .getEntriesByType("resource")
+          .filter((entry) => /\.(woff2?|ttf)(\?|$)/.test(entry.name)).length,
+        shifts: (window as Window & { clankShifts?: number[] }).clankShifts,
+      };
+    });
+  const script = Promise.withResolvers<void>();
+  const check = Promise.withResolvers<void>();
+  const checkStarted = Promise.withResolvers<void>();
+  await hydrated.route("**/owner-sessions.js", async (route) => {
+    await script.promise;
     await route.continue();
   });
-  await hydrated.goto(origin);
+  await hydrated.route("**/owner/check", async (route) => {
+    checkStarted.resolve();
+    await check.promise;
+    await route.continue();
+  });
+  await hydrated.goto(origin, { waitUntil: "commit" });
+  await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
+  const hydratedTranscript = hydrated.getByLabel("Transcript");
+  assert.equal(
+    await hydratedTranscript.evaluate(receiptProblem),
+    null,
+    "bundle held",
+  );
+  const ssrStrong = await hydratedTranscript
+    .locator("strong")
+    .filter({ hasText: /^Strong receipt$/ })
+    .evaluateHandle((node) => node);
+  const ssrGeometry = await geometry();
+  console.log("SSR geometry", JSON.stringify(ssrGeometry));
+  script.resolve();
+  await checkStarted.promise;
+  assert.equal(
+    await hydratedTranscript.evaluate(receiptProblem),
+    null,
+    "hydrated, owner check held",
+  );
+  assert.equal(
+    await hydrated.locator(archiveControls).count(),
+    0,
+    "owner check held",
+  );
+  const hydratedGeometry = await geometry();
+  assert.deepEqual(hydratedGeometry.boxes, ssrGeometry.boxes);
+  check.resolve();
   await hydrated.waitForFunction(
-    () => !document.querySelector<HTMLTextAreaElement>("textarea")?.disabled,
+    () =>
+      document.querySelector<HTMLButtonElement>('button[aria-label="Send"]')
+        ?.disabled === true &&
+      !document.querySelector<HTMLTextAreaElement>("textarea")?.disabled,
   );
   await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
   await hydrated.waitForFunction(() => {
     const node = document.querySelector('[aria-label="Transcript"]');
     return node && node.scrollHeight - node.clientHeight - node.scrollTop <= 2;
   });
-  const hydratedTranscript = hydrated.getByLabel("Transcript");
+  await hydrated.getByRole("button", { name: "Session tools" }).waitFor();
+  await hydrated.waitForFunction(
+    () =>
+      !document.querySelector<HTMLButtonElement>(
+        'button[aria-label="Session tools"]',
+      )?.disabled,
+  );
+  const liveGeometry = await geometry();
+  assert.deepEqual(liveGeometry.boxes, ssrGeometry.boxes);
+  assert(
+    (liveGeometry.shifts ?? []).reduce((sum, shift) => sum + shift, 0) < 0.01,
+  );
+  console.log("Live geometry", JSON.stringify(liveGeometry));
+  assert.equal(
+    await hydratedTranscript.evaluate(receiptProblem),
+    null,
+    "connected",
+  );
+  assert(
+    await ssrStrong.evaluate((node) => node.isConnected),
+    "SSR strong node replaced during hydration or live connection",
+  );
+  await ssrStrong.dispose();
   const hydratedJump = hydrated.getByRole("button", { name: "Jump to latest" });
   await hydratedTranscript.evaluate((node) => {
     node.scrollTop = 0;
   });
   await hydratedJump.waitFor();
-  const selectedLabel = await hydrated
+  await hydrated
     .getByRole("complementary", { name: "Session list" })
-    .getByRole("button", { pressed: true })
-    .innerText();
+    .getByRole("button", { pressed: true, name: "Familiar", exact: true })
+    .waitFor();
   await hydrated
     .getByRole("button", { name: "Second session", exact: true })
     .click();
   await hydrated.getByText("No messages yet.").waitFor();
   await hydratedJump.waitFor({ state: "hidden" });
-  await hydrated
-    .getByRole("button", { name: selectedLabel, exact: true })
-    .click();
+  await hydrated.getByRole("button", { name: "Familiar", exact: true }).click();
   await hydrated.getByText("Strong receipt", { exact: true }).waitFor();
   assert(
     await hydratedTranscript.evaluate(
       (node) => node.scrollHeight - node.scrollTop - node.clientHeight <= 2,
     ),
   );
+  const movingRow = hydrated.getByRole("button", {
+    name: "Age hours",
+    exact: true,
+  });
+  const originalIndex = await movingRow.evaluate(rowIndex);
+  await movingRow.focus();
+  await fixture.server.host.root(async (ctx) => {
+    const catalog = await ctx.get(Catalog, {});
+    const row = catalog.sessions.value.find(
+      (item) => item.title === "Age hours",
+    );
+    assert(row);
+    await catalog.update({ id: row.id, cwd: fixture.workspace }, ctx);
+  }, TEST);
+  await hydrated.waitForFunction((original) => {
+    const row = [...document.querySelectorAll("#clank-sidebar li")].find(
+      (item) => item.querySelector("button")?.title === "Age hours",
+    );
+    return (
+      row && Array.from(row.parentElement!.children).indexOf(row) < original
+    );
+  }, originalIndex);
+  assert(await movingRow.evaluate((node) => node === document.activeElement));
+  const catalogState = () =>
+    fixture.server.host.root(
+      async (ctx) =>
+        (await ctx.get(Catalog, {})).sessions.value.map(
+          ({ id, main, title: sessionTitle, archivedAt }) => ({
+            id,
+            main,
+            title: sessionTitle,
+            archivedAt,
+          }),
+        ),
+      TEST,
+    );
+  const before = await catalogState();
+  const victim = before.find((s) => s.title === "Second session");
+  assert(victim && victim.archivedAt === null);
+  const pi = new URL(`http://127.0.0.1:${fixture.server.port}`);
+  const nativeRail = await context.newPage();
+  nativeRail.setDefaultTimeout(8000);
+  await nativeRail.setViewportSize(hydrated.viewportSize()!);
+  await nativeRail.goto((await mintOwnerLink(pi, fixture.dataDir, pi)).href);
+  await nativeRail.waitForURL(pi.href);
+  await nativeRail.goto(new URL(`/s/${session.id}`, pi).href);
+  await nativeRail.getByRole("textbox", { name: "Message" }).waitFor();
+  await proveRailArchive(hydrated, observer, nativeRail, {
+    fixture,
+    piRoot,
+    id: victim.id,
+    main: victim.main,
+  });
+  await nativeRail.close();
+  const after = await catalogState();
+  assert.equal(
+    typeof after.find((s) => s.id === victim.id)?.archivedAt,
+    "number",
+  );
+  const active = (rows: typeof before) =>
+    rows
+      .filter((s) => s.archivedAt === null)
+      .map((s) => s.id)
+      .toSorted();
+  assert.deepEqual(
+    active(after),
+    active(before).filter((id) => id !== victim.id),
+  );
   await hydrated.close();
+  // Omit the cookie on the document fetch only to exercise the SSR-miss shell.
+  const shellContext = await browser.newContext({
+    ignoreHTTPSErrors: true,
+    viewport: { width: 375, height: 667 },
+  });
+  const shellPage = await shellContext.newPage();
+  const releaseCheck = Promise.withResolvers<void>();
+  await shellPage.route("**/owner/check", async (route) => {
+    await releaseCheck.promise;
+    await route.continue();
+  });
+  await shellPage.goto(origin);
+  const rail = shellPage.getByRole("complementary", { name: "Session list" });
+  await rail.getByText("Connecting to Pi…").waitFor();
+  const railBox = await rail.boundingBox();
+  assert.equal(await shellPage.getByLabel("Session detail").isVisible(), false);
+  await shellContext.addCookies(await context.cookies(origin));
+  releaseCheck.resolve();
+  await rail.getByRole("button", { name: "Familiar", exact: true }).waitFor();
+  assert.deepEqual(await rail.boundingBox(), railBox);
+  if (namedPath) {
+    await shellContext.clearCookies();
+    const authenticate = Promise.withResolvers<void>();
+    await shellPage.unroute("**/owner/check");
+    await shellPage.route("**/owner/check", async (route) => {
+      await authenticate.promise;
+      await route.continue();
+    });
+    await shellPage.goto(`${origin}${namedPath}`);
+    const detail = shellPage.getByLabel("Session detail");
+    await detail.getByText("Opening conversation…").waitFor();
+    assert.equal(await detail.getByLabel("Transcript").count(), 0);
+    await shellContext.addCookies(await context.cookies(origin));
+    authenticate.resolve();
+    await detail.getByText(/^Echo: Historical fixture line/).waitFor();
+    await detail
+      .getByText("Opening conversation…")
+      .waitFor({ state: "hidden" });
+  }
+  await shellContext.close();
   const startServer = (
     await import(new URL("src/hosts/server.ts", piRoot).href)
   ).startServer;
@@ -999,6 +1945,30 @@ try {
   assert.equal(await transcript.evaluate((node) => node.scrollTop), restartTop);
   assert.equal(await message.inputValue(), draft);
   assert.equal(await transcript.getByText(draft, { exact: true }).count(), 0);
+  await message.fill("");
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin,
+  });
+  await transcript
+    .getByRole("button", { name: "Copy message", exact: true })
+    .first()
+    .click();
+  assert.equal(
+    await page.evaluate(() => navigator.clipboard.readText()),
+    prompt,
+  );
+  await transcript
+    .getByRole("button", { name: "Edit message", exact: true })
+    .first()
+    .click();
+  await page.waitForFunction(
+    (expected) =>
+      document.querySelector<HTMLTextAreaElement>(
+        'textarea[aria-label="Message"]',
+      )?.value === expected,
+    prompt,
+  );
+  await transcript.getByText("No messages yet.").waitFor();
   assert.equal(
     await page.evaluate(
       async () => (await fetch("/owner/logout", { method: "POST" })).status,
