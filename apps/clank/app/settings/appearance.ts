@@ -66,6 +66,7 @@ export const ownerScheme = css({
   "&[data-clank-tint=plum]": { "--clank-hue": "315" },
   "&[data-pi-tint=custom], &[data-clank-tint]": {
     "--hui-surface": tintPair("0.985 0.012", "0.19 0.022"),
+    "--clank-diagram-node": tintPair("0.91 0.06", "0.32 0.075"),
     "--hui-canvas": tintPair("0.96 0.017", "0.21 0.022"),
     "--hui-elevated": tintPair("0.985 0.012", "0.19 0.022"),
     "--hui-hover-surface": tintPair("0.95 0.022", "0.24 0.028"),
