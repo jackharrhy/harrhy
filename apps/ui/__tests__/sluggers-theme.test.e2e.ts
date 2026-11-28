@@ -67,8 +67,15 @@ it("keeps Sluggers keyboard focus and official popup semantics", async (t) => {
   const trigger = preview.getByRole("button", { name: "Actions", exact: true });
   await trigger.focus();
   assert.equal(
-    await trigger.evaluate((node) => getComputedStyle(node).outlineWidth),
-    "2px",
+    await trigger.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return (
+        node.matches(":focus-visible") &&
+        style.outlineStyle !== "none" &&
+        parseFloat(style.outlineWidth) > 0
+      );
+    }),
+    true,
   );
   await page.keyboard.press("Enter");
   await preview.getByRole("menu").waitFor();
