@@ -1,11 +1,40 @@
 import type { Branding } from "./branding.ts";
 import { extendTheme, graphiteTheme } from "@harrhy/ui/theme";
 import { css } from "remix/component";
+import {
+  readThemeCookie,
+  themeCookie,
+  themeMode,
+  type Mode,
+} from "./theme-cookie.ts";
 
-export const modes = ["system", "light", "dark"] as const;
-export type Mode = (typeof modes)[number];
-export const themeKey = "clank:theme";
-export const themeBootstrap = `try{const mode=localStorage.getItem(${JSON.stringify(themeKey)});if(mode==="light"||mode==="dark")document.documentElement.dataset.theme=mode}catch{}`;
+export { modes, type Mode } from "./theme-cookie.ts";
+const legacyThemeKey = "clank:theme";
+
+export function saveTheme(mode: Mode) {
+  try {
+    document.cookie = themeCookie(mode);
+    // Cookie writes can fail silently. Keep the legacy copy until read-back succeeds.
+    if (readThemeCookie(document.cookie) === mode)
+      localStorage.removeItem(legacyThemeKey);
+  } catch {}
+}
+
+export function hydratedTheme(serverMode?: Mode): Mode {
+  let cookieMode = serverMode;
+  try {
+    cookieMode = readThemeCookie(document.cookie) ?? serverMode;
+  } catch {}
+  if (cookieMode) return cookieMode;
+  try {
+    const legacy = themeMode(localStorage.getItem(legacyThemeKey));
+    if (legacy) {
+      saveTheme(legacy);
+      return legacy;
+    }
+  } catch {}
+  return "system";
+}
 
 export const ownerTheme = extendTheme(graphiteTheme, {
   canvas: "light-dark(#f5f3f0, #151413)",
@@ -31,8 +60,7 @@ const tintPair = (light: string, dark: string) =>
   `light-dark(oklch(${light} var(--pi-base-hue)), oklch(${dark} var(--pi-base-hue)))`;
 
 export const ownerScheme = css({
-  colorScheme: "light dark",
-  "&:is([data-pi-tint=custom] *)": {
+  "&[data-pi-tint=custom]": {
     "--hui-surface": tintPair("0.985 0.012", "0.19 0.022"),
     "--hui-canvas": tintPair("0.96 0.017", "0.21 0.022"),
     "--hui-elevated": tintPair("0.985 0.012", "0.19 0.022"),
@@ -40,8 +68,11 @@ export const ownerScheme = css({
     "--hui-selected-surface": tintPair("0.94 0.025", "0.26 0.03"),
     "--hui-border": tintPair("0.91 0.018", "0.29 0.024"),
   },
-  "&:is([data-theme=light] *)": { colorScheme: "light" },
-  "&:is([data-theme=dark] *)": { colorScheme: "dark" },
+  "&[data-theme=light]": { "--hui-color-scheme": "light" },
+  "&[data-theme=dark]": { "--hui-color-scheme": "dark" },
+  "@media (prefers-color-scheme: dark)": {
+    "&:not([data-theme])": { "--hui-color-scheme": "dark" },
+  },
 });
 
 // One owner connection owns these document effects; never persist them as preferences.

@@ -6,6 +6,7 @@ import {
   type IncomingMessage,
 } from "node:http";
 import { CHORD_PATH, SESSION_LIST_PATH, sessionKey } from "./routes.ts";
+import { readThemeCookie, type Mode } from "./theme-cookie.ts";
 
 const uiPaths = new Set([
   "GET /",
@@ -82,6 +83,7 @@ export function createPreview(
   serve: (
     request: Request,
     snapshot?: Snapshot,
+    mode?: Mode,
   ) => Response | Promise<Response>,
   snapshot?: (
     request: IncomingMessage,
@@ -116,7 +118,11 @@ export function createPreview(
               ? await snapshot?.(req, abort.signal)
               : undefined;
           if (abort.signal.aborted) return;
-          return serve(new Request(`https://${ownerHost}${req.url}`), data);
+          return serve(
+            new Request(`https://${ownerHost}${req.url}`),
+            data,
+            readThemeCookie(req.headers.cookie),
+          );
         })
         .then(async (response) => {
           if (!response) return;

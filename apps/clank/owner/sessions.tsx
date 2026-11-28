@@ -20,7 +20,13 @@ import {
   MenuItem,
 } from "@harrhy/ui/interactive";
 import { BrandMark } from "./brand-mark.tsx";
-import { documentBranding, modes, themeKey, type Mode } from "./appearance.ts";
+import {
+  documentBranding,
+  hydratedTheme,
+  modes,
+  saveTheme,
+  type Mode,
+} from "./appearance.ts";
 import { Icon } from "./icons.tsx";
 import { Switcher, type PaletteItem } from "./switcher.tsx";
 import { byRecentActivity } from "../../pi/plugins/subagents/contract.ts";
@@ -347,6 +353,7 @@ export const OwnerSessions = clientEntry(
     handle: Handle<{
       familiarId?: string;
       snapshot?: string;
+      initialMode?: Mode;
       renderedAt: number;
       listPage?: boolean;
       target?: string;
@@ -385,15 +392,16 @@ export const OwnerSessions = clientEntry(
     let scopedSwitch = false;
     let switchFrom: HTMLElement | undefined;
     let settings = false;
-    let mode: Mode = "system";
-    function setMode(next: Mode) {
+    let mode = handle.props.initialMode ?? "system";
+    function applyMode(next: Mode) {
       mode = next;
       if (next === "system") delete document.documentElement.dataset.theme;
       else document.documentElement.dataset.theme = next;
-      try {
-        localStorage.setItem(themeKey, next);
-      } catch {}
       void handle.update();
+    }
+    function setMode(next: Mode) {
+      applyMode(next);
+      saveTheme(next);
     }
     let preferences = defaultPreferences;
     let sidebarButton: HTMLButtonElement | undefined;
@@ -631,11 +639,8 @@ export const OwnerSessions = clientEntry(
       }
     }
     const mount = ref((_node, signal) => {
-      const initial = document.documentElement.dataset.theme;
-      if (initial === "light" || initial === "dark") {
-        mode = initial;
-        void handle.update();
-      }
+      const restored = hydratedTheme(handle.props.initialMode);
+      if (restored !== mode) applyMode(restored);
       try {
         listQuery = sessionStorage.getItem("clank:session-list-query") ?? "";
       } catch {}

@@ -12,19 +12,19 @@ import {
   canonicalSessionRedirect,
 } from "./routes.ts";
 import { localizeMessageTime } from "./message-time.ts";
-import { ownerScheme, ownerTheme, themeBootstrap } from "./appearance.ts";
+import { ownerScheme, ownerTheme } from "./appearance.ts";
+import type { Mode } from "./theme-cookie.ts";
 declare const OWNER_BROWSER_MODULE: string;
 // Run after the transcript markup, independently of the deferred browser bundle.
 const positionTranscript = `(()=>{document.querySelectorAll('time[data-message-time]').forEach(${localizeMessageTime.toString()});const node=document.querySelector('[aria-label="Transcript"]');if(node){node.scrollTop=node.scrollHeight;node.dataset.ssrPositioned='true'}})();`;
 const positionHash = createHash("sha256")
   .update(positionTranscript)
   .digest("base64");
-const themeHash = createHash("sha256").update(themeBootstrap).digest("base64");
 const headersFor = (ownerHost: string) => ({
   "Cache-Control": "no-store",
   "X-Content-Type-Options": "nosniff",
   "Referrer-Policy": "no-referrer",
-  "Content-Security-Policy": `default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'self' 'sha256-${positionHash}' 'sha256-${themeHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
+  "Content-Security-Policy": `default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'self' 'sha256-${positionHash}'; connect-src 'self' wss://${ownerHost}; base-uri 'none'; frame-ancestors 'none'; form-action 'none'`,
 });
 const localFamiliarId = (() => {
   try {
@@ -40,6 +40,7 @@ async function document(
   snapshot?: Snapshot,
   listPage = false,
   target?: string,
+  mode?: Mode,
 ) {
   const location = canonicalSessionRedirect(
     target,
@@ -51,27 +52,26 @@ async function document(
       headers: { ...headers, Location: location },
     });
   const html = await renderToString(
-    <html lang="en">
+    <html
+      lang="en"
+      data-theme={mode === "system" ? undefined : mode}
+      mix={[themeStyles(ownerTheme), themeRoot, ownerScheme]}
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         <title>Clank</title>
-        <script innerHTML={unsafeHTML(themeBootstrap)} />
         <script type="module" src="/owner-sessions.js" />
       </head>
       <body
-        mix={[
-          themeStyles(ownerTheme),
-          themeRoot,
-          ownerScheme,
-          css({
-            margin: 0,
-            minHeight: "100dvh",
-            backgroundColor: "var(--hui-surface)",
-          }),
-        ]}
+        mix={css({
+          margin: 0,
+          minHeight: "100dvh",
+          backgroundColor: "var(--hui-surface)",
+        })}
       >
         <OwnerSessions
+          initialMode={mode}
           renderedAt={Date.now()}
           listPage={listPage}
           target={target}
@@ -102,7 +102,7 @@ export function createDocumentServer(ownerHost: string) {
         },
       }),
   );
-  return (request: Request, snapshot?: Snapshot) => {
+  return (request: Request, snapshot?: Snapshot, mode?: Mode) => {
     const path = new URL(request.url).pathname;
     return path === "/" || path === SESSION_LIST_PATH || sessionKey(path)
       ? document(
@@ -110,6 +110,7 @@ export function createDocumentServer(ownerHost: string) {
           snapshot,
           path === SESSION_LIST_PATH,
           sessionKey(path),
+          mode,
         )
       : router.fetch(request);
   };
